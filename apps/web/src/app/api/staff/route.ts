@@ -18,7 +18,9 @@ export async function POST(req: Request) {
   if (!name) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
   }
-  const result = db.prepare("INSERT INTO staff (name) VALUES (?)").run(name);
+  const result = db
+    .prepare("INSERT INTO staff (name, role) VALUES (?, ?)")
+    .run(name, body.role || null);
   const created = db
     .prepare("SELECT * FROM staff WHERE id = ?")
     .get(result.lastInsertRowid) as Staff;

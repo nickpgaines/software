@@ -54,6 +54,13 @@ function init(db: Database.Database) {
     );
   }
 
+  const staffCols = db
+    .prepare("PRAGMA table_info(staff)")
+    .all() as { name: string }[];
+  if (!staffCols.some((c) => c.name === "role")) {
+    db.exec("ALTER TABLE staff ADD COLUMN role TEXT");
+  }
+
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_jobs_salesperson_id ON jobs(salesperson_id);
     CREATE INDEX IF NOT EXISTS idx_jobs_technician_id ON jobs(technician_id);
@@ -83,6 +90,7 @@ export type Customer = {
 export type Staff = {
   id: number;
   name: string;
+  role: string | null;
   created_at: string;
 };
 

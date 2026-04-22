@@ -20,7 +20,12 @@ export async function PATCH(
   if (!name) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
   }
-  db.prepare("UPDATE staff SET name = ? WHERE id = ?").run(name, id);
+  const role = body.role === undefined ? existing.role : body.role;
+  db.prepare("UPDATE staff SET name = ?, role = ? WHERE id = ?").run(
+    name,
+    role,
+    id
+  );
   const updated = db.prepare("SELECT * FROM staff WHERE id = ?").get(id) as Staff;
   return NextResponse.json(updated);
 }

@@ -5,14 +5,19 @@ import { useEffect, useState } from "react";
 type Staff = {
   id: number;
   name: string;
+  role: string | null;
 };
+
+const ROLES = ["Admin", "Salesperson", "Technician", "Both"];
 
 export default function TeamPage() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
+  const [newRole, setNewRole] = useState<string>("Salesperson");
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingName, setEditingName] = useState("");
+  const [editingRole, setEditingRole] = useState<string>("");
   const [saving, setSaving] = useState(false);
 
   async function load() {
@@ -30,11 +35,12 @@ export default function TeamPage() {
     const res = await fetch("/api/staff", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: newName.trim() }),
+      body: JSON.stringify({ name: newName.trim(), role: newRole || null }),
     });
     setSaving(false);
     if (res.ok) {
       setNewName("");
+      setNewRole("Salesperson");
       setAdding(false);
       await load();
     }
@@ -46,11 +52,15 @@ export default function TeamPage() {
     await fetch(`/api/staff/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: editingName.trim() }),
+      body: JSON.stringify({
+        name: editingName.trim(),
+        role: editingRole || null,
+      }),
     });
     setSaving(false);
     setEditingId(null);
     setEditingName("");
+    setEditingRole("");
     await load();
   }
 
@@ -80,7 +90,7 @@ export default function TeamPage() {
       </div>
 
       {adding && (
-        <div className="bg-white border border-slate-200 rounded-lg p-4 flex gap-2">
+        <div className="bg-white border border-slate-200 rounded-lg p-4 flex gap-2 flex-wrap">
           <input
             type="text"
             value={newName}
@@ -92,9 +102,20 @@ export default function TeamPage() {
               }
             }}
             placeholder="Name"
-            className="flex-1 border border-slate-300 rounded px-3 py-2 text-sm"
+            className="flex-1 min-w-[160px] border border-slate-300 rounded px-3 py-2 text-sm"
             autoFocus
           />
+          <select
+            value={newRole}
+            onChange={(e) => setNewRole(e.target.value)}
+            className="border border-slate-300 rounded px-3 py-2 text-sm"
+          >
+            {ROLES.map((r) => (
+              <option key={r} value={r}>
+                {r}
+              </option>
+            ))}
+          </select>
           <button
             onClick={addStaff}
             disabled={saving || !newName.trim()}
@@ -141,6 +162,18 @@ export default function TeamPage() {
                       className="flex-1 border border-slate-300 rounded px-3 py-1.5 text-sm"
                       autoFocus
                     />
+                    <select
+                      value={editingRole}
+                      onChange={(e) => setEditingRole(e.target.value)}
+                      className="border border-slate-300 rounded px-3 py-1.5 text-sm"
+                    >
+                      <option value="">No role</option>
+                      {ROLES.map((r) => (
+                        <option key={r} value={r}>
+                          {r}
+                        </option>
+                      ))}
+                    </select>
                     <button
                       onClick={() => saveEdit(s.id)}
                       disabled={saving}
@@ -152,6 +185,7 @@ export default function TeamPage() {
                       onClick={() => {
                         setEditingId(null);
                         setEditingName("");
+                        setEditingRole("");
                       }}
                       className="text-xs text-slate-500 hover:text-slate-900"
                     >
@@ -160,12 +194,20 @@ export default function TeamPage() {
                   </>
                 ) : (
                   <>
-                    <span className="font-medium text-slate-900">{s.name}</span>
+                    <div className="flex-1 flex items-center gap-3">
+                      <span className="font-medium text-slate-900">{s.name}</span>
+                      {s.role && (
+                        <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                          {s.role}
+                        </span>
+                      )}
+                    </div>
                     <div className="flex gap-3">
                       <button
                         onClick={() => {
                           setEditingId(s.id);
                           setEditingName(s.name);
+                          setEditingRole(s.role || "");
                         }}
                         className="text-xs text-slate-500 hover:text-slate-900"
                       >
