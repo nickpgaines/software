@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
-import db, { type Customer } from "@/lib/db";
+import { getDb, type Customer } from "@/lib/db";
+
+export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const db = getDb();
   const rows = db
     .prepare("SELECT * FROM customers ORDER BY name COLLATE NOCASE ASC")
     .all() as Customer[];
@@ -9,6 +12,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const db = getDb();
   const body = (await req.json().catch(() => ({}))) as Partial<Customer>;
   const name = (body.name || "").trim();
   if (!name) {

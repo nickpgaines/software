@@ -9,6 +9,11 @@ type Customer = {
   address: string | null;
 };
 
+type Staff = {
+  id: number;
+  name: string;
+};
+
 type Job = {
   id: number;
   customer_id: number;
@@ -17,9 +22,13 @@ type Job = {
   price_cents: number;
   status: string;
   notes: string | null;
+  salesperson_id: number | null;
+  technician_id: number | null;
   customer_name: string;
   customer_address: string | null;
   customer_phone: string | null;
+  salesperson_name: string | null;
+  technician_name: string | null;
 };
 
 function toLocalInputValue(iso: string) {
@@ -66,17 +75,20 @@ function groupByDay(jobs: Job[]) {
 
 export default function SchedulePage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [staff, setStaff] = useState<Staff[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [showJobForm, setShowJobForm] = useState(false);
   const [showCustomerForm, setShowCustomerForm] = useState(false);
   const [editingJob, setEditingJob] = useState<Job | null>(null);
 
   async function loadAll() {
-    const [cRes, jRes] = await Promise.all([
+    const [cRes, sRes, jRes] = await Promise.all([
       fetch("/api/customers"),
+      fetch("/api/staff"),
       fetch("/api/jobs"),
     ]);
     setCustomers(await cRes.json());
+    setStaff(await sRes.json());
     setJobs(await jRes.json());
   }
 
@@ -159,6 +171,13 @@ export default function SchedulePage() {
                         {j.customer_address || "No address"}
                         {j.customer_phone ? ` · ${j.customer_phone}` : ""}
                       </div>
+                      {(j.salesperson_name || j.technician_name) && (
+                        <div className="text-xs text-slate-500 mt-0.5">
+                          {j.salesperson_name && <>Sold by {j.salesperson_name}</>}
+                          {j.salesperson_name && j.technician_name && " · "}
+                          {j.technician_name && <>Tech: {j.technician_name}</>}
+                        </div>
+                      )}
                       {j.notes && (
                         <div className="text-xs text-slate-500 mt-1">{j.notes}</div>
                       )}
@@ -199,6 +218,7 @@ export default function SchedulePage() {
       {showJobForm && (
         <JobForm
           customers={customers}
+          staff={staff}
           job={editingJob}
           onClose={() => {
             setShowJobForm(false);
@@ -210,6 +230,10 @@ export default function SchedulePage() {
             await loadAll();
           }}
           onAddCustomer={() => setShowCustomerForm(true)}
+          onStaffAdded={async () => {
+            const res = await fetch("/api/staff");
+            setStaff(await res.json());
+          }}
         />
       )}
 
@@ -237,8 +261,8 @@ function Modal({
 }) {
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-md">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+      <div className="bg-white rounded-lg shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 sticky top-0 bg-white">
           <h3 className="font-medium">{title}</h3>
           <button
             onClick={onClose}
@@ -253,18 +277,119 @@ function Modal({
   );
 }
 
+function StaffSelect({
+  value,
+  staff,
+  onChange,
+  onAdded,
+}: {
+  value: number | null;
+  staff: Staff[];
+  onChange: (id: number | null) => void;
+  onAdded: () => Promise<void>;
+}) {
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  async function addStaff() {
+    if (!newName.trim()) return;
+    setSaving(true);
+    const res = await fetch("/api/staff", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: newName.trim() }),
+    });
+    setSaving(false);
+    if (res.ok) {
+      const created = (await res.json()) as Staff;
+      setNewName("");
+      setAdding(false);
+      await onAdded();
+      onChange(created.id);
+    }
+  }
+
+  if (adding) {
+    return (
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={newName}
+          onChange={(e) => setNewName(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") {
+              e.preventDefault();
+              addStaff();
+            }
+          }}
+          placeholder="Name"
+          className="flex-1 border border-slate-300 rounded px-3 py-2 text-sm"
+          autoFocus
+        />
+        <button
+          type="button"
+          onClick={addStaff}
+          disabled={saving || !newName.trim()}
+          className="text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded px-3 py-2"
+        >
+          Add
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setAdding(false);
+            setNewName("");
+          }}
+          className="text-sm text-slate-500 hover:text-slate-900 px-1"
+        >
+          Cancel
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex gap-2">
+      <select
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+        className="flex-1 border border-slate-300 rounded px-3 py-2 text-sm"
+      >
+        <option value="">— unassigned —</option>
+        {staff.map((s) => (
+          <option key={s.id} value={s.id}>
+            {s.name}
+          </option>
+        ))}
+      </select>
+      <button
+        type="button"
+        onClick={() => setAdding(true)}
+        className="text-sm border border-slate-300 bg-white hover:bg-slate-50 rounded px-3 py-2"
+      >
+        + New
+      </button>
+    </div>
+  );
+}
+
 function JobForm({
   customers,
+  staff,
   job,
   onClose,
   onSaved,
   onAddCustomer,
+  onStaffAdded,
 }: {
   customers: Customer[];
+  staff: Staff[];
   job: Job | null;
   onClose: () => void;
   onSaved: () => void;
   onAddCustomer: () => void;
+  onStaffAdded: () => Promise<void>;
 }) {
   const [customerId, setCustomerId] = useState<number | "">(
     job?.customer_id ?? (customers[0]?.id ?? "")
@@ -278,6 +403,12 @@ function JobForm({
   );
   const [status, setStatus] = useState(job?.status ?? "scheduled");
   const [notes, setNotes] = useState(job?.notes ?? "");
+  const [salespersonId, setSalespersonId] = useState<number | null>(
+    job?.salesperson_id ?? null
+  );
+  const [technicianId, setTechnicianId] = useState<number | null>(
+    job?.technician_id ?? null
+  );
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -296,6 +427,8 @@ function JobForm({
       price_cents: Math.round(Number(price) * 100),
       status,
       notes: notes || null,
+      salesperson_id: salespersonId,
+      technician_id: technicianId,
     };
     const res = await fetch(job ? `/api/jobs/${job.id}` : "/api/jobs", {
       method: job ? "PATCH" : "POST",
@@ -384,6 +517,28 @@ function JobForm({
               className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
             />
           </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            Salesperson
+          </label>
+          <StaffSelect
+            value={salespersonId}
+            staff={staff}
+            onChange={setSalespersonId}
+            onAdded={onStaffAdded}
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 mb-1">
+            Technician
+          </label>
+          <StaffSelect
+            value={technicianId}
+            staff={staff}
+            onChange={setTechnicianId}
+            onAdded={onStaffAdded}
+          />
         </div>
         <div>
           <label className="block text-sm font-medium text-slate-700 mb-1">
