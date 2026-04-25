@@ -7,14 +7,171 @@ import { useEffect, useRef, useState } from "react";
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 const STREETS_STYLE = "mapbox://styles/mapbox/streets-v12";
 const SATELLITE_STYLE = "mapbox://styles/mapbox/satellite-streets-v12";
+const GEOCODE_CACHE_KEY = "map.geocode.v1";
 
 type StyleType = "streets" | "satellite";
+
+type CustomerJob = {
+  id: number;
+  scheduled_at: string;
+  price_cents: number;
+  status: string;
+  title: string | null;
+};
+
+type Customer = {
+  id: number;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+  jobs: CustomerJob[];
+};
+
+type GeocodedCustomer = Customer & { lng: number; lat: number };
+
+function loadGeocodeCache(): Record<string, [number, number]> {
+  if (typeof window === "undefined") return {};
+  try {
+    const raw = localStorage.getItem(GEOCODE_CACHE_KEY);
+    return raw ? JSON.parse(raw) : {};
+  } catch {
+    return {};
+  }
+}
+
+function saveGeocodeCache(cache: Record<string, [number, number]>) {
+  try {
+    localStorage.setItem(GEOCODE_CACHE_KEY, JSON.stringify(cache));
+  } catch {}
+}
+
+async function geocode(
+  address: string,
+  cache: Record<string, [number, number]>
+): Promise<[number, number] | null> {
+  const key = address.trim().toLowerCase();
+  if (cache[key]) return cache[key];
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
+    address
+  )}.json?limit=1&access_token=${TOKEN}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      features: { center: [number, number] }[];
+    };
+    const center = data.features[0]?.center;
+    if (!center) return null;
+    cache[key] = center;
+    saveGeocodeCache(cache);
+    return center;
+  } catch {
+    return null;
+  }
+}
+
+function money(cents: number) {
+  return `$${(cents / 100).toFixed(2)}`;
+}
+
+function formatDate(iso: string) {
+  return new Date(iso).toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+function escapeHtml(s: string) {
+  return s
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+function customerPopupHtml(c: GeocodedCustomer): string {
+  const name = escapeHtml(c.name);
+  const address = c.address ? escapeHtml(c.address) : "";
+  const phone = c.phone
+    ? `<a href="tel:${escapeHtml(c.phone)}" class="text-cyan-600 hover:underline">${escapeHtml(c.phone)}</a>`
+    : `<span class="text-slate-400">—</span>`;
+  const email = c.email
+    ? `<a href="mailto:${escapeHtml(c.email)}" class="text-cyan-600 hover:underline">${escapeHtml(c.email)}</a>`
+    : `<span class="text-slate-400">—</span>`;
+  const jobs =
+    c.jobs.length === 0
+      ? `<p class="text-sm text-slate-400">No jobs yet.</p>`
+      : `<ul class="space-y-1.5">${c.jobs
+          .slice(0, 5)
+          .map(
+            (j) => `
+              <li class="flex items-center justify-between gap-2 text-sm">
+                <div class="min-w-0">
+                  <div class="font-medium text-slate-900 truncate">${escapeHtml(j.title || "Window Cleaning")}</div>
+                  <div class="text-xs text-slate-500">${escapeHtml(formatDate(j.scheduled_at))}</div>
+                </div>
+                <div class="font-semibold text-slate-900 tabular-nums whitespace-nowrap">${money(j.price_cents)}</div>
+              </li>`
+          )
+          .join("")}</ul>`;
+
+  return `
+    <div class="customer-popup font-sans" style="min-width: 240px; max-width: 280px;">
+      <div class="px-4 pt-4 pb-2">
+        <h3 class="font-semibold text-slate-900 leading-tight">${name}</h3>
+        ${address ? `<p class="text-xs text-slate-500 mt-0.5">${address}</p>` : ""}
+      </div>
+      <div class="px-4 py-2 border-t border-slate-100 grid grid-cols-2 gap-2 text-xs">
+        <div>
+          <div class="uppercase tracking-wide text-slate-400 mb-0.5">Phone</div>
+          <div class="font-medium text-slate-700">${phone}</div>
+        </div>
+        <div>
+          <div class="uppercase tracking-wide text-slate-400 mb-0.5">Email</div>
+          <div class="font-medium text-slate-700 truncate">${email}</div>
+        </div>
+      </div>
+      <div class="px-4 py-2 border-t border-slate-100">
+        <div class="text-xs uppercase tracking-wide text-slate-400 mb-1.5">Jobs</div>
+        ${jobs}
+      </div>
+      <div class="px-4 py-3 border-t border-slate-100 flex items-center gap-2">
+        <a href="/schedule/new?customer_id=${c.id}" class="flex-1 text-center text-xs bg-cyan-500 hover:bg-cyan-600 text-white rounded-full px-3 py-1.5 font-medium">Schedule Job</a>
+        <button data-action="invoice" class="flex-1 text-xs border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-full px-3 py-1.5">Create Invoice</button>
+      </div>
+    </div>
+  `;
+}
+
+function makeCustomerMarkerEl(): HTMLElement {
+  const el = document.createElement("div");
+  el.style.cssText = `width: 30px; height: 40px; cursor: pointer;`;
+  el.innerHTML = `
+    <svg width="30" height="40" viewBox="0 0 30 40" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <filter id="mp-shadow" x="-20%" y="-20%" width="140%" height="140%">
+          <feDropShadow dx="0" dy="1" stdDeviation="1.5" flood-opacity="0.35"/>
+        </filter>
+      </defs>
+      <path filter="url(#mp-shadow)" d="M15 1c-7.7 0-14 6.3-14 14 0 9.6 12.5 22.5 13.1 23 .5.5 1.3.5 1.8 0 .6-.5 13.1-13.4 13.1-23 0-7.7-6.3-14-14-14z" fill="#3b82f6" stroke="#fff" stroke-width="2"/>
+      <circle cx="15" cy="15" r="5" fill="#fff"/>
+    </svg>
+  `;
+  return el;
+}
 
 export default function MapClient() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const [styleType, setStyleType] = useState<StyleType>("streets");
   const [ready, setReady] = useState(false);
+
+  const [customers, setCustomers] = useState<GeocodedCustomer[]>([]);
+  const customerMarkersRef = useRef<mapboxgl.Marker[]>([]);
+  const popupRef = useRef<mapboxgl.Popup | null>(null);
 
   useEffect(() => {
     if (!TOKEN || !containerRef.current) return;
@@ -41,6 +198,67 @@ export default function MapClient() {
       styleType === "satellite" ? SATELLITE_STYLE : STREETS_STYLE
     );
   }, [styleType]);
+
+  // Fetch + geocode customers
+  useEffect(() => {
+    if (!TOKEN) return;
+    let cancelled = false;
+    (async () => {
+      const res = await fetch("/api/map/customers");
+      if (!res.ok) return;
+      const list = (await res.json()) as Customer[];
+      const cache = loadGeocodeCache();
+      const out: GeocodedCustomer[] = [];
+      for (const c of list) {
+        if (!c.address) continue;
+        const center = await geocode(c.address, cache);
+        if (cancelled) return;
+        if (center) {
+          out.push({ ...c, lng: center[0], lat: center[1] });
+          if (out.length === 1 && mapRef.current) {
+            mapRef.current.flyTo({ center, zoom: 11, duration: 1500 });
+          }
+        }
+      }
+      if (!cancelled) setCustomers(out);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Render customer markers when map ready / customers change
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    customerMarkersRef.current.forEach((m) => m.remove());
+    customerMarkersRef.current = [];
+    for (const c of customers) {
+      const el = makeCustomerMarkerEl();
+      const marker = new mapboxgl.Marker({ element: el, anchor: "bottom" })
+        .setLngLat([c.lng, c.lat])
+        .addTo(map);
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        popupRef.current?.remove();
+        const popup = new mapboxgl.Popup({
+          offset: 36,
+          closeButton: true,
+          maxWidth: "320px",
+        })
+          .setLngLat([c.lng, c.lat])
+          .setHTML(customerPopupHtml(c))
+          .addTo(map);
+        popupRef.current = popup;
+        const node = popup.getElement();
+        const invoiceBtn = node?.querySelector('[data-action="invoice"]');
+        invoiceBtn?.addEventListener("click", () => {
+          alert("Invoicing is coming soon.");
+        });
+      });
+      customerMarkersRef.current.push(marker);
+    }
+  }, [customers, ready, styleType]);
 
   function zoomIn() {
     mapRef.current?.zoomIn();
@@ -204,15 +422,7 @@ function ControlButton({
 
 function PlusIcon() {
   return (
-    <svg
-      className="w-5 h-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="12" y1="5" x2="12" y2="19" />
       <line x1="5" y1="12" x2="19" y2="12" />
     </svg>
@@ -220,30 +430,14 @@ function PlusIcon() {
 }
 function MinusIcon() {
   return (
-    <svg
-      className="w-5 h-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <line x1="5" y1="12" x2="19" y2="12" />
     </svg>
   );
 }
 function LayersIcon() {
   return (
-    <svg
-      className="w-5 h-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polygon points="12 2 2 7 12 12 22 7 12 2" />
       <polyline points="2 17 12 22 22 17" />
       <polyline points="2 12 12 17 22 12" />
@@ -252,15 +446,7 @@ function LayersIcon() {
 }
 function LocateIcon() {
   return (
-    <svg
-      className="w-5 h-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <circle cx="12" cy="12" r="3" />
       <line x1="12" y1="2" x2="12" y2="5" />
       <line x1="12" y1="19" x2="12" y2="22" />
@@ -271,45 +457,21 @@ function LocateIcon() {
 }
 function FilterIcon() {
   return (
-    <svg
-      className="w-5 h-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
     </svg>
   );
 }
 function PolygonIcon() {
   return (
-    <svg
-      className="w-5 h-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <polygon points="3 9 12 3 21 9 18 20 6 20 3 9" />
     </svg>
   );
 }
 function PinIcon() {
   return (
-    <svg
-      className="w-5 h-5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
+    <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
       <circle cx="12" cy="10" r="3" />
     </svg>
