@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type View = "sales" | "tech";
-type Range = "today" | "week" | "month" | "year" | "all";
+type Range = "today" | "week" | "month" | "year" | "custom";
 
 type Row = {
   id: number;
@@ -22,12 +22,11 @@ type Resp = {
   rows: Row[];
 };
 
-const RANGES: { key: Range; label: string }[] = [
+const PRESET_RANGES: { key: Exclude<Range, "custom">; label: string }[] = [
   { key: "today", label: "Today" },
   { key: "week", label: "This Week" },
   { key: "month", label: "This Month" },
   { key: "year", label: "This Year" },
-  { key: "all", label: "All Time" },
 ];
 
 function money(cents: number) {
@@ -43,8 +42,9 @@ function initials(name: string) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function formatDate(iso: string | null) {
+function formatDate(iso: string | null, mounted: boolean) {
   if (!iso) return "—";
+  if (!mounted) return "";
   return new Date(iso).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
@@ -80,6 +80,12 @@ function avatarColor(name: string) {
   return colors[Math.abs(h) % colors.length];
 }
 
+function todayDateInput() {
+  const d = new Date();
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 export default function LeaderboardClient({
   currentUser,
 }: {
@@ -87,13 +93,34 @@ export default function LeaderboardClient({
 }) {
   const [view, setView] = useState<View>("sales");
   const [range, setRange] = useState<Range>("month");
+  const [customFrom, setCustomFrom] = useState<string>("");
+  const [customTo, setCustomTo] = useState<string>(todayDateInput());
+  const [customOpen, setCustomOpen] = useState(false);
   const [data, setData] = useState<Resp | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+    const prev = document.body.style.backgroundColor;
+    document.body.style.backgroundColor = "#ffffff";
+    return () => {
+      document.body.style.backgroundColor = prev;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (range === "custom" && (!customFrom || !customTo)) return;
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/leaderboard?view=${view}&range=${range}`)
+    const params = new URLSearchParams({ view, range });
+    if (range === "custom") {
+      params.set("from", new Date(`${customFrom}T00:00:00`).toISOString());
+      const end = new Date(`${customTo}T00:00:00`);
+      end.setDate(end.getDate() + 1);
+      params.set("to", end.toISOString());
+    }
+    fetch(`/api/leaderboard?${params}`)
       .then((r) => r.json())
       .then((d: Resp) => {
         if (!cancelled) setData(d);
@@ -104,7 +131,16 @@ export default function LeaderboardClient({
     return () => {
       cancelled = true;
     };
-  }, [view, range]);
+  }, [view, range, customFrom, customTo]);
+
+  const customRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (!customRef.current?.contains(e.target as Node)) setCustomOpen(false);
+    }
+    if (customOpen) document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [customOpen]);
 
   const activeRows = useMemo(
     () => (data ? data.rows.filter((r) => r.job_count > 0) : []),
@@ -121,14 +157,12 @@ export default function LeaderboardClient({
     const match = data.rows.find((r) => r.name.trim().toLowerCase() === u);
     return match || null;
   }, [data, currentUser]);
-  const myRank = me
-    ? activeRows.findIndex((r) => r.id === me.id) + 1
-    : null;
+  const myRank = me ? activeRows.findIndex((r) => r.id === me.id) + 1 : null;
 
   const title = view === "sales" ? "Sales Leaderboard" : "Technician Leaderboard";
-  const roleColumnHeader = view === "sales" ? "SALESPERSON" : "TECHNICIAN";
-  const avgColumnHeader = view === "sales" ? "AVG DEAL" : "AVG JOB";
-  const lastColumnHeader = view === "sales" ? "LAST SALE" : "LAST JOB";
+  const personColumn = view === "sales" ? "SALESPERSON" : "TECHNICIAN";
+  const avgColumn = view === "sales" ? "AVG DEAL" : "AVG JOB";
+  const lastColumn = view === "sales" ? "LAST SALE" : "LAST JOB";
 
   return (
     <div className="space-y-6">
@@ -169,11 +203,11 @@ export default function LeaderboardClient({
       {me && (
         <a
           href="#rankings"
-          className="flex items-center gap-3 bg-white border border-slate-200 rounded-2xl px-5 py-4 hover:bg-slate-50"
+          className="flex items-center gap-3 bg-white border border-slate-200 rounded-2xl px-5 py-4 hover:bg-slate-50 shadow-sm"
         >
           <div
             className={
-              "w-10 h-10 rounded-full flex items-center justify-center font-semibold " +
+              "w-12 h-12 rounded-full flex items-center justify-center font-semibold text-base " +
               avatarColor(me.name)
             }
           >
@@ -186,7 +220,7 @@ export default function LeaderboardClient({
               {myRank ? ` · Rank #${myRank}` : ""}
             </div>
           </div>
-          <span className="text-slate-300 text-xl">›</span>
+          <span className="text-slate-300 text-2xl leading-none">›</span>
         </a>
       )}
 
@@ -196,7 +230,7 @@ export default function LeaderboardClient({
         <KpiCard label="Top Performer" value={top?.name || "—"} />
       </div>
 
-      <div id="rankings" className="bg-white border border-slate-200 rounded-2xl">
+      <div id="rankings" className="bg-white border border-slate-200 rounded-2xl shadow-sm">
         <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
             <h2 className="font-semibold text-slate-900">
@@ -220,21 +254,109 @@ export default function LeaderboardClient({
               Teams
             </span>
           </div>
-          <div className="flex items-center gap-1 bg-slate-50 border border-slate-100 rounded-full p-1 text-sm">
-            {RANGES.map((r) => (
-              <button
-                key={r.key}
-                onClick={() => setRange(r.key)}
-                className={
-                  "px-3 py-1 rounded-full transition whitespace-nowrap " +
-                  (range === r.key
-                    ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-500 hover:text-slate-900")
-                }
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 bg-slate-50 border border-slate-100 rounded-full p-1 text-sm">
+              {PRESET_RANGES.map((r) => (
+                <button
+                  key={r.key}
+                  onClick={() => {
+                    setRange(r.key);
+                    setCustomOpen(false);
+                  }}
+                  className={
+                    "px-3 py-1 rounded-full transition whitespace-nowrap " +
+                    (range === r.key
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-500 hover:text-slate-900")
+                  }
+                >
+                  {r.label}
+                </button>
+              ))}
+              <div ref={customRef} className="relative">
+                <button
+                  onClick={() => {
+                    setRange("custom");
+                    setCustomOpen((o) => !o);
+                  }}
+                  className={
+                    "px-3 py-1 rounded-full transition whitespace-nowrap inline-flex items-center gap-1 " +
+                    (range === "custom"
+                      ? "bg-white text-slate-900 shadow-sm"
+                      : "text-slate-500 hover:text-slate-900")
+                  }
+                >
+                  Custom
+                  <svg
+                    className={
+                      "w-3 h-3 transition-transform " +
+                      (customOpen ? "rotate-180" : "")
+                    }
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <polyline points="6 9 12 15 18 9" />
+                  </svg>
+                </button>
+                {customOpen && (
+                  <div className="absolute right-0 mt-2 z-30 bg-white border border-slate-200 rounded-2xl shadow-lg p-4 w-64 space-y-3">
+                    <div>
+                      <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+                        From
+                      </label>
+                      <input
+                        type="date"
+                        value={customFrom}
+                        max={customTo || undefined}
+                        onChange={(e) => setCustomFrom(e.target.value)}
+                        className="w-full border border-slate-200 rounded-full px-3 py-1.5 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+                        To
+                      </label>
+                      <input
+                        type="date"
+                        value={customTo}
+                        min={customFrom || undefined}
+                        onChange={(e) => setCustomTo(e.target.value)}
+                        className="w-full border border-slate-200 rounded-full px-3 py-1.5 text-sm"
+                      />
+                    </div>
+                    <button
+                      onClick={() => setCustomOpen(false)}
+                      disabled={!customFrom || !customTo}
+                      className="w-full text-sm bg-cyan-500 hover:bg-cyan-600 disabled:bg-cyan-300 text-white rounded-full px-3 py-1.5"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+            <button
+              type="button"
+              title="Filter"
+              className="w-9 h-9 border border-slate-200 bg-white hover:bg-slate-50 rounded-full flex items-center justify-center text-slate-500"
+              aria-label="Filter"
+            >
+              <svg
+                className="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                {r.label}
-              </button>
-            ))}
+                <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -252,28 +374,29 @@ export default function LeaderboardClient({
                 <tr className="text-xs uppercase tracking-wider text-slate-400">
                   <th className="text-left px-5 py-3 font-medium">Rank</th>
                   <th className="text-left px-5 py-3 font-medium">
-                    {roleColumnHeader}
+                    {personColumn}
                   </th>
                   <th className="text-left px-5 py-3 font-medium">Role</th>
                   <th className="text-right px-5 py-3 font-medium">Revenue</th>
                   <th className="text-right px-5 py-3 font-medium">Jobs</th>
-                  <th className="text-right px-5 py-3 font-medium">
-                    {avgColumnHeader}
-                  </th>
-                  <th className="text-right px-5 py-3 font-medium">
-                    {lastColumnHeader}
-                  </th>
+                  <th className="text-right px-5 py-3 font-medium">{avgColumn}</th>
+                  <th className="text-right px-5 py-3 font-medium">{lastColumn}</th>
                 </tr>
               </thead>
               <tbody>
                 {activeRows.map((r, i) => {
                   const isMe = me?.id === r.id;
+                  const isTop = i === 0;
                   return (
                     <tr
                       key={r.id}
                       className={
                         "border-t border-slate-100 " +
-                        (isMe ? "bg-amber-50/60" : "")
+                        (isMe
+                          ? "bg-amber-50/60 ring-1 ring-amber-200"
+                          : isTop
+                          ? "bg-amber-50/30"
+                          : "")
                       }
                     >
                       <td className="px-5 py-3">
@@ -320,8 +443,11 @@ export default function LeaderboardClient({
                       <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
                         {money(Math.round(r.revenue_cents / r.job_count))}
                       </td>
-                      <td className="px-5 py-3 text-right text-slate-500 tabular-nums whitespace-nowrap">
-                        {formatDate(r.last_sale_at)}
+                      <td
+                        className="px-5 py-3 text-right text-cyan-600 tabular-nums whitespace-nowrap"
+                        suppressHydrationWarning
+                      >
+                        {formatDate(r.last_sale_at, mounted)}
                       </td>
                     </tr>
                   );
@@ -337,9 +463,9 @@ export default function LeaderboardClient({
 
 function KpiCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 min-h-[130px] flex flex-col justify-between">
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 min-h-[140px] flex flex-col justify-between shadow-sm">
       <div className="text-sm text-slate-400">{label}</div>
-      <div className="text-3xl font-bold text-slate-900 tabular-nums">
+      <div className="text-4xl font-bold text-slate-900 tabular-nums">
         {value}
       </div>
     </div>
