@@ -11,6 +11,9 @@ import MapFilterPanel, {
   type Filters,
   type Staff,
 } from "@/components/MapFilterPanel";
+import MapTerritoryModal, {
+  type TerritoryDraft,
+} from "@/components/MapTerritoryModal";
 import { STATUSES, statusByKey, iconSvg } from "@/lib/map-status";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
@@ -34,6 +37,86 @@ type MapPinRow = {
   created_by: string | null;
   created_at: string;
 };
+
+type TerritoryRow = {
+  id: number;
+  name: string;
+  color: string;
+  polygon: string;
+  assigned_employee_ids: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+function emptyFeatureCollection() {
+  return { type: "FeatureCollection" as const, features: [] };
+}
+
+function territoryFeatures(territories: TerritoryRow[]) {
+  return {
+    type: "FeatureCollection" as const,
+    features: territories
+      .map((t) => {
+        let coords: number[][] = [];
+        try {
+          coords = JSON.parse(t.polygon);
+        } catch {
+          return null;
+        }
+        if (coords.length < 3) return null;
+        const ring = [...coords, coords[0]];
+        return {
+          type: "Feature" as const,
+          id: t.id,
+          properties: { id: t.id, name: t.name, color: t.color },
+          geometry: { type: "Polygon" as const, coordinates: [ring] },
+        };
+      })
+      .filter(Boolean) as GeoJSON.Feature[],
+  };
+}
+
+function drawFeatures(points: number[][]) {
+  if (points.length === 0) return emptyFeatureCollection();
+  if (points.length === 1) {
+    return {
+      type: "FeatureCollection" as const,
+      features: [
+        {
+          type: "Feature" as const,
+          properties: {},
+          geometry: { type: "Point" as const, coordinates: points[0] },
+        },
+      ],
+    };
+  }
+  const lineCoords = [...points];
+  return {
+    type: "FeatureCollection" as const,
+    features: [
+      {
+        type: "Feature" as const,
+        properties: {},
+        geometry: { type: "LineString" as const, coordinates: lineCoords },
+      },
+      ...points.map((pt) => ({
+        type: "Feature" as const,
+        properties: {},
+        geometry: { type: "Point" as const, coordinates: pt },
+      })),
+    ],
+  };
+}
+
+function centroid(coords: number[][]): [number, number] {
+  let x = 0;
+  let y = 0;
+  for (const [lng, lat] of coords) {
+    x += lng;
+    y += lat;
+  }
+  return [x / coords.length, y / coords.length];
+}
 
 type CustomerJob = {
   id: number;
@@ -247,6 +330,26 @@ export default function MapClient() {
       .then(setStaff);
   }, []);
 
+  const [drawMode, setDrawMode] = useState(false);
+  const [drawPoints, setDrawPoints] = useState<number[][]>([]);
+  const drawModeRef = useRef(false);
+  const drawPointsRef = useRef<number[][]>([]);
+  useEffect(() => {
+    drawModeRef.current = drawMode;
+  }, [drawMode]);
+  useEffect(() => {
+    drawPointsRef.current = drawPoints;
+  }, [drawPoints]);
+
+  const [territories, setTerritories] = useState<TerritoryRow[]>([]);
+  const [territoryDraft, setTerritoryDraft] = useState<TerritoryDraft | null>(null);
+
+  useEffect(() => {
+    fetch("/api/territories")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows: TerritoryRow[]) => setTerritories(rows));
+  }, []);
+
   useEffect(() => {
     if (!TOKEN || !containerRef.current) return;
     mapboxgl.accessToken = TOKEN;
@@ -260,6 +363,11 @@ export default function MapClient() {
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), "bottom-right");
     map.on("load", () => setReady(true));
     map.on("click", async (e) => {
+      if (drawModeRef.current) {
+        const { lng, lat } = e.lngLat;
+        setDrawPoints((arr) => [...arr, [lng, lat]]);
+        return;
+      }
       if (!knockModeRef.current) return;
       const { lng, lat } = e.lngLat;
       setSheet({ lat, lng, address: "Looking up address…" });
@@ -308,13 +416,157 @@ export default function MapClient() {
     };
   }, []);
 
-  // Toggle map cursor for knock mode
+  // Toggle map cursor for knock / draw modes
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
     const canvas = map.getCanvas();
-    canvas.style.cursor = knockMode ? "crosshair" : "";
-  }, [knockMode, ready, styleType]);
+    canvas.style.cursor = knockMode || drawMode ? "crosshair" : "";
+  }, [knockMode, drawMode, ready, styleType]);
+
+  // Install territory + draw layers on map style load
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    function install() {
+      const m = mapRef.current;
+      if (!m) return;
+      if (!m.getSource("territories")) {
+        m.addSource("territories", {
+          type: "geojson",
+          data: emptyFeatureCollection(),
+        });
+        m.addLayer({
+          id: "territories-fill",
+          type: "fill",
+          source: "territories",
+          paint: { "fill-color": ["get", "color"], "fill-opacity": 0.2 },
+        });
+        m.addLayer({
+          id: "territories-line",
+          type: "line",
+          source: "territories",
+          paint: {
+            "line-color": ["get", "color"],
+            "line-width": 2,
+          },
+        });
+        m.addLayer({
+          id: "territories-label",
+          type: "symbol",
+          source: "territories",
+          layout: {
+            "text-field": ["get", "name"],
+            "text-size": 13,
+            "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+            "text-anchor": "center",
+          },
+          paint: {
+            "text-color": ["get", "color"],
+            "text-halo-color": "#ffffff",
+            "text-halo-width": 1.5,
+          },
+        });
+        m.on("click", "territories-fill", (e) => {
+          if (drawModeRef.current || knockModeRef.current) return;
+          const f = e.features?.[0];
+          if (!f) return;
+          const id = f.properties?.id as number;
+          const t = territoriesRef.current.find((x) => x.id === id);
+          if (!t) return;
+          let coords: number[][] = [];
+          try {
+            coords = JSON.parse(t.polygon);
+          } catch {}
+          let assigned: number[] = [];
+          try {
+            assigned = t.assigned_employee_ids
+              ? JSON.parse(t.assigned_employee_ids)
+              : [];
+          } catch {}
+          setTerritoryDraft({
+            id: t.id,
+            name: t.name,
+            color: t.color,
+            polygon: coords,
+            assigned_employee_ids: assigned,
+          });
+        });
+        m.on("mouseenter", "territories-fill", () => {
+          if (drawModeRef.current || knockModeRef.current) return;
+          m.getCanvas().style.cursor = "pointer";
+        });
+        m.on("mouseleave", "territories-fill", () => {
+          if (drawModeRef.current || knockModeRef.current) return;
+          m.getCanvas().style.cursor = "";
+        });
+      }
+      if (!m.getSource("draw-active")) {
+        m.addSource("draw-active", {
+          type: "geojson",
+          data: emptyFeatureCollection(),
+        });
+        m.addLayer({
+          id: "draw-line",
+          type: "line",
+          source: "draw-active",
+          paint: {
+            "line-color": "#3b82f6",
+            "line-width": 2,
+            "line-dasharray": [2, 2],
+          },
+          filter: ["==", ["geometry-type"], "LineString"],
+        });
+        m.addLayer({
+          id: "draw-points",
+          type: "circle",
+          source: "draw-active",
+          paint: {
+            "circle-radius": 5,
+            "circle-color": "#3b82f6",
+            "circle-stroke-color": "#ffffff",
+            "circle-stroke-width": 2,
+          },
+          filter: ["==", ["geometry-type"], "Point"],
+        });
+      }
+    }
+    if (map.isStyleLoaded()) install();
+    map.on("style.load", install);
+    return () => {
+      map.off("style.load", install);
+    };
+  }, [ready]);
+
+  // Keep territories source in sync
+  const territoriesRef = useRef<TerritoryRow[]>([]);
+  useEffect(() => {
+    territoriesRef.current = territories;
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      const src = map.getSource("territories") as
+        | mapboxgl.GeoJSONSource
+        | undefined;
+      if (src) src.setData(territoryFeatures(territories) as never);
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once("style.load", apply);
+  }, [territories, ready, styleType]);
+
+  // Keep draw-active source in sync
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const apply = () => {
+      const src = map.getSource("draw-active") as
+        | mapboxgl.GeoJSONSource
+        | undefined;
+      if (src) src.setData(drawFeatures(drawPoints) as never);
+    };
+    if (map.isStyleLoaded()) apply();
+    else map.once("style.load", apply);
+  }, [drawPoints, ready, styleType]);
 
   // Fetch door-knock pins
   useEffect(() => {
@@ -491,9 +743,24 @@ export default function MapClient() {
         zoomOut={zoomOut}
         locateMe={locateMe}
         knockMode={knockMode}
-        toggleKnock={() => setKnockMode((v) => !v)}
+        toggleKnock={() => {
+          setKnockMode((v) => !v);
+          if (drawMode) {
+            setDrawMode(false);
+            setDrawPoints([]);
+          }
+        }}
         filterOpen={filterOpen}
         toggleFilter={() => setFilterOpen((v) => !v)}
+        drawMode={drawMode}
+        toggleDraw={() => {
+          setDrawMode((v) => {
+            const next = !v;
+            if (!next) setDrawPoints([]);
+            return next;
+          });
+          if (knockMode) setKnockMode(false);
+        }}
       />
       {filterOpen && (
         <MapFilterPanel
@@ -508,7 +775,75 @@ export default function MapClient() {
           Door knock mode — tap the map to drop a pin
         </div>
       )}
+      {drawMode && (
+        <div className="absolute top-4 left-4 z-10 flex items-center gap-2">
+          <div className="bg-cyan-500 text-white text-xs font-medium rounded-full px-3 py-1.5 shadow-md">
+            {drawPoints.length < 3
+              ? `Drawing — tap the map to add points (${drawPoints.length}/3 min)`
+              : `Drawing — ${drawPoints.length} points`}
+          </div>
+          {drawPoints.length >= 3 && (
+            <button
+              onClick={() => {
+                setTerritoryDraft({ polygon: drawPoints });
+                setDrawMode(false);
+              }}
+              className="bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-medium rounded-full px-3 py-1.5 shadow-md"
+            >
+              Finish drawing
+            </button>
+          )}
+          <button
+            onClick={() => {
+              setDrawMode(false);
+              setDrawPoints([]);
+            }}
+            className="bg-white border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-50 text-xs rounded-full px-3 py-1.5 shadow-md"
+          >
+            Cancel
+          </button>
+        </div>
+      )}
       <Legend />
+      {territoryDraft && (
+        <MapTerritoryModal
+          draft={territoryDraft}
+          staff={staff}
+          onClose={() => {
+            setTerritoryDraft(null);
+            setDrawPoints([]);
+          }}
+          onSaved={(saved) => {
+            setTerritoryDraft(null);
+            setDrawPoints([]);
+            setTerritories((arr) => {
+              const idx = arr.findIndex((t) => t.id === saved.id);
+              const row: TerritoryRow = {
+                id: saved.id,
+                name: saved.name || "",
+                color: saved.color || "#3b82f6",
+                polygon: JSON.stringify(saved.polygon),
+                assigned_employee_ids: saved.assigned_employee_ids
+                  ? JSON.stringify(saved.assigned_employee_ids)
+                  : null,
+                created_by: null,
+                created_at: new Date().toISOString(),
+              };
+              if (idx >= 0) {
+                const next = arr.slice();
+                next[idx] = row;
+                return next;
+              }
+              return [row, ...arr];
+            });
+          }}
+          onDelete={async (id) => {
+            await fetch(`/api/territories/${id}`, { method: "DELETE" });
+            setTerritoryDraft(null);
+            setTerritories((arr) => arr.filter((t) => t.id !== id));
+          }}
+        />
+      )}
       {sheet && (
         <MapDoorKnockSheet
           pin={sheet}
@@ -588,6 +923,8 @@ function FloatingControls({
   toggleKnock,
   filterOpen,
   toggleFilter,
+  drawMode,
+  toggleDraw,
 }: {
   styleType: StyleType;
   setStyleType: (s: StyleType) => void;
@@ -598,6 +935,8 @@ function FloatingControls({
   toggleKnock: () => void;
   filterOpen: boolean;
   toggleFilter: () => void;
+  drawMode: boolean;
+  toggleDraw: () => void;
 }) {
   return (
     <div className="absolute right-4 top-4 z-10 flex flex-col gap-2">
@@ -625,7 +964,11 @@ function FloatingControls({
       <ControlButton onClick={toggleFilter} label="Filters" active={filterOpen}>
         <FilterIcon />
       </ControlButton>
-      <ControlButton onClick={() => {}} label="Territory draw" disabled>
+      <ControlButton
+        onClick={toggleDraw}
+        label="Territory draw"
+        active={drawMode}
+      >
         <PolygonIcon />
       </ControlButton>
       <ControlButton
