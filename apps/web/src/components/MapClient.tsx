@@ -6,6 +6,11 @@ import { useEffect, useRef, useState } from "react";
 import MapDoorKnockSheet, {
   type SheetPin,
 } from "@/components/MapDoorKnockSheet";
+import MapFilterPanel, {
+  DEFAULT_FILTERS,
+  type Filters,
+  type Staff,
+} from "@/components/MapFilterPanel";
 import { STATUSES, statusByKey, iconSvg } from "@/lib/map-status";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
@@ -233,6 +238,15 @@ export default function MapClient() {
     knockModeRef.current = knockMode;
   }, [knockMode]);
 
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [staff, setStaff] = useState<Staff[]>([]);
+  useEffect(() => {
+    fetch("/api/staff")
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setStaff);
+  }, []);
+
   useEffect(() => {
     if (!TOKEN || !containerRef.current) return;
     mapboxgl.accessToken = TOKEN;
@@ -316,7 +330,35 @@ export default function MapClient() {
     if (!map || !ready) return;
     const refs = pinMarkersRef.current;
     const seen = new Set<number>();
-    for (const p of pins) {
+    const allowedStatuses = new Set(filters.statuses);
+    const fromMs =
+      filters.dateRangeOn && filters.fromDate
+        ? new Date(`${filters.fromDate}T00:00:00`).getTime()
+        : null;
+    const toMs =
+      filters.dateRangeOn && filters.toDate
+        ? new Date(`${filters.toDate}T23:59:59.999`).getTime()
+        : null;
+    const selectedNames = filters.staffIds.length
+      ? staff
+          .filter((s) => filters.staffIds.includes(s.id))
+          .map((s) => s.name.trim().toLowerCase())
+      : null;
+    const visiblePins = pins.filter((p) => {
+      if (!allowedStatuses.has(p.status)) return false;
+      if (fromMs || toMs) {
+        const created = new Date(p.created_at).getTime();
+        if (fromMs && created < fromMs) return false;
+        if (toMs && created > toMs) return false;
+      }
+      if (selectedNames) {
+        if (!p.created_by) return false;
+        if (!selectedNames.includes(p.created_by.trim().toLowerCase()))
+          return false;
+      }
+      return true;
+    });
+    for (const p of visiblePins) {
       seen.add(p.id);
       const existing = refs.get(p.id);
       if (existing) {
@@ -350,7 +392,7 @@ export default function MapClient() {
         refs.delete(id);
       }
     }
-  }, [pins, ready, styleType]);
+  }, [pins, ready, styleType, filters, staff]);
 
   // Render customer markers when map ready / customers change
   useEffect(() => {
@@ -358,6 +400,7 @@ export default function MapClient() {
     if (!map || !ready) return;
     customerMarkersRef.current.forEach((m) => m.remove());
     customerMarkersRef.current = [];
+    if (!filters.showCustomers) return;
     for (const c of customers) {
       const el = makeCustomerMarkerEl();
       const marker = new mapboxgl.Marker({ element: el, anchor: "bottom" })
@@ -383,7 +426,7 @@ export default function MapClient() {
       });
       customerMarkersRef.current.push(marker);
     }
-  }, [customers, ready, styleType]);
+  }, [customers, ready, styleType, filters.showCustomers]);
 
   function zoomIn() {
     mapRef.current?.zoomIn();
@@ -449,7 +492,17 @@ export default function MapClient() {
         locateMe={locateMe}
         knockMode={knockMode}
         toggleKnock={() => setKnockMode((v) => !v)}
+        filterOpen={filterOpen}
+        toggleFilter={() => setFilterOpen((v) => !v)}
       />
+      {filterOpen && (
+        <MapFilterPanel
+          filters={filters}
+          setFilters={setFilters}
+          onClose={() => setFilterOpen(false)}
+          staff={staff}
+        />
+      )}
       {knockMode && (
         <div className="absolute top-4 left-4 z-10 bg-cyan-500 text-white text-xs font-medium rounded-full px-3 py-1.5 shadow-md">
           Door knock mode — tap the map to drop a pin
@@ -533,6 +586,8 @@ function FloatingControls({
   locateMe,
   knockMode,
   toggleKnock,
+  filterOpen,
+  toggleFilter,
 }: {
   styleType: StyleType;
   setStyleType: (s: StyleType) => void;
@@ -541,6 +596,8 @@ function FloatingControls({
   locateMe: () => void;
   knockMode: boolean;
   toggleKnock: () => void;
+  filterOpen: boolean;
+  toggleFilter: () => void;
 }) {
   return (
     <div className="absolute right-4 top-4 z-10 flex flex-col gap-2">
@@ -565,7 +622,7 @@ function FloatingControls({
       <ControlButton onClick={locateMe} label="My location">
         <LocateIcon />
       </ControlButton>
-      <ControlButton onClick={() => {}} label="Filters" disabled>
+      <ControlButton onClick={toggleFilter} label="Filters" active={filterOpen}>
         <FilterIcon />
       </ControlButton>
       <ControlButton onClick={() => {}} label="Territory draw" disabled>
