@@ -194,6 +194,7 @@ export default function RevenueChart() {
   const [range, setRange] = useState<Range>("1m");
   const [data, setData] = useState<RevenueData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [updatedLabel, setUpdatedLabel] = useState<string>("");
 
   useEffect(() => {
     let cancelled = false;
@@ -211,14 +212,15 @@ export default function RevenueChart() {
     };
   }, [range]);
 
-  const updatedLabel = useMemo(() => {
-    const now = new Date();
-    return now.toLocaleString(undefined, {
-      month: "short",
-      day: "numeric",
-      hour: "numeric",
-      minute: "2-digit",
-    });
+  useEffect(() => {
+    setUpdatedLabel(
+      new Date().toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+      })
+    );
   }, [data]);
 
   return (
@@ -266,7 +268,8 @@ export default function RevenueChart() {
       </div>
 
       <div className="mt-2 text-right text-xs text-slate-500">
-        Avg: {data ? moneyDecimal(data.avg_cents) : "—"} · Updated {updatedLabel}
+        Avg: {data ? moneyDecimal(data.avg_cents) : "—"} · Updated{" "}
+        <span suppressHydrationWarning>{updatedLabel || "—"}</span>
       </div>
     </div>
   );

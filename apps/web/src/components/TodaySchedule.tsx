@@ -61,6 +61,11 @@ export default function TodaySchedule({ initialJobs }: { initialJobs: Job[] }) {
   const [offset, setOffset] = useState(0);
   const [jobs, setJobs] = useState<Job[]>(initialJobs);
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const currentDate = new Date();
   currentDate.setHours(0, 0, 0, 0);
@@ -95,8 +100,11 @@ export default function TodaySchedule({ initialJobs }: { initialJobs: Job[] }) {
           >
             ‹
           </button>
-          <h3 className="font-semibold text-slate-900 text-lg">
-            {formatDay(currentDate)}
+          <h3
+            className="font-semibold text-slate-900 text-lg"
+            suppressHydrationWarning
+          >
+            {mounted ? formatDay(currentDate) : ""}
           </h3>
           <button
             onClick={() => setOffset(offset + 1)}
@@ -140,8 +148,11 @@ export default function TodaySchedule({ initialJobs }: { initialJobs: Job[] }) {
           <ul className="space-y-5">
             {jobs.map((j) => (
               <li key={j.id}>
-                <div className="text-sm text-slate-500 border-b border-slate-100 pb-2 mb-2">
-                  {formatTime(j.scheduled_at)}
+                <div
+                  className="text-sm text-slate-500 border-b border-slate-100 pb-2 mb-2"
+                  suppressHydrationWarning
+                >
+                  {mounted ? formatTime(j.scheduled_at) : ""}
                 </div>
                 <div className="border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-sky-50 flex items-center justify-center shrink-0">
