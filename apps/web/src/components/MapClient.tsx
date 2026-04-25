@@ -1,7 +1,15 @@
 "use client";
 
-import mapboxgl from "mapbox-gl";
+import type * as Mb from "mapbox-gl";
 import { useEffect, useRef, useState } from "react";
+
+type MapboxRuntime = {
+  accessToken: string;
+  Map: new (opts: Mb.MapboxOptions) => Mb.Map;
+  Marker: new (opts?: Mb.MarkerOptions) => Mb.Marker;
+  Popup: new (opts?: Mb.PopupOptions) => Mb.Popup;
+  AttributionControl: new (opts?: Mb.AttributionControlOptions) => Mb.IControl;
+};
 import MapDoorKnockSheet, {
   type SheetPin,
 } from "@/components/MapDoorKnockSheet";
@@ -19,7 +27,15 @@ const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 const STREETS_STYLE = "mapbox://styles/mapbox/streets-v12";
 const SATELLITE_STYLE = "mapbox://styles/mapbox/satellite-streets-v12";
 const GEOCODE_CACHE_KEY = "map.geocode.v1";
-const MAPBOX_CSS_HREF = "https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.css";
+const MAPBOX_VERSION = "v3.7.0";
+const MAPBOX_CSS_HREF = `https://api.mapbox.com/mapbox-gl-js/${MAPBOX_VERSION}/mapbox-gl.css`;
+const MAPBOX_JS_HREF = `https://api.mapbox.com/mapbox-gl-js/${MAPBOX_VERSION}/mapbox-gl.js`;
+
+declare global {
+  interface Window {
+    mapboxgl?: MapboxRuntime;
+  }
+}
 
 function ensureMapboxStyles() {
   if (typeof document === "undefined") return;
@@ -30,6 +46,39 @@ function ensureMapboxStyles() {
   link.rel = "stylesheet";
   link.href = MAPBOX_CSS_HREF;
   document.head.appendChild(link);
+}
+
+let mapboxLoadPromise: Promise<MapboxRuntime> | null = null;
+function loadMapbox(): Promise<MapboxRuntime> {
+  if (typeof window === "undefined") {
+    return Promise.reject(new Error("Mapbox cannot load on the server"));
+  }
+  if (window.mapboxgl) return Promise.resolve(window.mapboxgl);
+  if (mapboxLoadPromise) return mapboxLoadPromise;
+  mapboxLoadPromise = new Promise((resolve, reject) => {
+    const existing = document.getElementById(
+      "mapbox-gl-script"
+    ) as HTMLScriptElement | null;
+    const onReady = () => {
+      if (window.mapboxgl) resolve(window.mapboxgl);
+      else reject(new Error("mapbox-gl loaded but window.mapboxgl is missing"));
+    };
+    if (existing) {
+      existing.addEventListener("load", onReady);
+      existing.addEventListener("error", () =>
+        reject(new Error("mapbox-gl failed to load"))
+      );
+      return;
+    }
+    const script = document.createElement("script");
+    script.id = "mapbox-gl-script";
+    script.src = MAPBOX_JS_HREF;
+    script.async = true;
+    script.onload = onReady;
+    script.onerror = () => reject(new Error("mapbox-gl failed to load"));
+    document.head.appendChild(script);
+  });
+  return mapboxLoadPromise;
 }
 
 type StyleType = "streets" | "satellite";
@@ -315,16 +364,18 @@ function makeCustomerMarkerEl(): HTMLElement {
 
 export default function MapClient() {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<mapboxgl.Map | null>(null);
+  const mapRef = useRef<Mb.Map | null>(null);
+  const mbRef = useRef<MapboxRuntime | null>(null);
   const [styleType, setStyleType] = useState<StyleType>("streets");
   const [ready, setReady] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const [customers, setCustomers] = useState<GeocodedCustomer[]>([]);
-  const customerMarkersRef = useRef<mapboxgl.Marker[]>([]);
-  const popupRef = useRef<mapboxgl.Popup | null>(null);
+  const customerMarkersRef = useRef<Mb.Marker[]>([]);
+  const popupRef = useRef<Mb.Popup | null>(null);
 
   const [pins, setPins] = useState<MapPinRow[]>([]);
-  const pinMarkersRef = useRef<Map<number, mapboxgl.Marker>>(new Map());
+  const pinMarkersRef = useRef<Map<number, Mb.Marker>>(new Map());
   const [knockMode, setKnockMode] = useState(false);
   const [sheet, setSheet] = useState<SheetPin | null>(null);
   const knockModeRef = useRef(false);
@@ -364,32 +415,51 @@ export default function MapClient() {
   useEffect(() => {
     if (!TOKEN || !containerRef.current) return;
     ensureMapboxStyles();
-    mapboxgl.accessToken = TOKEN;
-    const map = new mapboxgl.Map({
-      container: containerRef.current,
-      style: STREETS_STYLE,
-      center: [-98.5795, 39.8283],
-      zoom: 3.5,
-      attributionControl: false,
-    });
-    map.addControl(new mapboxgl.AttributionControl({ compact: true }), "bottom-right");
-    map.on("load", () => setReady(true));
-    map.on("click", async (e) => {
-      if (drawModeRef.current) {
-        const { lng, lat } = e.lngLat;
-        setDrawPoints((arr) => [...arr, [lng, lat]]);
-        return;
-      }
-      if (!knockModeRef.current) return;
-      const { lng, lat } = e.lngLat;
-      setSheet({ lat, lng, address: "Looking up address…" });
-      const addr = await reverseGeocode(lng, lat);
-      setSheet((cur) => (cur && cur.lng === lng && cur.lat === lat ? { ...cur, address: addr } : cur));
-    });
-    mapRef.current = map;
+    let map: Mb.Map | null = null;
+    let cancelled = false;
+    loadMapbox()
+      .then((mb) => {
+        if (cancelled || !containerRef.current) return;
+        mbRef.current = mb;
+        mb.accessToken = TOKEN;
+        map = new mb.Map({
+          container: containerRef.current,
+          style: STREETS_STYLE,
+          center: [-98.5795, 39.8283],
+          zoom: 3.5,
+          attributionControl: false,
+        });
+        map.addControl(
+          new mb.AttributionControl({ compact: true }),
+          "bottom-right"
+        );
+        map.on("load", () => setReady(true));
+        map.on("click", async (e) => {
+          if (drawModeRef.current) {
+            const { lng, lat } = e.lngLat;
+            setDrawPoints((arr) => [...arr, [lng, lat]]);
+            return;
+          }
+          if (!knockModeRef.current) return;
+          const { lng, lat } = e.lngLat;
+          setSheet({ lat, lng, address: "Looking up address…" });
+          const addr = await reverseGeocode(lng, lat);
+          setSheet((cur) =>
+            cur && cur.lng === lng && cur.lat === lat
+              ? { ...cur, address: addr }
+              : cur
+          );
+        });
+        mapRef.current = map;
+      })
+      .catch((err: Error) => {
+        if (!cancelled) setLoadError(err.message);
+      });
     return () => {
-      map.remove();
+      cancelled = true;
+      map?.remove();
       mapRef.current = null;
+      mbRef.current = null;
     };
   }, []);
 
@@ -558,7 +628,7 @@ export default function MapClient() {
     if (!map) return;
     const apply = () => {
       const src = map.getSource("territories") as
-        | mapboxgl.GeoJSONSource
+        | Mb.GeoJSONSource
         | undefined;
       if (src) src.setData(territoryFeatures(territories) as never);
     };
@@ -572,7 +642,7 @@ export default function MapClient() {
     if (!map) return;
     const apply = () => {
       const src = map.getSource("draw-active") as
-        | mapboxgl.GeoJSONSource
+        | Mb.GeoJSONSource
         | undefined;
       if (src) src.setData(drawFeatures(drawPoints) as never);
     };
@@ -591,7 +661,8 @@ export default function MapClient() {
   // Render door knock markers
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !ready) return;
+    const mb = mbRef.current;
+    if (!map || !mb || !ready) return;
     const refs = pinMarkersRef.current;
     const seen = new Set<number>();
     const allowedStatuses = new Set(filters.statuses);
@@ -629,7 +700,7 @@ export default function MapClient() {
         existing.remove();
       }
       const el = makeDoorKnockMarkerEl(p.status);
-      const marker = new mapboxgl.Marker({ element: el, anchor: "center" })
+      const marker = new mb.Marker({ element: el, anchor: "center" })
         .setLngLat([p.lng, p.lat])
         .addTo(map);
       el.addEventListener("click", (e) => {
@@ -661,19 +732,20 @@ export default function MapClient() {
   // Render customer markers when map ready / customers change
   useEffect(() => {
     const map = mapRef.current;
-    if (!map || !ready) return;
+    const mb = mbRef.current;
+    if (!map || !mb || !ready) return;
     customerMarkersRef.current.forEach((m) => m.remove());
     customerMarkersRef.current = [];
     if (!filters.showCustomers) return;
     for (const c of customers) {
       const el = makeCustomerMarkerEl();
-      const marker = new mapboxgl.Marker({ element: el, anchor: "bottom" })
+      const marker = new mb.Marker({ element: el, anchor: "bottom" })
         .setLngLat([c.lng, c.lat])
         .addTo(map);
       el.addEventListener("click", (e) => {
         e.stopPropagation();
         popupRef.current?.remove();
-        const popup = new mapboxgl.Popup({
+        const popup = new mb.Popup({
           offset: 36,
           closeButton: true,
           maxWidth: "320px",
@@ -743,9 +815,17 @@ export default function MapClient() {
   return (
     <div className="fixed inset-x-0 top-14 bottom-0">
       <div ref={containerRef} className="absolute inset-0" />
-      {!ready && (
+      {!ready && !loadError && (
         <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-500 bg-slate-50/40">
           Loading map…
+        </div>
+      )}
+      {loadError && (
+        <div className="absolute inset-0 flex items-center justify-center px-6 bg-slate-50/40">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 max-w-sm text-center text-sm text-slate-600 shadow-sm">
+            Could not load Mapbox: {loadError}. Check your network connection
+            and refresh.
+          </div>
         </div>
       )}
       <FloatingControls
