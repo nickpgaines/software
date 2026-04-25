@@ -3,6 +3,10 @@
 import "mapbox-gl/dist/mapbox-gl.css";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef, useState } from "react";
+import MapDoorKnockSheet, {
+  type SheetPin,
+} from "@/components/MapDoorKnockSheet";
+import { STATUSES, statusByKey, iconSvg } from "@/lib/map-status";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 const STREETS_STYLE = "mapbox://styles/mapbox/streets-v12";
@@ -10,6 +14,21 @@ const SATELLITE_STYLE = "mapbox://styles/mapbox/satellite-streets-v12";
 const GEOCODE_CACHE_KEY = "map.geocode.v1";
 
 type StyleType = "streets" | "satellite";
+
+type MapPinRow = {
+  id: number;
+  lat: number;
+  lng: number;
+  address: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  status: string;
+  objections: string | null;
+  customer_id: number | null;
+  created_by: string | null;
+  created_at: string;
+};
 
 type CustomerJob = {
   id: number;
@@ -146,6 +165,38 @@ function customerPopupHtml(c: GeocodedCustomer): string {
   `;
 }
 
+async function reverseGeocode(lng: number, lat: number): Promise<string | null> {
+  const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?limit=1&access_token=${TOKEN}`;
+  try {
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = (await res.json()) as { features: { place_name: string }[] };
+    return data.features[0]?.place_name || null;
+  } catch {
+    return null;
+  }
+}
+
+function makeDoorKnockMarkerEl(status: string): HTMLElement {
+  const def = statusByKey(status) || STATUSES[1];
+  const el = document.createElement("div");
+  el.style.cssText = [
+    "width: 38px",
+    "height: 38px",
+    "border-radius: 50%",
+    `background: ${def.color}`,
+    "color: white",
+    "display: flex",
+    "align-items: center",
+    "justify-content: center",
+    "border: 2px solid #fff",
+    "cursor: pointer",
+    `box-shadow: 0 2px 8px rgba(0,0,0,0.25)${def.glow ? ", 0 0 18px rgba(239,68,68,0.6)" : ""}`,
+  ].join(";");
+  el.innerHTML = iconSvg(def.iconKey, 18);
+  return el;
+}
+
 function makeCustomerMarkerEl(): HTMLElement {
   const el = document.createElement("div");
   el.style.cssText = `width: 30px; height: 40px; cursor: pointer;`;
@@ -173,6 +224,15 @@ export default function MapClient() {
   const customerMarkersRef = useRef<mapboxgl.Marker[]>([]);
   const popupRef = useRef<mapboxgl.Popup | null>(null);
 
+  const [pins, setPins] = useState<MapPinRow[]>([]);
+  const pinMarkersRef = useRef<Map<number, mapboxgl.Marker>>(new Map());
+  const [knockMode, setKnockMode] = useState(false);
+  const [sheet, setSheet] = useState<SheetPin | null>(null);
+  const knockModeRef = useRef(false);
+  useEffect(() => {
+    knockModeRef.current = knockMode;
+  }, [knockMode]);
+
   useEffect(() => {
     if (!TOKEN || !containerRef.current) return;
     mapboxgl.accessToken = TOKEN;
@@ -185,6 +245,13 @@ export default function MapClient() {
     });
     map.addControl(new mapboxgl.AttributionControl({ compact: true }), "bottom-right");
     map.on("load", () => setReady(true));
+    map.on("click", async (e) => {
+      if (!knockModeRef.current) return;
+      const { lng, lat } = e.lngLat;
+      setSheet({ lat, lng, address: "Looking up address…" });
+      const addr = await reverseGeocode(lng, lat);
+      setSheet((cur) => (cur && cur.lng === lng && cur.lat === lat ? { ...cur, address: addr } : cur));
+    });
     mapRef.current = map;
     return () => {
       map.remove();
@@ -226,6 +293,64 @@ export default function MapClient() {
       cancelled = true;
     };
   }, []);
+
+  // Toggle map cursor for knock mode
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map) return;
+    const canvas = map.getCanvas();
+    canvas.style.cursor = knockMode ? "crosshair" : "";
+  }, [knockMode, ready, styleType]);
+
+  // Fetch door-knock pins
+  useEffect(() => {
+    if (!TOKEN) return;
+    fetch("/api/map/pins")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((data: MapPinRow[]) => setPins(data));
+  }, []);
+
+  // Render door knock markers
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !ready) return;
+    const refs = pinMarkersRef.current;
+    const seen = new Set<number>();
+    for (const p of pins) {
+      seen.add(p.id);
+      const existing = refs.get(p.id);
+      if (existing) {
+        existing.remove();
+      }
+      const el = makeDoorKnockMarkerEl(p.status);
+      const marker = new mapboxgl.Marker({ element: el, anchor: "center" })
+        .setLngLat([p.lng, p.lat])
+        .addTo(map);
+      el.addEventListener("click", (e) => {
+        e.stopPropagation();
+        popupRef.current?.remove();
+        setSheet({
+          id: p.id,
+          lat: p.lat,
+          lng: p.lng,
+          address: p.address,
+          first_name: p.first_name,
+          last_name: p.last_name,
+          phone: p.phone,
+          status: p.status,
+          objections: p.objections ? (JSON.parse(p.objections) as string[]) : [],
+          customer_id: p.customer_id,
+        });
+      });
+      refs.set(p.id, marker);
+    }
+    for (const [id, marker] of refs) {
+      if (!seen.has(id)) {
+        marker.remove();
+        refs.delete(id);
+      }
+    }
+  }, [pins, ready, styleType]);
 
   // Render customer markers when map ready / customers change
   useEffect(() => {
@@ -322,7 +447,80 @@ export default function MapClient() {
         zoomIn={zoomIn}
         zoomOut={zoomOut}
         locateMe={locateMe}
+        knockMode={knockMode}
+        toggleKnock={() => setKnockMode((v) => !v)}
       />
+      {knockMode && (
+        <div className="absolute top-4 left-4 z-10 bg-cyan-500 text-white text-xs font-medium rounded-full px-3 py-1.5 shadow-md">
+          Door knock mode — tap the map to drop a pin
+        </div>
+      )}
+      <Legend />
+      {sheet && (
+        <MapDoorKnockSheet
+          pin={sheet}
+          onClose={() => setSheet(null)}
+          onSaved={(saved) => {
+            setSheet(null);
+            setPins((arr) => {
+              const idx = arr.findIndex((p) => p.id === saved.id);
+              const row: MapPinRow = {
+                id: saved.id,
+                lat: saved.lat,
+                lng: saved.lng,
+                address: saved.address || null,
+                first_name: saved.first_name || null,
+                last_name: saved.last_name || null,
+                phone: saved.phone || null,
+                status: saved.status || "not_home",
+                objections: saved.objections
+                  ? JSON.stringify(saved.objections)
+                  : null,
+                customer_id: saved.customer_id || null,
+                created_by: null,
+                created_at: new Date().toISOString(),
+              };
+              if (idx >= 0) {
+                const next = arr.slice();
+                next[idx] = row;
+                return next;
+              }
+              return [row, ...arr];
+            });
+          }}
+          onDelete={async (id) => {
+            await fetch(`/api/map/pins/${id}`, { method: "DELETE" });
+            setSheet(null);
+            setPins((arr) => arr.filter((p) => p.id !== id));
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+function Legend() {
+  return (
+    <div className="absolute bottom-4 left-4 z-10 bg-white rounded-2xl shadow-md p-3 text-xs max-w-[260px]">
+      <div className="font-semibold text-slate-700 mb-2">Pin legend</div>
+      <div className="grid grid-cols-2 gap-1.5">
+        {STATUSES.map((s) => (
+          <div key={s.key} className="flex items-center gap-1.5">
+            <span
+              className="w-3.5 h-3.5 rounded-full inline-block"
+              style={{ backgroundColor: s.color }}
+            />
+            <span className="text-slate-600">{s.label}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 pt-2 border-t border-slate-100 flex items-center gap-1.5">
+        <svg width="14" height="18" viewBox="0 0 30 40" xmlns="http://www.w3.org/2000/svg">
+          <path d="M15 1c-7.7 0-14 6.3-14 14 0 9.6 12.5 22.5 13.1 23 .5.5 1.3.5 1.8 0 .6-.5 13.1-13.4 13.1-23 0-7.7-6.3-14-14-14z" fill="#3b82f6" stroke="#fff" strokeWidth="2" />
+          <circle cx="15" cy="15" r="5" fill="#fff" />
+        </svg>
+        <span className="text-slate-600">Customer</span>
+      </div>
     </div>
   );
 }
@@ -333,12 +531,16 @@ function FloatingControls({
   zoomIn,
   zoomOut,
   locateMe,
+  knockMode,
+  toggleKnock,
 }: {
   styleType: StyleType;
   setStyleType: (s: StyleType) => void;
   zoomIn: () => void;
   zoomOut: () => void;
   locateMe: () => void;
+  knockMode: boolean;
+  toggleKnock: () => void;
 }) {
   return (
     <div className="absolute right-4 top-4 z-10 flex flex-col gap-2">
@@ -369,7 +571,11 @@ function FloatingControls({
       <ControlButton onClick={() => {}} label="Territory draw" disabled>
         <PolygonIcon />
       </ControlButton>
-      <ControlButton onClick={() => {}} label="Door knock mode" disabled>
+      <ControlButton
+        onClick={toggleKnock}
+        label="Door knock mode"
+        active={knockMode}
+      >
         <PinIcon />
       </ControlButton>
     </div>
