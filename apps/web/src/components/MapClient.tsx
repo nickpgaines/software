@@ -1,6 +1,5 @@
 "use client";
 
-import "mapbox-gl/dist/mapbox-gl.css";
 import mapboxgl from "mapbox-gl";
 import { useEffect, useRef, useState } from "react";
 import MapDoorKnockSheet, {
@@ -20,6 +19,18 @@ const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 const STREETS_STYLE = "mapbox://styles/mapbox/streets-v12";
 const SATELLITE_STYLE = "mapbox://styles/mapbox/satellite-streets-v12";
 const GEOCODE_CACHE_KEY = "map.geocode.v1";
+const MAPBOX_CSS_HREF = "https://api.mapbox.com/mapbox-gl-js/v3.7.0/mapbox-gl.css";
+
+function ensureMapboxStyles() {
+  if (typeof document === "undefined") return;
+  const id = "mapbox-gl-stylesheet";
+  if (document.getElementById(id)) return;
+  const link = document.createElement("link");
+  link.id = id;
+  link.rel = "stylesheet";
+  link.href = MAPBOX_CSS_HREF;
+  document.head.appendChild(link);
+}
 
 type StyleType = "streets" | "satellite";
 
@@ -352,6 +363,7 @@ export default function MapClient() {
 
   useEffect(() => {
     if (!TOKEN || !containerRef.current) return;
+    ensureMapboxStyles();
     mapboxgl.accessToken = TOKEN;
     const map = new mapboxgl.Map({
       container: containerRef.current,
