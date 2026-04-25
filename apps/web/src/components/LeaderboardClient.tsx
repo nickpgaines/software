@@ -154,10 +154,19 @@ export default function LeaderboardClient({
   const me = useMemo(() => {
     if (!data) return null;
     const u = currentUser.trim().toLowerCase();
-    const match = data.rows.find((r) => r.name.trim().toLowerCase() === u);
-    return match || null;
+    if (u) {
+      const exact = data.rows.find((r) => r.name.trim().toLowerCase() === u);
+      if (exact) return exact;
+    }
+    const admin = data.rows.find(
+      (r) => (r.role || "").trim().toLowerCase() === "admin"
+    );
+    return admin || null;
   }, [data, currentUser]);
   const myRank = me ? activeRows.findIndex((r) => r.id === me.id) + 1 : null;
+  const meName = me?.name || (currentUser ? currentUser : "You");
+  const meRevenue = me?.revenue_cents ?? total;
+  const meIsFallback = !me;
 
   const title = view === "sales" ? "Sales Leaderboard" : "Technician Leaderboard";
   const personColumn = view === "sales" ? "SALESPERSON" : "TECHNICIAN";
@@ -200,29 +209,30 @@ export default function LeaderboardClient({
         </button>
       </div>
 
-      {me && (
-        <a
-          href="#rankings"
-          className="flex items-center gap-3 bg-white border border-slate-200 rounded-2xl px-5 py-4 hover:bg-slate-50 shadow-sm"
+      <a
+        href="#rankings"
+        className="flex items-center gap-3 bg-white border border-slate-200 rounded-2xl px-5 py-4 hover:bg-slate-50 shadow-sm"
+      >
+        <div
+          className={
+            "w-12 h-12 rounded-full flex items-center justify-center font-semibold text-base bg-amber-100 text-amber-700"
+          }
         >
-          <div
-            className={
-              "w-12 h-12 rounded-full flex items-center justify-center font-semibold text-base " +
-              avatarColor(me.name)
-            }
-          >
-            {initials(me.name)}
+          {initials(meName)}
+        </div>
+        <div className="flex-1">
+          <div className="font-semibold text-slate-900">Your Stats</div>
+          <div className="text-sm text-slate-500">
+            {money(meRevenue)} {view === "sales" ? "sold" : "cleaned"}
+            {myRank
+              ? ` · Rank #${myRank}`
+              : meIsFallback
+              ? " · Add yourself on the Team page to track personal rank"
+              : ""}
           </div>
-          <div className="flex-1">
-            <div className="font-semibold text-slate-900">Your Stats</div>
-            <div className="text-sm text-slate-500">
-              {money(me.revenue_cents)} {view === "sales" ? "sold" : "cleaned"}
-              {myRank ? ` · Rank #${myRank}` : ""}
-            </div>
-          </div>
-          <span className="text-slate-300 text-2xl leading-none">›</span>
-        </a>
-      )}
+        </div>
+        <span className="text-slate-300 text-2xl leading-none">›</span>
+      </a>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard label="Total Revenue" value={money(total)} />
