@@ -416,6 +416,7 @@ export default function MapClient() {
     if (!TOKEN || !containerRef.current) return;
     ensureMapboxStyles();
     let map: Mb.Map | null = null;
+    let resizeObserver: ResizeObserver | null = null;
     let cancelled = false;
     loadMapbox()
       .then((mb) => {
@@ -433,7 +434,10 @@ export default function MapClient() {
           new mb.AttributionControl({ compact: true }),
           "bottom-right"
         );
-        map.on("load", () => setReady(true));
+        map.on("load", () => {
+          setReady(true);
+          map?.resize();
+        });
         map.on("click", async (e) => {
           if (drawModeRef.current) {
             const { lng, lat } = e.lngLat;
@@ -451,12 +455,25 @@ export default function MapClient() {
           );
         });
         mapRef.current = map;
+
+        // Keep the canvas in sync with container size — Mapbox measures
+        // once at construction, so any later layout shift leaves it stale.
+        if (typeof ResizeObserver !== "undefined" && containerRef.current) {
+          resizeObserver = new ResizeObserver(() => map?.resize());
+          resizeObserver.observe(containerRef.current);
+        }
+        // Belt-and-braces: nudge after the next two animation frames in
+        // case CSS / fonts settle late.
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => map?.resize());
+        });
       })
       .catch((err: Error) => {
         if (!cancelled) setLoadError(err.message);
       });
     return () => {
       cancelled = true;
+      resizeObserver?.disconnect();
       map?.remove();
       mapRef.current = null;
       mbRef.current = null;
@@ -813,7 +830,10 @@ export default function MapClient() {
   }
 
   return (
-    <div className="fixed inset-x-0 top-14 bottom-0">
+    <div
+      className="fixed inset-x-0 top-14 bottom-0"
+      style={{ height: "calc(100dvh - 3.5rem)" }}
+    >
       <div ref={containerRef} className="absolute inset-0" />
       {!ready && !loadError && (
         <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-500 bg-slate-50/40">
