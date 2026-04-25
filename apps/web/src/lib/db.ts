@@ -105,6 +105,35 @@ function init(db: Database.Database) {
     );
     CREATE INDEX IF NOT EXISTS idx_job_assignments_job_id ON job_assignments(job_id);
     CREATE INDEX IF NOT EXISTS idx_job_assignments_staff_id ON job_assignments(staff_id);
+
+    CREATE TABLE IF NOT EXISTS map_pins (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      lat REAL NOT NULL,
+      lng REAL NOT NULL,
+      address TEXT,
+      first_name TEXT,
+      last_name TEXT,
+      phone TEXT,
+      status TEXT NOT NULL DEFAULT 'not_home',
+      objections TEXT,
+      notes TEXT,
+      customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
+      created_by TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_map_pins_status ON map_pins(status);
+    CREATE INDEX IF NOT EXISTS idx_map_pins_created_at ON map_pins(created_at);
+    CREATE INDEX IF NOT EXISTS idx_map_pins_customer_id ON map_pins(customer_id);
+
+    CREATE TABLE IF NOT EXISTS territories (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      color TEXT NOT NULL DEFAULT '#3b82f6',
+      polygon TEXT NOT NULL,
+      assigned_employee_ids TEXT,
+      created_by TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
   const legacy = db
@@ -220,6 +249,32 @@ export type JobWithCustomer = Job & {
   customer_phone: string | null;
   salesperson_name: string | null;
   technician_name: string | null;
+};
+
+export type MapPin = {
+  id: number;
+  lat: number;
+  lng: number;
+  address: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  status: string;
+  objections: string | null;
+  notes: string | null;
+  customer_id: number | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type Territory = {
+  id: number;
+  name: string;
+  color: string;
+  polygon: string;
+  assigned_employee_ids: string | null;
+  created_by: string | null;
+  created_at: string;
 };
 
 export default getDb;
