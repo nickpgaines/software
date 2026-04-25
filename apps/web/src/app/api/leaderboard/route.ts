@@ -48,7 +48,7 @@ export async function GET(req: Request) {
   const url = new URL(req.url);
   const range = (url.searchParams.get("range") || "month") as Range;
   const view = (url.searchParams.get("view") || "sales") as View;
-  const fk = view === "tech" ? "j.technician_id" : "j.salesperson_id";
+  const role = view === "tech" ? "tech" : "sales";
 
   const { start, end } = resolveRange(
     range,
@@ -63,12 +63,13 @@ export async function GET(req: Request) {
               COUNT(j.id) AS job_count,
               MAX(j.scheduled_at) AS last_sale_at
        FROM staff s
-       LEFT JOIN jobs j ON ${fk} = s.id
+       LEFT JOIN job_assignments ja ON ja.staff_id = s.id AND ja.role = ?
+       LEFT JOIN jobs j ON j.id = ja.job_id
          AND j.scheduled_at >= ? AND j.scheduled_at < ?
        GROUP BY s.id
        ORDER BY revenue_cents DESC, s.name COLLATE NOCASE ASC`
     )
-    .all(start, end) as {
+    .all(role, start, end) as {
     id: number;
     name: string;
     role: string | null;

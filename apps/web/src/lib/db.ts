@@ -43,15 +43,23 @@ function init(db: Database.Database) {
   const jobsCols = db
     .prepare("PRAGMA table_info(jobs)")
     .all() as { name: string }[];
-  if (!jobsCols.some((c) => c.name === "salesperson_id")) {
-    db.exec(
-      "ALTER TABLE jobs ADD COLUMN salesperson_id INTEGER REFERENCES staff(id) ON DELETE SET NULL"
-    );
-  }
-  if (!jobsCols.some((c) => c.name === "technician_id")) {
-    db.exec(
-      "ALTER TABLE jobs ADD COLUMN technician_id INTEGER REFERENCES staff(id) ON DELETE SET NULL"
-    );
+  const jobAdds: [string, string][] = [
+    ["salesperson_id", "INTEGER REFERENCES staff(id) ON DELETE SET NULL"],
+    ["technician_id", "INTEGER REFERENCES staff(id) ON DELETE SET NULL"],
+    ["end_time", "TEXT"],
+    ["anytime", "INTEGER NOT NULL DEFAULT 0"],
+    ["schedule_later", "INTEGER NOT NULL DEFAULT 0"],
+    ["lead_source", "TEXT"],
+    ["en_route_at", "TEXT"],
+    ["arrived_at", "TEXT"],
+    ["started_at", "TEXT"],
+    ["completed_at", "TEXT"],
+    ["recurring", "INTEGER NOT NULL DEFAULT 0"],
+  ];
+  for (const [col, def] of jobAdds) {
+    if (!jobsCols.some((c) => c.name === col)) {
+      db.exec(`ALTER TABLE jobs ADD COLUMN ${col} ${def}`);
+    }
   }
 
   const staffCols = db
@@ -64,7 +72,69 @@ function init(db: Database.Database) {
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_jobs_salesperson_id ON jobs(salesperson_id);
     CREATE INDEX IF NOT EXISTS idx_jobs_technician_id ON jobs(technician_id);
+
+    CREATE TABLE IF NOT EXISTS line_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+      title TEXT NOT NULL,
+      description TEXT,
+      quantity REAL NOT NULL DEFAULT 1,
+      price_cents INTEGER NOT NULL DEFAULT 0,
+      taxable INTEGER NOT NULL DEFAULT 0,
+      upsell INTEGER NOT NULL DEFAULT 0,
+      position INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_line_items_job_id ON line_items(job_id);
+
+    CREATE TABLE IF NOT EXISTS checklist_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+      text TEXT NOT NULL,
+      completed INTEGER NOT NULL DEFAULT 0,
+      position INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS idx_checklist_items_job_id ON checklist_items(job_id);
+
+    CREATE TABLE IF NOT EXISTS job_assignments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+      staff_id INTEGER NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      role TEXT NOT NULL CHECK (role IN ('sales', 'tech')),
+      UNIQUE (job_id, staff_id, role)
+    );
+    CREATE INDEX IF NOT EXISTS idx_job_assignments_job_id ON job_assignments(job_id);
+    CREATE INDEX IF NOT EXISTS idx_job_assignments_staff_id ON job_assignments(staff_id);
   `);
+
+  const legacy = db
+    .prepare(
+      `SELECT j.id, j.salesperson_id, j.technician_id, j.scheduled_at, j.duration_minutes, j.end_time
+       FROM jobs j`
+    )
+    .all() as {
+    id: number;
+    salesperson_id: number | null;
+    technician_id: number | null;
+    scheduled_at: string;
+    duration_minutes: number;
+    end_time: string | null;
+  }[];
+
+  const insertAssign = db.prepare(
+    `INSERT OR IGNORE INTO job_assignments (job_id, staff_id, role) VALUES (?, ?, ?)`
+  );
+  const setEndTime = db.prepare(`UPDATE jobs SET end_time = ? WHERE id = ?`);
+  for (const j of legacy) {
+    if (j.salesperson_id) insertAssign.run(j.id, j.salesperson_id, "sales");
+    if (j.technician_id) insertAssign.run(j.id, j.technician_id, "tech");
+    if (!j.end_time) {
+      const end = new Date(
+        new Date(j.scheduled_at).getTime() + (j.duration_minutes || 60) * 60_000
+      );
+      setEndTime.run(end.toISOString(), j.id);
+    }
+  }
 }
 
 export function getDb(): Database.Database {
@@ -104,7 +174,44 @@ export type Job = {
   notes: string | null;
   salesperson_id: number | null;
   technician_id: number | null;
+  end_time: string | null;
+  anytime: number;
+  schedule_later: number;
+  lead_source: string | null;
+  en_route_at: string | null;
+  arrived_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  recurring: number;
   created_at: string;
+};
+
+export type LineItem = {
+  id: number;
+  job_id: number;
+  title: string;
+  description: string | null;
+  quantity: number;
+  price_cents: number;
+  taxable: number;
+  upsell: number;
+  position: number;
+  created_at: string;
+};
+
+export type ChecklistItem = {
+  id: number;
+  job_id: number;
+  text: string;
+  completed: number;
+  position: number;
+};
+
+export type JobAssignment = {
+  id: number;
+  job_id: number;
+  staff_id: number;
+  role: "sales" | "tech";
 };
 
 export type JobWithCustomer = Job & {

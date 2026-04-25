@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
-import { getDb, type Job, type JobWithCustomer } from "@/lib/db";
+import { getDb } from "@/lib/db";
+import { createJob, type JobInput } from "@/lib/jobs";
 
 export const dynamic = "force-dynamic";
 
@@ -34,38 +35,19 @@ export async function GET(req: Request) {
   if (where.length) sql += ` WHERE ${where.join(" AND ")}`;
   sql += " ORDER BY j.scheduled_at ASC";
 
-  const rows = db.prepare(sql).all(...args) as JobWithCustomer[];
+  const rows = db.prepare(sql).all(...args);
   return NextResponse.json(rows);
 }
 
 export async function POST(req: Request) {
   const db = getDb();
-  const body = (await req.json().catch(() => ({}))) as Partial<Job>;
-  const customerId = Number(body.customer_id);
-  const scheduledAt = (body.scheduled_at || "").trim();
-  if (!customerId || !scheduledAt) {
+  const body = (await req.json().catch(() => ({}))) as Partial<JobInput>;
+  if (!body.customer_id || !body.start_time) {
     return NextResponse.json(
-      { error: "customer_id and scheduled_at are required" },
+      { error: "customer_id and start_time are required" },
       { status: 400 }
     );
   }
-  const stmt = db.prepare(
-    `INSERT INTO jobs
-       (customer_id, scheduled_at, duration_minutes, price_cents, status, notes, salesperson_id, technician_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-  );
-  const result = stmt.run(
-    customerId,
-    scheduledAt,
-    body.duration_minutes ?? 60,
-    body.price_cents ?? 0,
-    body.status || "scheduled",
-    body.notes || null,
-    body.salesperson_id ?? null,
-    body.technician_id ?? null
-  );
-  const created = db
-    .prepare("SELECT * FROM jobs WHERE id = ?")
-    .get(result.lastInsertRowid) as Job;
-  return NextResponse.json(created, { status: 201 });
+  const id = createJob(db, body as JobInput);
+  return NextResponse.json({ id }, { status: 201 });
 }

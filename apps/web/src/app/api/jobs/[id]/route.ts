@@ -1,7 +1,21 @@
 import { NextResponse } from "next/server";
-import { getDb, type Job } from "@/lib/db";
+import { getDb } from "@/lib/db";
+import { getJobDetail, updateJob, type JobInput } from "@/lib/jobs";
 
 export const dynamic = "force-dynamic";
+
+export async function GET(
+  _req: Request,
+  { params }: { params: { id: string } }
+) {
+  const db = getDb();
+  const id = Number(params.id);
+  const detail = getJobDetail(db, id);
+  if (!detail) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  return NextResponse.json(detail);
+}
 
 export async function PATCH(
   req: Request,
@@ -9,31 +23,16 @@ export async function PATCH(
 ) {
   const db = getDb();
   const id = Number(params.id);
-  const body = (await req.json().catch(() => ({}))) as Partial<Job>;
-  const existing = db.prepare("SELECT * FROM jobs WHERE id = ?").get(id) as
-    | Job
-    | undefined;
-  if (!existing) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  const body = (await req.json().catch(() => ({}))) as Partial<JobInput>;
+  try {
+    updateJob(db, id, body);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Update failed";
+    const status = message === "Not found" ? 404 : 400;
+    return NextResponse.json({ error: message }, { status });
   }
-  db.prepare(
-    `UPDATE jobs
-     SET customer_id = ?, scheduled_at = ?, duration_minutes = ?, price_cents = ?,
-         status = ?, notes = ?, salesperson_id = ?, technician_id = ?
-     WHERE id = ?`
-  ).run(
-    body.customer_id ?? existing.customer_id,
-    body.scheduled_at ?? existing.scheduled_at,
-    body.duration_minutes ?? existing.duration_minutes,
-    body.price_cents ?? existing.price_cents,
-    body.status ?? existing.status,
-    body.notes ?? existing.notes,
-    body.salesperson_id === undefined ? existing.salesperson_id : body.salesperson_id,
-    body.technician_id === undefined ? existing.technician_id : body.technician_id,
-    id
-  );
-  const updated = db.prepare("SELECT * FROM jobs WHERE id = ?").get(id) as Job;
-  return NextResponse.json(updated);
+  const detail = getJobDetail(db, id);
+  return NextResponse.json(detail);
 }
 
 export async function DELETE(
