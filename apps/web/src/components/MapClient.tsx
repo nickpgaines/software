@@ -17,17 +17,6 @@ const STATUS_COLORS: Record<string, string> = {
   quote: "#3b82f6",
 };
 
-const STATUS_LABELS: Record<string, string> = {
-  sale: "Sale",
-  not_home: "Not Home",
-  not_interested: "Not Interested",
-  do_not_contact: "Do Not Contact",
-  not_qualified: "Not Qualified",
-  revisit: "Revisit",
-  referral: "Referral",
-  quote: "Quote",
-};
-
 type Pin = {
   id: number;
   lat: number;
@@ -96,63 +85,15 @@ export default function MapClient() {
   }, [pins, ready]);
 
   return (
-    <>
-      <div
-        ref={containerRef}
-        style={{
-          position: "fixed",
-          top: "56px",
-          left: 0,
-          right: 0,
-          bottom: 0,
-        }}
-      />
-      <div
-        style={{
-          position: "fixed",
-          left: 16,
-          bottom: 16,
-          background: "white",
-          border: "1px solid #e2e8f0",
-          borderRadius: 12,
-          padding: "10px 12px",
-          boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
-          fontSize: 12,
-          lineHeight: 1.4,
-          zIndex: 10,
-          maxWidth: 240,
-        }}
-      >
-        <div style={{ fontWeight: 600, color: "#334155", marginBottom: 6 }}>
-          Pin legend
-        </div>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "4px 10px",
-          }}
-        >
-          {Object.keys(STATUS_LABELS).map((key) => (
-            <div
-              key={key}
-              style={{ display: "flex", alignItems: "center", gap: 6 }}
-            >
-              <span
-                style={{
-                  width: 12,
-                  height: 12,
-                  borderRadius: "50%",
-                  background: STATUS_COLORS[key],
-                  display: "inline-block",
-                  flexShrink: 0,
-                }}
-              />
-              <span style={{ color: "#475569" }}>{STATUS_LABELS[key]}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    </>
+    <div
+      ref={containerRef}
+      style={{
+        position: "fixed",
+        top: "56px",
+        left: 0,
+        right: 0,
+        bottom: 0,
+      }}
+    />
   );
 }
