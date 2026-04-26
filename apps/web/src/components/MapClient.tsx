@@ -39,57 +39,13 @@ declare global {
 
 function ensureMapboxStyles() {
   if (typeof document === "undefined") return;
-  const linkId = "mapbox-gl-stylesheet";
-  if (!document.getElementById(linkId)) {
-    const link = document.createElement("link");
-    link.id = linkId;
-    link.rel = "stylesheet";
-    link.href = MAPBOX_CSS_HREF;
-    document.head.appendChild(link);
-  }
-  // Inline critical sizing rules so the canvas is laid out correctly even
-  // before the remote CSS has been parsed. Without these, mapbox-gl's
-  // canvas/canvas-container have no width/height and the map appears blank.
-  const styleId = "mapbox-gl-critical";
-  if (!document.getElementById(styleId)) {
-    const style = document.createElement("style");
-    style.id = styleId;
-    style.textContent = `
-      .mapboxgl-map {
-        position: relative;
-        overflow: hidden;
-        -webkit-tap-highlight-color: rgba(0,0,0,0);
-        width: 100%;
-        height: 100%;
-      }
-      .mapboxgl-canvas-container,
-      .mapboxgl-canvas-container.mapboxgl-interactive,
-      .mapboxgl-canvas {
-        position: absolute;
-        left: 0;
-        top: 0;
-        width: 100%;
-        height: 100%;
-      }
-      .mapboxgl-canvas-container.mapboxgl-interactive { cursor: grab; }
-      .mapboxgl-canvas-container.mapboxgl-interactive.mapboxgl-track-pointer { cursor: pointer; }
-      .mapboxgl-canvas-container.mapboxgl-interactive:active { cursor: grabbing; }
-      .mapboxgl-control-container { position: absolute; pointer-events: none; z-index: 2; }
-      .mapboxgl-ctrl-bottom-right {
-        position: absolute; right: 0; bottom: 0; pointer-events: auto;
-      }
-      .mapboxgl-ctrl-attrib {
-        background: rgba(255,255,255,0.85);
-        margin: 0; padding: 0 5px; font: 12px/20px Helvetica, Arial, sans-serif;
-      }
-      .mapboxgl-ctrl-attrib a { color: #404040; text-decoration: none; }
-    `;
-    document.head.appendChild(style);
-  }
-}
-
-if (typeof document !== "undefined") {
-  ensureMapboxStyles();
+  const id = "mapbox-gl-stylesheet";
+  if (document.getElementById(id)) return;
+  const link = document.createElement("link");
+  link.id = id;
+  link.rel = "stylesheet";
+  link.href = MAPBOX_CSS_HREF;
+  document.head.appendChild(link);
 }
 
 let mapboxLoadPromise: Promise<MapboxRuntime> | null = null;
@@ -876,27 +832,9 @@ export default function MapClient() {
   return (
     <div
       className="fixed inset-x-0 top-14 bottom-0"
-      style={{
-        width: "100%",
-        height: "100vh",
-        position: "fixed",
-        top: "3.5rem",
-        left: 0,
-        right: 0,
-        overflow: "hidden",
-      }}
+      style={{ height: "calc(100vh - 3.5rem)" }}
     >
-      <div
-        ref={containerRef}
-        id="map"
-        style={{
-          width: "100%",
-          height: "100vh",
-          position: "absolute",
-          top: 0,
-          left: 0,
-        }}
-      />
+      <div ref={containerRef} className="absolute inset-0" />
       {!ready && !loadError && (
         <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-500 bg-slate-50/40">
           Loading map…
