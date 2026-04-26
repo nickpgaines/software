@@ -17,7 +17,6 @@ export default function MapClient() {
       style: "mapbox://styles/mapbox/streets-v12",
       center: [-98.5795, 39.8283],
       zoom: 3,
-      projection: "mercator",
     });
     return () => {
       map.remove();
