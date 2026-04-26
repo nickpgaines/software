@@ -876,9 +876,27 @@ export default function MapClient() {
   return (
     <div
       className="fixed inset-x-0 top-14 bottom-0"
-      style={{ height: "calc(100dvh - 3.5rem)" }}
+      style={{
+        width: "100%",
+        height: "100vh",
+        position: "fixed",
+        top: "3.5rem",
+        left: 0,
+        right: 0,
+        overflow: "hidden",
+      }}
     >
-      <div ref={containerRef} className="absolute inset-0" />
+      <div
+        ref={containerRef}
+        id="map"
+        style={{
+          width: "100%",
+          height: "100vh",
+          position: "absolute",
+          top: 0,
+          left: 0,
+        }}
+      />
       {!ready && !loadError && (
         <div className="absolute inset-0 flex items-center justify-center text-sm text-slate-500 bg-slate-50/40">
           Loading map…
