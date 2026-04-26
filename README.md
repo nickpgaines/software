@@ -1,4 +1,4 @@
-# Window Cleaning CRM
+# Nick360
 
 Simple CRM for a door-to-door window cleaning business. Login, dashboard, schedule, and customer management.
 
