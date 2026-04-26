@@ -35,9 +35,8 @@ export default function MapClient() {
   }
 
   return (
-    <div
-      ref={containerRef}
-      style={{ width: "100%", height: "calc(100vh - 3.5rem)" }}
-    />
+    <div className="fixed inset-0" style={{ top: "56px" }}>
+      <div ref={containerRef} className="absolute inset-0" />
+    </div>
   );
 }
