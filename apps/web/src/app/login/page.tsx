@@ -32,7 +32,7 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold text-slate-900">Window CRM</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">Nick360</h1>
           <p className="text-sm text-slate-500 mt-1">Sign in to continue</p>
         </div>
         <form
