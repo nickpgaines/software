@@ -9,7 +9,7 @@ const links = [
   { href: "/map", label: "Map" },
   { href: "/leaderboard", label: "Leaderboard" },
   { href: "/customers", label: "Customers" },
-  { href: "/team", label: "Team" },
+  { href: "/settings", label: "Settings" },
 ];
 
 export default function NavBar() {

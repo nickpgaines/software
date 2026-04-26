@@ -10,7 +10,7 @@ type Staff = {
 
 const ROLES = ["Admin", "Salesperson", "Technician", "Both"];
 
-export default function TeamPage() {
+export default function TeamSettings() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
@@ -71,10 +71,10 @@ export default function TeamPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Team</h1>
+          <h2 className="text-lg font-semibold text-slate-900">Team</h2>
           <p className="text-sm text-slate-500 mt-1">
             Salespeople and technicians. Assign them to jobs from the schedule.
           </p>
