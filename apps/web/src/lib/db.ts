@@ -143,6 +143,17 @@ function init(db: Database.Database) {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     INSERT OR IGNORE INTO company (id, name, address, phone) VALUES (1, NULL, NULL, NULL);
+
+    CREATE TABLE IF NOT EXISTS messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      customer_id INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      body TEXT NOT NULL,
+      direction TEXT NOT NULL CHECK (direction IN ('outbound', 'inbound')),
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      read_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS idx_messages_customer_id ON messages(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
   `);
 
   const legacy = db
@@ -292,6 +303,15 @@ export type Company = {
   address: string | null;
   phone: string | null;
   updated_at: string;
+};
+
+export type Message = {
+  id: number;
+  customer_id: number;
+  body: string;
+  direction: "outbound" | "inbound";
+  created_at: string;
+  read_at: string | null;
 };
 
 export default getDb;
