@@ -9,6 +9,8 @@ const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 export default function MapClient() {
   const containerRef = useRef<HTMLDivElement>(null);
 
+  console.log("TOKEN:", process.env.NEXT_PUBLIC_MAPBOX_TOKEN);
+
   useEffect(() => {
     if (!TOKEN || !containerRef.current) return;
     mapboxgl.accessToken = TOKEN;
