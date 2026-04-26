@@ -134,6 +134,15 @@ function init(db: Database.Database) {
       created_by TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS company (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      name TEXT,
+      address TEXT,
+      phone TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    INSERT OR IGNORE INTO company (id, name, address, phone) VALUES (1, NULL, NULL, NULL);
   `);
 
   const legacy = db
@@ -275,6 +284,14 @@ export type Territory = {
   assigned_employee_ids: string | null;
   created_by: string | null;
   created_at: string;
+};
+
+export type Company = {
+  id: number;
+  name: string | null;
+  address: string | null;
+  phone: string | null;
+  updated_at: string;
 };
 
 export default getDb;
