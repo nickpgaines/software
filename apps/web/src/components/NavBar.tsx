@@ -28,9 +28,7 @@ export default function NavBar() {
     <nav className="bg-white border-b border-slate-200">
       <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
         <div className="flex items-center gap-6">
-          <Link href="/" className="flex items-center">
-            <img src="/logo.png" alt="Nick360" height={32} style={{ height: 32, width: "auto" }} />
-          </Link>
+          <span className="font-semibold text-slate-900">Nick360</span>
           <div className="flex gap-4 text-sm">
             {links.map((link) => {
               const active =
