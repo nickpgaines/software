@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
+import ImportModal from "@/components/customers/ImportModal";
 
 type Customer = {
   id: number;
@@ -30,6 +31,7 @@ function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
 
@@ -64,12 +66,20 @@ function CustomersPage() {
             People you clean windows for.
           </p>
         </div>
-        <button
-          onClick={() => setCreating(true)}
-          className="text-sm bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-2"
-        >
-          + Customer
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setImporting(true)}
+            className="text-sm border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 rounded px-3 py-2"
+          >
+            Import
+          </button>
+          <button
+            onClick={() => setCreating(true)}
+            className="text-sm bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-2"
+          >
+            + Customer
+          </button>
+        </div>
       </div>
 
       <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
@@ -128,6 +138,15 @@ function CustomersPage() {
           onSaved={async () => {
             setCreating(false);
             setEditing(null);
+            await load();
+          }}
+        />
+      )}
+
+      {importing && (
+        <ImportModal
+          onClose={() => setImporting(false)}
+          onImported={async () => {
             await load();
           }}
         />
