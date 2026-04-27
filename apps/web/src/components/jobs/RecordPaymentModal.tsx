@@ -41,6 +41,7 @@ export default function RecordPaymentModal({
   const remainingCents = Math.max(0, jobTotalCents - paidTotalCents);
 
   const [amount, setAmount] = useState<string>(dollars(remainingCents));
+  const [tip, setTip] = useState<string>("0.00");
   const [method, setMethod] = useState<PaymentMethod>("card");
   const [notes, setNotes] = useState("");
   const [sendEmail, setSendEmail] = useState(false);
@@ -50,6 +51,8 @@ export default function RecordPaymentModal({
 
   const amountNumber = useMemo(() => Number(amount), [amount]);
   const amountValid = Number.isFinite(amountNumber) && amountNumber > 0;
+  const tipNumber = useMemo(() => Number(tip || "0"), [tip]);
+  const tipValid = Number.isFinite(tipNumber) && tipNumber >= 0;
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
@@ -58,12 +61,17 @@ export default function RecordPaymentModal({
       setError("Enter an amount greater than zero");
       return;
     }
+    if (!tipValid) {
+      setError("Tip must be zero or greater");
+      return;
+    }
     setSaving(true);
     const res = await fetch(`/api/jobs/${jobId}/payments`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         amount_cents: Math.round(amountNumber * 100),
+        tip_cents: Math.round(tipNumber * 100),
         method,
         notes: notes.trim() || null,
         send_email: sendEmail,
@@ -94,24 +102,44 @@ export default function RecordPaymentModal({
         </div>
 
         <form onSubmit={submit} className="p-5 space-y-4">
-          <div>
-            <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1">
-              Amount
-            </label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
-                $
-              </span>
-              <input
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                className="w-full border border-slate-200 rounded-full pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
-                autoFocus
-                required
-              />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+                Amount
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+                  $
+                </span>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  className="w-full border border-slate-200 rounded-full pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                  autoFocus
+                  required
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+                Tip
+              </label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+                  $
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={tip}
+                  onChange={(e) => setTip(e.target.value)}
+                  className="w-full border border-slate-200 rounded-full pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                />
+              </div>
             </div>
           </div>
 

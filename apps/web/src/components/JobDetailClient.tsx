@@ -42,11 +42,13 @@ type Detail = {
   payments: {
     id: number;
     amount_cents: number;
+    tip_cents: number;
     method: string;
     payment_date: string;
     notes: string | null;
   }[];
   paid_total_cents: number;
+  tip_total_cents: number;
   paid_status: "unpaid" | "partial" | "paid";
 };
 
@@ -549,24 +551,12 @@ export default function JobDetailClient({
                 ))}
               </ul>
             )}
-            <div className="border-t border-slate-100 mt-3 pt-3 flex justify-end gap-6 text-sm">
-              <div>
-                <div className="text-xs text-slate-400 uppercase tracking-wide">
-                  Subtotal
-                </div>
-                <div className="font-semibold text-slate-900 tabular-nums">
-                  {money(subtotal)}
-                </div>
-              </div>
-              <div>
-                <div className="text-xs text-slate-400 uppercase tracking-wide">
-                  Total
-                </div>
-                <div className="text-lg font-bold text-slate-900 tabular-nums">
-                  {money(subtotal)}
-                </div>
-              </div>
-            </div>
+            <TotalsPanel
+              subtotalCents={subtotal}
+              totalCents={job.price_cents}
+              paidTotalCents={job.paid_total_cents}
+              tipTotalCents={job.tip_total_cents}
+            />
           </section>
 
           <PaymentsSection
@@ -612,6 +602,98 @@ export default function JobDetailClient({
       )}
     </div>
   );
+}
+
+function TotalsPanel({
+  subtotalCents,
+  totalCents,
+  paidTotalCents,
+  tipTotalCents,
+}: {
+  subtotalCents: number;
+  totalCents: number;
+  paidTotalCents: number;
+  tipTotalCents: number;
+}) {
+  const dueCents = Math.max(0, totalCents - paidTotalCents);
+  const totalPaidCents = paidTotalCents + tipTotalCents;
+  const hasTips = tipTotalCents > 0;
+  return (
+    <div className="border-t border-slate-100 mt-4 pt-4">
+      <dl className="ml-auto max-w-xs space-y-1.5 text-sm">
+        <Row label="Subtotal" value={money(subtotalCents)} />
+        <Row label="Total" value={money(totalCents)} bold />
+        <Divider />
+        {hasTips ? (
+          <>
+            <Row
+              label="Paid (w/o tip)"
+              value={money(paidTotalCents)}
+              valueClass="text-emerald-600"
+            />
+            <Row
+              label="Tip"
+              value={money(tipTotalCents)}
+              valueClass="text-emerald-600"
+            />
+            <Row
+              label="Total Paid"
+              value={money(totalPaidCents)}
+              valueClass="text-emerald-600"
+              bold
+            />
+          </>
+        ) : (
+          <Row
+            label="Total Paid"
+            value={money(paidTotalCents)}
+            valueClass="text-emerald-600"
+            bold
+          />
+        )}
+        <Divider />
+        <Row
+          label="Amount Due"
+          value={money(dueCents)}
+          bold
+          valueClass={dueCents > 0 ? "text-amber-600" : "text-emerald-600"}
+        />
+      </dl>
+    </div>
+  );
+}
+
+function Row({
+  label,
+  value,
+  bold,
+  valueClass,
+}: {
+  label: string;
+  value: string;
+  bold?: boolean;
+  valueClass?: string;
+}) {
+  return (
+    <div className="flex items-baseline justify-between gap-4">
+      <dt className={"text-slate-500 " + (bold ? "font-medium" : "")}>
+        {label}
+      </dt>
+      <dd
+        className={
+          "tabular-nums " +
+          (bold ? "font-bold text-slate-900 " : "font-semibold text-slate-900 ") +
+          (valueClass || "")
+        }
+      >
+        {value}
+      </dd>
+    </div>
+  );
+}
+
+function Divider() {
+  return <div className="border-t border-slate-100 my-1.5" />;
 }
 
 function PaidBadge({ status }: { status: "unpaid" | "partial" | "paid" }) {

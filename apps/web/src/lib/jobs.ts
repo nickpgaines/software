@@ -52,6 +52,7 @@ export type JobDetail = Job & {
   techs: { id: number; name: string; role: string | null }[];
   payments: Payment[];
   paid_total_cents: number;
+  tip_total_cents: number;
   paid_status: PaidStatus;
 };
 
@@ -308,7 +309,13 @@ export function getJobDetail(
     (sum, p) => sum + (p.amount_cents || 0),
     0
   );
+  const tip_total_cents = payments.reduce(
+    (sum, p) => sum + (p.tip_cents || 0),
+    0
+  );
   const total = job.price_cents || 0;
+  // paid_status uses ONLY amount_cents — tips are bonus and never
+  // close the gap on the actual job total.
   const paid_status: PaidStatus =
     paid_total_cents <= 0
       ? "unpaid"
@@ -324,6 +331,7 @@ export function getJobDetail(
     techs,
     payments,
     paid_total_cents,
+    tip_total_cents,
     paid_status,
   };
 }

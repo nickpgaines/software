@@ -33,6 +33,8 @@ export async function POST(
 
   const body = (await req.json().catch(() => ({}))) as Partial<{
     amount_cents: number;
+    tip: number;
+    tip_cents: number;
     method: string;
     notes: string | null;
     send_email: boolean | number;
@@ -47,6 +49,29 @@ export async function POST(
     );
   }
   const amountCents = Math.round(amount);
+
+  // Tip is optional: accept either `tip` (dollars) or `tip_cents`
+  // (cents). Default to 0. Reject negative values.
+  let tipCents = 0;
+  if (body.tip_cents !== undefined && body.tip_cents !== null) {
+    const v = Number(body.tip_cents);
+    if (!Number.isFinite(v) || v < 0) {
+      return NextResponse.json(
+        { error: "Tip must be zero or greater" },
+        { status: 400 }
+      );
+    }
+    tipCents = Math.round(v);
+  } else if (body.tip !== undefined && body.tip !== null) {
+    const v = Number(body.tip);
+    if (!Number.isFinite(v) || v < 0) {
+      return NextResponse.json(
+        { error: "Tip must be zero or greater" },
+        { status: 400 }
+      );
+    }
+    tipCents = Math.round(v * 100);
+  }
 
   const method = String(body.method || "") as PaymentMethod;
   if (!METHODS.includes(method)) {
@@ -67,12 +92,13 @@ export async function POST(
   const result = db
     .prepare(
       `INSERT INTO payments
-         (job_id, amount_cents, method, payment_date, notes, send_email, send_sms)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+         (job_id, amount_cents, tip_cents, method, payment_date, notes, send_email, send_sms)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       jobId,
       amountCents,
+      tipCents,
       method,
       payment_date,
       body.notes ? String(body.notes) : null,

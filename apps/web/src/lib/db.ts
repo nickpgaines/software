@@ -93,6 +93,18 @@ function init(db: Database.Database) {
       db.exec(`ALTER TABLE customers ADD COLUMN ${col} ${def}`);
     }
   }
+
+  const paymentCols = db
+    .prepare("PRAGMA table_info(payments)")
+    .all() as { name: string }[];
+  if (
+    paymentCols.length > 0 &&
+    !paymentCols.some((c) => c.name === "tip_cents")
+  ) {
+    db.exec(
+      "ALTER TABLE payments ADD COLUMN tip_cents INTEGER NOT NULL DEFAULT 0"
+    );
+  }
   // Backfill first_name/last_name from existing 'name' for any rows
   // that haven't been migrated yet. Single-word names go entirely
   // into first_name; multi-word names split on the first space.
@@ -214,6 +226,7 @@ function init(db: Database.Database) {
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
       job_id       INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
       amount_cents INTEGER NOT NULL,
+      tip_cents    INTEGER NOT NULL DEFAULT 0,
       method       TEXT    NOT NULL CHECK (method IN ('card','cash','check','e_transfer','other')),
       payment_date TEXT    NOT NULL,
       notes        TEXT,
@@ -404,6 +417,7 @@ export type Payment = {
   id: number;
   job_id: number;
   amount_cents: number;
+  tip_cents: number;
   method: PaymentMethod;
   payment_date: string;
   notes: string | null;

@@ -6,6 +6,7 @@ import RecordPaymentModal from "@/components/jobs/RecordPaymentModal";
 export type PaymentsSectionPayment = {
   id: number;
   amount_cents: number;
+  tip_cents: number;
   method: string;
   payment_date: string;
   notes: string | null;
@@ -37,18 +38,18 @@ function formatDate(iso: string, mounted: boolean) {
 export default function PaymentsSection({
   jobId,
   jobTotalCents,
+  paidTotalCents,
   customerEmail,
   customerPhone,
   payments,
-  paidTotalCents,
   onChanged,
 }: {
   jobId: number;
   jobTotalCents: number;
+  paidTotalCents: number;
   customerEmail: string | null;
   customerPhone: string | null;
   payments: PaymentsSectionPayment[];
-  paidTotalCents: number;
   onChanged: () => void;
 }) {
   const [modalOpen, setModalOpen] = useState(false);
@@ -56,8 +57,6 @@ export default function PaymentsSection({
   if (typeof window !== "undefined" && !mounted) {
     queueMicrotask(() => setMounted(true));
   }
-
-  const balanceCents = Math.max(0, jobTotalCents - paidTotalCents);
 
   async function deletePayment(id: number) {
     if (!confirm("Delete this payment record?")) return;
@@ -117,9 +116,16 @@ export default function PaymentsSection({
                 )}
               </div>
               <div className="flex items-center gap-3 shrink-0">
-                <span className="text-sm font-semibold text-slate-900 tabular-nums">
-                  {money(p.amount_cents)}
-                </span>
+                <div className="text-right">
+                  <div className="text-sm font-semibold text-slate-900 tabular-nums">
+                    {money(p.amount_cents)}
+                  </div>
+                  {p.tip_cents > 0 && (
+                    <div className="text-xs text-emerald-600 tabular-nums">
+                      + {money(p.tip_cents)} tip
+                    </div>
+                  )}
+                </div>
                 <button
                   type="button"
                   onClick={() => deletePayment(p.id)}
@@ -132,32 +138,6 @@ export default function PaymentsSection({
             </li>
           ))}
         </ul>
-      )}
-
-      {payments.length > 0 && (
-        <div className="border-t border-slate-100 mt-3 pt-3 flex justify-end gap-6 text-sm">
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-400">
-              Total paid
-            </div>
-            <div className="font-semibold text-slate-900 tabular-nums">
-              {money(paidTotalCents)}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs uppercase tracking-wide text-slate-400">
-              Balance due
-            </div>
-            <div
-              className={
-                "text-lg font-bold tabular-nums " +
-                (balanceCents > 0 ? "text-amber-600" : "text-emerald-600")
-              }
-            >
-              {money(balanceCents)}
-            </div>
-          </div>
-        </div>
       )}
 
       {modalOpen && (
