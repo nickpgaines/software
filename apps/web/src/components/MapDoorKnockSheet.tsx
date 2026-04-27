@@ -59,13 +59,20 @@ export default function MapDoorKnockSheet({
     };
 
     let customerId: number | null = pin.customer_id ?? null;
-    if (asCustomer && (firstName.trim() || lastName.trim())) {
-      const fullName = `${firstName} ${lastName}`.trim();
+    if (asCustomer) {
+      const first = firstName.trim();
+      const last = lastName.trim();
+      if (!first || !last) {
+        setSaving(false);
+        setError("First and last name are required to create a customer");
+        return;
+      }
       const cRes = await fetch("/api/customers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: fullName || pin.address || "Door knock contact",
+          first_name: first,
+          last_name: last,
           phone,
           address: pin.address,
         }),

@@ -69,6 +69,34 @@ function init(db: Database.Database) {
     db.exec("ALTER TABLE staff ADD COLUMN role TEXT");
   }
 
+  const customerCols = db
+    .prepare("PRAGMA table_info(customers)")
+    .all() as { name: string }[];
+  if (!customerCols.some((c) => c.name === "first_name")) {
+    db.exec("ALTER TABLE customers ADD COLUMN first_name TEXT");
+  }
+  if (!customerCols.some((c) => c.name === "last_name")) {
+    db.exec("ALTER TABLE customers ADD COLUMN last_name TEXT");
+  }
+  // Backfill first_name/last_name from existing 'name' for any rows
+  // that haven't been migrated yet. Single-word names go entirely
+  // into first_name; multi-word names split on the first space.
+  db.exec(`
+    UPDATE customers
+    SET first_name = CASE
+          WHEN INSTR(TRIM(name), ' ') > 0
+            THEN SUBSTR(TRIM(name), 1, INSTR(TRIM(name), ' ') - 1)
+          ELSE TRIM(name)
+        END,
+        last_name = CASE
+          WHEN INSTR(TRIM(name), ' ') > 0
+            THEN TRIM(SUBSTR(TRIM(name), INSTR(TRIM(name), ' ') + 1))
+          ELSE ''
+        END
+    WHERE name IS NOT NULL
+      AND (first_name IS NULL OR last_name IS NULL)
+  `);
+
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_jobs_salesperson_id ON jobs(salesperson_id);
     CREATE INDEX IF NOT EXISTS idx_jobs_technician_id ON jobs(technician_id);
@@ -199,6 +227,8 @@ export function getDb(): Database.Database {
 export type Customer = {
   id: number;
   name: string;
+  first_name: string | null;
+  last_name: string | null;
   phone: string | null;
   email: string | null;
   address: string | null;

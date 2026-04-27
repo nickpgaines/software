@@ -5,11 +5,17 @@ import { useEffect, useState } from "react";
 type Customer = {
   id: number;
   name: string;
+  first_name: string | null;
+  last_name: string | null;
   phone: string | null;
   email: string | null;
   address: string | null;
   notes: string | null;
 };
+
+function fullName(c: { first_name: string | null; last_name: string | null }) {
+  return `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim();
+}
 
 export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
@@ -67,7 +73,9 @@ export default function CustomersPage() {
             <tbody className="divide-y divide-slate-200">
               {customers.map((c) => (
                 <tr key={c.id}>
-                  <td className="px-4 py-2 font-medium text-slate-900">{c.name}</td>
+                  <td className="px-4 py-2 font-medium text-slate-900">
+                    {fullName(c) || "—"}
+                  </td>
                   <td className="px-4 py-2 text-slate-700">{c.address || "—"}</td>
                   <td className="px-4 py-2 text-slate-700">{c.phone || "—"}</td>
                   <td className="px-4 py-2 text-slate-700">{c.email || "—"}</td>
@@ -119,7 +127,8 @@ function CustomerForm({
   onClose: () => void;
   onSaved: () => void;
 }) {
-  const [name, setName] = useState(customer?.name ?? "");
+  const [firstName, setFirstName] = useState(customer?.first_name ?? "");
+  const [lastName, setLastName] = useState(customer?.last_name ?? "");
   const [phone, setPhone] = useState(customer?.phone ?? "");
   const [email, setEmail] = useState(customer?.email ?? "");
   const [address, setAddress] = useState(customer?.address ?? "");
@@ -130,8 +139,8 @@ function CustomerForm({
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!name.trim()) {
-      setError("Name is required");
+    if (!firstName.trim() || !lastName.trim()) {
+      setError("First name and last name are required");
       return;
     }
     setSaving(true);
@@ -140,7 +149,14 @@ function CustomerForm({
       {
         method: customer ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, phone, email, address, notes }),
+        body: JSON.stringify({
+          first_name: firstName,
+          last_name: lastName,
+          phone,
+          email,
+          address,
+          notes,
+        }),
       }
     );
     setSaving(false);
@@ -166,15 +182,27 @@ function CustomerForm({
           </button>
         </div>
         <form onSubmit={onSubmit} className="p-4 space-y-3">
-          <Field label="Name" required>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
-              autoFocus
-            />
-          </Field>
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="First name" required>
+              <input
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
+                autoFocus
+                required
+              />
+            </Field>
+            <Field label="Last name" required>
+              <input
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
+                required
+              />
+            </Field>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Phone">
               <input

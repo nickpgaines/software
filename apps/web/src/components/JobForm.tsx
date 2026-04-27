@@ -787,7 +787,8 @@ function NewCustomerInline({
   onClose: () => void;
   onCreated: (c: Customer) => void;
 }) {
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [address, setAddress] = useState("");
@@ -795,15 +796,21 @@ function NewCustomerInline({
   const [error, setError] = useState<string | null>(null);
 
   async function save() {
-    if (!name.trim()) {
-      setError("Name is required");
+    if (!firstName.trim() || !lastName.trim()) {
+      setError("First name and last name are required");
       return;
     }
     setSaving(true);
     const res = await fetch("/api/customers", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, phone, email, address }),
+      body: JSON.stringify({
+        first_name: firstName,
+        last_name: lastName,
+        phone,
+        email,
+        address,
+      }),
     });
     setSaving(false);
     if (!res.ok) {
@@ -819,9 +826,16 @@ function NewCustomerInline({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <input
           type="text"
-          placeholder="Name *"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
+          placeholder="First name *"
+          value={firstName}
+          onChange={(e) => setFirstName(e.target.value)}
+          className="border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+        />
+        <input
+          type="text"
+          placeholder="Last name *"
+          value={lastName}
+          onChange={(e) => setLastName(e.target.value)}
           className="border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
         />
         <input
@@ -843,7 +857,7 @@ function NewCustomerInline({
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+          className="sm:col-span-2 border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
         />
       </div>
       {error && <p className="text-sm text-rose-600">{error}</p>}

@@ -3,6 +3,10 @@ import { getDb, type Customer } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
+function buildName(first: string, last: string) {
+  return `${first.trim()} ${last.trim()}`.trim();
+}
+
 export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
@@ -16,12 +20,23 @@ export async function PATCH(
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+  const first = (body.first_name ?? existing.first_name ?? "").trim();
+  const last = (body.last_name ?? existing.last_name ?? "").trim();
+  if (!first || !last) {
+    return NextResponse.json(
+      { error: "First name and last name are required" },
+      { status: 400 }
+    );
+  }
+  const name = buildName(first, last);
   db.prepare(
     `UPDATE customers
-     SET name = ?, phone = ?, email = ?, address = ?, notes = ?
+     SET name = ?, first_name = ?, last_name = ?, phone = ?, email = ?, address = ?, notes = ?
      WHERE id = ?`
   ).run(
-    body.name ?? existing.name,
+    name,
+    first,
+    last,
     body.phone ?? existing.phone,
     body.email ?? existing.email,
     body.address ?? existing.address,
