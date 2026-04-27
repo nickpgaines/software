@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 
 const KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 const BIAS_CENTER = { lat: 32.7765, lng: -79.9311 };
-const BIAS_RADIUS_M = 80_000;
+const BIAS_RADIUS_M = 50_000;
 
 export type AddressValue = {
   address_line1: string;
