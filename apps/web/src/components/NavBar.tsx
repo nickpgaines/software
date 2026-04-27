@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import NewMenu from "@/components/NewMenu";
 
 const links = [
   { href: "/", label: "Dashboard" },
@@ -50,15 +49,12 @@ export default function NavBar() {
             })}
           </div>
         </div>
-        <div className="flex items-center gap-4">
-          <NewMenu />
-          <button
-            onClick={logout}
-            className="text-sm text-slate-500 hover:text-slate-900"
-          >
-            Sign out
-          </button>
-        </div>
+        <button
+          onClick={logout}
+          className="text-sm text-slate-500 hover:text-slate-900"
+        >
+          Sign out
+        </button>
       </div>
     </nav>
   );

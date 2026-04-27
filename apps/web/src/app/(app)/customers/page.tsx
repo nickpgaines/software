@@ -1,15 +1,6 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
-
-export default function CustomersPageWrapper() {
-  return (
-    <Suspense fallback={null}>
-      <CustomersPage />
-    </Suspense>
-  );
-}
+import { useEffect, useState } from "react";
 
 type Customer = {
   id: number;
@@ -26,12 +17,10 @@ function fullName(c: { first_name: string | null; last_name: string | null }) {
   return `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim();
 }
 
-function CustomersPage() {
+export default function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [creating, setCreating] = useState(false);
-  const searchParams = useSearchParams();
-  const router = useRouter();
 
   async function load() {
     const res = await fetch("/api/customers");
@@ -41,13 +30,6 @@ function CustomersPage() {
   useEffect(() => {
     load();
   }, []);
-
-  useEffect(() => {
-    if (searchParams.get("new") === "1") {
-      setCreating(true);
-      router.replace("/customers");
-    }
-  }, [searchParams, router]);
 
   async function del(id: number) {
     if (!confirm("Delete this customer and all their jobs?")) return;
