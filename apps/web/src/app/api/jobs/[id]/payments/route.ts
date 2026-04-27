@@ -34,7 +34,6 @@ export async function POST(
   const body = (await req.json().catch(() => ({}))) as Partial<{
     amount_cents: number;
     method: string;
-    payment_date: string;
     notes: string | null;
     send_email: boolean | number;
     send_sms: boolean | number;
@@ -57,13 +56,10 @@ export async function POST(
     );
   }
 
-  const payment_date = String(body.payment_date || "").trim();
-  if (!payment_date) {
-    return NextResponse.json(
-      { error: "payment_date is required" },
-      { status: 400 }
-    );
-  }
+  // payment_date is no longer accepted from the client. Stamp it
+  // server-side as today (YYYY-MM-DD, server clock) so the column
+  // stays populated for any read path that uses it.
+  const payment_date = new Date().toISOString().slice(0, 10);
 
   const send_email = body.send_email ? 1 : 0;
   const send_sms = body.send_sms ? 1 : 0;

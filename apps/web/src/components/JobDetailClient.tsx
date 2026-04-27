@@ -572,7 +572,6 @@ export default function JobDetailClient({
           <PaymentsSection
             jobId={job.id}
             jobTotalCents={job.price_cents}
-            jobScheduledAt={job.scheduled_at}
             customerEmail={job.customer_email}
             customerPhone={job.customer_phone}
             payments={job.payments}
@@ -602,7 +601,6 @@ export default function JobDetailClient({
           jobId={job.id}
           jobTotalCents={job.price_cents}
           paidTotalCents={job.paid_total_cents}
-          jobScheduledAt={job.scheduled_at}
           customerEmail={job.customer_email}
           customerPhone={job.customer_phone}
           onClose={() => setPaymentModalOpen(false)}

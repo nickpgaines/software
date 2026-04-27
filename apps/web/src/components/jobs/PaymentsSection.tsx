@@ -37,7 +37,6 @@ function formatDate(iso: string, mounted: boolean) {
 export default function PaymentsSection({
   jobId,
   jobTotalCents,
-  jobScheduledAt,
   customerEmail,
   customerPhone,
   payments,
@@ -46,7 +45,6 @@ export default function PaymentsSection({
 }: {
   jobId: number;
   jobTotalCents: number;
-  jobScheduledAt: string | null;
   customerEmail: string | null;
   customerPhone: string | null;
   payments: PaymentsSectionPayment[];
@@ -167,7 +165,6 @@ export default function PaymentsSection({
           jobId={jobId}
           jobTotalCents={jobTotalCents}
           paidTotalCents={paidTotalCents}
-          jobScheduledAt={jobScheduledAt}
           customerEmail={customerEmail}
           customerPhone={customerPhone}
           onClose={() => setModalOpen(false)}

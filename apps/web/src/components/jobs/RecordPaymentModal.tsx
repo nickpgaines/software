@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 export type PaymentMethod =
   | "card"
@@ -17,20 +17,6 @@ const METHODS: { key: PaymentMethod; label: string }[] = [
   { key: "other", label: "Other" },
 ];
 
-function todayDateInput() {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-function isoToDateInput(iso: string | null | undefined): string {
-  if (!iso) return todayDateInput();
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return todayDateInput();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
 function dollars(cents: number): string {
   return (cents / 100).toFixed(2);
 }
@@ -39,7 +25,6 @@ export default function RecordPaymentModal({
   jobId,
   jobTotalCents,
   paidTotalCents,
-  jobScheduledAt,
   customerEmail,
   customerPhone,
   onClose,
@@ -48,7 +33,6 @@ export default function RecordPaymentModal({
   jobId: number;
   jobTotalCents: number;
   paidTotalCents: number;
-  jobScheduledAt: string | null;
   customerEmail: string | null;
   customerPhone: string | null;
   onClose: () => void;
@@ -58,17 +42,11 @@ export default function RecordPaymentModal({
 
   const [amount, setAmount] = useState<string>(dollars(remainingCents));
   const [method, setMethod] = useState<PaymentMethod>("card");
-  const [paymentDate, setPaymentDate] = useState<string>(todayDateInput());
-  const [useJobDate, setUseJobDate] = useState(false);
   const [notes, setNotes] = useState("");
   const [sendEmail, setSendEmail] = useState(false);
   const [sendSms, setSendSms] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (useJobDate) setPaymentDate(isoToDateInput(jobScheduledAt));
-  }, [useJobDate, jobScheduledAt]);
 
   const amountNumber = useMemo(() => Number(amount), [amount]);
   const amountValid = Number.isFinite(amountNumber) && amountNumber > 0;
@@ -87,7 +65,6 @@ export default function RecordPaymentModal({
       body: JSON.stringify({
         amount_cents: Math.round(amountNumber * 100),
         method,
-        payment_date: paymentDate,
         notes: notes.trim() || null,
         send_email: sendEmail,
         send_sms: sendSms,
@@ -162,33 +139,6 @@ export default function RecordPaymentModal({
                 );
               })}
             </div>
-          </div>
-
-          <div>
-            <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1">
-              Payment date
-            </label>
-            <input
-              type="date"
-              value={paymentDate}
-              onChange={(e) => {
-                setPaymentDate(e.target.value);
-                setUseJobDate(false);
-              }}
-              className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm"
-              required
-            />
-            {jobScheduledAt && (
-              <label className="inline-flex items-center gap-2 mt-2 text-xs text-slate-600">
-                <input
-                  type="checkbox"
-                  checked={useJobDate}
-                  onChange={(e) => setUseJobDate(e.target.checked)}
-                  className="rounded border-slate-300 text-cyan-500 focus:ring-cyan-400"
-                />
-                Use job date ({isoToDateInput(jobScheduledAt)})
-              </label>
-            )}
           </div>
 
           <div>
