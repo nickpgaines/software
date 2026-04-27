@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import PaymentsSection from "@/components/jobs/PaymentsSection";
+import RecordPaymentModal from "@/components/jobs/RecordPaymentModal";
 
 type Detail = {
   id: number;
@@ -37,6 +39,15 @@ type Detail = {
   checklist_items: { id: number; text: string; completed: number }[];
   sales: { id: number; name: string; role: string | null }[];
   techs: { id: number; name: string; role: string | null }[];
+  payments: {
+    id: number;
+    amount_cents: number;
+    method: string;
+    payment_date: string;
+    notes: string | null;
+  }[];
+  paid_total_cents: number;
+  paid_status: "unpaid" | "partial" | "paid";
 };
 
 type Step = "en_route" | "arrived" | "started" | "completed";
@@ -152,6 +163,15 @@ export default function JobDetailClient({
   const router = useRouter();
   const [job, setJob] = useState<Detail>(initialJob);
   const [busy, setBusy] = useState<Step | null>(null);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+
+  async function refreshJob() {
+    const res = await fetch(`/api/jobs/${job.id}`);
+    if (res.ok) {
+      const updated = (await res.json()) as Detail;
+      setJob(updated);
+    }
+  }
 
   async function toggleStep(step: Step) {
     const stepDef = STEPS.find((s) => s.key === step)!;
@@ -368,6 +388,14 @@ export default function JobDetailClient({
           <section className="bg-white border border-slate-200 rounded-2xl p-5">
             <h2 className="font-semibold text-slate-900 mb-4">Quick Actions</h2>
             <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setPaymentModalOpen(true)}
+                className="w-full inline-flex items-center justify-between border border-cyan-200 bg-cyan-50/40 hover:bg-cyan-50 rounded-2xl px-4 py-3 text-sm text-cyan-700 font-medium"
+              >
+                <span>Record Payment</span>
+                <span className="text-cyan-300">›</span>
+              </button>
               <Link
                 href="/schedule"
                 className="w-full inline-flex items-center justify-between border border-slate-200 hover:bg-slate-50 rounded-2xl px-4 py-3 text-sm text-slate-700"
@@ -398,7 +426,10 @@ export default function JobDetailClient({
         <div className="space-y-6">
           <section className="bg-white border border-slate-200 rounded-2xl p-5">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-slate-900">Job Details</h2>
+              <div className="flex items-center gap-2">
+                <h2 className="font-semibold text-slate-900">Job Details</h2>
+                <PaidBadge status={job.paid_status} />
+              </div>
               <Link
                 href={`/schedule/${job.id}/edit`}
                 className="text-sm text-cyan-600 hover:text-cyan-700"
@@ -538,6 +569,17 @@ export default function JobDetailClient({
             </div>
           </section>
 
+          <PaymentsSection
+            jobId={job.id}
+            jobTotalCents={job.price_cents}
+            jobScheduledAt={job.scheduled_at}
+            customerEmail={job.customer_email}
+            customerPhone={job.customer_phone}
+            payments={job.payments}
+            paidTotalCents={job.paid_total_cents}
+            onChanged={refreshJob}
+          />
+
           <section className="bg-white border border-slate-200 rounded-2xl p-5">
             <h2 className="font-semibold text-slate-900 mb-4">Checklist</h2>
             {job.checklist_items.length === 0 ? (
@@ -554,7 +596,48 @@ export default function JobDetailClient({
           </section>
         </div>
       </div>
+
+      {paymentModalOpen && (
+        <RecordPaymentModal
+          jobId={job.id}
+          jobTotalCents={job.price_cents}
+          paidTotalCents={job.paid_total_cents}
+          jobScheduledAt={job.scheduled_at}
+          customerEmail={job.customer_email}
+          customerPhone={job.customer_phone}
+          onClose={() => setPaymentModalOpen(false)}
+          onRecorded={async () => {
+            setPaymentModalOpen(false);
+            await refreshJob();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function PaidBadge({ status }: { status: "unpaid" | "partial" | "paid" }) {
+  if (status === "paid") {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+        Paid
+      </span>
+    );
+  }
+  if (status === "partial") {
+    return (
+      <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
+        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+        Partial
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+      <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
+      Unpaid
+    </span>
   );
 }
 

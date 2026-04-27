@@ -1,5 +1,11 @@
 import type Database from "better-sqlite3";
-import type { Job, LineItem, ChecklistItem, JobAssignment } from "./db";
+import type {
+  Job,
+  LineItem,
+  ChecklistItem,
+  JobAssignment,
+  Payment,
+} from "./db";
 
 export type LineItemInput = {
   id?: number;
@@ -33,6 +39,8 @@ export type JobInput = {
   checklist_items?: ChecklistInput[];
 };
 
+export type PaidStatus = "unpaid" | "partial" | "paid";
+
 export type JobDetail = Job & {
   customer_name: string;
   customer_phone: string | null;
@@ -42,6 +50,9 @@ export type JobDetail = Job & {
   checklist_items: ChecklistItem[];
   sales: { id: number; name: string; role: string | null }[];
   techs: { id: number; name: string; role: string | null }[];
+  payments: Payment[];
+  paid_total_cents: number;
+  paid_status: PaidStatus;
 };
 
 const toBit = (v: boolean | number | undefined) =>
@@ -287,12 +298,33 @@ export function getJobDetail(
     )
     .all(id) as { id: number; name: string; role: string | null }[];
 
+  const payments = db
+    .prepare(
+      "SELECT * FROM payments WHERE job_id = ? ORDER BY created_at DESC, id DESC"
+    )
+    .all(id) as Payment[];
+
+  const paid_total_cents = payments.reduce(
+    (sum, p) => sum + (p.amount_cents || 0),
+    0
+  );
+  const total = job.price_cents || 0;
+  const paid_status: PaidStatus =
+    paid_total_cents <= 0
+      ? "unpaid"
+      : paid_total_cents >= total
+      ? "paid"
+      : "partial";
+
   return {
     ...job,
     line_items: lineItems,
     checklist_items: checklist,
     sales,
     techs,
+    payments,
+    paid_total_cents,
+    paid_status,
   };
 }
 

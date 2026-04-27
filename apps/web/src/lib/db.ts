@@ -209,6 +209,20 @@ function init(db: Database.Database) {
     );
     CREATE INDEX IF NOT EXISTS idx_messages_customer_id ON messages(customer_id);
     CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
+
+    CREATE TABLE IF NOT EXISTS payments (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id       INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+      amount_cents INTEGER NOT NULL,
+      method       TEXT    NOT NULL CHECK (method IN ('card','cash','check','e_transfer','other')),
+      payment_date TEXT    NOT NULL,
+      notes        TEXT,
+      send_email   INTEGER NOT NULL DEFAULT 0,
+      send_sms     INTEGER NOT NULL DEFAULT 0,
+      created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_payments_job_id     ON payments(job_id);
+    CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments(created_at);
   `);
 
   const legacy = db
@@ -377,6 +391,25 @@ export type Message = {
   direction: "outbound" | "inbound";
   created_at: string;
   read_at: string | null;
+};
+
+export type PaymentMethod =
+  | "card"
+  | "cash"
+  | "check"
+  | "e_transfer"
+  | "other";
+
+export type Payment = {
+  id: number;
+  job_id: number;
+  amount_cents: number;
+  method: PaymentMethod;
+  payment_date: string;
+  notes: string | null;
+  send_email: number;
+  send_sms: number;
+  created_at: string;
 };
 
 export default getDb;
