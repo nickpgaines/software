@@ -73,10 +73,6 @@ export default function RecordPaymentModal({
   const amountNumber = useMemo(() => Number(amount), [amount]);
   const amountValid = Number.isFinite(amountNumber) && amountNumber > 0;
 
-  function payFull() {
-    setAmount(dollars(remainingCents > 0 ? remainingCents : jobTotalCents));
-  }
-
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -122,20 +118,9 @@ export default function RecordPaymentModal({
 
         <form onSubmit={submit} className="p-5 space-y-4">
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="block text-xs uppercase tracking-wide text-slate-400">
-                Amount
-              </label>
-              {remainingCents > 0 && (
-                <button
-                  type="button"
-                  onClick={payFull}
-                  className="text-xs text-cyan-600 hover:text-cyan-700"
-                >
-                  Pay full balance ({"$" + dollars(remainingCents)})
-                </button>
-              )}
-            </div>
+            <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+              Amount
+            </label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
                 $
@@ -151,10 +136,6 @@ export default function RecordPaymentModal({
                 required
               />
             </div>
-            <p className="text-xs text-slate-400 mt-1">
-              Job total ${dollars(jobTotalCents)} · Already paid $
-              {dollars(paidTotalCents)}
-            </p>
           </div>
 
           <div>
@@ -212,13 +193,13 @@ export default function RecordPaymentModal({
 
           <div>
             <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1">
-              Reference / Notes
+              Notes
             </label>
             <input
               type="text"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
-              placeholder="Square ref #1234, Check #4582, Venmo @nickpg…"
+              placeholder="Optional"
               className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm"
             />
           </div>
