@@ -1,0 +1,239 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { APIProvider, Map, Marker } from "@vis.gl/react-google-maps";
+
+const KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+
+export type CustomerCardCustomer = {
+  id: number;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  address: string | null;
+};
+
+function formatPhone(p: string | null | undefined): string {
+  if (!p) return "";
+  const digits = p.replace(/\D/g, "");
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return `+1 (${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  return p;
+}
+
+type GeocodeState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | {
+      status: "ok";
+      lat: number;
+      lng: number;
+      formatted: string;
+    }
+  | { status: "error"; message: string };
+
+async function geocode(
+  address: string
+): Promise<{ lat: number; lng: number; formatted: string } | null> {
+  if (!KEY) return null;
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
+    address
+  )}&key=${KEY}`;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  const data = (await res.json()) as {
+    status: string;
+    results: Array<{
+      geometry: { location: { lat: number; lng: number } };
+      formatted_address: string;
+    }>;
+  };
+  if (data.status !== "OK" || !data.results.length) return null;
+  const first = data.results[0];
+  return {
+    lat: first.geometry.location.lat,
+    lng: first.geometry.location.lng,
+    formatted: first.formatted_address,
+  };
+}
+
+export default function CustomerCard({
+  customer,
+  onRemove,
+}: {
+  customer: CustomerCardCustomer;
+  onRemove: () => void;
+}) {
+  const [geo, setGeo] = useState<GeocodeState>({ status: "idle" });
+
+  useEffect(() => {
+    const addr = (customer.address || "").trim();
+    if (!addr) {
+      setGeo({ status: "error", message: "No address on file" });
+      return;
+    }
+    if (!KEY) {
+      setGeo({
+        status: "error",
+        message: "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set",
+      });
+      return;
+    }
+    let cancelled = false;
+    setGeo({ status: "loading" });
+    geocode(addr)
+      .then((result) => {
+        if (cancelled) return;
+        if (!result) {
+          setGeo({ status: "error", message: "Address not found" });
+          return;
+        }
+        setGeo({ status: "ok", ...result });
+      })
+      .catch(() => {
+        if (!cancelled)
+          setGeo({ status: "error", message: "Address not found" });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [customer.id, customer.address]);
+
+  const displayedAddress =
+    geo.status === "ok" ? geo.formatted : customer.address || "";
+
+  return (
+    <div className="border border-slate-200 rounded-2xl bg-white overflow-hidden">
+      <div className="grid grid-cols-1 md:grid-cols-[1fr_320px]">
+        <div className="p-5 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <h3 className="text-xl font-semibold text-slate-900 truncate">
+                {customer.name || "Customer"}
+              </h3>
+            </div>
+            <button
+              type="button"
+              onClick={onRemove}
+              className="text-xs text-slate-500 hover:text-rose-600 border border-slate-200 hover:border-rose-200 rounded-full px-3 py-1.5 whitespace-nowrap"
+              aria-label="Remove selected customer"
+            >
+              Remove
+            </button>
+          </div>
+
+          <dl className="space-y-2.5 text-sm">
+            <Row label="Address">
+              {displayedAddress ? (
+                <span className="text-slate-700 break-words">
+                  {displayedAddress}
+                </span>
+              ) : (
+                <span className="text-slate-400">—</span>
+              )}
+            </Row>
+            <Row label="Phone">
+              {customer.phone ? (
+                <a
+                  href={`tel:${customer.phone}`}
+                  className="text-cyan-600 hover:text-cyan-700"
+                >
+                  {formatPhone(customer.phone)}
+                </a>
+              ) : (
+                <span className="text-slate-400">—</span>
+              )}
+            </Row>
+            <Row label="Email">
+              {customer.email ? (
+                <a
+                  href={`mailto:${customer.email}`}
+                  className="text-cyan-600 hover:text-cyan-700 break-all"
+                >
+                  {customer.email}
+                </a>
+              ) : (
+                <span className="text-slate-400">—</span>
+              )}
+            </Row>
+          </dl>
+        </div>
+
+        <div className="bg-slate-100 md:border-l border-slate-200 min-h-[220px]">
+          {geo.status === "ok" ? (
+            <CustomerMap lat={geo.lat} lng={geo.lng} />
+          ) : (
+            <MapPlaceholder
+              status={geo.status}
+              message={
+                geo.status === "error" ? geo.message : "Looking up address…"
+              }
+            />
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function Row({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="grid grid-cols-[80px_1fr] gap-2">
+      <dt className="text-xs uppercase tracking-wide text-slate-400 pt-0.5">
+        {label}
+      </dt>
+      <dd className="min-w-0">{children}</dd>
+    </div>
+  );
+}
+
+function CustomerMap({ lat, lng }: { lat: number; lng: number }) {
+  return (
+    <APIProvider apiKey={KEY}>
+      <div className="w-full h-full min-h-[220px]" style={{ height: "100%" }}>
+        <Map
+          defaultCenter={{ lat, lng }}
+          defaultZoom={18}
+          mapTypeId="satellite"
+          gestureHandling="greedy"
+          disableDefaultUI={false}
+          mapTypeControl
+          streetViewControl
+          fullscreenControl
+          zoomControl
+          style={{ width: "100%", height: "100%", minHeight: 220 }}
+        >
+          <Marker position={{ lat, lng }} />
+        </Map>
+      </div>
+    </APIProvider>
+  );
+}
+
+function MapPlaceholder({
+  status,
+  message,
+}: {
+  status: "idle" | "loading" | "error";
+  message: string;
+}) {
+  return (
+    <div className="w-full h-full min-h-[220px] flex items-center justify-center px-4 py-8 text-sm text-slate-500 text-center">
+      {status === "loading" ? (
+        <span>Looking up address…</span>
+      ) : (
+        <span>{message}</span>
+      )}
+    </div>
+  );
+}

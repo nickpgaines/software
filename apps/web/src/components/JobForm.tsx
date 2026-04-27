@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import CustomerCard from "@/components/jobs/CustomerCard";
 
 type Customer = {
   id: number;
@@ -374,35 +375,53 @@ export default function JobForm({
       )}
 
       <Section title="Customer">
-        <div className="flex gap-2">
-          <CustomerSearch
-            query={customerQuery}
-            setQuery={setCustomerQuery}
-            suggestions={customerSuggestions}
-            onPick={pickCustomer}
-            onClear={() => {
-              setCustomerId(null);
-            }}
-            selectedId={customerId}
-          />
-          <button
-            type="button"
-            onClick={() => setShowNewCustomer(true)}
-            className="text-sm border border-slate-200 bg-white hover:bg-slate-50 rounded-full px-4 py-2 text-slate-700 whitespace-nowrap"
-          >
-            + New Customer
-          </button>
-        </div>
-        {showNewCustomer && (
-          <NewCustomerInline
-            onClose={() => setShowNewCustomer(false)}
-            onCreated={(c) => {
-              setCustomers((arr) => [...arr, c]);
-              setCustomerId(c.id);
-              setCustomerQuery(c.name);
-              setShowNewCustomer(false);
-            }}
-          />
+        {customerId &&
+        (() => {
+          const selected = customers.find((c) => c.id === customerId);
+          if (!selected) return null;
+          return (
+            <CustomerCard
+              customer={selected}
+              onRemove={() => {
+                setCustomerId(null);
+                setCustomerQuery("");
+              }}
+            />
+          );
+        })()}
+        {!customerId && (
+          <>
+            <div className="flex gap-2">
+              <CustomerSearch
+                query={customerQuery}
+                setQuery={setCustomerQuery}
+                suggestions={customerSuggestions}
+                onPick={pickCustomer}
+                onClear={() => {
+                  setCustomerId(null);
+                }}
+                selectedId={customerId}
+              />
+              <button
+                type="button"
+                onClick={() => setShowNewCustomer(true)}
+                className="text-sm border border-slate-200 bg-white hover:bg-slate-50 rounded-full px-4 py-2 text-slate-700 whitespace-nowrap"
+              >
+                + New Customer
+              </button>
+            </div>
+            {showNewCustomer && (
+              <NewCustomerInline
+                onClose={() => setShowNewCustomer(false)}
+                onCreated={(c) => {
+                  setCustomers((arr) => [...arr, c]);
+                  setCustomerId(c.id);
+                  setCustomerQuery(c.name);
+                  setShowNewCustomer(false);
+                }}
+              />
+            )}
+          </>
         )}
       </Section>
 
