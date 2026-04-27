@@ -1,10 +1,15 @@
 import { NextResponse } from "next/server";
 import { getDb, type Customer } from "@/lib/db";
+import { normalizeAddress } from "@/lib/customer-address";
 
 export const dynamic = "force-dynamic";
 
 function buildName(first: string, last: string) {
   return `${first.trim()} ${last.trim()}`.trim();
+}
+
+function pick<T>(value: T | undefined, fallback: T): T {
+  return value === undefined ? fallback : value;
 }
 
 export async function PATCH(
@@ -29,9 +34,55 @@ export async function PATCH(
     );
   }
   const name = buildName(first, last);
+
+  // Treat any address-related field provided in the request as part of
+  // the new structured address. If none of the new fields are present,
+  // keep the existing structured address as-is.
+  const anyStructuredProvided =
+    body.address_line1 !== undefined ||
+    body.unit !== undefined ||
+    body.city !== undefined ||
+    body.state !== undefined ||
+    body.zip !== undefined ||
+    body.latitude !== undefined ||
+    body.longitude !== undefined ||
+    body.formatted_address !== undefined ||
+    body.address !== undefined;
+
+  const addr = anyStructuredProvided
+    ? normalizeAddress(
+        {
+          address_line1: pick(body.address_line1, existing.address_line1),
+          unit: pick(body.unit, existing.unit),
+          city: pick(body.city, existing.city),
+          state: pick(body.state, existing.state),
+          zip: pick(body.zip, existing.zip),
+          latitude: pick(body.latitude, existing.latitude),
+          longitude: pick(body.longitude, existing.longitude),
+          formatted_address: pick(
+            body.formatted_address,
+            existing.formatted_address
+          ),
+        },
+        { legacyAddress: pick(body.address, existing.address) }
+      )
+    : {
+        address: existing.address,
+        address_line1: existing.address_line1,
+        unit: existing.unit,
+        city: existing.city,
+        state: existing.state,
+        zip: existing.zip,
+        latitude: existing.latitude,
+        longitude: existing.longitude,
+        formatted_address: existing.formatted_address,
+      };
+
   db.prepare(
     `UPDATE customers
-     SET name = ?, first_name = ?, last_name = ?, phone = ?, email = ?, address = ?, notes = ?
+     SET name = ?, first_name = ?, last_name = ?, phone = ?, email = ?,
+         address = ?, address_line1 = ?, unit = ?, city = ?, state = ?, zip = ?,
+         latitude = ?, longitude = ?, formatted_address = ?, notes = ?
      WHERE id = ?`
   ).run(
     name,
@@ -39,7 +90,15 @@ export async function PATCH(
     last,
     body.phone ?? existing.phone,
     body.email ?? existing.email,
-    body.address ?? existing.address,
+    addr.address,
+    addr.address_line1,
+    addr.unit,
+    addr.city,
+    addr.state,
+    addr.zip,
+    addr.latitude,
+    addr.longitude,
+    addr.formatted_address,
     body.notes ?? existing.notes,
     id
   );

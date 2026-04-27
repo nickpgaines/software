@@ -11,6 +11,9 @@ export type CustomerCardCustomer = {
   phone: string | null;
   email: string | null;
   address: string | null;
+  formatted_address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 
 function formatPhone(p: string | null | undefined): string {
@@ -70,8 +73,29 @@ export default function CustomerCard({
 }) {
   const [geo, setGeo] = useState<GeocodeState>({ status: "idle" });
 
+  // Prefer the structured formatted_address; fall back to legacy address.
+  const preferredAddress =
+    (customer.formatted_address || "").trim() ||
+    (customer.address || "").trim();
+
   useEffect(() => {
-    const addr = (customer.address || "").trim();
+    const lat = customer.latitude;
+    const lng = customer.longitude;
+    // Fast path: lat AND lng are stored on the customer record (set by the
+    // Places autocomplete when the customer was created/edited). Skip the
+    // Geocoding API round-trip entirely.
+    if (typeof lat === "number" && typeof lng === "number") {
+      setGeo({
+        status: "ok",
+        lat,
+        lng,
+        formatted: preferredAddress,
+      });
+      return;
+    }
+    // Legacy fallback: customer doesn't have lat/lng on file. Geocode the
+    // formatted_address (or the legacy address) client-side, same as before.
+    const addr = preferredAddress;
     if (!addr) {
       setGeo({ status: "error", message: "No address on file" });
       return;
@@ -101,10 +125,17 @@ export default function CustomerCard({
     return () => {
       cancelled = true;
     };
-  }, [customer.id, customer.address]);
+  }, [
+    customer.id,
+    customer.latitude,
+    customer.longitude,
+    preferredAddress,
+  ]);
 
   const displayedAddress =
-    geo.status === "ok" ? geo.formatted : customer.address || "";
+    geo.status === "ok" && geo.formatted
+      ? geo.formatted
+      : preferredAddress;
 
   return (
     <div className="border border-slate-200 rounded-2xl bg-white overflow-hidden">

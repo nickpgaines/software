@@ -78,6 +78,21 @@ function init(db: Database.Database) {
   if (!customerCols.some((c) => c.name === "last_name")) {
     db.exec("ALTER TABLE customers ADD COLUMN last_name TEXT");
   }
+  const customerAddressAdds: [string, string][] = [
+    ["address_line1", "TEXT"],
+    ["unit", "TEXT"],
+    ["city", "TEXT"],
+    ["state", "TEXT"],
+    ["zip", "TEXT"],
+    ["latitude", "REAL"],
+    ["longitude", "REAL"],
+    ["formatted_address", "TEXT"],
+  ];
+  for (const [col, def] of customerAddressAdds) {
+    if (!customerCols.some((c) => c.name === col)) {
+      db.exec(`ALTER TABLE customers ADD COLUMN ${col} ${def}`);
+    }
+  }
   // Backfill first_name/last_name from existing 'name' for any rows
   // that haven't been migrated yet. Single-word names go entirely
   // into first_name; multi-word names split on the first space.
@@ -95,6 +110,18 @@ function init(db: Database.Database) {
         END
     WHERE name IS NOT NULL
       AND (first_name IS NULL OR last_name IS NULL)
+  `);
+  // Backfill address_line1/formatted_address ONLY for untouched legacy
+  // rows (both new fields still NULL), so re-running this never
+  // clobbers user edits.
+  db.exec(`
+    UPDATE customers
+    SET address_line1     = TRIM(address),
+        formatted_address = TRIM(address)
+    WHERE address IS NOT NULL
+      AND TRIM(address) != ''
+      AND address_line1     IS NULL
+      AND formatted_address IS NULL
   `);
 
   db.exec(`
@@ -232,6 +259,14 @@ export type Customer = {
   phone: string | null;
   email: string | null;
   address: string | null;
+  address_line1: string | null;
+  unit: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  formatted_address: string | null;
   notes: string | null;
   created_at: string;
 };

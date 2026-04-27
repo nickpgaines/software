@@ -3,6 +3,10 @@
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import ImportModal from "@/components/customers/ImportModal";
+import AddressFields, {
+  EMPTY_ADDRESS,
+  type AddressValue,
+} from "@/components/customers/AddressFields";
 
 type Customer = {
   id: number;
@@ -12,8 +16,38 @@ type Customer = {
   phone: string | null;
   email: string | null;
   address: string | null;
+  address_line1: string | null;
+  unit: string | null;
+  city: string | null;
+  state: string | null;
+  zip: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  formatted_address: string | null;
   notes: string | null;
 };
+
+function customerToAddress(c: Customer | null): AddressValue {
+  if (!c) return { ...EMPTY_ADDRESS };
+  // If structured fields are blank but the legacy address has a value,
+  // surface it in line1 so legacy customers don't appear "empty" in the
+  // form (the user can still pick a Places suggestion to fill the rest).
+  const line1 =
+    c.address_line1?.trim() ||
+    (c.address_line1 == null && c.formatted_address == null
+      ? c.address?.trim() || ""
+      : c.address_line1?.trim() || "");
+  return {
+    address_line1: line1,
+    unit: c.unit ?? "",
+    city: c.city ?? "",
+    state: c.state ?? "",
+    zip: c.zip ?? "",
+    latitude: c.latitude ?? null,
+    longitude: c.longitude ?? null,
+    formatted_address: c.formatted_address ?? "",
+  };
+}
 
 function fullName(c: { first_name: string | null; last_name: string | null }) {
   return `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim();
@@ -168,7 +202,9 @@ function CustomerForm({
   const [lastName, setLastName] = useState(customer?.last_name ?? "");
   const [phone, setPhone] = useState(customer?.phone ?? "");
   const [email, setEmail] = useState(customer?.email ?? "");
-  const [address, setAddress] = useState(customer?.address ?? "");
+  const [address, setAddress] = useState<AddressValue>(() =>
+    customerToAddress(customer)
+  );
   const [notes, setNotes] = useState(customer?.notes ?? "");
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -191,7 +227,14 @@ function CustomerForm({
           last_name: lastName,
           phone,
           email,
-          address,
+          address_line1: address.address_line1,
+          unit: address.unit,
+          city: address.city,
+          state: address.state,
+          zip: address.zip,
+          latitude: address.latitude,
+          longitude: address.longitude,
+          formatted_address: address.formatted_address,
           notes,
         }),
       }
@@ -258,14 +301,7 @@ function CustomerForm({
               />
             </Field>
           </div>
-          <Field label="Address">
-            <input
-              type="text"
-              value={address ?? ""}
-              onChange={(e) => setAddress(e.target.value)}
-              className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
-            />
-          </Field>
+          <AddressFields value={address} onChange={setAddress} />
           <Field label="Notes">
             <textarea
               value={notes ?? ""}

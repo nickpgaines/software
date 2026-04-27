@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type Customer } from "@/lib/db";
+import { normalizeAddress } from "@/lib/customer-address";
 
 export const dynamic = "force-dynamic";
 
@@ -29,9 +30,27 @@ export async function POST(req: Request) {
     );
   }
   const name = buildName(first, last);
+  const addr = normalizeAddress(
+    {
+      address_line1: body.address_line1,
+      unit: body.unit,
+      city: body.city,
+      state: body.state,
+      zip: body.zip,
+      latitude: body.latitude,
+      longitude: body.longitude,
+      formatted_address: body.formatted_address,
+    },
+    { legacyAddress: body.address }
+  );
   const stmt = db.prepare(
-    `INSERT INTO customers (name, first_name, last_name, phone, email, address, notes)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO customers
+       (name, first_name, last_name, phone, email,
+        address, address_line1, unit, city, state, zip,
+        latitude, longitude, formatted_address, notes)
+     VALUES (?, ?, ?, ?, ?,
+             ?, ?, ?, ?, ?, ?,
+             ?, ?, ?, ?)`
   );
   const result = stmt.run(
     name,
@@ -39,7 +58,15 @@ export async function POST(req: Request) {
     last,
     body.phone || null,
     body.email || null,
-    body.address || null,
+    addr.address,
+    addr.address_line1,
+    addr.unit,
+    addr.city,
+    addr.state,
+    addr.zip,
+    addr.latitude,
+    addr.longitude,
+    addr.formatted_address,
     body.notes || null
   );
   const created = db

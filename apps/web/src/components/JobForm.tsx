@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import CustomerCard from "@/components/jobs/CustomerCard";
+import AddressFields, {
+  EMPTY_ADDRESS,
+  type AddressValue,
+} from "@/components/customers/AddressFields";
 
 type Customer = {
   id: number;
@@ -11,6 +15,9 @@ type Customer = {
   phone: string | null;
   email: string | null;
   address: string | null;
+  formatted_address?: string | null;
+  latitude?: number | null;
+  longitude?: number | null;
 };
 type Staff = { id: number; name: string; role: string | null };
 
@@ -810,7 +817,7 @@ function NewCustomerInline({
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [address, setAddress] = useState("");
+  const [address, setAddress] = useState<AddressValue>({ ...EMPTY_ADDRESS });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -828,7 +835,14 @@ function NewCustomerInline({
         last_name: lastName,
         phone,
         email,
-        address,
+        address_line1: address.address_line1,
+        unit: address.unit,
+        city: address.city,
+        state: address.state,
+        zip: address.zip,
+        latitude: address.latitude,
+        longitude: address.longitude,
+        formatted_address: address.formatted_address,
       }),
     });
     setSaving(false);
@@ -840,6 +854,9 @@ function NewCustomerInline({
     onCreated(c);
   }
 
+  const pillCls =
+    "border border-slate-200 rounded-full px-4 py-2 text-sm bg-white";
+
   return (
     <div className="mt-3 border border-slate-200 rounded-2xl p-4 space-y-3 bg-slate-50">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -848,37 +865,36 @@ function NewCustomerInline({
           placeholder="First name *"
           value={firstName}
           onChange={(e) => setFirstName(e.target.value)}
-          className="border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+          className={pillCls}
         />
         <input
           type="text"
           placeholder="Last name *"
           value={lastName}
           onChange={(e) => setLastName(e.target.value)}
-          className="border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
-        />
-        <input
-          type="text"
-          placeholder="Address"
-          value={address}
-          onChange={(e) => setAddress(e.target.value)}
-          className="border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+          className={pillCls}
         />
         <input
           type="tel"
           placeholder="Phone"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
-          className="border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+          className={pillCls}
         />
         <input
           type="email"
           placeholder="Email"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="sm:col-span-2 border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+          className={pillCls}
         />
       </div>
+      <AddressFields
+        value={address}
+        onChange={setAddress}
+        label={false}
+        inputClassName={pillCls + " w-full"}
+      />
       {error && <p className="text-sm text-rose-600">{error}</p>}
       <div className="flex justify-end gap-2">
         <button

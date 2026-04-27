@@ -50,8 +50,10 @@ export async function POST(req: Request) {
   }
 
   const insert = db.prepare(
-    `INSERT INTO customers (name, first_name, last_name, phone, email, address)
-     VALUES (?, ?, ?, ?, ?, ?)`
+    `INSERT INTO customers
+       (name, first_name, last_name, phone, email,
+        address, address_line1, formatted_address)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   );
 
   const skippedReasons: Skipped[] = [];
@@ -92,7 +94,16 @@ export async function POST(req: Request) {
       }
 
       const name = `${first} ${last}`.trim();
-      insert.run(name, first, last, phone || null, email || null, address || null);
+      insert.run(
+        name,
+        first,
+        last,
+        phone || null,
+        email || null,
+        address || null,
+        address || null,
+        address || null
+      );
 
       if (phone) phoneSet.add(phone.toLowerCase());
       if (email) emailSet.add(email.toLowerCase());
