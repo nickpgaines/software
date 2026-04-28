@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type Payment, type PaymentMethod } from "@/lib/db";
+import { autoCompleteSteps } from "@/lib/jobs";
 
 export const dynamic = "force-dynamic";
 
@@ -89,25 +90,33 @@ export async function POST(
   const send_email = body.send_email ? 1 : 0;
   const send_sms = body.send_sms ? 1 : 0;
 
-  const result = db
-    .prepare(
-      `INSERT INTO payments
-         (job_id, amount_cents, tip_cents, method, payment_date, notes, send_email, send_sms)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-    )
-    .run(
-      jobId,
-      amountCents,
-      tipCents,
-      method,
-      payment_date,
-      body.notes ? String(body.notes) : null,
-      send_email,
-      send_sms
-    );
+  // Atomic: insert the payment row AND auto-complete any unset work
+  // steps in the same transaction. If anything throws, BOTH the row
+  // and the step timestamps roll back.
+  const insertedId = db.transaction(() => {
+    const result = db
+      .prepare(
+        `INSERT INTO payments
+           (job_id, amount_cents, tip_cents, method, payment_date, notes, send_email, send_sms)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        jobId,
+        amountCents,
+        tipCents,
+        method,
+        payment_date,
+        body.notes ? String(body.notes) : null,
+        send_email,
+        send_sms
+      );
+    autoCompleteSteps(db, jobId);
+    return Number(result.lastInsertRowid);
+  })();
+
   const created = db
     .prepare("SELECT * FROM payments WHERE id = ?")
-    .get(result.lastInsertRowid) as Payment;
+    .get(insertedId) as Payment;
 
   // TODO(post-vercel): wire real email/SMS sending via Resend + Twilio.
   // The toggle values are persisted on the payment record so we can

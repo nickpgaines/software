@@ -50,6 +50,12 @@ type Detail = {
   paid_total_cents: number;
   tip_total_cents: number;
   paid_status: "unpaid" | "partial" | "paid";
+  job_status:
+    | "scheduled"
+    | "in_progress"
+    | "completed_unpaid"
+    | "completed_partial"
+    | "completed_paid";
 };
 
 type Step = "en_route" | "arrived" | "started" | "completed";
@@ -217,9 +223,12 @@ export default function JobDetailClient({
           >
             ← Back to schedule
           </Link>
-          <h1 className="text-3xl font-bold text-slate-900 mt-1">
-            {job.customer_name}
-          </h1>
+          <div className="flex items-center gap-3 flex-wrap mt-1">
+            <h1 className="text-3xl font-bold text-slate-900">
+              {job.customer_name}
+            </h1>
+            <JobStatusBadge status={job.job_status} />
+          </div>
           <p className="text-sm text-slate-400 mt-1">
             {dayStamp(job.scheduled_at)} ·{" "}
             {job.anytime
@@ -428,10 +437,7 @@ export default function JobDetailClient({
         <div className="space-y-6">
           <section className="bg-white border border-slate-200 rounded-2xl p-5">
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <h2 className="font-semibold text-slate-900">Job Details</h2>
-                <PaidBadge status={job.paid_status} />
-              </div>
+              <h2 className="font-semibold text-slate-900">Job Details</h2>
               <Link
                 href={`/schedule/${job.id}/edit`}
                 className="text-sm text-cyan-600 hover:text-cyan-700"
@@ -696,27 +702,60 @@ function Divider() {
   return <div className="border-t border-slate-100 my-1.5" />;
 }
 
-function PaidBadge({ status }: { status: "unpaid" | "partial" | "paid" }) {
-  if (status === "paid") {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">
-        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-        Paid
-      </span>
-    );
-  }
-  if (status === "partial") {
-    return (
-      <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100">
-        <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-        Partial
-      </span>
-    );
-  }
+type UnifiedStatus =
+  | "scheduled"
+  | "in_progress"
+  | "completed_unpaid"
+  | "completed_partial"
+  | "completed_paid";
+
+const STATUS_VISUALS: Record<
+  UnifiedStatus,
+  { label: string; outer: string; dot: string }
+> = {
+  scheduled: {
+    label: "Scheduled",
+    outer:
+      "bg-slate-100 text-slate-600 border border-slate-200",
+    dot: "bg-slate-400",
+  },
+  in_progress: {
+    label: "In Progress",
+    outer:
+      "bg-amber-50 text-amber-700 border border-amber-100",
+    dot: "bg-amber-500",
+  },
+  completed_unpaid: {
+    label: "Completed - Unpaid",
+    outer:
+      "bg-rose-50 text-rose-700 border border-rose-100",
+    dot: "bg-rose-500",
+  },
+  completed_partial: {
+    label: "Partially Paid",
+    outer:
+      "bg-amber-50 text-amber-700 border border-amber-100",
+    dot: "bg-amber-500",
+  },
+  completed_paid: {
+    label: "Paid",
+    outer:
+      "bg-emerald-50 text-emerald-700 border border-emerald-100",
+    dot: "bg-emerald-500",
+  },
+};
+
+function JobStatusBadge({ status }: { status: UnifiedStatus }) {
+  const v = STATUS_VISUALS[status];
   return (
-    <span className="inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-      <span className="w-1.5 h-1.5 rounded-full bg-slate-400" />
-      Unpaid
+    <span
+      className={
+        "inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full " +
+        v.outer
+      }
+    >
+      <span className={"w-1.5 h-1.5 rounded-full " + v.dot} />
+      {v.label}
     </span>
   );
 }

@@ -15,6 +15,12 @@ type Job = {
   price_cents: number;
   status: string;
   anytime: number;
+  job_status?:
+    | "scheduled"
+    | "in_progress"
+    | "completed_unpaid"
+    | "completed_partial"
+    | "completed_paid";
 };
 
 type View = "day" | "week" | "month";
@@ -358,16 +364,25 @@ function jobsByDay(jobs: Job[], days: Date[]) {
   );
 }
 
-function statusColors(status: string) {
-  if (status === "completed")
-    return "bg-emerald-50 border-emerald-200 text-emerald-900";
-  if (status === "cancelled")
-    return "bg-slate-100 border-slate-200 text-slate-500 line-through";
-  if (status === "started")
-    return "bg-amber-50 border-amber-200 text-amber-900";
-  if (status === "en_route" || status === "arrived")
-    return "bg-violet-50 border-violet-200 text-violet-900";
-  return "bg-cyan-50 border-cyan-200 text-cyan-900";
+// Map the unified job_status (server-computed) to colors. Cancelled
+// is handled separately because it's not a unified-status state.
+function jobStatusColors(job: Job) {
+  if (job.status === "cancelled") {
+    return "bg-slate-100 border-slate-200 text-slate-500 line-through border-l-4 border-l-slate-400";
+  }
+  switch (job.job_status) {
+    case "completed_paid":
+      return "bg-emerald-50 border-emerald-200 text-emerald-900 border-l-4 border-l-emerald-500";
+    case "completed_partial":
+      return "bg-amber-50 border-amber-200 text-amber-900 border-l-4 border-l-amber-500";
+    case "completed_unpaid":
+      return "bg-rose-50 border-rose-200 text-rose-900 border-l-4 border-l-rose-500";
+    case "in_progress":
+      return "bg-amber-50 border-amber-200 text-amber-900 border-l-4 border-l-amber-500";
+    case "scheduled":
+    default:
+      return "bg-slate-50 border-slate-200 text-slate-700 border-l-4 border-l-slate-300";
+  }
 }
 
 function JobBlock({ job }: { job: Job }) {
@@ -380,7 +395,7 @@ function JobBlock({ job }: { job: Job }) {
   const titleTime = `${timeLabel(start.toISOString())} – ${timeLabel(
     end.toISOString()
   )}`;
-  const colors = statusColors(job.status);
+  const colors = jobStatusColors(job);
   return (
     <Link
       href={`/schedule/${job.id}`}

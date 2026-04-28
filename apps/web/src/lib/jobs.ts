@@ -41,6 +41,56 @@ export type JobInput = {
 
 export type PaidStatus = "unpaid" | "partial" | "paid";
 
+export type JobStatus =
+  | "scheduled"
+  | "in_progress"
+  | "completed_unpaid"
+  | "completed_partial"
+  | "completed_paid";
+
+export function computeJobStatus(job: {
+  en_route_at: string | null;
+  arrived_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  price_cents: number;
+  paid_total_cents: number;
+}): JobStatus {
+  const completed = !!job.completed_at;
+  const anyStep =
+    !!job.en_route_at ||
+    !!job.arrived_at ||
+    !!job.started_at ||
+    !!job.completed_at;
+
+  if (completed) {
+    if (job.paid_total_cents <= 0) return "completed_unpaid";
+    if (job.paid_total_cents >= (job.price_cents || 0)) return "completed_paid";
+    return "completed_partial";
+  }
+  return anyStep ? "in_progress" : "scheduled";
+}
+
+export function autoCompleteSteps(db: Database.Database, jobId: number) {
+  const now = new Date().toISOString();
+  // COALESCE preserves any timestamp that's already there — never
+  // overwrites a manually-logged step. The legacy `status` text
+  // column is promoted to 'completed' unless the job was previously
+  // 'cancelled'.
+  db.prepare(
+    `UPDATE jobs
+       SET en_route_at  = COALESCE(en_route_at,  ?),
+           arrived_at   = COALESCE(arrived_at,   ?),
+           started_at   = COALESCE(started_at,   ?),
+           completed_at = COALESCE(completed_at, ?),
+           status = CASE WHEN status = 'cancelled' THEN status ELSE 'completed' END
+     WHERE id = ?`
+  ).run(now, now, now, now, jobId);
+  // TODO(post-vercel): when SMS notifications are wired up, ensure
+  // auto-completed steps do NOT fire notifications. Only manual step
+  // taps should notify.
+}
+
 export type JobDetail = Job & {
   customer_name: string;
   customer_phone: string | null;
@@ -54,6 +104,7 @@ export type JobDetail = Job & {
   paid_total_cents: number;
   tip_total_cents: number;
   paid_status: PaidStatus;
+  job_status: JobStatus;
 };
 
 const toBit = (v: boolean | number | undefined) =>
@@ -323,6 +374,15 @@ export function getJobDetail(
       ? "paid"
       : "partial";
 
+  const job_status = computeJobStatus({
+    en_route_at: job.en_route_at,
+    arrived_at: job.arrived_at,
+    started_at: job.started_at,
+    completed_at: job.completed_at,
+    price_cents: job.price_cents,
+    paid_total_cents,
+  });
+
   return {
     ...job,
     line_items: lineItems,
@@ -333,6 +393,7 @@ export function getJobDetail(
     paid_total_cents,
     tip_total_cents,
     paid_status,
+    job_status,
   };
 }
 
