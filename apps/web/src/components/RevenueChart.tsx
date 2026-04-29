@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Range = "1w" | "1m" | "3m" | "1y";
 
@@ -46,22 +46,52 @@ function formatRangeLabel(start: string, end: string, range: Range) {
   return `${fmt(s)} – ${fmt(e)}`;
 }
 
+// Monotone cubic interpolation (Fritsch–Carlson). Generates a smooth
+// Bezier path that NEVER overshoots or undershoots the data points,
+// so for non-negative inputs the curve stays at or above the baseline.
 function smoothPath(points: [number, number][]): string {
-  if (points.length === 0) return "";
-  if (points.length === 1) return `M ${points[0][0]},${points[0][1]}`;
+  const n = points.length;
+  if (n === 0) return "";
+  if (n === 1) return `M ${points[0][0]},${points[0][1]}`;
+  if (n === 2) {
+    return `M ${points[0][0]},${points[0][1]} L ${points[1][0]},${points[1][1]}`;
+  }
+  const dx: number[] = [];
+  const slope: number[] = [];
+  for (let i = 0; i < n - 1; i++) {
+    const dxi = points[i + 1][0] - points[i][0];
+    dx.push(dxi);
+    slope.push(dxi === 0 ? 0 : (points[i + 1][1] - points[i][1]) / dxi);
+  }
+  const tangent: number[] = new Array(n);
+  tangent[0] = slope[0];
+  tangent[n - 1] = slope[n - 2];
+  for (let i = 1; i < n - 1; i++) {
+    const m1 = slope[i - 1];
+    const m2 = slope[i];
+    if (m1 * m2 <= 0) {
+      tangent[i] = 0;
+    } else {
+      const dx1 = dx[i - 1];
+      const dx2 = dx[i];
+      const common = dx1 + dx2;
+      tangent[i] = (3 * common) / ((common + dx2) / m1 + (common + dx1) / m2);
+    }
+  }
   let d = `M ${points[0][0]},${points[0][1]}`;
-  for (let i = 0; i < points.length - 1; i++) {
-    const p0 = points[Math.max(0, i - 1)];
-    const p1 = points[i];
-    const p2 = points[i + 1];
-    const p3 = points[Math.min(points.length - 1, i + 2)];
-    const cp1x = p1[0] + (p2[0] - p0[0]) / 6;
-    const cp1y = p1[1] + (p2[1] - p0[1]) / 6;
-    const cp2x = p2[0] - (p3[0] - p1[0]) / 6;
-    const cp2y = p2[1] - (p3[1] - p1[1]) / 6;
-    d += ` C ${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(
+  for (let i = 0; i < n - 1; i++) {
+    const x0 = points[i][0];
+    const y0 = points[i][1];
+    const x1 = points[i + 1][0];
+    const y1 = points[i + 1][1];
+    const h = (x1 - x0) / 3;
+    const c1x = x0 + h;
+    const c1y = y0 + tangent[i] * h;
+    const c2x = x1 - h;
+    const c2y = y1 - tangent[i + 1] * h;
+    d += ` C ${c1x.toFixed(2)},${c1y.toFixed(2)} ${c2x.toFixed(
       2
-    )},${cp2y.toFixed(2)} ${p2[0].toFixed(2)},${p2[1].toFixed(2)}`;
+    )},${c2y.toFixed(2)} ${x1.toFixed(2)},${y1.toFixed(2)}`;
   }
   return d;
 }
@@ -73,6 +103,24 @@ function niceCeil(value: number) {
   const norm = value / mag;
   const nice = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
   return nice * mag;
+}
+
+function tooltipMoney(cents: number) {
+  return `$${(cents / 100).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function tooltipDate(iso: string) {
+  // Force midday so the date doesn't shift across timezones.
+  const d = new Date(`${iso}T12:00:00`);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 }
 
 function Chart({ days }: { days: Day[] }) {
@@ -89,18 +137,17 @@ function Chart({ days }: { days: Day[] }) {
 
   const innerW = width - padLeft - padRight;
   const innerH = height - padTop - padBottom;
+  const baseY = padTop + innerH;
 
   const x = (i: number) =>
     padLeft + (days.length <= 1 ? innerW / 2 : (i / (days.length - 1)) * innerW);
-  const y = (v: number) => padTop + innerH - (v / yMax) * innerH;
+  const y = (v: number) => baseY - (v / yMax) * innerH;
 
   const points = days.map((d, i) => [x(i), y(d.cents)] as [number, number]);
   const linePath = smoothPath(points);
   const areaPath =
     points.length > 0
-      ? `${linePath} L ${points[points.length - 1][0]},${
-          padTop + innerH
-        } L ${points[0][0]},${padTop + innerH} Z`
+      ? `${linePath} L ${points[points.length - 1][0]},${baseY} L ${points[0][0]},${baseY} Z`
       : "";
 
   const lastIdx = days.length - 1;
@@ -108,56 +155,95 @@ function Chart({ days }: { days: Day[] }) {
 
   const xLabelEvery = Math.max(1, Math.ceil(days.length / 20));
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+
+  function onMove(e: React.MouseEvent<HTMLDivElement>) {
+    const node = containerRef.current;
+    if (!node || days.length === 0) return;
+    const rect = node.getBoundingClientRect();
+    const localX = e.clientX - rect.left;
+    // Map container X back into the SVG's viewBox space.
+    const vbX = (localX / rect.width) * width;
+    if (days.length === 1) {
+      setHoverIdx(0);
+      return;
+    }
+    const stepVB = innerW / (days.length - 1);
+    const rel = (vbX - padLeft) / stepVB;
+    let idx = Math.round(rel);
+    if (idx < 0) idx = 0;
+    if (idx > days.length - 1) idx = days.length - 1;
+    setHoverIdx(idx);
+  }
+
+  const hovered = hoverIdx !== null ? days[hoverIdx] : null;
+  const hoveredPoint = hoverIdx !== null ? points[hoverIdx] : null;
+  const tooltipLeftPct = hoveredPoint ? (hoveredPoint[0] / width) * 100 : 0;
+
   return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      className="w-full h-[280px] sm:h-[320px]"
-      preserveAspectRatio="none"
+    <div
+      ref={containerRef}
+      className="relative w-full h-[280px] sm:h-[320px]"
+      onMouseMove={onMove}
+      onMouseLeave={() => setHoverIdx(null)}
     >
-      <defs>
-        <linearGradient id="revArea" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="#38bdf8" stopOpacity="0" />
-        </linearGradient>
-      </defs>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="absolute inset-0 w-full h-full"
+        preserveAspectRatio="none"
+      >
+        <defs>
+          <linearGradient id="revArea" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#38bdf8" stopOpacity="0.35" />
+            <stop offset="100%" stopColor="#38bdf8" stopOpacity="0" />
+          </linearGradient>
+          <clipPath id="revPlot">
+            {/* Clip the area fill to the plot rectangle, so even if a
+                future curve type ever dipped below baseY it can't bleed
+                visibly past it. */}
+            <rect x={padLeft} y={padTop} width={innerW} height={innerH} />
+          </clipPath>
+        </defs>
 
-      {yTicks.map((t, i) => (
-        <g key={i}>
-          <line
-            x1={padLeft}
-            x2={width - padRight}
-            y1={y(t)}
-            y2={y(t)}
-            stroke="#e5e7eb"
-            strokeDasharray="2 4"
+        {yTicks.map((t, i) => (
+          <g key={i}>
+            <line
+              x1={padLeft}
+              x2={width - padRight}
+              y1={y(t)}
+              y2={y(t)}
+              stroke="#e5e7eb"
+              strokeDasharray="2 4"
+            />
+            <text
+              x={padLeft - 8}
+              y={y(t)}
+              dy="0.32em"
+              textAnchor="end"
+              className="fill-slate-400"
+              fontSize="11"
+            >
+              {Math.round(t / 100)}
+            </text>
+          </g>
+        ))}
+
+        {areaPath && (
+          <path d={areaPath} fill="url(#revArea)" clipPath="url(#revPlot)" />
+        )}
+        {linePath && (
+          <path
+            d={linePath}
+            fill="none"
+            stroke="#38bdf8"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
           />
-          <text
-            x={padLeft - 8}
-            y={y(t)}
-            dy="0.32em"
-            textAnchor="end"
-            className="fill-slate-400"
-            fontSize="11"
-          >
-            {Math.round(t / 100)}
-          </text>
-        </g>
-      ))}
+        )}
 
-      {areaPath && <path d={areaPath} fill="url(#revArea)" />}
-      {linePath && (
-        <path
-          d={linePath}
-          fill="none"
-          stroke="#38bdf8"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      )}
-
-      {lastPoint && (
-        <>
+        {lastPoint && hoverIdx === null && (
           <circle
             cx={lastPoint[0]}
             cy={lastPoint[1]}
@@ -166,27 +252,62 @@ function Chart({ days }: { days: Day[] }) {
             stroke="#fff"
             strokeWidth="2"
           />
-        </>
-      )}
+        )}
 
-      {days.map((d, i) => {
-        if (i % xLabelEvery !== 0 && i !== days.length - 1) return null;
-        const date = new Date(d.date);
-        const label = date.getDate().toString();
-        return (
-          <text
-            key={d.date}
-            x={x(i)}
-            y={height - padBottom + 18}
-            textAnchor="middle"
-            className="fill-slate-400"
-            fontSize="11"
-          >
-            {label}
-          </text>
-        );
-      })}
-    </svg>
+        {hoveredPoint && (
+          <>
+            <line
+              x1={hoveredPoint[0]}
+              x2={hoveredPoint[0]}
+              y1={padTop}
+              y2={baseY}
+              stroke="#94a3b8"
+              strokeDasharray="2 4"
+              strokeWidth="1"
+              vectorEffect="non-scaling-stroke"
+            />
+            <circle
+              cx={hoveredPoint[0]}
+              cy={hoveredPoint[1]}
+              r="5"
+              fill="#38bdf8"
+              stroke="#fff"
+              strokeWidth="2"
+            />
+          </>
+        )}
+
+        {days.map((d, i) => {
+          if (i % xLabelEvery !== 0 && i !== days.length - 1) return null;
+          const date = new Date(`${d.date}T12:00:00`);
+          const label = date.getDate().toString();
+          return (
+            <text
+              key={d.date}
+              x={x(i)}
+              y={height - padBottom + 18}
+              textAnchor="middle"
+              className="fill-slate-400"
+              fontSize="11"
+            >
+              {label}
+            </text>
+          );
+        })}
+      </svg>
+
+      {hovered && (
+        <div
+          className="pointer-events-none absolute -translate-x-1/2 -translate-y-full bg-white border border-slate-200 rounded-lg shadow-md px-2.5 py-1.5 text-xs whitespace-nowrap"
+          style={{ left: `${tooltipLeftPct}%`, top: 8 }}
+        >
+          <div className="text-slate-500">{tooltipDate(hovered.date)}</div>
+          <div className="font-semibold text-slate-900 tabular-nums">
+            {tooltipMoney(hovered.cents)}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
