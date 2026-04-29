@@ -1,0 +1,373 @@
+"use client";
+
+import { useEffect, useMemo, useRef, useState } from "react";
+
+type Conversation = {
+  id: number;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  last_body: string | null;
+  last_direction: "outbound" | "inbound" | null;
+  last_at: string | null;
+  unread_count: number;
+};
+
+type Message = {
+  id: number;
+  customer_id: number;
+  body: string;
+  direction: "outbound" | "inbound";
+  created_at: string;
+  read_at: string | null;
+};
+
+function relativeTime(iso: string | null) {
+  if (!iso) return "";
+  const d = new Date(iso + (iso.endsWith("Z") ? "" : "Z"));
+  const diff = Date.now() - d.getTime();
+  const m = Math.floor(diff / 60_000);
+  if (m < 1) return "now";
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  const days = Math.floor(h / 24);
+  if (days < 7) return `${days}d`;
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function fullTime(iso: string) {
+  const d = new Date(iso + (iso.endsWith("Z") ? "" : "Z"));
+  return d.toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  });
+}
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+export default function MessagesClient() {
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [search, setSearch] = useState("");
+  const [unreadOnly, setUnreadOnly] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  async function loadConversations() {
+    const res = await fetch("/api/messages/conversations");
+    if (res.ok) setConversations(await res.json());
+  }
+
+  useEffect(() => {
+    loadConversations();
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    return conversations.filter((c) => {
+      if (unreadOnly && c.unread_count === 0) return false;
+      if (!q) return true;
+      return (
+        c.name.toLowerCase().includes(q) ||
+        (c.phone || "").toLowerCase().includes(q) ||
+        (c.last_body || "").toLowerCase().includes(q)
+      );
+    });
+  }, [conversations, search, unreadOnly]);
+
+  const selected =
+    conversations.find((c) => c.id === selectedId) || null;
+
+  return (
+    <div className="flex bg-white border border-slate-200 rounded-2xl overflow-hidden h-[calc(100vh-9rem)] min-h-[480px] shadow-sm">
+      <aside className="w-80 shrink-0 border-r border-slate-200 flex flex-col">
+        <div className="px-4 pt-4 pb-3 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-900">Messages</h2>
+          <button
+            type="button"
+            title="Compose"
+            className="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center"
+          >
+            <svg
+              className="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M12 20h9" />
+              <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z" />
+            </svg>
+          </button>
+        </div>
+        <div className="px-4 pb-2">
+          <div className="relative">
+            <input
+              type="search"
+              placeholder="Search conversations..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-full pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+            />
+            <svg
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+          </div>
+        </div>
+        <div className="px-4 pb-3 flex items-center justify-between">
+          <label className="text-xs text-slate-600 flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={unreadOnly}
+              onChange={(e) => setUnreadOnly(e.target.checked)}
+              className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+            />
+            Unread only
+          </label>
+        </div>
+
+        <div className="flex-1 overflow-y-auto border-t border-slate-100">
+          {filtered.length === 0 ? (
+            <div className="p-6 text-center text-sm text-slate-400">
+              {conversations.length === 0
+                ? "No customers yet."
+                : "No matching conversations."}
+            </div>
+          ) : (
+            <ul className="divide-y divide-slate-100">
+              {filtered.map((c) => (
+                <li key={c.id}>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedId(c.id)}
+                    className={
+                      "w-full text-left px-4 py-3 flex gap-3 hover:bg-slate-50 transition " +
+                      (selectedId === c.id ? "bg-slate-100" : "")
+                    }
+                  >
+                    <div className="w-9 h-9 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-semibold shrink-0">
+                      {initials(c.name)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-baseline justify-between gap-2">
+                        <span className="font-medium text-slate-900 truncate">
+                          {c.name}
+                        </span>
+                        <span
+                          className="text-[10px] text-slate-400 shrink-0"
+                          suppressHydrationWarning
+                        >
+                          {mounted ? relativeTime(c.last_at) : ""}
+                        </span>
+                      </div>
+                      <div className="text-xs text-slate-500 truncate">
+                        {c.phone || "—"}
+                      </div>
+                      <div className="flex items-center justify-between gap-2 mt-0.5">
+                        <span className="text-xs text-slate-500 truncate">
+                          {c.last_direction === "outbound" ? "You: " : ""}
+                          {c.last_body || (
+                            <span className="italic text-slate-400">
+                              No messages yet
+                            </span>
+                          )}
+                        </span>
+                        {c.unread_count > 0 && (
+                          <span className="text-[10px] bg-slate-900 text-white rounded-full px-1.5 py-0.5 shrink-0">
+                            {c.unread_count}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </aside>
+
+      <main className="flex-1 flex flex-col min-w-0">
+        {!selected ? (
+          <div className="flex-1 flex items-center justify-center text-sm text-slate-400">
+            Select a conversation
+          </div>
+        ) : (
+          <Thread
+            conversation={selected}
+            mounted={mounted}
+            onMessageSent={() => loadConversations()}
+          />
+        )}
+      </main>
+    </div>
+  );
+}
+
+function Thread({
+  conversation,
+  mounted,
+  onMessageSent,
+}: {
+  conversation: Conversation;
+  mounted: boolean;
+  onMessageSent: () => void;
+}) {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [body, setBody] = useState("");
+  const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  async function load() {
+    setLoading(true);
+    const res = await fetch(`/api/messages?customer_id=${conversation.id}`);
+    if (res.ok) {
+      const data = (await res.json()) as Message[];
+      setMessages(data);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    setMessages([]);
+    load();
+  }, [conversation.id]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [messages]);
+
+  async function send(e: React.FormEvent) {
+    e.preventDefault();
+    const text = body.trim();
+    if (!text) return;
+    setSending(true);
+    const res = await fetch("/api/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ customer_id: conversation.id, body: text }),
+    });
+    setSending(false);
+    if (res.ok) {
+      const created = (await res.json()) as Message;
+      setMessages((arr) => [...arr, created]);
+      setBody("");
+      onMessageSent();
+    }
+  }
+
+  return (
+    <>
+      <header className="px-5 py-3 border-b border-slate-200 flex items-center gap-3">
+        <div className="w-9 h-9 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-semibold">
+          {initials(conversation.name)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="font-semibold text-slate-900 truncate">
+            {conversation.name}
+          </div>
+          <div className="text-xs text-slate-500 truncate">
+            {conversation.phone || "—"}
+          </div>
+        </div>
+      </header>
+
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 bg-slate-50/40">
+        {loading ? (
+          <div className="text-center text-sm text-slate-400 py-6">Loading…</div>
+        ) : messages.length === 0 ? (
+          <div className="text-center text-sm text-slate-400 py-10">
+            No messages yet. Send the first one below.
+          </div>
+        ) : (
+          <ul className="space-y-2">
+            {messages.map((m) => {
+              const out = m.direction === "outbound";
+              return (
+                <li
+                  key={m.id}
+                  className={"flex " + (out ? "justify-end" : "justify-start")}
+                >
+                  <div
+                    className={
+                      "max-w-[75%] rounded-2xl px-3 py-2 text-sm break-words " +
+                      (out
+                        ? "bg-slate-900 text-white rounded-br-sm"
+                        : "bg-white border border-slate-200 text-slate-900 rounded-bl-sm")
+                    }
+                  >
+                    <div>{m.body}</div>
+                    <div
+                      className={
+                        "text-[10px] mt-1 " +
+                        (out ? "text-slate-300" : "text-slate-400")
+                      }
+                      suppressHydrationWarning
+                    >
+                      {mounted ? fullTime(m.created_at) : ""}
+                    </div>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+
+      <form
+        onSubmit={send}
+        className="border-t border-slate-200 px-4 py-3 flex items-center gap-2"
+      >
+        <input
+          type="text"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+          placeholder="Type a message…"
+          className="flex-1 border border-slate-200 rounded-full px-4 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-400"
+        />
+        <button
+          type="submit"
+          disabled={sending || !body.trim()}
+          className="bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full w-10 h-10 flex items-center justify-center"
+          aria-label="Send"
+        >
+          <svg
+            className="w-4 h-4"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="22" y1="2" x2="11" y2="13" />
+            <polygon points="22 2 15 22 11 13 2 9 22 2" />
+          </svg>
+        </button>
+      </form>
+    </>
+  );
+}
