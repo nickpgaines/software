@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import PaymentsSection from "@/components/jobs/PaymentsSection";
 import RecordPaymentModal from "@/components/jobs/RecordPaymentModal";
 
@@ -172,6 +172,16 @@ export default function JobDetailClient({
   const [job, setJob] = useState<Detail>(initialJob);
   const [busy, setBusy] = useState<Step | null>(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+
+  // Sync local job state with initialJob whenever the server-provided
+  // record changes. Without this, useState(initialJob) only seeds on
+  // the first render — so freshly-fetched timestamps (e.g. step
+  // logs persisted on a previous visit, auto-completed steps from a
+  // payment, or any router refresh) won't appear in the buttons until
+  // the next click triggers a setJob().
+  useEffect(() => {
+    setJob(initialJob);
+  }, [initialJob]);
 
   async function refreshJob() {
     const res = await fetch(`/api/jobs/${job.id}`);
@@ -635,7 +645,9 @@ function TotalsPanel({
             <Row
               label="Paid (w/o tip)"
               value={money(paidTotalCents)}
-              valueClass="text-emerald-600"
+              valueClass={
+                paidTotalCents > 0 ? "text-emerald-600" : undefined
+              }
             />
             <Row
               label="Tip"
@@ -645,7 +657,9 @@ function TotalsPanel({
             <Row
               label="Total Paid"
               value={money(totalPaidCents)}
-              valueClass="text-emerald-600"
+              valueClass={
+                totalPaidCents > 0 ? "text-emerald-600" : undefined
+              }
               bold
             />
           </>
@@ -653,7 +667,9 @@ function TotalsPanel({
           <Row
             label="Total Paid"
             value={money(paidTotalCents)}
-            valueClass="text-emerald-600"
+            valueClass={
+              paidTotalCents > 0 ? "text-emerald-600" : undefined
+            }
             bold
           />
         )}
@@ -662,7 +678,7 @@ function TotalsPanel({
           label="Amount Due"
           value={money(dueCents)}
           bold
-          valueClass={dueCents > 0 ? "text-amber-600" : "text-emerald-600"}
+          valueClass={dueCents > 0 ? "text-rose-600" : undefined}
         />
       </dl>
     </div>
@@ -688,8 +704,8 @@ function Row({
       <dd
         className={
           "tabular-nums " +
-          (bold ? "font-bold text-slate-900 " : "font-semibold text-slate-900 ") +
-          (valueClass || "")
+          (bold ? "font-bold " : "font-semibold ") +
+          (valueClass || "text-slate-900")
         }
       >
         {value}
