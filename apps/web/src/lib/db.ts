@@ -65,9 +65,42 @@ function init(db: Database.Database) {
   const staffCols = db
     .prepare("PRAGMA table_info(staff)")
     .all() as { name: string }[];
-  if (!staffCols.some((c) => c.name === "role")) {
-    db.exec("ALTER TABLE staff ADD COLUMN role TEXT");
+  const staffAdds: [string, string][] = [
+    ["role", "TEXT"],
+    ["first_name", "TEXT"],
+    ["last_name", "TEXT"],
+    ["phone", "TEXT"],
+    ["email", "TEXT"],
+    ["password_hash", "TEXT"],
+    ["color", "TEXT NOT NULL DEFAULT 'blue'"],
+    ["permission_level", "TEXT NOT NULL DEFAULT 'manager'"],
+    ["photo_url", "TEXT"],
+    ["updated_at", "TEXT"],
+  ];
+  for (const [col, def] of staffAdds) {
+    if (!staffCols.some((c) => c.name === col)) {
+      db.exec(`ALTER TABLE staff ADD COLUMN ${col} ${def}`);
+    }
   }
+  // Backfill first_name from name when missing.
+  db.exec(`
+    UPDATE staff
+    SET first_name = CASE
+          WHEN INSTR(TRIM(name), ' ') > 0
+            THEN SUBSTR(TRIM(name), 1, INSTR(TRIM(name), ' ') - 1)
+          ELSE TRIM(name)
+        END,
+        last_name = CASE
+          WHEN INSTR(TRIM(name), ' ') > 0
+            THEN TRIM(SUBSTR(TRIM(name), INSTR(TRIM(name), ' ') + 1))
+          ELSE ''
+        END
+    WHERE name IS NOT NULL
+      AND (first_name IS NULL OR first_name = '')
+  `);
+  db.exec(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_staff_email ON staff(email) WHERE email IS NOT NULL`
+  );
 
   const customerCols = db
     .prepare("PRAGMA table_info(customers)")
@@ -298,11 +331,29 @@ export type Customer = {
   created_at: string;
 };
 
+export type PermissionLevel =
+  | "admin"
+  | "manager"
+  | "team_lead"
+  | "salesperson_all"
+  | "salesperson_own"
+  | "field_tech"
+  | "custom";
+
 export type Staff = {
   id: number;
   name: string;
   role: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
+  email: string | null;
+  password_hash: string | null;
+  color: string;
+  permission_level: PermissionLevel;
+  photo_url: string | null;
   created_at: string;
+  updated_at: string | null;
 };
 
 export type Job = {
