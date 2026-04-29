@@ -385,7 +385,84 @@ function jobStatusColors(job: Job) {
   }
 }
 
-function JobBlock({ job }: { job: Job }) {
+function jobInterval(j: Job): { startMs: number; endMs: number } {
+  const startMs = new Date(j.scheduled_at).getTime();
+  const endMs = j.end_time
+    ? new Date(j.end_time).getTime()
+    : startMs + (j.duration_minutes || 60) * 60_000;
+  return { startMs, endMs: Math.max(endMs, startMs + 1) };
+}
+
+// Leftmost-free-lane packing. For each event (sorted by start, then id),
+// pick the smallest lane index whose currently-active event has already
+// ended. Returns a per-job { lane, lanes } map where `lanes` is the max
+// concurrent overlap that includes this job — so two events that don't
+// overlap each other but each overlap a third are all rendered at 1/3.
+type LaneInfo = { lane: number; lanes: number };
+function assignLanes(jobs: Job[]): Map<number, LaneInfo> {
+  const sorted = [...jobs].sort((a, b) => {
+    const aStart = new Date(a.scheduled_at).getTime();
+    const bStart = new Date(b.scheduled_at).getTime();
+    if (aStart !== bStart) return aStart - bStart;
+    return a.id - b.id;
+  });
+  const intervals = sorted.map((j) => ({ id: j.id, ...jobInterval(j) }));
+  const laneEnds: number[] = []; // laneEnds[i] = endMs of last job placed in lane i
+  const laneOf = new Map<number, number>();
+  for (const it of intervals) {
+    let lane = laneEnds.findIndex((end) => end <= it.startMs);
+    if (lane === -1) {
+      lane = laneEnds.length;
+      laneEnds.push(it.endMs);
+    } else {
+      laneEnds[lane] = it.endMs;
+    }
+    laneOf.set(it.id, lane);
+  }
+  // Compute the cluster size (max concurrent count) covering each event.
+  const result = new Map<number, LaneInfo>();
+  for (const a of intervals) {
+    let maxConcurrent = 1;
+    for (const b of intervals) {
+      if (a.id === b.id) continue;
+      // Two intervals overlap if neither ends before the other starts.
+      if (a.startMs < b.endMs && b.startMs < a.endMs) {
+        // Reachable cluster: count via simple BFS through transitively-
+        // overlapping events that share a time window with `a`.
+        // For typical day-views this set is tiny; a quadratic walk is fine.
+        // (We approximate by counting all overlappers of `a` plus 1.)
+        maxConcurrent = Math.max(maxConcurrent, 2);
+      }
+    }
+    // More accurate: max simultaneous events at any instant within `a`'s
+    // span. Sweep the boundary points of overlappers.
+    const boundaries = new Set<number>([a.startMs, a.endMs]);
+    for (const b of intervals) {
+      if (a.id === b.id) continue;
+      if (a.startMs < b.endMs && b.startMs < a.endMs) {
+        boundaries.add(Math.max(b.startMs, a.startMs));
+        boundaries.add(Math.min(b.endMs, a.endMs));
+      }
+    }
+    for (const t of boundaries) {
+      let count = 0;
+      for (const b of intervals) {
+        if (b.startMs <= t && t < b.endMs) count++;
+      }
+      if (count > maxConcurrent) maxConcurrent = count;
+    }
+    result.set(a.id, { lane: laneOf.get(a.id) ?? 0, lanes: maxConcurrent });
+  }
+  return result;
+}
+
+function JobBlock({
+  job,
+  laneInfo,
+}: {
+  job: Job;
+  laneInfo?: LaneInfo;
+}) {
   const start = new Date(job.scheduled_at);
   const end = job.end_time
     ? new Date(job.end_time)
@@ -396,18 +473,34 @@ function JobBlock({ job }: { job: Job }) {
     end.toISOString()
   )}`;
   const colors = jobStatusColors(job);
+
+  const lanes = laneInfo?.lanes ?? 1;
+  const lane = laneInfo?.lane ?? 0;
+  const stacked = lanes > 1;
+  // Reserve a small gap between adjacent cards in the same time slot
+  // (4px, expressed as percentage of the column).
+  const gapPct = stacked ? 1 : 0;
+  const widthPct = 100 / lanes - gapPct * 2;
+  const leftPct = lane * (100 / lanes) + gapPct;
+
   return (
     <Link
       href={`/schedule/${job.id}`}
       className={
-        "absolute left-1 right-1 rounded-lg border px-2 py-1.5 text-xs shadow-sm hover:shadow transition " +
+        "absolute rounded-lg border px-2 py-1.5 text-xs shadow-sm hover:shadow transition overflow-hidden " +
         colors
       }
-      style={{ top: `${top}px`, height: `${height}px` }}
+      style={{
+        top: `${top}px`,
+        height: `${height}px`,
+        left: stacked ? `${leftPct}%` : "4px",
+        right: stacked ? undefined : "4px",
+        width: stacked ? `${widthPct}%` : undefined,
+      }}
     >
       <div className="font-semibold truncate">{job.customer_name}</div>
       <div className="opacity-75 truncate">Window Cleaning</div>
-      <div className="opacity-75">{titleTime}</div>
+      {!stacked && <div className="opacity-75 truncate">{titleTime}</div>}
       <div className="opacity-90 font-semibold">{money(job.price_cents)}</div>
     </Link>
   );
@@ -487,6 +580,7 @@ function WeekView({
             const dayJobs = buckets[i];
             const timed = dayJobs.filter((j) => !j.anytime);
             const anytime = dayJobs.filter((j) => j.anytime);
+            const lanes = assignLanes(timed);
             return (
               <div
                 key={d.toISOString()}
@@ -511,7 +605,11 @@ function WeekView({
                   </div>
                 )}
                 {timed.map((j) => (
-                  <JobBlock key={j.id} job={j} />
+                  <JobBlock
+                    key={j.id}
+                    job={j}
+                    laneInfo={lanes.get(j.id)}
+                  />
                 ))}
                 {isToday && <NowLine now={now} />}
               </div>
@@ -535,6 +633,7 @@ function DayView({
   const dayJobs = jobs.filter((j) => sameDay(new Date(j.scheduled_at), day));
   const timed = dayJobs.filter((j) => !j.anytime);
   const anytime = dayJobs.filter((j) => j.anytime);
+  const lanes = assignLanes(timed);
   const isToday = sameDay(day, startOfDay(now));
   return (
     <div className="grid grid-cols-[80px_1fr]">
@@ -568,7 +667,7 @@ function DayView({
           </div>
         )}
         {timed.map((j) => (
-          <JobBlock key={j.id} job={j} />
+          <JobBlock key={j.id} job={j} laneInfo={lanes.get(j.id)} />
         ))}
         {isToday && <NowLine now={now} />}
       </div>
