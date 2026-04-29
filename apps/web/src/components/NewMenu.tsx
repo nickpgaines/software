@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { Plus } from "lucide-react";
 
 type Item = {
   key: string;
@@ -37,23 +38,37 @@ export default function NewMenu({ fullWidth }: { fullWidth?: boolean }) {
         onClick={() => setOpen((v) => !v)}
         className={
           fullWidth
-            ? "inline-flex items-center justify-between w-full gap-1.5 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg px-3 py-2 text-sm font-medium shadow-sm"
+            ? "inline-flex items-center justify-center w-full gap-1.5 bg-gradient-to-r from-teal-400 to-teal-500 hover:from-teal-500 hover:to-teal-600 text-white rounded-full py-3 text-sm font-semibold shadow-sm transition-colors"
             : "inline-flex items-center gap-1.5 bg-cyan-500 hover:bg-cyan-600 text-white rounded-full px-3 py-1.5 text-sm font-medium shadow-sm"
         }
       >
-        New
-        <span
-          className={
-            "text-xs transition-transform " + (open ? "rotate-180 inline-block" : "inline-block")
-          }
-          aria-hidden
-        >
-          ▾
-        </span>
+        {fullWidth ? (
+          <>
+            <Plus className="w-4 h-4" strokeWidth={2.5} />
+            New
+          </>
+        ) : (
+          <>
+            New
+            <span
+              className={
+                "text-xs transition-transform " +
+                (open ? "rotate-180 inline-block" : "inline-block")
+              }
+              aria-hidden
+            >
+              ▾
+            </span>
+          </>
+        )}
       </button>
 
       {open && (
-        <div className={`absolute top-full mt-2 z-50 w-48 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden ${fullWidth ? "left-0" : "right-0"}`}>
+        <div
+          className={`absolute top-full mt-2 z-50 w-48 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden ${
+            fullWidth ? "left-0" : "right-0"
+          }`}
+        >
           <ul className="py-1">
             {ITEMS.map((it) => {
               const inner = (

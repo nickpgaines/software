@@ -37,21 +37,19 @@ export default function NavBar() {
   }
 
   return (
-    <aside className="fixed inset-y-0 left-0 w-60 bg-white border-r border-slate-200 flex flex-col z-40">
+    <aside className="fixed inset-y-0 left-0 w-60 bg-slate-50 flex flex-col z-40">
       {/* Logo */}
-      <div className="h-14 flex items-center px-5 shrink-0">
+      <div className="pt-6 pb-4 px-5 shrink-0">
         <span className="font-bold text-lg text-slate-900 tracking-tight">Nick360</span>
       </div>
 
       {/* + New button */}
-      <div className="px-3 pb-3 shrink-0">
+      <div className="px-4 shrink-0">
         <NewMenu fullWidth />
       </div>
 
-      <div className="mx-3 border-t border-slate-100 shrink-0" />
-
       {/* Nav links */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2">
+      <nav className="flex-1 overflow-y-auto mt-6 px-3">
         {links.map(({ href, label, icon: Icon }) => {
           const active =
             href === "/" ? pathname === "/" : pathname.startsWith(href);
@@ -60,13 +58,16 @@ export default function NavBar() {
               key={href}
               href={href}
               className={
-                "flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium mb-0.5 transition-colors " +
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium mb-0.5 transition-colors " +
                 (active
-                  ? "bg-slate-100 text-slate-900"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900")
+                  ? "bg-teal-50 text-teal-600"
+                  : "text-slate-600 hover:bg-slate-100 hover:text-slate-900")
               }
             >
-              <Icon size={17} strokeWidth={1.8} />
+              <Icon
+                className={`w-5 h-5 ${active ? "text-teal-600" : ""}`}
+                strokeWidth={1.8}
+              />
               {label}
             </Link>
           );
@@ -74,13 +75,19 @@ export default function NavBar() {
       </nav>
 
       {/* Footer */}
-      <div className="shrink-0 px-2 pb-4 pt-2 border-t border-slate-100">
+      <div className="mt-auto shrink-0 px-3 pb-4 pt-3 border-t border-slate-200/60">
+        <div className="flex items-center gap-3 px-3 py-2">
+          <div className="w-8 h-8 rounded-full bg-teal-500 flex items-center justify-center text-white text-sm font-semibold shrink-0">
+            N
+          </div>
+          <span className="text-sm font-medium text-slate-900">Nick</span>
+        </div>
         <button
           type="button"
           onClick={logout}
-          className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors"
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
         >
-          <LogOut size={17} strokeWidth={1.8} />
+          <LogOut className="w-5 h-5" strokeWidth={1.8} />
           Sign out
         </button>
       </div>
