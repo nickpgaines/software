@@ -147,7 +147,7 @@ export default function EmployeeForm({
       setError(data.error || "Could not save");
       return;
     }
-    router.push("/settings");
+    router.push("/employees");
     router.refresh();
   }
 
@@ -159,7 +159,7 @@ export default function EmployeeForm({
       {/* Header */}
       <div>
         <Link
-          href="/settings"
+          href="/employees"
           className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900"
         >
           <ChevronLeft className="w-4 h-4" />

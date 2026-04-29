@@ -9,6 +9,7 @@ import {
   Map,
   Trophy,
   BarChart3,
+  User,
   Users,
   Settings,
   LogOut,
@@ -22,7 +23,8 @@ const links = [
   { href: "/map", label: "Map", icon: Map },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
   { href: "/reports", label: "Reports", icon: BarChart3 },
-  { href: "/customers", label: "Customers", icon: Users },
+  { href: "/customers", label: "Customers", icon: User },
+  { href: "/employees", label: "Employees", icon: Users },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

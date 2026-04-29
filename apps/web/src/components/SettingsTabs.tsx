@@ -1,19 +1,17 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import TeamSettings from "@/components/TeamSettings";
 
-type Tab = "team" | "profile" | "company" | "billing";
+type Tab = "profile" | "company" | "billing";
 
 const TABS: { key: Tab; label: string }[] = [
-  { key: "team", label: "Team" },
   { key: "profile", label: "Profile" },
   { key: "company", label: "Company" },
   { key: "billing", label: "Billing" },
 ];
 
 export default function SettingsTabs({ username }: { username: string }) {
-  const [tab, setTab] = useState<Tab>("team");
+  const [tab, setTab] = useState<Tab>("profile");
 
   return (
     <div className="space-y-6">
@@ -40,7 +38,6 @@ export default function SettingsTabs({ username }: { username: string }) {
       </div>
 
       <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm">
-        {tab === "team" && <TeamSettings />}
         {tab === "profile" && <ProfilePanel username={username} />}
         {tab === "company" && <CompanyPanel />}
         {tab === "billing" && <BillingPanel />}
