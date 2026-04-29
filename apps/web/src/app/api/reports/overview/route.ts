@@ -5,13 +5,13 @@ import { resolveReportRange } from "@/lib/report-range";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const db = getDb();
+  const db = await getDb();
   const url = new URL(req.url);
   const { range, start, end } = resolveReportRange(url.searchParams.get("range"));
   const startIso = start.toISOString();
   const endIso = end.toISOString();
 
-  const revenue = db
+  const revenue = (await db
     .prepare(
       `SELECT
          COALESCE(SUM(price_cents), 0) AS total,
@@ -20,7 +20,7 @@ export async function GET(req: Request) {
        FROM jobs
        WHERE scheduled_at >= ? AND scheduled_at < ?`
     )
-    .get(startIso, endIso) as {
+    .get(startIso, endIso)) as {
     total: number;
     collected: number;
     unpaid: number;
@@ -28,7 +28,7 @@ export async function GET(req: Request) {
   const collectionRate =
     revenue.total > 0 ? revenue.collected / revenue.total : 0;
 
-  const jobs = db
+  const jobs = (await db
     .prepare(
       `SELECT
          COUNT(*) AS total,
@@ -39,7 +39,7 @@ export async function GET(req: Request) {
        FROM jobs
        WHERE scheduled_at >= ? AND scheduled_at < ?`
     )
-    .get(startIso, endIso) as {
+    .get(startIso, endIso)) as {
     total: number;
     completed: number;
     scheduled: number;
@@ -48,23 +48,23 @@ export async function GET(req: Request) {
   };
 
   const totalCustomers = (
-    db.prepare("SELECT COUNT(*) AS n FROM customers").get() as { n: number }
+    (await db.prepare("SELECT COUNT(*) AS n FROM customers").get()) as { n: number }
   ).n;
   const newCustomers = (
-    db
+    (await db
       .prepare(
         "SELECT COUNT(*) AS n FROM customers WHERE created_at >= ? AND created_at < ?"
       )
-      .get(startIso, endIso) as { n: number }
+      .get(startIso, endIso)) as { n: number }
   ).n;
   const repeatCustomers = (
-    db
+    (await db
       .prepare(
         `SELECT COUNT(*) AS n FROM (
            SELECT customer_id FROM jobs GROUP BY customer_id HAVING COUNT(*) > 1
          )`
       )
-      .get() as { n: number }
+      .get()) as { n: number }
   ).n;
 
   return NextResponse.json({

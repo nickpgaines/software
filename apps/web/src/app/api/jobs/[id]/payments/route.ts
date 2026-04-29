@@ -10,13 +10,13 @@ export async function GET(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  const db = getDb();
+  const db = await getDb();
   const jobId = Number(params.id);
-  const rows = db
+  const rows = (await db
     .prepare(
       "SELECT * FROM payments WHERE job_id = ? ORDER BY created_at DESC, id DESC"
     )
-    .all(jobId) as Payment[];
+    .all(jobId)) as Payment[];
   return NextResponse.json(rows);
 }
 
@@ -24,10 +24,10 @@ export async function POST(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const db = getDb();
+  const db = await getDb();
   const jobId = Number(params.id);
 
-  const job = db.prepare("SELECT id FROM jobs WHERE id = ?").get(jobId);
+  const job = await db.prepare("SELECT id FROM jobs WHERE id = ?").get(jobId);
   if (!job) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
@@ -93,8 +93,8 @@ export async function POST(
   // Atomic: insert the payment row AND auto-complete any unset work
   // steps in the same transaction. If anything throws, BOTH the row
   // and the step timestamps roll back.
-  const insertedId = db.transaction(() => {
-    const result = db
+  const insertedId = await db.transaction(async (tx) => {
+    const result = await tx
       .prepare(
         `INSERT INTO payments
            (job_id, amount_cents, tip_cents, method, payment_date, notes, send_email, send_sms)
@@ -110,13 +110,13 @@ export async function POST(
         send_email,
         send_sms
       );
-    autoCompleteSteps(db, jobId);
+    await autoCompleteSteps(tx, jobId);
     return Number(result.lastInsertRowid);
-  })();
+  });
 
-  const created = db
+  const created = (await db
     .prepare("SELECT * FROM payments WHERE id = ?")
-    .get(insertedId) as Payment;
+    .get(insertedId)) as Payment;
 
   // TODO(post-vercel): wire real email/SMS sending via Resend + Twilio.
   // The toggle values are persisted on the payment record so we can

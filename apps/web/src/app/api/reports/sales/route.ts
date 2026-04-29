@@ -13,13 +13,13 @@ type RepRow = {
 };
 
 export async function GET(req: Request) {
-  const db = getDb();
+  const db = await getDb();
   const url = new URL(req.url);
   const { range, start, end } = resolveReportRange(url.searchParams.get("range"));
   const startIso = start.toISOString();
   const endIso = end.toISOString();
 
-  const doors = db
+  const doors = (await db
     .prepare(
       `SELECT
          COUNT(*) AS total,
@@ -27,11 +27,11 @@ export async function GET(req: Request) {
        FROM map_pins
        WHERE created_at >= ? AND created_at < ?`
     )
-    .get(startIso, endIso) as { total: number; sales: number };
+    .get(startIso, endIso)) as { total: number; sales: number };
 
   const conversionRate = doors.total > 0 ? doors.sales / doors.total : 0;
 
-  const reps = db
+  const reps = (await db
     .prepare(
       `SELECT
          s.id,
@@ -50,7 +50,7 @@ export async function GET(req: Request) {
               AND j.scheduled_at >= ? AND j.scheduled_at < ?) AS revenue
        FROM staff s`
     )
-    .all(startIso, endIso, startIso, endIso, startIso, endIso) as RepRow[];
+    .all(startIso, endIso, startIso, endIso, startIso, endIso)) as RepRow[];
 
   const enriched = reps
     .map((r) => ({

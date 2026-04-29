@@ -4,14 +4,14 @@ import { getDb, type Staff } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export default function EditEmployeePage({
+export default async function EditEmployeePage({
   params,
 }: {
   params: { id: string };
 }) {
-  const db = getDb();
+  const db = await getDb();
   const id = Number(params.id);
-  const row = db.prepare("SELECT * FROM staff WHERE id = ?").get(id) as
+  const row = (await db.prepare("SELECT * FROM staff WHERE id = ?").get(id)) as
     | Staff
     | undefined;
   if (!row) notFound();

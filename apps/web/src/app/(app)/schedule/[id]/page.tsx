@@ -5,14 +5,14 @@ import JobDetailClient from "@/components/JobDetailClient";
 
 export const dynamic = "force-dynamic";
 
-export default function JobDetailPage({
+export default async function JobDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const db = getDb();
+  const db = await getDb();
   const id = Number(params.id);
-  const job = getJobDetail(db, id);
+  const job = await getJobDetail(db, id);
   if (!job) notFound();
   return <JobDetailClient initialJob={job} />;
 }

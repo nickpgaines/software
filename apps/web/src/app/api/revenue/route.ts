@@ -42,18 +42,18 @@ function dateKey(d: Date) {
 }
 
 export async function GET(req: Request) {
-  const db = getDb();
+  const db = await getDb();
   const url = new URL(req.url);
   const range = (url.searchParams.get("range") || "1m") as Range;
   const { start, end, label } = resolveRange(range);
 
-  const rows = db
+  const rows = (await db
     .prepare(
       `SELECT scheduled_at, price_cents
        FROM jobs
        WHERE scheduled_at >= ? AND scheduled_at <= ?`
     )
-    .all(start.toISOString(), end.toISOString()) as {
+    .all(start.toISOString(), end.toISOString())) as {
     scheduled_at: string;
     price_cents: number;
   }[];

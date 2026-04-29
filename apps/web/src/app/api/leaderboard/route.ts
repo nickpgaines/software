@@ -44,7 +44,7 @@ function resolveRange(
 }
 
 export async function GET(req: Request) {
-  const db = getDb();
+  const db = await getDb();
   const url = new URL(req.url);
   const range = (url.searchParams.get("range") || "month") as Range;
   const view = (url.searchParams.get("view") || "sales") as View;
@@ -56,7 +56,7 @@ export async function GET(req: Request) {
     url.searchParams.get("to")
   );
 
-  const rows = db
+  const rows = (await db
     .prepare(
       `SELECT s.id, s.name, s.role,
               COALESCE(SUM(j.price_cents), 0) AS revenue_cents,
@@ -69,7 +69,7 @@ export async function GET(req: Request) {
        GROUP BY s.id
        ORDER BY revenue_cents DESC, s.name COLLATE NOCASE ASC`
     )
-    .all(role, start, end) as {
+    .all(role, start, end)) as {
     id: number;
     name: string;
     role: string | null;

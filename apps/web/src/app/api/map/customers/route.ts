@@ -21,15 +21,15 @@ type JobRow = {
 };
 
 export async function GET() {
-  const db = getDb();
-  const customers = db
+  const db = await getDb();
+  const customers = (await db
     .prepare(
       `SELECT id, name, phone, email, address FROM customers
        WHERE address IS NOT NULL AND TRIM(address) != ''
        ORDER BY name COLLATE NOCASE`
     )
-    .all() as CustomerRow[];
-  const jobs = db
+    .all()) as CustomerRow[];
+  const jobs = (await db
     .prepare(
       `SELECT j.id, j.customer_id, j.scheduled_at, j.price_cents, j.status,
               (SELECT li.title FROM line_items li WHERE li.job_id = j.id
@@ -37,7 +37,7 @@ export async function GET() {
        FROM jobs j
        ORDER BY j.scheduled_at DESC`
     )
-    .all() as JobRow[];
+    .all()) as JobRow[];
 
   const byCustomer = new Map<number, JobRow[]>();
   for (const job of jobs) {

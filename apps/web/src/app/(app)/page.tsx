@@ -15,15 +15,15 @@ function capitalize(s: string) {
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
 }
 
-export default function DashboardPage() {
-  const db = getDb();
+export default async function DashboardPage() {
+  const db = await getDb();
   const now = new Date();
   const today = new Date(now);
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
   tomorrow.setDate(tomorrow.getDate() + 1);
 
-  const todayJobs = db
+  const todayJobs = (await db
     .prepare(
       `SELECT j.*,
               c.name AS customer_name,
@@ -38,7 +38,7 @@ export default function DashboardPage() {
        WHERE j.scheduled_at >= ? AND j.scheduled_at < ?
        ORDER BY j.scheduled_at ASC`
     )
-    .all(today.toISOString(), tomorrow.toISOString()) as JobWithCustomer[];
+    .all(today.toISOString(), tomorrow.toISOString())) as JobWithCustomer[];
 
   const user = getSessionUser() || "there";
   const name = capitalize(user);

@@ -30,9 +30,9 @@ export async function GET(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  const db = getDb();
+  const db = await getDb();
   const id = Number(params.id);
-  const row = db.prepare("SELECT * FROM staff WHERE id = ?").get(id) as
+  const row = (await db.prepare("SELECT * FROM staff WHERE id = ?").get(id)) as
     | Staff
     | undefined;
   if (!row) {
@@ -58,10 +58,10 @@ export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const db = getDb();
+  const db = await getDb();
   const id = Number(params.id);
   const body = (await req.json().catch(() => ({}))) as PatchBody;
-  const existing = db.prepare("SELECT * FROM staff WHERE id = ?").get(id) as
+  const existing = (await db.prepare("SELECT * FROM staff WHERE id = ?").get(id)) as
     | Staff
     | undefined;
   if (!existing) {
@@ -83,12 +83,12 @@ export async function PATCH(
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
     const role = body.role === undefined ? existing.role : body.role;
-    db.prepare("UPDATE staff SET name = ?, role = ? WHERE id = ?").run(
+    await db.prepare("UPDATE staff SET name = ?, role = ? WHERE id = ?").run(
       name,
       role,
       id
     );
-    const updated = db.prepare("SELECT * FROM staff WHERE id = ?").get(id) as Staff;
+    const updated = (await db.prepare("SELECT * FROM staff WHERE id = ?").get(id)) as Staff;
     return NextResponse.json(updated);
   }
 
@@ -141,9 +141,9 @@ export async function PATCH(
     ? hashPassword(body.password)
     : existing.password_hash;
 
-  const conflict = db
+  const conflict = (await db
     .prepare("SELECT id FROM staff WHERE email = ? AND id != ?")
-    .get(email, id) as { id: number } | undefined;
+    .get(email, id)) as { id: number } | undefined;
   if (conflict) {
     return NextResponse.json(
       { error: "Email is already in use" },
@@ -153,7 +153,7 @@ export async function PATCH(
 
   const fullName = `${first_name} ${last_name}`.trim();
 
-  db.prepare(
+  await db.prepare(
     `UPDATE staff
      SET name = ?, first_name = ?, last_name = ?, phone = ?, email = ?,
          password_hash = ?, color = ?, permission_level = ?, photo_url = ?,
@@ -171,7 +171,7 @@ export async function PATCH(
     photo_url,
     id
   );
-  const updated = db.prepare("SELECT * FROM staff WHERE id = ?").get(id) as Staff;
+  const updated = (await db.prepare("SELECT * FROM staff WHERE id = ?").get(id)) as Staff;
   return NextResponse.json(updated);
 }
 
@@ -179,8 +179,8 @@ export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  const db = getDb();
+  const db = await getDb();
   const id = Number(params.id);
-  db.prepare("DELETE FROM staff WHERE id = ?").run(id);
+  await db.prepare("DELETE FROM staff WHERE id = ?").run(id);
   return NextResponse.json({ ok: true });
 }

@@ -16,12 +16,12 @@ export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const db = getDb();
+  const db = await getDb();
   const id = Number(params.id);
   const body = (await req.json().catch(() => ({}))) as Partial<Customer>;
-  const existing = db
+  const existing = (await db
     .prepare("SELECT * FROM customers WHERE id = ?")
-    .get(id) as Customer | undefined;
+    .get(id)) as Customer | undefined;
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -78,7 +78,7 @@ export async function PATCH(
         formatted_address: existing.formatted_address,
       };
 
-  db.prepare(
+  await db.prepare(
     `UPDATE customers
      SET name = ?, first_name = ?, last_name = ?, phone = ?, email = ?,
          address = ?, address_line1 = ?, unit = ?, city = ?, state = ?, zip = ?,
@@ -102,9 +102,9 @@ export async function PATCH(
     body.notes ?? existing.notes,
     id
   );
-  const updated = db
+  const updated = (await db
     .prepare("SELECT * FROM customers WHERE id = ?")
-    .get(id) as Customer;
+    .get(id)) as Customer;
   return NextResponse.json(updated);
 }
 
@@ -112,8 +112,8 @@ export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  const db = getDb();
+  const db = await getDb();
   const id = Number(params.id);
-  db.prepare("DELETE FROM customers WHERE id = ?").run(id);
+  await db.prepare("DELETE FROM customers WHERE id = ?").run(id);
   return NextResponse.json({ ok: true });
 }

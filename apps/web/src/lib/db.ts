@@ -1,14 +1,193 @@
-import Database from "better-sqlite3";
+import { createClient, type Client, type InValue } from "@libsql/client";
 import fs from "node:fs";
 import path from "node:path";
 
-let _db: Database.Database | null = null;
+type Args = InValue[];
 
-function init(db: Database.Database) {
-  db.pragma("journal_mode = WAL");
-  db.pragma("foreign_keys = ON");
+export type RunResult = { lastInsertRowid: number; changes: number };
 
-  db.exec(`
+export interface Stmt {
+  get<T = unknown>(...args: Args): Promise<T | undefined>;
+  all<T = unknown>(...args: Args): Promise<T[]>;
+  run(...args: Args): Promise<RunResult>;
+}
+
+export interface Db {
+  prepare(sql: string): Stmt;
+  exec(sql: string): Promise<void>;
+  transaction<R>(fn: (db: Db) => Promise<R>): Promise<R>;
+}
+
+type Executor = (
+  sql: string,
+  args: Args
+) => Promise<{
+  rows: unknown[];
+  columns: string[];
+  lastInsertRowid?: bigint | number | null;
+  rowsAffected?: number;
+}>;
+
+type ExecMany = (sql: string) => Promise<void>;
+
+let _client: Client | null = null;
+let _initPromise: Promise<void> | null = null;
+
+function makeClient(): Client {
+  const url = process.env.TURSO_DATABASE_URL?.trim();
+  const authToken = process.env.TURSO_AUTH_TOKEN?.trim();
+  if (url) {
+    return createClient({
+      url,
+      authToken: authToken || undefined,
+      intMode: "number",
+    });
+  }
+  const dataDir = path.join(process.cwd(), "data");
+  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+  return createClient({
+    url: `file:${path.join(dataDir, "crm.db")}`,
+    intMode: "number",
+  });
+}
+
+function getClient(): Client {
+  if (_client) return _client;
+  _client = makeClient();
+  return _client;
+}
+
+function rowToObject<T>(row: unknown, columns: string[]): T {
+  const obj: Record<string, unknown> = {};
+  for (const c of columns) obj[c] = (row as Record<string, unknown>)[c];
+  return obj as T;
+}
+
+function makeStmt(exec: Executor, sql: string): Stmt {
+  return {
+    async get<T>(...args: Args): Promise<T | undefined> {
+      const r = await exec(sql, args);
+      if (r.rows.length === 0) return undefined;
+      return rowToObject<T>(r.rows[0], r.columns);
+    },
+    async all<T>(...args: Args): Promise<T[]> {
+      const r = await exec(sql, args);
+      return r.rows.map((row) => rowToObject<T>(row, r.columns));
+    },
+    async run(...args: Args): Promise<RunResult> {
+      const r = await exec(sql, args);
+      const lastInsertRowid =
+        r.lastInsertRowid != null ? Number(r.lastInsertRowid) : 0;
+      return { lastInsertRowid, changes: r.rowsAffected ?? 0 };
+    },
+  };
+}
+
+function makeDb(exec: Executor, execMany: ExecMany, txCapable: boolean): Db {
+  const db: Db = {
+    prepare(sql: string) {
+      return makeStmt(exec, sql);
+    },
+    async exec(sql: string) {
+      await execMany(sql);
+    },
+    async transaction<R>(fn: (inner: Db) => Promise<R>): Promise<R> {
+      if (!txCapable) {
+        // Already inside a transaction; reuse.
+        return fn(db);
+      }
+      const tx = await getClient().transaction("write");
+      try {
+        const innerExec: Executor = async (sql, args) => {
+          const r = await tx.execute({ sql, args });
+          return {
+            rows: r.rows as unknown[],
+            columns: r.columns as string[],
+            lastInsertRowid: r.lastInsertRowid,
+            rowsAffected: r.rowsAffected,
+          };
+        };
+        const innerExecMany: ExecMany = async (sql) => {
+          for (const stmt of splitStatements(sql)) {
+            await tx.execute(stmt);
+          }
+        };
+        const innerDb = makeDb(innerExec, innerExecMany, false);
+        const result = await fn(innerDb);
+        await tx.commit();
+        return result;
+      } catch (e) {
+        try {
+          await tx.rollback();
+        } catch {
+          // ignore rollback errors
+        }
+        throw e;
+      }
+    },
+  };
+  return db;
+}
+
+// Split a multi-statement SQL string into individual statements. Honors
+// single-quoted string literals so semicolons inside strings don't split
+// the statement. We don't have block comments or other edge cases in our
+// migration SQL, so this is sufficient.
+function splitStatements(sql: string): string[] {
+  const out: string[] = [];
+  let buf = "";
+  let inSingle = false;
+  for (let i = 0; i < sql.length; i++) {
+    const ch = sql[i];
+    if (ch === "'") {
+      buf += ch;
+      if (inSingle && sql[i + 1] === "'") {
+        // Escaped quote
+        buf += sql[i + 1];
+        i++;
+      } else {
+        inSingle = !inSingle;
+      }
+      continue;
+    }
+    if (ch === ";" && !inSingle) {
+      const s = buf.trim();
+      if (s) out.push(s);
+      buf = "";
+      continue;
+    }
+    buf += ch;
+  }
+  const tail = buf.trim();
+  if (tail) out.push(tail);
+  return out;
+}
+
+const topLevelExec: Executor = async (sql, args) => {
+  const r = await getClient().execute({ sql, args });
+  return {
+    rows: r.rows as unknown[],
+    columns: r.columns as string[],
+    lastInsertRowid: r.lastInsertRowid,
+    rowsAffected: r.rowsAffected,
+  };
+};
+
+const topLevelExecMany: ExecMany = async (sql) => {
+  await getClient().executeMultiple(sql);
+};
+
+const _db: Db = makeDb(topLevelExec, topLevelExecMany, true);
+
+async function init(): Promise<void> {
+  // Pragmas. Best-effort — Turso ignores some, local file accepts both.
+  try {
+    await _db.prepare("PRAGMA foreign_keys = ON").run();
+  } catch {
+    // ignore
+  }
+
+  await _db.exec(`
     CREATE TABLE IF NOT EXISTS customers (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -40,9 +219,9 @@ function init(db: Database.Database) {
     );
   `);
 
-  const jobsCols = db
+  const jobsCols = (await _db
     .prepare("PRAGMA table_info(jobs)")
-    .all() as { name: string }[];
+    .all<{ name: string }>());
   const jobAdds: [string, string][] = [
     ["salesperson_id", "INTEGER REFERENCES staff(id) ON DELETE SET NULL"],
     ["technician_id", "INTEGER REFERENCES staff(id) ON DELETE SET NULL"],
@@ -58,13 +237,13 @@ function init(db: Database.Database) {
   ];
   for (const [col, def] of jobAdds) {
     if (!jobsCols.some((c) => c.name === col)) {
-      db.exec(`ALTER TABLE jobs ADD COLUMN ${col} ${def}`);
+      await _db.exec(`ALTER TABLE jobs ADD COLUMN ${col} ${def}`);
     }
   }
 
-  const staffCols = db
+  const staffCols = await _db
     .prepare("PRAGMA table_info(staff)")
-    .all() as { name: string }[];
+    .all<{ name: string }>();
   const staffAdds: [string, string][] = [
     ["role", "TEXT"],
     ["first_name", "TEXT"],
@@ -79,11 +258,10 @@ function init(db: Database.Database) {
   ];
   for (const [col, def] of staffAdds) {
     if (!staffCols.some((c) => c.name === col)) {
-      db.exec(`ALTER TABLE staff ADD COLUMN ${col} ${def}`);
+      await _db.exec(`ALTER TABLE staff ADD COLUMN ${col} ${def}`);
     }
   }
-  // Backfill first_name from name when missing.
-  db.exec(`
+  await _db.exec(`
     UPDATE staff
     SET first_name = CASE
           WHEN INSTR(TRIM(name), ' ') > 0
@@ -98,18 +276,18 @@ function init(db: Database.Database) {
     WHERE name IS NOT NULL
       AND (first_name IS NULL OR first_name = '')
   `);
-  db.exec(
+  await _db.exec(
     `CREATE UNIQUE INDEX IF NOT EXISTS idx_staff_email ON staff(email) WHERE email IS NOT NULL`
   );
 
-  const customerCols = db
+  const customerCols = await _db
     .prepare("PRAGMA table_info(customers)")
-    .all() as { name: string }[];
+    .all<{ name: string }>();
   if (!customerCols.some((c) => c.name === "first_name")) {
-    db.exec("ALTER TABLE customers ADD COLUMN first_name TEXT");
+    await _db.exec("ALTER TABLE customers ADD COLUMN first_name TEXT");
   }
   if (!customerCols.some((c) => c.name === "last_name")) {
-    db.exec("ALTER TABLE customers ADD COLUMN last_name TEXT");
+    await _db.exec("ALTER TABLE customers ADD COLUMN last_name TEXT");
   }
   const customerAddressAdds: [string, string][] = [
     ["address_line1", "TEXT"],
@@ -123,25 +301,23 @@ function init(db: Database.Database) {
   ];
   for (const [col, def] of customerAddressAdds) {
     if (!customerCols.some((c) => c.name === col)) {
-      db.exec(`ALTER TABLE customers ADD COLUMN ${col} ${def}`);
+      await _db.exec(`ALTER TABLE customers ADD COLUMN ${col} ${def}`);
     }
   }
 
-  const paymentCols = db
+  const paymentCols = await _db
     .prepare("PRAGMA table_info(payments)")
-    .all() as { name: string }[];
+    .all<{ name: string }>();
   if (
     paymentCols.length > 0 &&
     !paymentCols.some((c) => c.name === "tip_cents")
   ) {
-    db.exec(
+    await _db.exec(
       "ALTER TABLE payments ADD COLUMN tip_cents INTEGER NOT NULL DEFAULT 0"
     );
   }
-  // Backfill first_name/last_name from existing 'name' for any rows
-  // that haven't been migrated yet. Single-word names go entirely
-  // into first_name; multi-word names split on the first space.
-  db.exec(`
+
+  await _db.exec(`
     UPDATE customers
     SET first_name = CASE
           WHEN INSTR(TRIM(name), ' ') > 0
@@ -156,10 +332,7 @@ function init(db: Database.Database) {
     WHERE name IS NOT NULL
       AND (first_name IS NULL OR last_name IS NULL)
   `);
-  // Backfill address_line1/formatted_address ONLY for untouched legacy
-  // rows (both new fields still NULL), so re-running this never
-  // clobbers user edits.
-  db.exec(`
+  await _db.exec(`
     UPDATE customers
     SET address_line1     = TRIM(address),
         formatted_address = TRIM(address)
@@ -169,7 +342,7 @@ function init(db: Database.Database) {
       AND formatted_address IS NULL
   `);
 
-  db.exec(`
+  await _db.exec(`
     CREATE INDEX IF NOT EXISTS idx_jobs_salesperson_id ON jobs(salesperson_id);
     CREATE INDEX IF NOT EXISTS idx_jobs_technician_id ON jobs(technician_id);
 
@@ -271,44 +444,50 @@ function init(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments(created_at);
   `);
 
-  const legacy = db
+  const legacy = await _db
     .prepare(
       `SELECT j.id, j.salesperson_id, j.technician_id, j.scheduled_at, j.duration_minutes, j.end_time
        FROM jobs j`
     )
-    .all() as {
-    id: number;
-    salesperson_id: number | null;
-    technician_id: number | null;
-    scheduled_at: string;
-    duration_minutes: number;
-    end_time: string | null;
-  }[];
+    .all<{
+      id: number;
+      salesperson_id: number | null;
+      technician_id: number | null;
+      scheduled_at: string;
+      duration_minutes: number;
+      end_time: string | null;
+    }>();
 
-  const insertAssign = db.prepare(
-    `INSERT OR IGNORE INTO job_assignments (job_id, staff_id, role) VALUES (?, ?, ?)`
-  );
-  const setEndTime = db.prepare(`UPDATE jobs SET end_time = ? WHERE id = ?`);
   for (const j of legacy) {
-    if (j.salesperson_id) insertAssign.run(j.id, j.salesperson_id, "sales");
-    if (j.technician_id) insertAssign.run(j.id, j.technician_id, "tech");
+    if (j.salesperson_id) {
+      await _db
+        .prepare(
+          `INSERT OR IGNORE INTO job_assignments (job_id, staff_id, role) VALUES (?, ?, ?)`
+        )
+        .run(j.id, j.salesperson_id, "sales");
+    }
+    if (j.technician_id) {
+      await _db
+        .prepare(
+          `INSERT OR IGNORE INTO job_assignments (job_id, staff_id, role) VALUES (?, ?, ?)`
+        )
+        .run(j.id, j.technician_id, "tech");
+    }
     if (!j.end_time) {
       const end = new Date(
         new Date(j.scheduled_at).getTime() + (j.duration_minutes || 60) * 60_000
       );
-      setEndTime.run(end.toISOString(), j.id);
+      await _db
+        .prepare(`UPDATE jobs SET end_time = ? WHERE id = ?`)
+        .run(end.toISOString(), j.id);
     }
   }
 }
 
-export function getDb(): Database.Database {
-  if (_db) return _db;
-  const dataDir = path.join(process.cwd(), "data");
-  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-  const db = new Database(path.join(dataDir, "crm.db"), { timeout: 5000 });
-  init(db);
-  _db = db;
-  return db;
+export async function getDb(): Promise<Db> {
+  if (!_initPromise) _initPromise = init();
+  await _initPromise;
+  return _db;
 }
 
 export type Customer = {

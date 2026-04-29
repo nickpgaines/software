@@ -18,7 +18,7 @@ type Input = {
 };
 
 export async function GET(req: Request) {
-  const db = getDb();
+  const db = await getDb();
   const url = new URL(req.url);
   const from = url.searchParams.get("from");
   const to = url.searchParams.get("to");
@@ -49,12 +49,14 @@ export async function GET(req: Request) {
   }
   if (where.length) sql += ` WHERE ${where.join(" AND ")}`;
   sql += " ORDER BY created_at DESC";
-  const rows = db.prepare(sql).all(...args) as MapPin[];
+  const rows = (await db
+    .prepare(sql)
+    .all(...(args as (string | number | null)[]))) as MapPin[];
   return NextResponse.json(rows);
 }
 
 export async function POST(req: Request) {
-  const db = getDb();
+  const db = await getDb();
   const body = (await req.json().catch(() => ({}))) as Input;
   if (typeof body.lat !== "number" || typeof body.lng !== "number") {
     return NextResponse.json(
@@ -62,7 +64,7 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  const result = db
+  const result = await db
     .prepare(
       `INSERT INTO map_pins
         (lat, lng, address, first_name, last_name, phone, status, objections,
@@ -82,8 +84,8 @@ export async function POST(req: Request) {
       body.customer_id || null,
       getSessionUser() || null
     );
-  const created = db
+  const created = (await db
     .prepare("SELECT * FROM map_pins WHERE id = ?")
-    .get(result.lastInsertRowid) as MapPin;
+    .get(result.lastInsertRowid)) as MapPin;
   return NextResponse.json(created, { status: 201 });
 }

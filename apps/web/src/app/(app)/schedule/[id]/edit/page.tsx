@@ -5,14 +5,14 @@ import JobForm from "@/components/JobForm";
 
 export const dynamic = "force-dynamic";
 
-export default function EditJobPage({
+export default async function EditJobPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const db = getDb();
+  const db = await getDb();
   const id = Number(params.id);
-  const job = getJobDetail(db, id);
+  const job = await getJobDetail(db, id);
   if (!job) notFound();
   return <JobForm mode="edit" job={job} />;
 }

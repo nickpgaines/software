@@ -27,10 +27,10 @@ const ALLOWED_COLORS = [
 ];
 
 export async function GET() {
-  const db = getDb();
-  const rows = db
+  const db = await getDb();
+  const rows = (await db
     .prepare("SELECT * FROM staff ORDER BY name COLLATE NOCASE ASC")
-    .all() as Staff[];
+    .all()) as Staff[];
   return NextResponse.json(rows);
 }
 
@@ -49,7 +49,7 @@ type CreateBody = {
 };
 
 export async function POST(req: Request) {
-  const db = getDb();
+  const db = await getDb();
   const body = (await req.json().catch(() => ({}))) as CreateBody;
 
   // Legacy single-field path: just name + role.
@@ -58,14 +58,14 @@ export async function POST(req: Request) {
     if (!name) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
-    const result = db
+    const result = await db
       .prepare(
         "INSERT INTO staff (name, role, first_name) VALUES (?, ?, ?)"
       )
       .run(name, body.role || null, name.split(/\s+/)[0] || name);
-    const created = db
+    const created = (await db
       .prepare("SELECT * FROM staff WHERE id = ?")
-      .get(result.lastInsertRowid) as Staff;
+      .get(result.lastInsertRowid)) as Staff;
     return NextResponse.json(created, { status: 201 });
   }
 
@@ -110,9 +110,9 @@ export async function POST(req: Request) {
   const fullName = `${first_name} ${last_name}`.trim();
   const password_hash = hashPassword(password);
 
-  const exists = db
+  const exists = (await db
     .prepare("SELECT id FROM staff WHERE email = ?")
-    .get(email) as { id: number } | undefined;
+    .get(email)) as { id: number } | undefined;
   if (exists) {
     return NextResponse.json(
       { error: "Email is already in use" },
@@ -120,7 +120,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const result = db
+  const result = await db
     .prepare(
       `INSERT INTO staff
        (name, first_name, last_name, phone, email, password_hash, color,
@@ -138,8 +138,8 @@ export async function POST(req: Request) {
       permission_level,
       photo_url
     );
-  const created = db
+  const created = (await db
     .prepare("SELECT * FROM staff WHERE id = ?")
-    .get(result.lastInsertRowid) as Staff;
+    .get(result.lastInsertRowid)) as Staff;
   return NextResponse.json(created, { status: 201 });
 }
