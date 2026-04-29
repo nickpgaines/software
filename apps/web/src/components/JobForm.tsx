@@ -91,6 +91,33 @@ function defaultEnd(start: { date: string; time: string }) {
   return { date: toDateInput(d.toISOString()), time: toTimeInput(d.toISOString()) };
 }
 
+function dateOnly(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+function timeOnly(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function parseLocal(date: string, time: string): Date | null {
+  if (!date) return null;
+  const d = new Date(`${date}T${time || "08:00"}`);
+  return isNaN(d.getTime()) ? null : d;
+}
+const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
+function endForNewStart(
+  newStart: Date,
+  oldStart: Date | null,
+  oldEnd: Date | null
+): Date {
+  let durationMs = TWO_HOURS_MS;
+  if (oldStart && oldEnd) {
+    const diff = oldEnd.getTime() - oldStart.getTime();
+    if (diff > 0) durationMs = diff;
+  }
+  return new Date(newStart.getTime() + durationMs);
+}
+
 function money(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
 }
@@ -160,6 +187,21 @@ export default function JobForm({
   const [endDate, setEndDate] = useState(initialEnd.date);
   const [endTime, setEndTime] = useState(initialEnd.time);
   const [anytime, setAnytime] = useState(!!job?.anytime);
+
+  // When Start date or time changes, drag End along to preserve the
+  // current duration. If End is before Start (or duration is 0/missing),
+  // fall back to Start + 2 hours.
+  function applyNewStart(newDate: string, newTime: string) {
+    const newStart = parseLocal(newDate, newTime);
+    setStartDate(newDate);
+    setStartTime(newTime);
+    if (!newStart) return;
+    const oldStart = parseLocal(startDate, startTime);
+    const oldEnd = parseLocal(endDate, endTime);
+    const newEnd = endForNewStart(newStart, oldStart, oldEnd);
+    setEndDate(dateOnly(newEnd));
+    setEndTime(timeOnly(newEnd));
+  }
   const [scheduleLater, setScheduleLater] = useState(!!job?.schedule_later);
 
   const [leadSource, setLeadSource] = useState(job?.lead_source ?? "");
@@ -439,14 +481,14 @@ export default function JobForm({
             <input
               type="date"
               value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
+              onChange={(e) => applyNewStart(e.target.value, startTime)}
               disabled={scheduleLater}
               className="border border-slate-200 rounded-full px-4 py-2 text-sm bg-white disabled:bg-slate-50"
             />
             <input
               type="time"
               value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
+              onChange={(e) => applyNewStart(startDate, e.target.value)}
               disabled={scheduleLater || anytime}
               className="border border-slate-200 rounded-full px-4 py-2 text-sm bg-white disabled:bg-slate-50"
             />
