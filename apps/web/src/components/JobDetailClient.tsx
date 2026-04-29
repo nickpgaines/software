@@ -189,6 +189,9 @@ export default function JobDetailClient({
       const updated = (await res.json()) as Detail;
       setJob(updated);
     }
+    // Bust the router's client-side cache so the next navigation back
+    // to this URL re-renders the server component with fresh data.
+    router.refresh();
   }
 
   async function toggleStep(step: Step) {
@@ -204,6 +207,11 @@ export default function JobDetailClient({
     if (res.ok) {
       const updated = (await res.json()) as Detail;
       setJob(updated);
+      // Bust the router cache. Without this, navigating away and back
+      // to /schedule/[id] serves the previously-rendered tree (with
+      // pre-click timestamps), making the step buttons appear unlogged
+      // even though the DB has them.
+      router.refresh();
     }
   }
 
@@ -266,42 +274,17 @@ export default function JobDetailClient({
 
       <section className="bg-white border border-slate-200 rounded-2xl p-5">
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
-          {STEPS.map((s, idx) => {
-            const ts = job[s.ts] as string | null;
-            const done = !!ts;
-            const isBusy = busy === s.key;
-            return (
-              <button
-                key={s.key}
-                onClick={() => toggleStep(s.key)}
-                disabled={isBusy}
-                className={
-                  "relative text-left rounded-2xl border p-4 transition flex items-start gap-3 " +
-                  (done
-                    ? "border-cyan-300 bg-cyan-50"
-                    : "border-slate-200 bg-white hover:bg-slate-50")
-                }
-              >
-                <div
-                  className={
-                    "w-9 h-9 rounded-full flex items-center justify-center shrink-0 " +
-                    (done ? "bg-cyan-500 text-white" : "bg-slate-100 text-slate-400")
-                  }
-                >
-                  {s.icon}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-xs text-slate-400 uppercase tracking-wide">
-                    Step {idx + 1}
-                  </div>
-                  <div className="font-semibold text-slate-900">{s.label}</div>
-                  <div className="text-xs text-slate-500 mt-0.5">
-                    {ts ? `Logged ${timeStamp(ts)}` : "Tap to log"}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
+          {STEPS.map((s, idx) => (
+            <StepButton
+              key={s.key}
+              index={idx}
+              label={s.label}
+              icon={s.icon}
+              timestamp={job[s.ts] as string | null}
+              busy={busy === s.key}
+              onClick={() => toggleStep(s.key)}
+            />
+          ))}
         </div>
       </section>
 
@@ -716,6 +699,58 @@ function Row({
 
 function Divider() {
   return <div className="border-t border-slate-100 my-1.5" />;
+}
+
+// Step button reads its "logged" state directly from the timestamp
+// prop on every render — no local React state, no useEffect-only
+// sync. If the parent's `job.en_route_at` is a string, the button is
+// rendered as logged. Period.
+function StepButton({
+  index,
+  label,
+  icon,
+  timestamp,
+  busy,
+  onClick,
+}: {
+  index: number;
+  label: string;
+  icon: React.ReactNode;
+  timestamp: string | null;
+  busy: boolean;
+  onClick: () => void;
+}) {
+  const done = !!timestamp;
+  return (
+    <button
+      onClick={onClick}
+      disabled={busy}
+      className={
+        "relative text-left rounded-2xl border p-4 transition flex items-start gap-3 " +
+        (done
+          ? "border-cyan-300 bg-cyan-50"
+          : "border-slate-200 bg-white hover:bg-slate-50")
+      }
+    >
+      <div
+        className={
+          "w-9 h-9 rounded-full flex items-center justify-center shrink-0 " +
+          (done ? "bg-cyan-500 text-white" : "bg-slate-100 text-slate-400")
+        }
+      >
+        {icon}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="text-xs text-slate-400 uppercase tracking-wide">
+          Step {index + 1}
+        </div>
+        <div className="font-semibold text-slate-900">{label}</div>
+        <div className="text-xs text-slate-500 mt-0.5">
+          {done ? `Logged ${timeStamp(timestamp)}` : "Tap to log"}
+        </div>
+      </div>
+    </button>
+  );
 }
 
 type UnifiedStatus =
