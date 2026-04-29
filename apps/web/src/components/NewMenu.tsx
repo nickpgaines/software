@@ -18,7 +18,7 @@ const ITEMS: Item[] = [
   { key: "customer", label: "Customer", href: "/customers?new=1" },
 ];
 
-export default function NewMenu() {
+export default function NewMenu({ fullWidth }: { fullWidth?: boolean }) {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -35,7 +35,11 @@ export default function NewMenu() {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="inline-flex items-center gap-1.5 bg-cyan-500 hover:bg-cyan-600 text-white rounded-full px-3 py-1.5 text-sm font-medium shadow-sm"
+        className={
+          fullWidth
+            ? "inline-flex items-center justify-between w-full gap-1.5 bg-cyan-500 hover:bg-cyan-600 text-white rounded-lg px-3 py-2 text-sm font-medium shadow-sm"
+            : "inline-flex items-center gap-1.5 bg-cyan-500 hover:bg-cyan-600 text-white rounded-full px-3 py-1.5 text-sm font-medium shadow-sm"
+        }
       >
         New
         <span
@@ -49,7 +53,7 @@ export default function NewMenu() {
       </button>
 
       {open && (
-        <div className="absolute right-0 top-full mt-2 z-50 w-48 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden">
+        <div className={`absolute top-full mt-2 z-50 w-48 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden ${fullWidth ? "left-0" : "right-0"}`}>
           <ul className="py-1">
             {ITEMS.map((it) => {
               const inner = (

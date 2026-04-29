@@ -24,7 +24,7 @@ export default function MapClient() {
   return (
     <div
       ref={containerRef}
-      style={{ position: "fixed", top: "56px", left: 0, right: 0, bottom: 0 }}
+      style={{ position: "fixed", top: 0, left: "240px", right: 0, bottom: 0 }}
     />
   );
 }
