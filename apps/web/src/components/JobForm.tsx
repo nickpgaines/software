@@ -87,7 +87,7 @@ function defaultStart(): { date: string; time: string } {
 function defaultEnd(start: { date: string; time: string }) {
   if (!start.date) return { date: "", time: "" };
   const d = new Date(`${start.date}T${start.time || "08:00"}`);
-  d.setHours(d.getHours() + 1);
+  d.setHours(d.getHours() + 2);
   return { date: toDateInput(d.toISOString()), time: toTimeInput(d.toISOString()) };
 }
 
