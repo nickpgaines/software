@@ -178,7 +178,7 @@ export default function MapFilterPanel({
                         type="checkbox"
                         checked={filters.staffIds.includes(s.id)}
                         onChange={() => toggleStaff(s.id)}
-                        className="rounded border-slate-300 text-cyan-500 focus:ring-cyan-400"
+                        className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
                       />
                       {s.name}
                       {s.role && (
@@ -251,7 +251,7 @@ function Toggle({
       onClick={() => onChange(!on)}
       className={
         "relative w-10 h-6 rounded-full transition " +
-        (on ? "bg-cyan-500" : "bg-slate-200")
+        (on ? "bg-slate-900" : "bg-slate-200")
       }
       aria-pressed={on}
     >

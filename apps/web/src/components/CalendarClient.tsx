@@ -211,7 +211,7 @@ export default function CalendarClient() {
             placeholder="Search customers..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-full pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
+            className="w-full bg-white border border-slate-200 rounded-full pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
           />
           <svg
             className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
@@ -343,15 +343,15 @@ function NowLine({ now }: { now: Date }) {
       style={{ top: `${top}px` }}
     >
       <div className="flex items-center">
-        <span className="-ml-12 w-12 text-right pr-2 text-[10px] font-medium text-rose-500">
+        <span className="-ml-12 w-12 text-right pr-2 text-[10px] font-medium text-slate-500">
           {now.toLocaleTimeString(undefined, {
             hour: "numeric",
             minute: "2-digit",
           })}
         </span>
         <div className="flex-1 flex items-center">
-          <span className="w-2 h-2 rounded-full bg-rose-500" />
-          <div className="flex-1 h-px bg-rose-500" />
+          <span className="w-2 h-2 rounded-full bg-slate-500" />
+          <div className="flex-1 h-px bg-slate-400" />
         </div>
       </div>
     </div>
@@ -545,7 +545,7 @@ function WeekView({
                 key={d.toISOString()}
                 className={
                   "px-3 py-2 text-center text-xs " +
-                  (isToday ? "text-cyan-700 bg-cyan-50/40" : "text-slate-500")
+                  (isToday ? "text-slate-900 bg-slate-50" : "text-slate-500")
                 }
               >
                 <div className="uppercase tracking-wide">
@@ -554,7 +554,7 @@ function WeekView({
                 <div
                   className={
                     "text-base font-semibold mt-0.5 " +
-                    (isToday ? "text-cyan-600" : "text-slate-900")
+                    (isToday ? "text-slate-900" : "text-slate-900")
                   }
                 >
                   {d.getDate()}
@@ -586,7 +586,7 @@ function WeekView({
                 key={d.toISOString()}
                 className={
                   "relative border-r border-slate-200 last:border-r-0 " +
-                  (isToday ? "bg-cyan-50/30" : "")
+                  (isToday ? "bg-slate-50" : "")
                 }
                 style={{ height: `${HOURS.length * HOUR_PX}px` }}
               >
@@ -649,7 +649,7 @@ function DayView({
         ))}
       </div>
       <div
-        className={"relative " + (isToday ? "bg-cyan-50/20" : "")}
+        className={"relative " + (isToday ? "bg-slate-50" : "")}
         style={{ height: `${HOURS.length * HOUR_PX}px` }}
       >
         {HOURS.map((h) => (
@@ -714,13 +714,13 @@ function MonthView({
               className={
                 "border-b border-r border-slate-200 last:border-r-0 text-left p-2 min-h-[110px] hover:bg-slate-50 transition " +
                 (inMonth ? "" : "bg-slate-50/40 text-slate-400 ") +
-                (isToday ? "bg-cyan-50/40" : "")
+                (isToday ? "bg-slate-50" : "")
               }
             >
               <div
                 className={
                   "text-sm font-semibold mb-1 " +
-                  (isToday ? "text-cyan-600" : "")
+                  (isToday ? "text-slate-900" : "")
                 }
               >
                 {d.getDate()}

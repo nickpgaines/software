@@ -516,7 +516,7 @@ export default function JobForm({
                 type="checkbox"
                 checked={anytime}
                 onChange={(e) => setAnytime(e.target.checked)}
-                className="rounded border-slate-300 text-cyan-500 focus:ring-cyan-400"
+                className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
               />
               Anytime (no specific time of day)
             </label>
@@ -525,7 +525,7 @@ export default function JobForm({
                 type="checkbox"
                 checked={scheduleLater}
                 onChange={(e) => setScheduleLater(e.target.checked)}
-                className="rounded border-slate-300 text-cyan-500 focus:ring-cyan-400"
+                className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
               />
               Schedule later
             </label>
@@ -641,7 +641,7 @@ export default function JobForm({
                   onChange={(e) =>
                     updateCheck(c.key, { completed: e.target.checked })
                   }
-                  className="rounded border-slate-300 text-cyan-500 focus:ring-cyan-400"
+                  className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
                 />
                 <input
                   type="text"
@@ -684,7 +684,7 @@ export default function JobForm({
             type="checkbox"
             checked={recurring}
             onChange={(e) => setRecurring(e.target.checked)}
-            className="rounded border-slate-300 text-cyan-500 focus:ring-cyan-400"
+            className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
           />
           Make this a recurring service
         </label>
@@ -997,13 +997,13 @@ function StaffMultiPicker({
         {picked.map((s) => (
           <span
             key={s.id}
-            className="inline-flex items-center gap-1 bg-cyan-50 text-cyan-700 rounded-full px-2.5 py-0.5 text-xs"
+            className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 rounded-full px-2.5 py-0.5 text-xs"
           >
             {s.name}
             <button
               type="button"
               onClick={() => setIds(ids.filter((id) => id !== s.id))}
-              className="text-cyan-500 hover:text-cyan-700"
+              className="text-slate-500 hover:text-slate-900"
               aria-label={`Remove ${s.name}`}
             >
               ×
@@ -1156,7 +1156,7 @@ function LineItemCard({
                 type="checkbox"
                 checked={item.taxable}
                 onChange={(e) => onChange({ taxable: e.target.checked })}
-                className="rounded border-slate-300 text-cyan-500 focus:ring-cyan-400"
+                className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
               />
               Taxable
             </label>
@@ -1165,7 +1165,7 @@ function LineItemCard({
                 type="checkbox"
                 checked={item.upsell}
                 onChange={(e) => onChange({ upsell: e.target.checked })}
-                className="rounded border-slate-300 text-cyan-500 focus:ring-cyan-400"
+                className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
               />
               Upsell
             </label>
@@ -1219,7 +1219,7 @@ function Dropzone() {
       className={
         "border-2 border-dashed rounded-2xl py-10 text-center transition " +
         (isOver
-          ? "border-cyan-400 bg-cyan-50/50"
+          ? "border-slate-400 bg-slate-50"
           : "border-slate-200 bg-slate-50/40")
       }
     >

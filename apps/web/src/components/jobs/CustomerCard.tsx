@@ -171,7 +171,7 @@ export default function CustomerCard({
               {customer.phone ? (
                 <a
                   href={`tel:${customer.phone}`}
-                  className="text-cyan-600 hover:text-cyan-700"
+                  className="text-slate-700 hover:text-slate-900 hover:underline"
                 >
                   {formatPhone(customer.phone)}
                 </a>
@@ -183,7 +183,7 @@ export default function CustomerCard({
               {customer.email ? (
                 <a
                   href={`mailto:${customer.email}`}
-                  className="text-cyan-600 hover:text-cyan-700 break-all"
+                  className="text-slate-700 hover:text-slate-900 hover:underline break-all"
                 >
                   {customer.email}
                 </a>

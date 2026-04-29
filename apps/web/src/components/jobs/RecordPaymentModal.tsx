@@ -117,7 +117,7 @@ export default function RecordPaymentModal({
                   step="0.01"
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
-                  className="w-full border border-slate-200 rounded-full pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                  className="w-full border border-slate-200 rounded-full pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
                   autoFocus
                   required
                 />
@@ -137,7 +137,7 @@ export default function RecordPaymentModal({
                   step="0.01"
                   value={tip}
                   onChange={(e) => setTip(e.target.value)}
-                  className="w-full border border-slate-200 rounded-full pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
+                  className="w-full border border-slate-200 rounded-full pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
                 />
               </div>
             </div>
@@ -158,7 +158,7 @@ export default function RecordPaymentModal({
                     className={
                       "rounded-full px-3 py-1.5 text-sm border transition " +
                       (active
-                        ? "bg-cyan-500 border-cyan-500 text-white"
+                        ? "bg-slate-900 border-slate-900 text-white"
                         : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50")
                     }
                   >
@@ -244,7 +244,7 @@ function ReceiptToggle({
           aria-pressed={enabled}
           className={
             "relative w-10 h-6 rounded-full transition shrink-0 " +
-            (enabled ? "bg-cyan-500" : "bg-slate-200")
+            (enabled ? "bg-slate-900" : "bg-slate-200")
           }
         >
           <span

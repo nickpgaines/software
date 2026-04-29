@@ -57,7 +57,7 @@ export default function DashboardPage() {
           <input
             type="search"
             placeholder="Search"
-            className="bg-white border border-slate-200 rounded-full pl-10 pr-16 py-2.5 text-sm w-72 max-w-full focus:outline-none focus:ring-2 focus:ring-sky-400"
+            className="bg-white border border-slate-200 rounded-full pl-10 pr-16 py-2.5 text-sm w-72 max-w-full focus:outline-none focus:ring-2 focus:ring-slate-400"
           />
           <svg
             xmlns="http://www.w3.org/2000/svg"

@@ -384,7 +384,7 @@ function UploadStep({
         className={
           "rounded-lg border-2 border-dashed py-12 text-center cursor-pointer transition " +
           (dragActive
-            ? "border-blue-400 bg-blue-50/40"
+            ? "border-slate-400 bg-slate-50"
             : "border-slate-200 bg-slate-50/40 hover:bg-slate-50")
         }
       >

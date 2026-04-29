@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { Plus } from "lucide-react";
 
 type Item = {
   key: string;
@@ -42,24 +41,17 @@ export default function NewMenu({ fullWidth }: { fullWidth?: boolean }) {
             : "inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-full px-3 py-1.5 text-sm font-medium shadow-sm"
         }
       >
-        {fullWidth ? (
-          <>
-            <Plus className="w-4 h-4" strokeWidth={2.5} />
-            New
-          </>
-        ) : (
-          <>
-            New
-            <span
-              className={
-                "text-xs transition-transform " +
-                (open ? "rotate-180 inline-block" : "inline-block")
-              }
-              aria-hidden
-            >
-              ▾
-            </span>
-          </>
+        New
+        {!fullWidth && (
+          <span
+            className={
+              "text-xs transition-transform " +
+              (open ? "rotate-180 inline-block" : "inline-block")
+            }
+            aria-hidden
+          >
+            ▾
+          </span>
         )}
       </button>
 

@@ -219,7 +219,7 @@ export default function MapDoorKnockSheet({
                       type="checkbox"
                       checked={objections.includes(obj)}
                       onChange={() => toggleObj(obj)}
-                      className="rounded border-slate-300 text-cyan-500 focus:ring-cyan-400"
+                      className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
                     />
                     {obj}
                   </label>

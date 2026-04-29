@@ -26,8 +26,8 @@ export default function SettingsTabs({ username }: { username: string }) {
                 className={
                   "whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-medium transition " +
                   (active
-                    ? "border-cyan-500 text-cyan-600"
-                    : "border-transparent text-slate-500 hover:border-slate-300 hover:text-slate-900")
+                    ? "border-slate-900 text-slate-900"
+                    : "border-transparent text-slate-500 hover:text-slate-700")
                 }
               >
                 {t.label}

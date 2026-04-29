@@ -145,7 +145,7 @@ export default function MapTerritoryModal({
                   key={s.id}
                   className="inline-flex items-center gap-1.5 bg-slate-100 rounded-full pl-1 pr-2 py-0.5 text-xs"
                 >
-                  <span className="w-5 h-5 rounded-full bg-cyan-100 text-cyan-700 flex items-center justify-center text-[10px] font-semibold">
+                  <span className="w-5 h-5 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-[10px] font-semibold">
                     {initials(s.name)}
                   </span>
                   {s.name}
@@ -185,7 +185,7 @@ export default function MapTerritoryModal({
                     }}
                     className="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm flex items-center gap-2"
                   >
-                    <span className="w-6 h-6 rounded-full bg-cyan-100 text-cyan-700 flex items-center justify-center text-xs font-semibold">
+                    <span className="w-6 h-6 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-semibold">
                       {initials(s.name)}
                     </span>
                     {s.name}

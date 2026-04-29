@@ -306,9 +306,9 @@ export default function JobDetailClient({
               {job.customer_phone && (
                 <a
                   href={`sms:${job.customer_phone}`}
-                  className="flex items-center gap-3 hover:text-cyan-600"
+                  className="flex items-center gap-3 hover:text-slate-900"
                 >
-                  <span className="w-8 h-8 rounded-full bg-cyan-50 text-cyan-500 flex items-center justify-center">
+                  <span className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
                     <svg
                       className="w-4 h-4"
                       viewBox="0 0 24 24"
@@ -329,9 +329,9 @@ export default function JobDetailClient({
               {job.customer_email && (
                 <a
                   href={`mailto:${job.customer_email}`}
-                  className="flex items-center gap-3 hover:text-cyan-600"
+                  className="flex items-center gap-3 hover:text-slate-900"
                 >
-                  <span className="w-8 h-8 rounded-full bg-cyan-50 text-cyan-500 flex items-center justify-center">
+                  <span className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
                     <svg
                       className="w-4 h-4"
                       viewBox="0 0 24 24"
@@ -355,9 +355,9 @@ export default function JobDetailClient({
                   href={`https://www.google.com/maps?q=${mapsAddr}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-start gap-3 hover:text-cyan-600"
+                  className="flex items-start gap-3 hover:text-slate-900"
                 >
-                  <span className="w-8 h-8 rounded-full bg-cyan-50 text-cyan-500 flex items-center justify-center shrink-0">
+                  <span className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center shrink-0">
                     <svg
                       className="w-4 h-4"
                       viewBox="0 0 24 24"
@@ -433,7 +433,7 @@ export default function JobDetailClient({
               <h2 className="font-semibold text-slate-900">Job Details</h2>
               <Link
                 href={`/schedule/${job.id}/edit`}
-                className="text-sm text-cyan-600 hover:text-cyan-700"
+                className="text-sm text-slate-700 hover:text-slate-900 hover:underline"
               >
                 Edit
               </Link>
@@ -728,14 +728,14 @@ function StepButton({
       className={
         "relative text-left rounded-2xl border p-4 transition flex items-start gap-3 " +
         (done
-          ? "border-cyan-300 bg-cyan-50"
+          ? "border-slate-300 bg-slate-50"
           : "border-slate-200 bg-white hover:bg-slate-50")
       }
     >
       <div
         className={
           "w-9 h-9 rounded-full flex items-center justify-center shrink-0 " +
-          (done ? "bg-cyan-500 text-white" : "bg-slate-100 text-slate-400")
+          (done ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-400")
         }
       >
         {icon}
@@ -846,7 +846,7 @@ function ChecklistView({
             type="checkbox"
             checked={!!c.completed}
             onChange={() => toggle(i)}
-            className="rounded border-slate-300 text-cyan-500 focus:ring-cyan-400"
+            className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
           />
           <span
             className={

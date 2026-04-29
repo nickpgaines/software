@@ -454,7 +454,7 @@ export default function LeaderboardClient({
                         {money(Math.round(r.revenue_cents / r.job_count))}
                       </td>
                       <td
-                        className="px-5 py-3 text-right text-cyan-600 tabular-nums whitespace-nowrap"
+                        className="px-5 py-3 text-right text-slate-900 tabular-nums whitespace-nowrap"
                         suppressHydrationWarning
                       >
                         {formatDate(r.last_sale_at, mounted)}

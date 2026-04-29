@@ -119,7 +119,7 @@ export default function MessagesClient() {
               placeholder="Search conversations..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-full pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-cyan-400"
+              className="w-full bg-slate-50 border border-slate-200 rounded-full pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
             />
             <svg
               className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
@@ -141,7 +141,7 @@ export default function MessagesClient() {
               type="checkbox"
               checked={unreadOnly}
               onChange={(e) => setUnreadOnly(e.target.checked)}
-              className="rounded border-slate-300 text-cyan-500 focus:ring-cyan-400"
+              className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
             />
             Unread only
           </label>
@@ -163,10 +163,10 @@ export default function MessagesClient() {
                     onClick={() => setSelectedId(c.id)}
                     className={
                       "w-full text-left px-4 py-3 flex gap-3 hover:bg-slate-50 transition " +
-                      (selectedId === c.id ? "bg-cyan-50/40" : "")
+                      (selectedId === c.id ? "bg-slate-100" : "")
                     }
                   >
-                    <div className="w-9 h-9 rounded-full bg-cyan-100 text-cyan-700 flex items-center justify-center text-xs font-semibold shrink-0">
+                    <div className="w-9 h-9 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-semibold shrink-0">
                       {initials(c.name)}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -194,7 +194,7 @@ export default function MessagesClient() {
                           )}
                         </span>
                         {c.unread_count > 0 && (
-                          <span className="text-[10px] bg-cyan-500 text-white rounded-full px-1.5 py-0.5 shrink-0">
+                          <span className="text-[10px] bg-slate-900 text-white rounded-full px-1.5 py-0.5 shrink-0">
                             {c.unread_count}
                           </span>
                         )}
@@ -282,7 +282,7 @@ function Thread({
   return (
     <>
       <header className="px-5 py-3 border-b border-slate-200 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full bg-cyan-100 text-cyan-700 flex items-center justify-center text-xs font-semibold">
+        <div className="w-9 h-9 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-semibold">
           {initials(conversation.name)}
         </div>
         <div className="flex-1 min-w-0">
@@ -315,7 +315,7 @@ function Thread({
                     className={
                       "max-w-[75%] rounded-2xl px-3 py-2 text-sm break-words " +
                       (out
-                        ? "bg-cyan-500 text-white rounded-br-sm"
+                        ? "bg-slate-900 text-white rounded-br-sm"
                         : "bg-white border border-slate-200 text-slate-900 rounded-bl-sm")
                     }
                   >
@@ -323,7 +323,7 @@ function Thread({
                     <div
                       className={
                         "text-[10px] mt-1 " +
-                        (out ? "text-cyan-50/80" : "text-slate-400")
+                        (out ? "text-slate-300" : "text-slate-400")
                       }
                       suppressHydrationWarning
                     >
@@ -346,7 +346,7 @@ function Thread({
           value={body}
           onChange={(e) => setBody(e.target.value)}
           placeholder="Type a message…"
-          className="flex-1 border border-slate-200 rounded-full px-4 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-cyan-400"
+          className="flex-1 border border-slate-200 rounded-full px-4 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-400"
         />
         <button
           type="submit"
