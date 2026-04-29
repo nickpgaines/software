@@ -109,7 +109,7 @@ function CustomersPage() {
           </button>
           <button
             onClick={() => setCreating(true)}
-            className="text-sm bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-2"
+            className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded px-3 py-2"
           >
             + Customer
           </button>
@@ -322,7 +322,7 @@ function CustomerForm({
             <button
               type="submit"
               disabled={saving}
-              className="text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded px-3 py-2"
+              className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded px-3 py-2"
             >
               {saving ? "Saving…" : "Save"}
             </button>

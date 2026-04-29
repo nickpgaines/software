@@ -264,7 +264,7 @@ export default function ImportModal({
                 type="button"
                 onClick={() => setStep("preview")}
                 disabled={!firstNameMapped}
-                className="text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded px-3 py-2"
+                className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded px-3 py-2"
               >
                 Next: preview
               </button>
@@ -283,7 +283,7 @@ export default function ImportModal({
               <button
                 type="button"
                 onClick={doImport}
-                className="text-sm bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-2"
+                className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded px-3 py-2"
               >
                 Import {csvRows.length} {csvRows.length === 1 ? "row" : "rows"}
               </button>
@@ -296,7 +296,7 @@ export default function ImportModal({
               <button
                 type="button"
                 disabled
-                className="text-sm bg-blue-300 text-white rounded px-3 py-2"
+                className="text-sm bg-slate-400 text-white rounded px-3 py-2"
               >
                 Importing…
               </button>
@@ -309,7 +309,7 @@ export default function ImportModal({
               <button
                 type="button"
                 onClick={finishAndRefresh}
-                className="text-sm bg-blue-600 hover:bg-blue-700 text-white rounded px-3 py-2"
+                className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded px-3 py-2"
               >
                 Close
               </button>

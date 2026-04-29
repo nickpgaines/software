@@ -38,8 +38,8 @@ export default function NewMenu({ fullWidth }: { fullWidth?: boolean }) {
         onClick={() => setOpen((v) => !v)}
         className={
           fullWidth
-            ? "inline-flex items-center justify-center w-full gap-1.5 bg-gradient-to-r from-teal-400 to-teal-500 hover:from-teal-500 hover:to-teal-600 text-white rounded-full py-3 text-sm font-semibold shadow-sm transition-colors"
-            : "inline-flex items-center gap-1.5 bg-cyan-500 hover:bg-cyan-600 text-white rounded-full px-3 py-1.5 text-sm font-medium shadow-sm"
+            ? "inline-flex items-center justify-center w-full gap-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-full py-3 text-sm font-semibold shadow-sm transition-colors"
+            : "inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-full px-3 py-1.5 text-sm font-medium shadow-sm"
         }
       >
         {fullWidth ? (

@@ -341,7 +341,7 @@ export default function LeaderboardClient({
                     <button
                       onClick={() => setCustomOpen(false)}
                       disabled={!customFrom || !customTo}
-                      className="w-full text-sm bg-cyan-500 hover:bg-cyan-600 disabled:bg-cyan-300 text-white rounded-full px-3 py-1.5"
+                      className="w-full text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-3 py-1.5"
                     >
                       Apply
                     </button>

@@ -150,7 +150,7 @@ function TasksCard() {
               </span>
             ))}
           </div>
-          <button className="w-8 h-8 rounded-full bg-sky-400 hover:bg-sky-500 text-white flex items-center justify-center text-lg leading-none">
+          <button className="w-8 h-8 rounded-full bg-slate-900 hover:bg-slate-800 text-white flex items-center justify-center text-lg leading-none">
             +
           </button>
         </div>

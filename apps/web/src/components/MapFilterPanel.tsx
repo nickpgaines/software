@@ -208,7 +208,7 @@ export default function MapFilterPanel({
           </button>
           <button
             onClick={onClose}
-            className="text-sm bg-cyan-500 hover:bg-cyan-600 text-white rounded-full px-5 py-2 font-medium"
+            className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-5 py-2 font-medium"
           >
             Done
           </button>

@@ -351,7 +351,7 @@ function Thread({
         <button
           type="submit"
           disabled={sending || !body.trim()}
-          className="bg-cyan-500 hover:bg-cyan-600 disabled:bg-cyan-300 text-white rounded-full w-10 h-10 flex items-center justify-center"
+          className="bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full w-10 h-10 flex items-center justify-center"
           aria-label="Send"
         >
           <svg

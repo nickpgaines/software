@@ -320,7 +320,7 @@ export default function EmployeeForm({
               <label
                 key={p.key}
                 className={`flex items-start gap-3 px-3 py-3 rounded-lg cursor-pointer ${
-                  checked ? "bg-teal-50/50" : "hover:bg-slate-50"
+                  checked ? "bg-slate-50" : "hover:bg-slate-50"
                 }`}
               >
                 <input
@@ -329,7 +329,7 @@ export default function EmployeeForm({
                   value={p.key}
                   checked={checked}
                   onChange={() => setPermission(p.key)}
-                  className="mt-1 accent-teal-500"
+                  className="mt-1 accent-slate-900"
                 />
                 <div>
                   <div className="text-sm font-semibold text-slate-900">

@@ -118,7 +118,7 @@ export default function EmployeesPage() {
                     <td className="px-4 py-4 text-right">
                       <Link
                         href={`/employees/${e.id}/edit`}
-                        className="text-sm text-amber-500 hover:text-amber-600"
+                        className="text-sm text-slate-900 hover:underline"
                       >
                         Edit
                       </Link>

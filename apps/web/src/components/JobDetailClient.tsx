@@ -395,10 +395,10 @@ export default function JobDetailClient({
               <button
                 type="button"
                 onClick={() => setPaymentModalOpen(true)}
-                className="w-full inline-flex items-center justify-between border border-cyan-200 bg-cyan-50/40 hover:bg-cyan-50 rounded-2xl px-4 py-3 text-sm text-cyan-700 font-medium"
+                className="w-full inline-flex items-center justify-between border border-slate-200 hover:bg-slate-50 rounded-2xl px-4 py-3 text-sm text-slate-700 font-medium"
               >
                 <span>Record Payment</span>
-                <span className="text-cyan-300">›</span>
+                <span className="text-slate-300">›</span>
               </button>
               <Link
                 href="/schedule"

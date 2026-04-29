@@ -210,7 +210,7 @@ export default function RecordPaymentModal({
             <button
               type="submit"
               disabled={saving || !amountValid}
-              className="text-sm bg-cyan-500 hover:bg-cyan-600 disabled:bg-cyan-300 text-white rounded-full px-5 py-2 font-medium"
+              className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
             >
               {saving ? "Recording…" : "Record payment"}
             </button>
