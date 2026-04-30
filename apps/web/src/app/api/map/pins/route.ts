@@ -13,6 +13,7 @@ type Input = {
   phone?: string | null;
   status?: string;
   objections?: string[] | null;
+  note?: string | null;
   notes?: string | null;
   customer_id?: number | null;
 };
@@ -80,7 +81,7 @@ export async function POST(req: Request) {
       body.phone || null,
       body.status || "not_home",
       body.objections ? JSON.stringify(body.objections) : null,
-      body.notes || null,
+      (body.note ?? body.notes) || null,
       body.customer_id || null,
       getSessionUser() || null
     );

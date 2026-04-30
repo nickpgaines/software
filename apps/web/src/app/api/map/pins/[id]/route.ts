@@ -55,6 +55,39 @@ export async function PUT(
   return NextResponse.json(updated);
 }
 
+export async function PATCH(
+  req: Request,
+  { params }: { params: { id: string } }
+) {
+  const db = await getDb();
+  const id = Number(params.id);
+  const body = (await req.json().catch(() => ({}))) as Partial<{
+    status: string;
+    note: string | null;
+    notes: string | null;
+  }>;
+  const existing = (await db
+    .prepare("SELECT * FROM map_pins WHERE id = ?")
+    .get(id)) as MapPin | undefined;
+  if (!existing) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  const nextNotes =
+    body.note !== undefined
+      ? body.note
+      : body.notes !== undefined
+      ? body.notes
+      : existing.notes;
+  const nextStatus = body.status ?? existing.status;
+  await db
+    .prepare("UPDATE map_pins SET status = ?, notes = ? WHERE id = ?")
+    .run(nextStatus, nextNotes, id);
+  const updated = (await db
+    .prepare("SELECT * FROM map_pins WHERE id = ?")
+    .get(id)) as MapPin;
+  return NextResponse.json(updated);
+}
+
 export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } }
