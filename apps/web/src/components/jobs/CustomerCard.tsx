@@ -39,6 +39,7 @@ type GeocodeState =
     }
   | { status: "error"; message: string };
 
+// TODO post-launch: build a backfill geocoding admin action for CSV-imported customers without lat/lng.
 async function geocode(
   address: string
 ): Promise<{ lat: number; lng: number; formatted: string } | null> {
