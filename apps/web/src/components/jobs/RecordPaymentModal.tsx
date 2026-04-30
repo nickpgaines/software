@@ -31,12 +31,25 @@ function dollars(cents: number): string {
 const PUBLISHABLE_KEY =
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY?.trim() || "";
 
-let _stripePromise: Promise<StripeJs | null> | null = null;
-function stripePromise() {
+const _connectStripeCache = new Map<string, Promise<StripeJs | null>>();
+function stripePromise(stripeAccount: string | null) {
   if (!PUBLISHABLE_KEY) return null;
-  if (!_stripePromise) _stripePromise = loadStripe(PUBLISHABLE_KEY);
-  return _stripePromise;
+  const key = stripeAccount || "_platform_";
+  if (!_connectStripeCache.has(key)) {
+    _connectStripeCache.set(
+      key,
+      loadStripe(PUBLISHABLE_KEY, stripeAccount ? { stripeAccount } : undefined)
+    );
+  }
+  return _connectStripeCache.get(key)!;
 }
+
+type ConnectStatus = {
+  configured: boolean;
+  connected: boolean;
+  charges_enabled: boolean;
+  details_submitted: boolean;
+};
 
 type Step = "details" | "card";
 
@@ -71,6 +84,10 @@ export default function RecordPaymentModal({
   const [step, setStep] = useState<Step>("details");
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
+  const [stripeAccount, setStripeAccount] = useState<string | null>(null);
+  const [connectStatus, setConnectStatus] = useState<ConnectStatus | null>(
+    null
+  );
 
   const amountNumber = useMemo(() => Number(amount), [amount]);
   const amountValid = Number.isFinite(amountNumber) && amountNumber > 0;
@@ -78,6 +95,28 @@ export default function RecordPaymentModal({
   const tipValid = Number.isFinite(tipNumber) && tipNumber >= 0;
 
   const stripeReady = Boolean(PUBLISHABLE_KEY);
+
+  useEffect(() => {
+    if (method !== "card" || !stripeReady) return;
+    let cancelled = false;
+    fetch("/api/stripe/connect/status")
+      .then((r) => r.json())
+      .then((data: ConnectStatus) => {
+        if (!cancelled) setConnectStatus(data);
+      })
+      .catch(() => {
+        if (!cancelled)
+          setConnectStatus({
+            configured: false,
+            connected: false,
+            charges_enabled: false,
+            details_submitted: false,
+          });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [method, stripeReady]);
 
   async function recordManualPayment() {
     setSaving(true);
@@ -124,9 +163,11 @@ export default function RecordPaymentModal({
     const data = (await res.json()) as {
       client_secret: string;
       payment_intent_id: string;
+      stripe_account: string;
     };
     setClientSecret(data.client_secret);
     setPaymentIntentId(data.payment_intent_id);
+    setStripeAccount(data.stripe_account || null);
     setStep("card");
   }
 
@@ -144,7 +185,19 @@ export default function RecordPaymentModal({
     if (method === "card") {
       if (!stripeReady) {
         setError(
-          "Stripe is not configured. Set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY and STRIPE_SECRET_KEY in .env to charge cards."
+          "Stripe platform keys aren't configured. Set NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY and STRIPE_SECRET_KEY, then redeploy."
+        );
+        return;
+      }
+      if (connectStatus && !connectStatus.connected) {
+        setError(
+          "Connect a Stripe account in Settings → Payments before charging cards."
+        );
+        return;
+      }
+      if (connectStatus && !connectStatus.charges_enabled) {
+        setError(
+          "Stripe is still verifying this account. Finish onboarding in Settings → Payments before charging cards."
         );
         return;
       }
@@ -242,11 +295,40 @@ export default function RecordPaymentModal({
               </div>
               {method === "card" && !stripeReady && (
                 <p className="mt-2 text-xs text-amber-600">
-                  Stripe isn&apos;t configured. Set the Stripe keys in
-                  <code className="mx-1">.env</code>
-                  to charge cards.
+                  Stripe platform keys aren&apos;t configured. Add them and
+                  redeploy to charge cards.
                 </p>
               )}
+              {method === "card" &&
+                stripeReady &&
+                connectStatus &&
+                !connectStatus.connected && (
+                  <p className="mt-2 text-xs text-amber-600">
+                    No Stripe account connected.{" "}
+                    <a
+                      href="/settings?tab=payments"
+                      className="underline font-medium"
+                    >
+                      Connect one in Settings
+                    </a>{" "}
+                    to charge cards.
+                  </p>
+                )}
+              {method === "card" &&
+                stripeReady &&
+                connectStatus?.connected &&
+                !connectStatus.charges_enabled && (
+                  <p className="mt-2 text-xs text-amber-600">
+                    Stripe is still verifying this account.{" "}
+                    <a
+                      href="/settings?tab=payments"
+                      className="underline font-medium"
+                    >
+                      Finish onboarding
+                    </a>{" "}
+                    to charge cards.
+                  </p>
+                )}
             </div>
 
             <div>
@@ -306,7 +388,7 @@ export default function RecordPaymentModal({
 
         {step === "card" && clientSecret && paymentIntentId && (
           <Elements
-            stripe={stripePromise()}
+            stripe={stripePromise(stripeAccount)}
             options={{ clientSecret, appearance: { theme: "stripe" } }}
           >
             <CardStep
@@ -320,6 +402,7 @@ export default function RecordPaymentModal({
                 setStep("details");
                 setClientSecret(null);
                 setPaymentIntentId(null);
+                setStripeAccount(null);
                 setError(null);
               }}
               onSuccess={onRecorded}

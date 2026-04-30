@@ -1,7 +1,11 @@
 import { NextResponse } from "next/server";
 import { getDb, type Payment } from "@/lib/db";
 import { autoCompleteSteps } from "@/lib/jobs";
-import { getStripe, isStripeConfigured } from "@/lib/stripe";
+import {
+  getStripe,
+  isStripeConfigured,
+  getCompany,
+} from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 
@@ -11,8 +15,16 @@ export async function POST(
 ) {
   if (!isStripeConfigured()) {
     return NextResponse.json(
-      { error: "Stripe is not configured on the server" },
+      { error: "Stripe platform keys are not configured on the server" },
       { status: 503 }
+    );
+  }
+
+  const company = await getCompany();
+  if (!company.stripe_account_id) {
+    return NextResponse.json(
+      { error: "No connected Stripe account" },
+      { status: 400 }
     );
   }
 
@@ -40,7 +52,13 @@ export async function POST(
   }
 
   const stripe = getStripe();
-  const intent = await stripe.paymentIntents.retrieve(intentId);
+  // Direct charges live on the connected account, so we must retrieve
+  // the intent with the same Stripe-Account header.
+  const intent = await stripe.paymentIntents.retrieve(
+    intentId,
+    undefined,
+    { stripeAccount: company.stripe_account_id }
+  );
 
   if (intent.status !== "succeeded") {
     return NextResponse.json(
