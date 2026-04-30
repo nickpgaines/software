@@ -1,5 +1,5 @@
-import type Database from "better-sqlite3";
 import type {
+  Db,
   Job,
   LineItem,
   ChecklistItem,
@@ -71,24 +71,19 @@ export function computeJobStatus(job: {
   return anyStep ? "in_progress" : "scheduled";
 }
 
-export function autoCompleteSteps(db: Database.Database, jobId: number) {
+export async function autoCompleteSteps(db: Db, jobId: number) {
   const now = new Date().toISOString();
-  // COALESCE preserves any timestamp that's already there — never
-  // overwrites a manually-logged step. The legacy `status` text
-  // column is promoted to 'completed' unless the job was previously
-  // 'cancelled'.
-  db.prepare(
-    `UPDATE jobs
-       SET en_route_at  = COALESCE(en_route_at,  ?),
-           arrived_at   = COALESCE(arrived_at,   ?),
-           started_at   = COALESCE(started_at,   ?),
-           completed_at = COALESCE(completed_at, ?),
-           status = CASE WHEN status = 'cancelled' THEN status ELSE 'completed' END
-     WHERE id = ?`
-  ).run(now, now, now, now, jobId);
-  // TODO(post-vercel): when SMS notifications are wired up, ensure
-  // auto-completed steps do NOT fire notifications. Only manual step
-  // taps should notify.
+  await db
+    .prepare(
+      `UPDATE jobs
+         SET en_route_at  = COALESCE(en_route_at,  ?),
+             arrived_at   = COALESCE(arrived_at,   ?),
+             started_at   = COALESCE(started_at,   ?),
+             completed_at = COALESCE(completed_at, ?),
+             status = CASE WHEN status = 'cancelled' THEN status ELSE 'completed' END
+       WHERE id = ?`
+    )
+    .run(now, now, now, now, jobId);
 }
 
 export type JobDetail = Job & {
@@ -124,68 +119,68 @@ export function durationMinutes(start: string, end: string | null | undefined) {
   return Math.max(1, Math.round(ms / 60_000));
 }
 
-function syncAssignments(
-  db: Database.Database,
+async function syncAssignments(
+  db: Db,
   jobId: number,
   ids: number[],
   role: "sales" | "tech"
 ) {
-  db.prepare("DELETE FROM job_assignments WHERE job_id = ? AND role = ?").run(
-    jobId,
-    role
-  );
-  const stmt = db.prepare(
-    "INSERT OR IGNORE INTO job_assignments (job_id, staff_id, role) VALUES (?, ?, ?)"
-  );
-  for (const id of ids) stmt.run(jobId, id, role);
+  await db
+    .prepare("DELETE FROM job_assignments WHERE job_id = ? AND role = ?")
+    .run(jobId, role);
+  for (const id of ids) {
+    await db
+      .prepare(
+        "INSERT OR IGNORE INTO job_assignments (job_id, staff_id, role) VALUES (?, ?, ?)"
+      )
+      .run(jobId, id, role);
+  }
 }
 
-function syncLineItems(
-  db: Database.Database,
-  jobId: number,
-  items: LineItemInput[]
-) {
-  db.prepare("DELETE FROM line_items WHERE job_id = ?").run(jobId);
-  const stmt = db.prepare(
-    `INSERT INTO line_items
-       (job_id, title, description, quantity, price_cents, taxable, upsell, position)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
-  );
-  items.forEach((li, i) =>
-    stmt.run(
-      jobId,
-      li.title,
-      li.description || null,
-      li.quantity,
-      li.price_cents,
-      toBit(li.taxable),
-      toBit(li.upsell),
-      i
-    )
-  );
+async function syncLineItems(db: Db, jobId: number, items: LineItemInput[]) {
+  await db.prepare("DELETE FROM line_items WHERE job_id = ?").run(jobId);
+  for (let i = 0; i < items.length; i++) {
+    const li = items[i];
+    await db
+      .prepare(
+        `INSERT INTO line_items
+           (job_id, title, description, quantity, price_cents, taxable, upsell, position)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        jobId,
+        li.title,
+        li.description || null,
+        li.quantity,
+        li.price_cents,
+        toBit(li.taxable),
+        toBit(li.upsell),
+        i
+      );
+  }
 }
 
-function syncChecklist(
-  db: Database.Database,
-  jobId: number,
-  items: ChecklistInput[]
-) {
-  db.prepare("DELETE FROM checklist_items WHERE job_id = ?").run(jobId);
-  const stmt = db.prepare(
-    "INSERT INTO checklist_items (job_id, text, completed, position) VALUES (?, ?, ?, ?)"
-  );
-  items.forEach((c, i) => stmt.run(jobId, c.text, toBit(c.completed), i));
+async function syncChecklist(db: Db, jobId: number, items: ChecklistInput[]) {
+  await db.prepare("DELETE FROM checklist_items WHERE job_id = ?").run(jobId);
+  for (let i = 0; i < items.length; i++) {
+    const c = items[i];
+    await db
+      .prepare(
+        "INSERT INTO checklist_items (job_id, text, completed, position) VALUES (?, ?, ?, ?)"
+      )
+      .run(jobId, c.text, toBit(c.completed), i);
+  }
 }
 
-export function createJob(db: Database.Database, input: JobInput) {
-  const tx = db.transaction(() => {
+export async function createJob(db: Db, input: JobInput): Promise<number> {
+  return db.transaction(async (tx) => {
     const lineItems = input.line_items || [];
     const total = totalCents(lineItems);
     const dur = durationMinutes(input.start_time, input.end_time);
     const sales = input.sales_ids || [];
     const techs = input.tech_ids || [];
 
-    const result = db
+    const result = await tx
       .prepare(
         `INSERT INTO jobs
            (customer_id, scheduled_at, duration_minutes, price_cents, status, notes,
@@ -210,25 +205,24 @@ export function createJob(db: Database.Database, input: JobInput) {
       );
     const id = Number(result.lastInsertRowid);
 
-    syncAssignments(db, id, sales, "sales");
-    syncAssignments(db, id, techs, "tech");
-    syncLineItems(db, id, lineItems);
-    syncChecklist(db, id, input.checklist_items || []);
+    await syncAssignments(tx, id, sales, "sales");
+    await syncAssignments(tx, id, techs, "tech");
+    await syncLineItems(tx, id, lineItems);
+    await syncChecklist(tx, id, input.checklist_items || []);
 
     return id;
   });
-  return tx();
 }
 
-export function updateJob(
-  db: Database.Database,
+export async function updateJob(
+  db: Db,
   id: number,
   input: Partial<JobInput>
-) {
-  const tx = db.transaction(() => {
-    const existing = db.prepare("SELECT * FROM jobs WHERE id = ?").get(id) as
-      | Job
-      | undefined;
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    const existing = await tx
+      .prepare("SELECT * FROM jobs WHERE id = ?")
+      .get<Job>(id);
     if (!existing) throw new Error("Not found");
 
     const start = input.start_time ?? existing.scheduled_at;
@@ -246,58 +240,70 @@ export function updateJob(
 
     const sales =
       input.sales_ids ??
-      (db
-        .prepare(
-          "SELECT staff_id FROM job_assignments WHERE job_id = ? AND role = 'sales'"
-        )
-        .all(id) as { staff_id: number }[]).map((r) => r.staff_id);
+      (
+        await tx
+          .prepare(
+            "SELECT staff_id FROM job_assignments WHERE job_id = ? AND role = 'sales'"
+          )
+          .all<{ staff_id: number }>(id)
+      ).map((r) => r.staff_id);
     const techs =
       input.tech_ids ??
-      (db
-        .prepare(
-          "SELECT staff_id FROM job_assignments WHERE job_id = ? AND role = 'tech'"
-        )
-        .all(id) as { staff_id: number }[]).map((r) => r.staff_id);
+      (
+        await tx
+          .prepare(
+            "SELECT staff_id FROM job_assignments WHERE job_id = ? AND role = 'tech'"
+          )
+          .all<{ staff_id: number }>(id)
+      ).map((r) => r.staff_id);
 
-    db.prepare(
-      `UPDATE jobs
-         SET customer_id = ?, scheduled_at = ?, duration_minutes = ?, price_cents = ?,
-             status = ?, notes = ?, salesperson_id = ?, technician_id = ?,
-             end_time = ?, anytime = ?, schedule_later = ?, lead_source = ?,
-             recurring = ?
-       WHERE id = ?`
-    ).run(
-      input.customer_id ?? existing.customer_id,
-      start,
-      dur,
-      priceCents,
-      input.status ?? existing.status,
-      input.notes !== undefined ? input.notes : existing.notes,
-      sales[0] || null,
-      techs[0] || null,
-      end,
-      input.anytime !== undefined ? toBit(input.anytime) : existing.anytime,
-      input.schedule_later !== undefined
-        ? toBit(input.schedule_later)
-        : existing.schedule_later,
-      input.lead_source !== undefined ? input.lead_source : existing.lead_source,
-      input.recurring !== undefined ? toBit(input.recurring) : existing.recurring,
-      id
-    );
+    await tx
+      .prepare(
+        `UPDATE jobs
+           SET customer_id = ?, scheduled_at = ?, duration_minutes = ?, price_cents = ?,
+               status = ?, notes = ?, salesperson_id = ?, technician_id = ?,
+               end_time = ?, anytime = ?, schedule_later = ?, lead_source = ?,
+               recurring = ?
+         WHERE id = ?`
+      )
+      .run(
+        input.customer_id ?? existing.customer_id,
+        start,
+        dur,
+        priceCents,
+        input.status ?? existing.status,
+        input.notes !== undefined ? input.notes : existing.notes,
+        sales[0] || null,
+        techs[0] || null,
+        end,
+        input.anytime !== undefined ? toBit(input.anytime) : existing.anytime,
+        input.schedule_later !== undefined
+          ? toBit(input.schedule_later)
+          : existing.schedule_later,
+        input.lead_source !== undefined
+          ? input.lead_source
+          : existing.lead_source,
+        input.recurring !== undefined
+          ? toBit(input.recurring)
+          : existing.recurring,
+        id
+      );
 
-    if (input.sales_ids !== undefined) syncAssignments(db, id, sales, "sales");
-    if (input.tech_ids !== undefined) syncAssignments(db, id, techs, "tech");
-    if (input.line_items) syncLineItems(db, id, input.line_items);
-    if (input.checklist_items) syncChecklist(db, id, input.checklist_items);
+    if (input.sales_ids !== undefined)
+      await syncAssignments(tx, id, sales, "sales");
+    if (input.tech_ids !== undefined)
+      await syncAssignments(tx, id, techs, "tech");
+    if (input.line_items) await syncLineItems(tx, id, input.line_items);
+    if (input.checklist_items)
+      await syncChecklist(tx, id, input.checklist_items);
   });
-  tx();
 }
 
-export function getJobDetail(
-  db: Database.Database,
+export async function getJobDetail(
+  db: Db,
   id: number
-): JobDetail | null {
-  const job = db
+): Promise<JobDetail | null> {
+  const job = await db
     .prepare(
       `SELECT j.*,
               c.name AS customer_name,
@@ -308,29 +314,29 @@ export function getJobDetail(
        JOIN customers c ON c.id = j.customer_id
        WHERE j.id = ?`
     )
-    .get(id) as
-    | (Job & {
+    .get<
+      Job & {
         customer_name: string;
         customer_phone: string | null;
         customer_email: string | null;
         customer_address: string | null;
-      })
-    | undefined;
+      }
+    >(id);
   if (!job) return null;
 
-  const lineItems = db
+  const lineItems = await db
     .prepare(
       "SELECT * FROM line_items WHERE job_id = ? ORDER BY position ASC, id ASC"
     )
-    .all(id) as LineItem[];
+    .all<LineItem>(id);
 
-  const checklist = db
+  const checklist = await db
     .prepare(
       "SELECT * FROM checklist_items WHERE job_id = ? ORDER BY position ASC, id ASC"
     )
-    .all(id) as ChecklistItem[];
+    .all<ChecklistItem>(id);
 
-  const sales = db
+  const sales = await db
     .prepare(
       `SELECT s.id, s.name, s.role
        FROM job_assignments ja
@@ -338,9 +344,9 @@ export function getJobDetail(
        WHERE ja.job_id = ? AND ja.role = 'sales'
        ORDER BY s.name COLLATE NOCASE`
     )
-    .all(id) as { id: number; name: string; role: string | null }[];
+    .all<{ id: number; name: string; role: string | null }>(id);
 
-  const techs = db
+  const techs = await db
     .prepare(
       `SELECT s.id, s.name, s.role
        FROM job_assignments ja
@@ -348,13 +354,13 @@ export function getJobDetail(
        WHERE ja.job_id = ? AND ja.role = 'tech'
        ORDER BY s.name COLLATE NOCASE`
     )
-    .all(id) as { id: number; name: string; role: string | null }[];
+    .all<{ id: number; name: string; role: string | null }>(id);
 
-  const payments = db
+  const payments = await db
     .prepare(
       "SELECT * FROM payments WHERE job_id = ? ORDER BY created_at DESC, id DESC"
     )
-    .all(id) as Payment[];
+    .all<Payment>(id);
 
   const paid_total_cents = payments.reduce(
     (sum, p) => sum + (p.amount_cents || 0),
@@ -365,8 +371,6 @@ export function getJobDetail(
     0
   );
   const total = job.price_cents || 0;
-  // paid_status uses ONLY amount_cents — tips are bonus and never
-  // close the gap on the actual job total.
   const paid_status: PaidStatus =
     paid_total_cents <= 0
       ? "unpaid"
@@ -397,12 +401,12 @@ export function getJobDetail(
   };
 }
 
-export function setStatusStep(
-  db: Database.Database,
+export async function setStatusStep(
+  db: Db,
   id: number,
   step: "en_route" | "arrived" | "started" | "completed",
   clear = false
-) {
+): Promise<void> {
   const col =
     step === "en_route"
       ? "en_route_at"
@@ -413,9 +417,10 @@ export function setStatusStep(
       : "completed_at";
   const newStatus = clear ? "scheduled" : step;
   const ts = clear ? null : new Date().toISOString();
-  db.prepare(`UPDATE jobs SET ${col} = ?, status = ? WHERE id = ?`).run(
-    ts,
-    newStatus,
-    id
-  );
+  await db
+    .prepare(`UPDATE jobs SET ${col} = ?, status = ? WHERE id = ?`)
+    .run(ts, newStatus, id);
 }
+
+// JobAssignment is re-exported for callers
+export type { JobAssignment };

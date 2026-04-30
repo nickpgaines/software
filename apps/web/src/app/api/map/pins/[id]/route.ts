@@ -7,7 +7,7 @@ export async function PUT(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const db = getDb();
+  const db = await getDb();
   const id = Number(params.id);
   const body = (await req.json().catch(() => ({}))) as Partial<{
     lat: number;
@@ -21,13 +21,13 @@ export async function PUT(
     notes: string | null;
     customer_id: number | null;
   }>;
-  const existing = db
+  const existing = (await db
     .prepare("SELECT * FROM map_pins WHERE id = ?")
-    .get(id) as MapPin | undefined;
+    .get(id)) as MapPin | undefined;
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  db.prepare(
+  await db.prepare(
     `UPDATE map_pins
        SET lat = ?, lng = ?, address = ?, first_name = ?, last_name = ?,
            phone = ?, status = ?, objections = ?, notes = ?, customer_id = ?
@@ -49,9 +49,9 @@ export async function PUT(
     body.customer_id !== undefined ? body.customer_id : existing.customer_id,
     id
   );
-  const updated = db
+  const updated = (await db
     .prepare("SELECT * FROM map_pins WHERE id = ?")
-    .get(id) as MapPin;
+    .get(id)) as MapPin;
   return NextResponse.json(updated);
 }
 
@@ -59,7 +59,7 @@ export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  const db = getDb();
-  db.prepare("DELETE FROM map_pins WHERE id = ?").run(Number(params.id));
+  const db = await getDb();
+  await db.prepare("DELETE FROM map_pins WHERE id = ?").run(Number(params.id));
   return NextResponse.json({ ok: true });
 }

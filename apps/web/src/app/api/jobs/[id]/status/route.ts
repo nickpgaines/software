@@ -11,7 +11,7 @@ export async function POST(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const db = getDb();
+  const db = await getDb();
   const id = Number(params.id);
   const { step, clear } = (await req.json().catch(() => ({}))) as {
     step?: Step;
@@ -20,6 +20,6 @@ export async function POST(
   if (!step || !STEPS.includes(step)) {
     return NextResponse.json({ error: "Invalid step" }, { status: 400 });
   }
-  setStatusStep(db, id, step, !!clear);
-  return NextResponse.json(getJobDetail(db, id));
+  await setStatusStep(db, id, step, !!clear);
+  return NextResponse.json(await getJobDetail(db, id));
 }

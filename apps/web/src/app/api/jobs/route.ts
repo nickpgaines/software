@@ -15,7 +15,7 @@ type JobRow = {
 };
 
 export async function GET(req: Request) {
-  const db = getDb();
+  const db = await getDb();
   const url = new URL(req.url);
   const from = url.searchParams.get("from");
   const to = url.searchParams.get("to");
@@ -49,7 +49,9 @@ export async function GET(req: Request) {
   if (where.length) sql += ` WHERE ${where.join(" AND ")}`;
   sql += " ORDER BY j.scheduled_at ASC";
 
-  const rows = db.prepare(sql).all(...args) as (JobRow &
+  const rows = (await db
+    .prepare(sql)
+    .all(...(args as (string | number | null)[]))) as (JobRow &
     Record<string, unknown>)[];
   const enriched = rows.map((row) => ({
     ...row,
@@ -66,7 +68,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const db = getDb();
+  const db = await getDb();
   const body = (await req.json().catch(() => ({}))) as Partial<JobInput>;
   if (!body.customer_id || !body.start_time) {
     return NextResponse.json(
@@ -74,6 +76,6 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  const id = createJob(db, body as JobInput);
+  const id = await createJob(db, body as JobInput);
   return NextResponse.json({ id }, { status: 201 });
 }

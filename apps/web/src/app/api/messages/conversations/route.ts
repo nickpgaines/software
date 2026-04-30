@@ -15,8 +15,8 @@ type Row = {
 };
 
 export async function GET() {
-  const db = getDb();
-  const rows = db
+  const db = await getDb();
+  const rows = (await db
     .prepare(
       `SELECT
          c.id, c.name, c.phone, c.email,
@@ -34,6 +34,6 @@ export async function GET() {
          last_at DESC,
          c.name COLLATE NOCASE ASC`
     )
-    .all() as Row[];
+    .all()) as Row[];
   return NextResponse.json(rows);
 }

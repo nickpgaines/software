@@ -9,17 +9,17 @@ function buildName(first: string, last: string) {
 }
 
 export async function GET() {
-  const db = getDb();
-  const rows = db
+  const db = await getDb();
+  const rows = (await db
     .prepare(
       "SELECT * FROM customers ORDER BY first_name COLLATE NOCASE ASC, last_name COLLATE NOCASE ASC"
     )
-    .all() as Customer[];
+    .all()) as Customer[];
   return NextResponse.json(rows);
 }
 
 export async function POST(req: Request) {
-  const db = getDb();
+  const db = await getDb();
   const body = (await req.json().catch(() => ({}))) as Partial<Customer>;
   const first = (body.first_name || "").trim();
   const last = (body.last_name || "").trim();
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
              ?, ?, ?, ?, ?, ?,
              ?, ?, ?, ?)`
   );
-  const result = stmt.run(
+  const result = await stmt.run(
     name,
     first,
     last,
@@ -69,8 +69,8 @@ export async function POST(req: Request) {
     addr.formatted_address,
     body.notes || null
   );
-  const created = db
+  const created = (await db
     .prepare("SELECT * FROM customers WHERE id = ?")
-    .get(result.lastInsertRowid) as Customer;
+    .get(result.lastInsertRowid)) as Customer;
   return NextResponse.json(created, { status: 201 });
 }

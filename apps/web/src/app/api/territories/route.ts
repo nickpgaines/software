@@ -5,15 +5,15 @@ import { getSessionUser } from "@/lib/auth";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const db = getDb();
-  const rows = db
+  const db = await getDb();
+  const rows = (await db
     .prepare("SELECT * FROM territories ORDER BY created_at DESC")
-    .all() as Territory[];
+    .all()) as Territory[];
   return NextResponse.json(rows);
 }
 
 export async function POST(req: Request) {
-  const db = getDb();
+  const db = await getDb();
   const body = (await req.json().catch(() => ({}))) as Partial<{
     name: string;
     color: string;
@@ -26,7 +26,7 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  const result = db
+  const result = await db
     .prepare(
       `INSERT INTO territories (name, color, polygon, assigned_employee_ids, created_by)
        VALUES (?, ?, ?, ?, ?)`
@@ -40,8 +40,8 @@ export async function POST(req: Request) {
         : null,
       getSessionUser() || null
     );
-  const created = db
+  const created = (await db
     .prepare("SELECT * FROM territories WHERE id = ?")
-    .get(result.lastInsertRowid) as Territory;
+    .get(result.lastInsertRowid)) as Territory;
   return NextResponse.json(created, { status: 201 });
 }

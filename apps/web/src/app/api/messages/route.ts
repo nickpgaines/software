@@ -4,7 +4,7 @@ import { getDb, type Message } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  const db = getDb();
+  const db = await getDb();
   const url = new URL(req.url);
   const customerId = Number(url.searchParams.get("customer_id"));
   if (!customerId) {
@@ -13,13 +13,13 @@ export async function GET(req: Request) {
       { status: 400 }
     );
   }
-  const rows = db
+  const rows = (await db
     .prepare(
       "SELECT * FROM messages WHERE customer_id = ? ORDER BY created_at ASC, id ASC"
     )
-    .all(customerId) as Message[];
+    .all(customerId)) as Message[];
   // Mark inbound messages as read
-  db.prepare(
+  await db.prepare(
     `UPDATE messages SET read_at = datetime('now')
      WHERE customer_id = ? AND direction = 'inbound' AND read_at IS NULL`
   ).run(customerId);
@@ -27,7 +27,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const db = getDb();
+  const db = await getDb();
   const body = (await req.json().catch(() => ({}))) as Partial<{
     customer_id: number;
     body: string;
@@ -42,14 +42,14 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  const result = db
+  const result = await db
     .prepare(
       `INSERT INTO messages (customer_id, body, direction)
        VALUES (?, ?, ?)`
     )
     .run(customerId, text, direction);
-  const created = db
+  const created = (await db
     .prepare("SELECT * FROM messages WHERE id = ?")
-    .get(result.lastInsertRowid) as Message;
+    .get(result.lastInsertRowid)) as Message;
   return NextResponse.json(created, { status: 201 });
 }
