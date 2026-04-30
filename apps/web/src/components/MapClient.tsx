@@ -80,6 +80,8 @@ export default function MapClient() {
   const holdStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const [styleMode, setStyleMode] = useState<StyleMode>("satellite");
+  const [pinsVisible, setPinsVisible] = useState(true);
+  const pinsVisibleRef = useRef(true);
   const [modal, setModal] = useState<ModalState>({
     open: false,
     lng: 0,
@@ -106,6 +108,7 @@ export default function MapClient() {
     if (!map) return;
     const status = statusOf(pin);
     const el = makeMarkerElement(status);
+    if (!pinsVisibleRef.current) el.style.display = "none";
     const marker = new mapboxgl.Marker({ element: el })
       .setLngLat([pin.lng, pin.lat])
       .addTo(map);
@@ -239,6 +242,13 @@ export default function MapClient() {
     };
   }, []);
 
+  useEffect(() => {
+    pinsVisibleRef.current = pinsVisible;
+    for (const [, marker] of markersRef.current) {
+      marker.getElement().style.display = pinsVisible ? "" : "none";
+    }
+  }, [pinsVisible]);
+
   function toggleStyle() {
     const next: StyleMode = styleMode === "satellite" ? "streets" : "satellite";
     setStyleMode(next);
@@ -285,7 +295,12 @@ export default function MapClient() {
         ref={containerRef}
         style={{ position: "fixed", top: 0, left: "240px", right: 0, bottom: 0 }}
       />
-      <MapIconStrip styleMode={styleMode} onToggleStyle={toggleStyle} />
+      <MapIconStrip
+        styleMode={styleMode}
+        onToggleStyle={toggleStyle}
+        pinsVisible={pinsVisible}
+        onTogglePins={() => setPinsVisible((v) => !v)}
+      />
       <MapPinDropModal
         open={modal.open}
         initialStatus={modal.initialStatus}
