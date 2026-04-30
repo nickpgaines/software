@@ -19,58 +19,67 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const db = await getDb();
-  const body = (await req.json().catch(() => ({}))) as Partial<Customer>;
-  const first = (body.first_name || "").trim();
-  const last = (body.last_name || "").trim();
-  if (!first || !last) {
+  try {
+    const db = await getDb();
+    const body = (await req.json().catch(() => ({}))) as Partial<Customer>;
+    const first = (body.first_name || "").trim();
+    const last = (body.last_name || "").trim();
+    if (!first || !last) {
+      return NextResponse.json(
+        { error: "First name and last name are required" },
+        { status: 400 }
+      );
+    }
+    const name = buildName(first, last);
+    const addr = normalizeAddress(
+      {
+        address_line1: body.address_line1,
+        unit: body.unit,
+        city: body.city,
+        state: body.state,
+        zip: body.zip,
+        latitude: body.latitude,
+        longitude: body.longitude,
+        formatted_address: body.formatted_address,
+      },
+      { legacyAddress: body.address }
+    );
+    const stmt = db.prepare(
+      `INSERT INTO customers
+         (name, first_name, last_name, phone, email,
+          address, address_line1, unit, city, state, zip,
+          latitude, longitude, formatted_address, notes)
+       VALUES (?, ?, ?, ?, ?,
+               ?, ?, ?, ?, ?, ?,
+               ?, ?, ?, ?)`
+    );
+    const result = await stmt.run(
+      name,
+      first,
+      last,
+      body.phone || null,
+      body.email || null,
+      addr.address,
+      addr.address_line1,
+      addr.unit,
+      addr.city,
+      addr.state,
+      addr.zip,
+      addr.latitude,
+      addr.longitude,
+      addr.formatted_address,
+      body.notes || null
+    );
+    const created = (await db
+      .prepare("SELECT * FROM customers WHERE id = ?")
+      .get(result.lastInsertRowid)) as Customer;
+    return NextResponse.json(created, { status: 201 });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Unknown error";
+    console.error("POST /api/customers failed:", e);
     return NextResponse.json(
-      { error: "First name and last name are required" },
-      { status: 400 }
+      { error: `Save failed: ${message}` },
+      { status: 500 }
     );
   }
-  const name = buildName(first, last);
-  const addr = normalizeAddress(
-    {
-      address_line1: body.address_line1,
-      unit: body.unit,
-      city: body.city,
-      state: body.state,
-      zip: body.zip,
-      latitude: body.latitude,
-      longitude: body.longitude,
-      formatted_address: body.formatted_address,
-    },
-    { legacyAddress: body.address }
-  );
-  const stmt = db.prepare(
-    `INSERT INTO customers
-       (name, first_name, last_name, phone, email,
-        address, address_line1, unit, city, state, zip,
-        latitude, longitude, formatted_address, notes)
-     VALUES (?, ?, ?, ?, ?,
-             ?, ?, ?, ?, ?, ?,
-             ?, ?, ?, ?)`
-  );
-  const result = await stmt.run(
-    name,
-    first,
-    last,
-    body.phone || null,
-    body.email || null,
-    addr.address,
-    addr.address_line1,
-    addr.unit,
-    addr.city,
-    addr.state,
-    addr.zip,
-    addr.latitude,
-    addr.longitude,
-    addr.formatted_address,
-    body.notes || null
-  );
-  const created = (await db
-    .prepare("SELECT * FROM customers WHERE id = ?")
-    .get(result.lastInsertRowid)) as Customer;
-  return NextResponse.json(created, { status: 201 });
 }
