@@ -1,6 +1,4 @@
 import { createClient, type Client, type InValue } from "@libsql/client";
-import fs from "node:fs";
-import path from "node:path";
 
 type Args = InValue[];
 
@@ -36,19 +34,17 @@ let _initPromise: Promise<void> | null = null;
 function makeClient(): Client {
   const url = process.env.TURSO_DATABASE_URL?.trim();
   const authToken = process.env.TURSO_AUTH_TOKEN?.trim();
-  if (url) {
-    return createClient({
-      url,
-      authToken: authToken || undefined,
-      intMode: "number",
-    });
+  if (!url) {
+    throw new Error(
+      "TURSO_DATABASE_URL is not set. The app requires a Turso database; configure TURSO_DATABASE_URL and TURSO_AUTH_TOKEN in the environment."
+    );
   }
-  const dataDir = path.join(process.cwd(), "data");
-  if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-  return createClient({
-    url: `file:${path.join(dataDir, "crm.db")}`,
-    intMode: "number",
-  });
+  if (!authToken) {
+    throw new Error(
+      "TURSO_AUTH_TOKEN is not set. The app requires a Turso database; configure TURSO_DATABASE_URL and TURSO_AUTH_TOKEN in the environment."
+    );
+  }
+  return createClient({ url, authToken, intMode: "number" });
 }
 
 function getClient(): Client {
