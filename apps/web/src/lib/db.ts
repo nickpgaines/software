@@ -326,6 +326,14 @@ async function init(): Promise<void> {
       "ALTER TABLE payments ADD COLUMN tip_cents INTEGER NOT NULL DEFAULT 0"
     );
   }
+  if (
+    paymentCols.length > 0 &&
+    !paymentCols.some((c) => c.name === "stripe_payment_intent_id")
+  ) {
+    await _db.exec(
+      "ALTER TABLE payments ADD COLUMN stripe_payment_intent_id TEXT"
+    );
+  }
 
   await _db.exec(`
     UPDATE customers
@@ -665,6 +673,7 @@ export type Payment = {
   notes: string | null;
   send_email: number;
   send_sms: number;
+  stripe_payment_intent_id: string | null;
   created_at: string;
 };
 
