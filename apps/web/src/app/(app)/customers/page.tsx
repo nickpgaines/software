@@ -241,7 +241,12 @@ function CustomerForm({
     );
     setSaving(false);
     if (!res.ok) {
-      setError("Could not save customer");
+      const data = await res.json().catch(() => ({}));
+      setError(
+        (data && typeof data === "object" && "error" in data && data.error
+          ? String(data.error)
+          : "") || `Could not save customer (HTTP ${res.status})`
+      );
       return;
     }
     onSaved();
