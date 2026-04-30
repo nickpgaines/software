@@ -452,6 +452,44 @@ async function init(): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS idx_payments_job_id     ON payments(job_id);
     CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments(created_at);
+
+    CREATE TABLE IF NOT EXISTS subscription_templates (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      name         TEXT    NOT NULL,
+      description  TEXT,
+      price_cents  INTEGER NOT NULL DEFAULT 0,
+      interval     TEXT    NOT NULL DEFAULT 'monthly'
+                    CHECK (interval IN ('weekly','biweekly','monthly','quarterly','yearly')),
+      active       INTEGER NOT NULL DEFAULT 1,
+      created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_subscription_templates_active
+      ON subscription_templates(active);
+
+    CREATE TABLE IF NOT EXISTS customer_subscriptions (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      customer_id  INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      template_id  INTEGER REFERENCES subscription_templates(id) ON DELETE SET NULL,
+      name         TEXT    NOT NULL,
+      description  TEXT,
+      price_cents  INTEGER NOT NULL DEFAULT 0,
+      interval     TEXT    NOT NULL DEFAULT 'monthly'
+                    CHECK (interval IN ('weekly','biweekly','monthly','quarterly','yearly')),
+      status       TEXT    NOT NULL DEFAULT 'pending'
+                    CHECK (status IN ('pending','active','declined','canceled')),
+      sent_at      TEXT,
+      accepted_at  TEXT,
+      canceled_at  TEXT,
+      created_by   TEXT,
+      created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_customer_subscriptions_customer
+      ON customer_subscriptions(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_customer_subscriptions_template
+      ON customer_subscriptions(template_id);
+    CREATE INDEX IF NOT EXISTS idx_customer_subscriptions_status
+      ON customer_subscriptions(status);
   `);
 
   const legacy = await _db
@@ -646,6 +684,46 @@ export type Message = {
   direction: "outbound" | "inbound";
   created_at: string;
   read_at: string | null;
+};
+
+export type SubscriptionInterval =
+  | "weekly"
+  | "biweekly"
+  | "monthly"
+  | "quarterly"
+  | "yearly";
+
+export type SubscriptionTemplate = {
+  id: number;
+  name: string;
+  description: string | null;
+  price_cents: number;
+  interval: SubscriptionInterval;
+  active: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type CustomerSubscriptionStatus =
+  | "pending"
+  | "active"
+  | "declined"
+  | "canceled";
+
+export type CustomerSubscription = {
+  id: number;
+  customer_id: number;
+  template_id: number | null;
+  name: string;
+  description: string | null;
+  price_cents: number;
+  interval: SubscriptionInterval;
+  status: CustomerSubscriptionStatus;
+  sent_at: string | null;
+  accepted_at: string | null;
+  canceled_at: string | null;
+  created_by: string | null;
+  created_at: string;
 };
 
 export type PaymentMethod =
