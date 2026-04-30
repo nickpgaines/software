@@ -520,6 +520,8 @@ async function init(): Promise<void> {
       signature_data TEXT,
       signature_name TEXT,
       signed_at    TEXT,
+      start_date   TEXT,
+      sold_by_id   INTEGER REFERENCES staff(id) ON DELETE SET NULL,
       created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_customer_subscriptions_customer
@@ -552,6 +554,8 @@ async function init(): Promise<void> {
     ["signature_data", "TEXT"],
     ["signature_name", "TEXT"],
     ["signed_at", "TEXT"],
+    ["start_date", "TEXT"],
+    ["sold_by_id", "INTEGER REFERENCES staff(id) ON DELETE SET NULL"],
   ];
   for (const [col, def] of subAdds) {
     if (!subCols.some((c) => c.name === col)) {
@@ -809,6 +813,8 @@ export type CustomerSubscription = {
   signature_data: string | null;
   signature_name: string | null;
   signed_at: string | null;
+  start_date: string | null;
+  sold_by_id: number | null;
   created_at: string;
 };
 
