@@ -338,7 +338,7 @@ export default function MapClient() {
   useEffect(() => {
     pinsVisibleRef.current = pinsVisible;
     for (const [, marker] of markersRef.current) {
-      marker.getElement().style.display = pinsVisible ? "" : "none";
+      marker.getElement().style.display = pinsVisible ? "flex" : "none";
     }
   }, [pinsVisible]);
 
