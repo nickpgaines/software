@@ -1,6 +1,6 @@
 "use client";
 
-import { Map as MapIcon, MapPin, Satellite } from "lucide-react";
+import { Map as MapIcon, MapPin, Satellite, Users } from "lucide-react";
 
 type StyleMode = "satellite" | "streets";
 
@@ -9,11 +9,15 @@ export default function MapIconStrip({
   onToggleStyle,
   pinsVisible,
   onTogglePins,
+  customerPinsVisible,
+  onToggleCustomerPins,
 }: {
   styleMode: StyleMode;
   onToggleStyle: () => void;
   pinsVisible: boolean;
   onTogglePins: () => void;
+  customerPinsVisible: boolean;
+  onToggleCustomerPins: () => void;
 }) {
   const satelliteActive = styleMode === "satellite";
   const StyleIcon = satelliteActive ? Satellite : MapIcon;
@@ -50,6 +54,20 @@ export default function MapIconStrip({
         }
       >
         <MapPin className="h-5 w-5" />
+      </button>
+      <button
+        type="button"
+        onClick={onToggleCustomerPins}
+        title="Show/hide customers"
+        aria-label="Show/hide customers"
+        aria-pressed={customerPinsVisible}
+        className={
+          buttonBase +
+          " " +
+          (customerPinsVisible ? activeClasses : inactiveClasses)
+        }
+      >
+        <Users className="h-5 w-5" />
       </button>
     </div>
   );
