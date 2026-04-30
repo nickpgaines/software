@@ -116,9 +116,8 @@ export default function MapClient() {
   const [styleMode, setStyleMode] = useState<StyleMode>("satellite");
   const [pinsVisible, setPinsVisible] = useState(true);
   const pinsVisibleRef = useRef(true);
-  // Chunk 5 will replace this with the real filter UI.
-  const [showCustomerPins] = useState(false);
-  const showCustomerPinsRef = useRef(false);
+  const [showCustomerPins, setShowCustomerPins] = useState(true);
+  const showCustomerPinsRef = useRef(true);
   const [modal, setModal] = useState<ModalState>({
     open: false,
     lng: 0,
@@ -401,6 +400,8 @@ export default function MapClient() {
         onToggleStyle={toggleStyle}
         pinsVisible={pinsVisible}
         onTogglePins={() => setPinsVisible((v) => !v)}
+        customerPinsVisible={showCustomerPins}
+        onToggleCustomerPins={() => setShowCustomerPins((v) => !v)}
       />
       <MapPinDropModal
         open={modal.open}
