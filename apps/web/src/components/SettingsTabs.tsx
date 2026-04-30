@@ -1,18 +1,49 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
-type Tab = "profile" | "company" | "subscriptions" | "billing";
+type Tab = "profile" | "company" | "payments" | "subscriptions" | "billing";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "profile", label: "Profile" },
   { key: "company", label: "Company" },
+  { key: "payments", label: "Payments" },
   { key: "subscriptions", label: "Subscriptions" },
   { key: "billing", label: "Billing" },
 ];
 
 export default function SettingsTabs({ username }: { username: string }) {
-  const [tab, setTab] = useState<Tab>("profile");
+  return (
+    <Suspense fallback={null}>
+      <SettingsTabsInner username={username} />
+    </Suspense>
+  );
+}
+
+function SettingsTabsInner({ username }: { username: string }) {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const initialTab = (() => {
+    const t = searchParams.get("tab");
+    if (TABS.some((x) => x.key === t)) return t as Tab;
+    return "profile";
+  })();
+  const [tab, setTab] = useState<Tab>(initialTab);
+
+  useEffect(() => {
+    const t = searchParams.get("tab");
+    if (t && TABS.some((x) => x.key === t) && t !== tab) {
+      setTab(t as Tab);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
+  function changeTab(t: Tab) {
+    setTab(t);
+    const url = t === "profile" ? "/settings" : `/settings?tab=${t}`;
+    router.replace(url);
+  }
 
   return (
     <div className="space-y-6">
@@ -23,7 +54,7 @@ export default function SettingsTabs({ username }: { username: string }) {
             return (
               <button
                 key={t.key}
-                onClick={() => setTab(t.key)}
+                onClick={() => changeTab(t.key)}
                 className={
                   "whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-medium transition " +
                   (active
@@ -41,6 +72,7 @@ export default function SettingsTabs({ username }: { username: string }) {
       <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm">
         {tab === "profile" && <ProfilePanel username={username} />}
         {tab === "company" && <CompanyPanel />}
+        {tab === "payments" && <PaymentsPanel />}
         {tab === "subscriptions" && <SubscriptionsPanel />}
         {tab === "billing" && <BillingPanel />}
       </div>
@@ -183,7 +215,237 @@ function CompanyPanel() {
     </form>
   );
 }
+type StripeStatus = {
+  configured: boolean;
+  connected: boolean;
+  account_id?: string;
+  email?: string | null;
+  business_name?: string | null;
+  charges_enabled: boolean;
+  payouts_enabled: boolean;
+  details_submitted: boolean;
+  requirements_due?: boolean;
+  error?: string;
+};
 
+function PaymentsPanel() {
+  const [status, setStatus] = useState<StripeStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [working, setWorking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch("/api/stripe/connect/status");
+      const data = (await res.json()) as StripeStatus;
+      if (!res.ok) {
+        setError(data.error || `HTTP ${res.status}`);
+        setStatus(null);
+      } else {
+        setStatus(data);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to load");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function startConnect() {
+    setError(null);
+    setWorking(true);
+    try {
+      const res = await fetch("/api/stripe/connect/start", { method: "POST" });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (!res.ok || !data.url) {
+        setError(data.error || `HTTP ${res.status}`);
+        return;
+      }
+      window.location.href = data.url;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to start onboarding");
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  async function disconnect() {
+    if (
+      !confirm(
+        "Disconnect this Stripe account? You can reconnect any time, but you won't be able to charge cards until you do."
+      )
+    )
+      return;
+    setWorking(true);
+    try {
+      await fetch("/api/stripe/connect/disconnect", { method: "POST" });
+      await load();
+    } finally {
+      setWorking(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold text-slate-900">Payments</h2>
+        <p className="text-sm text-slate-500 mt-1">
+          Connect a Stripe account to accept card payments. Money is paid out
+          to the bank account on file with Stripe.
+        </p>
+      </div>
+
+      {loading ? (
+        <p className="text-sm text-slate-400">Loading…</p>
+      ) : !status?.configured ? (
+        <div className="border border-amber-200 bg-amber-50 rounded-2xl px-4 py-3">
+          <p className="text-sm text-amber-800 font-medium">
+            Stripe platform keys aren&apos;t configured.
+          </p>
+          <p className="text-xs text-amber-700 mt-1">
+            Add <code>STRIPE_SECRET_KEY</code> and{" "}
+            <code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> to the deployment
+            environment, then redeploy.
+          </p>
+        </div>
+      ) : !status.connected ? (
+        <div className="border border-slate-200 rounded-2xl px-4 py-4 space-y-3">
+          <div>
+            <p className="text-sm font-medium text-slate-900">
+              No Stripe account connected
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              You&apos;ll be redirected to Stripe to enter business info, ID,
+              and bank account details. This usually takes a few minutes.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={startConnect}
+            disabled={working}
+            className="text-sm bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+          >
+            {working ? "Opening Stripe…" : "Connect Stripe"}
+          </button>
+        </div>
+      ) : (
+        <div className="border border-slate-200 rounded-2xl px-4 py-4 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <div className="flex items-center gap-2">
+                <span
+                  className={
+                    "inline-block w-2 h-2 rounded-full " +
+                    (status.charges_enabled
+                      ? "bg-emerald-500"
+                      : "bg-amber-500")
+                  }
+                />
+                <p className="text-sm font-medium text-slate-900">
+                  {status.business_name ||
+                    status.email ||
+                    "Connected Stripe account"}
+                </p>
+              </div>
+              <p className="text-xs text-slate-500 mt-1 font-mono">
+                {status.account_id}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={load}
+              className="text-xs text-slate-500 hover:text-slate-900"
+              title="Re-check status"
+            >
+              Refresh
+            </button>
+          </div>
+
+          <dl className="grid grid-cols-3 gap-2 pt-1">
+            <Capability ok={status.charges_enabled} label="Charges" />
+            <Capability ok={status.payouts_enabled} label="Payouts" />
+            <Capability ok={status.details_submitted} label="Onboarding" />
+          </dl>
+
+          {(!status.charges_enabled ||
+            !status.payouts_enabled ||
+            status.requirements_due) && (
+            <div className="border border-amber-200 bg-amber-50 rounded-xl px-3 py-2">
+              <p className="text-xs text-amber-800">
+                Stripe still needs more information before this account can
+                accept payments or receive payouts.
+              </p>
+              <button
+                type="button"
+                onClick={startConnect}
+                disabled={working}
+                className="mt-2 text-xs bg-amber-600 hover:bg-amber-500 disabled:bg-slate-400 text-white rounded-full px-3 py-1.5 font-medium"
+              >
+                {working ? "Opening Stripe…" : "Finish onboarding"}
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 pt-1">
+            <a
+              href="https://dashboard.stripe.com/"
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs text-indigo-600 hover:text-indigo-500"
+            >
+              Open Stripe dashboard ↗
+            </a>
+            <button
+              type="button"
+              onClick={disconnect}
+              disabled={working}
+              className="text-xs text-rose-600 hover:text-rose-500 disabled:opacity-50"
+            >
+              Disconnect
+            </button>
+          </div>
+        </div>
+      )}
+
+      {error && <p className="text-sm text-rose-600">{error}</p>}
+    </div>
+  );
+}
+
+function Capability({ ok, label }: { ok: boolean; label: string }) {
+  return (
+    <div
+      className={
+        "rounded-xl px-3 py-2 text-center " +
+        (ok
+          ? "bg-emerald-50 border border-emerald-200"
+          : "bg-slate-50 border border-slate-200")
+      }
+    >
+      <div
+        className={
+          "text-xs font-medium " +
+          (ok ? "text-emerald-700" : "text-slate-500")
+        }
+      >
+        {label}
+      </div>
+      <div
+        className={
+          "text-xs mt-0.5 " + (ok ? "text-emerald-600" : "text-slate-400")
+        }
+      >
+        {ok ? "Enabled" : "Pending"}
+      </div>
+    </div>
+  );
+}
 type SubscriptionInterval =
   | "weekly"
   | "biweekly"

@@ -326,6 +326,29 @@ async function init(): Promise<void> {
       "ALTER TABLE payments ADD COLUMN tip_cents INTEGER NOT NULL DEFAULT 0"
     );
   }
+  if (
+    paymentCols.length > 0 &&
+    !paymentCols.some((c) => c.name === "stripe_payment_intent_id")
+  ) {
+    await _db.exec(
+      "ALTER TABLE payments ADD COLUMN stripe_payment_intent_id TEXT"
+    );
+  }
+
+  const companyCols = await _db
+    .prepare("PRAGMA table_info(company)")
+    .all<{ name: string }>();
+  const companyAdds: [string, string][] = [
+    ["stripe_account_id", "TEXT"],
+    ["stripe_charges_enabled", "INTEGER NOT NULL DEFAULT 0"],
+    ["stripe_payouts_enabled", "INTEGER NOT NULL DEFAULT 0"],
+    ["stripe_details_submitted", "INTEGER NOT NULL DEFAULT 0"],
+  ];
+  for (const [col, def] of companyAdds) {
+    if (!companyCols.some((c) => c.name === col)) {
+      await _db.exec(`ALTER TABLE company ADD COLUMN ${col} ${def}`);
+    }
+  }
 
   await _db.exec(`
     UPDATE customers
@@ -719,6 +742,10 @@ export type Company = {
   address: string | null;
   phone: string | null;
   updated_at: string;
+  stripe_account_id: string | null;
+  stripe_charges_enabled: number;
+  stripe_payouts_enabled: number;
+  stripe_details_submitted: number;
 };
 
 export type Message = {
@@ -802,6 +829,7 @@ export type Payment = {
   notes: string | null;
   send_email: number;
   send_sms: number;
+  stripe_payment_intent_id: string | null;
   created_at: string;
 };
 
