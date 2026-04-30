@@ -20,6 +20,8 @@ const STREETS_STYLE = "mapbox://styles/mapbox/streets-v12";
 const HOLD_MS = 600;
 const MOVE_THRESHOLD_PX = 5;
 
+const CUSTOMER_PIN_COLOR = "#dc2626";
+
 type StyleMode = "satellite" | "streets";
 
 type ApiPin = {
@@ -28,6 +30,17 @@ type ApiPin = {
   lng: number;
   status: string;
   notes: string | null;
+};
+
+type CustomerPin = {
+  id: number;
+  name: string;
+  phone: string | null;
+  address: string | null;
+  formatted_address: string | null;
+  latitude: number;
+  longitude: number;
+  is_recurring: number;
 };
 
 type ModalState = {
@@ -71,17 +84,41 @@ function makeMarkerElement(status: PinStatus): HTMLElement {
   return el;
 }
 
+function makeCustomerMarkerElement(c: CustomerPin): HTMLElement {
+  const el = document.createElement("div");
+  el.className = "mp-customer-pin";
+  el.style.cssText =
+    "width:28px;height:36px;cursor:pointer;" +
+    "filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35));" +
+    "transform:translateY(-4px);";
+  el.innerHTML = `
+    <svg viewBox="0 0 24 32" width="28" height="36" xmlns="http://www.w3.org/2000/svg">
+      <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20C24 5.4 18.6 0 12 0z"
+            fill="${CUSTOMER_PIN_COLOR}" stroke="white" stroke-width="2"/>
+      <circle cx="12" cy="12" r="4" fill="white"/>
+    </svg>
+  `;
+  const tooltip = c.name + (c.formatted_address ? ` — ${c.formatted_address}` : c.address ? ` — ${c.address}` : "");
+  el.title = tooltip;
+  return el;
+}
+
 export default function MapClient() {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<Map<number, mapboxgl.Marker>>(new Map());
   const pinsDataRef = useRef<Map<number, ApiPin>>(new Map());
+  const customerMarkersRef = useRef<Map<number, mapboxgl.Marker>>(new Map());
+  const customerDataRef = useRef<Map<number, CustomerPin>>(new Map());
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holdStartRef = useRef<{ x: number; y: number } | null>(null);
 
   const [styleMode, setStyleMode] = useState<StyleMode>("satellite");
   const [pinsVisible, setPinsVisible] = useState(true);
   const pinsVisibleRef = useRef(true);
+  // Chunk 5 will replace this with the real filter UI.
+  const [showCustomerPins] = useState(false);
+  const showCustomerPinsRef = useRef(false);
   const [modal, setModal] = useState<ModalState>({
     open: false,
     lng: 0,
@@ -118,6 +155,22 @@ export default function MapClient() {
     });
     markersRef.current.set(pin.id, marker);
     pinsDataRef.current.set(pin.id, pin);
+  }
+
+  function addCustomerMarker(c: CustomerPin) {
+    const map = mapRef.current;
+    if (!map) return;
+    const el = makeCustomerMarkerElement(c);
+    if (!showCustomerPinsRef.current) el.style.display = "none";
+    const marker = new mapboxgl.Marker({ element: el, anchor: "bottom" })
+      .setLngLat([c.longitude, c.latitude])
+      .addTo(map);
+    el.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      openCustomerPopup(c.id);
+    });
+    customerMarkersRef.current.set(c.id, marker);
+    customerDataRef.current.set(c.id, c);
   }
 
   function openPinPopup(id: number) {
@@ -174,6 +227,32 @@ export default function MapClient() {
       });
   }
 
+  function openCustomerPopup(id: number) {
+    const map = mapRef.current;
+    const c = customerDataRef.current.get(id);
+    if (!map || !c) return;
+    const node = document.createElement("div");
+    node.style.cssText = "min-width:220px;font-family:inherit;";
+    const addr = c.formatted_address || c.address || "";
+    const addrHtml = addr
+      ? `<div style="margin-top:4px;font-size:13px;color:#475569;">${escapeHtml(addr)}</div>`
+      : "";
+    const phoneHtml = c.phone
+      ? `<div style="margin-top:2px;font-size:13px;color:#475569;">${escapeHtml(c.phone)}</div>`
+      : "";
+    node.innerHTML =
+      `<div style="font-weight:600;color:#0f172a;font-size:14px;">${escapeHtml(c.name)}</div>` +
+      addrHtml +
+      phoneHtml +
+      `<div style="margin-top:10px;">
+         <a href="/customers/${c.id}" data-action="view" style="display:inline-block;padding:6px 10px;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;background:white;color:#0f172a;cursor:pointer;text-decoration:none;">View Customer</a>
+       </div>`;
+    new mapboxgl.Popup({ offset: 28, closeButton: true })
+      .setLngLat([c.longitude, c.latitude])
+      .setDOMContent(node)
+      .addTo(map);
+  }
+
   useEffect(() => {
     if (!containerRef.current) return;
     mapboxgl.accessToken = TOKEN as string;
@@ -187,10 +266,18 @@ export default function MapClient() {
 
     map.on("load", async () => {
       try {
-        const r = await fetch("/api/map/pins");
-        if (!r.ok) return;
-        const list = (await r.json()) as ApiPin[];
-        for (const p of list) addMarker(p);
+        const [pinsRes, customersRes] = await Promise.all([
+          fetch("/api/map/pins"),
+          fetch("/api/map/customer-pins"),
+        ]);
+        if (pinsRes.ok) {
+          const list = (await pinsRes.json()) as ApiPin[];
+          for (const p of list) addMarker(p);
+        }
+        if (customersRes.ok) {
+          const list = (await customersRes.json()) as CustomerPin[];
+          for (const c of list) addCustomerMarker(c);
+        }
       } catch {
         // ignore
       }
@@ -200,7 +287,11 @@ export default function MapClient() {
       e: mapboxgl.MapMouseEvent | mapboxgl.MapTouchEvent
     ) {
       const target = e.originalEvent.target as HTMLElement | null;
-      if (target && typeof target.closest === "function" && target.closest(".mp-pin")) {
+      if (
+        target &&
+        typeof target.closest === "function" &&
+        (target.closest(".mp-pin") || target.closest(".mp-customer-pin"))
+      ) {
         return;
       }
       holdStartRef.current = { x: e.point.x, y: e.point.y };
@@ -237,6 +328,9 @@ export default function MapClient() {
       for (const [, m] of markersRef.current) m.remove();
       markersRef.current.clear();
       pinsDataRef.current.clear();
+      for (const [, m] of customerMarkersRef.current) m.remove();
+      customerMarkersRef.current.clear();
+      customerDataRef.current.clear();
       map.remove();
       mapRef.current = null;
     };
@@ -248,6 +342,13 @@ export default function MapClient() {
       marker.getElement().style.display = pinsVisible ? "" : "none";
     }
   }, [pinsVisible]);
+
+  useEffect(() => {
+    showCustomerPinsRef.current = showCustomerPins;
+    for (const [, marker] of customerMarkersRef.current) {
+      marker.getElement().style.display = showCustomerPins ? "" : "none";
+    }
+  }, [showCustomerPins]);
 
   function toggleStyle() {
     const next: StyleMode = styleMode === "satellite" ? "streets" : "satellite";

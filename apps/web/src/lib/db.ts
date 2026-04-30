@@ -300,6 +300,20 @@ async function init(): Promise<void> {
       await _db.exec(`ALTER TABLE customers ADD COLUMN ${col} ${def}`);
     }
   }
+  if (!customerCols.some((c) => c.name === "is_recurring")) {
+    await _db.exec(
+      "ALTER TABLE customers ADD COLUMN is_recurring INTEGER NOT NULL DEFAULT 0"
+    );
+  }
+  if (!customerCols.some((c) => c.name === "updated_at")) {
+    await _db.exec("ALTER TABLE customers ADD COLUMN updated_at TEXT");
+    await _db.exec(
+      "UPDATE customers SET updated_at = created_at WHERE updated_at IS NULL"
+    );
+  }
+  await _db.exec(
+    "CREATE INDEX IF NOT EXISTS idx_customers_lat_lng ON customers(latitude, longitude)"
+  );
 
   const paymentCols = await _db
     .prepare("PRAGMA table_info(payments)")
@@ -503,7 +517,9 @@ export type Customer = {
   longitude: number | null;
   formatted_address: string | null;
   notes: string | null;
+  is_recurring: number;
   created_at: string;
+  updated_at: string | null;
 };
 
 export type PermissionLevel =
