@@ -85,7 +85,22 @@ export default function MapTerritoryModal({
       setError("Could not save territory");
       return;
     }
-    const saved = (await res.json()) as TerritoryDraft & { id: number };
+    const raw = (await res.json()) as Record<string, unknown>;
+    const polygonField = raw.polygon;
+    const idsField = raw.assigned_employee_ids;
+    const saved: TerritoryDraft & { id: number } = {
+      id: raw.id as number,
+      name: (raw.name as string) || "",
+      color: (raw.color as string) || color,
+      polygon:
+        typeof polygonField === "string"
+          ? (JSON.parse(polygonField) as number[][])
+          : (polygonField as number[][]) || draft.polygon,
+      assigned_employee_ids:
+        typeof idsField === "string"
+          ? (JSON.parse(idsField) as number[])
+          : (idsField as number[] | null) || [],
+    };
     onSaved(saved);
   }
 
