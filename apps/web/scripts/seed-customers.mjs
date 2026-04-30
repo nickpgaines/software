@@ -167,6 +167,7 @@ function streetAddress(c) {
 async function run() {
   let inserted = 0;
   let skipped = 0;
+  const warnings = [];
   for (const c of CUSTOMERS) {
     const name = fullName(c);
     const formatted = streetAddress(c);
@@ -179,7 +180,7 @@ async function run() {
       skipped++;
       continue;
     }
-    await client.execute({
+    const result = await client.execute({
       sql: `INSERT INTO customers
               (name, first_name, last_name, phone, email,
                address, address_line1, city, state, zip,
@@ -207,8 +208,31 @@ async function run() {
       ],
     });
     inserted++;
+    const id = Number(result.lastInsertRowid);
+    const back = await client.execute({
+      sql: "SELECT latitude, longitude FROM customers WHERE id = ?",
+      args: [id],
+    });
+    const row = back.rows[0];
+    if (!row || row.latitude == null || row.longitude == null) {
+      warnings.push(
+        `  #${id} ${c.first_name} ${c.last_name}: lat=${row?.latitude} lng=${row?.longitude}`
+      );
+    }
   }
-  console.log(`Seed complete: ${inserted} inserted, ${skipped} skipped (already present).`);
+  console.log(
+    `Seed complete: ${inserted} inserted, ${skipped} skipped (already present).`
+  );
+  if (warnings.length) {
+    console.warn(
+      `\nWARNING: ${warnings.length} row(s) came back with NULL lat/lng after insert:`
+    );
+    for (const w of warnings) console.warn(w);
+    console.warn(
+      "These rows will NOT render on the map. Inspect the customers schema (npm run db:doctor)."
+    );
+    process.exit(2);
+  }
 }
 
 run()

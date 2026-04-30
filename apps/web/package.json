@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start -p 3000 -H 0.0.0.0",
     "lint": "next lint",
-    "seed:customers": "node scripts/seed-customers.mjs"
+    "seed:customers": "node scripts/seed-customers.mjs",
+    "db:doctor": "node scripts/db-doctor.mjs"
   },
   "dependencies": {
     "@libsql/client": "^0.17.3",
