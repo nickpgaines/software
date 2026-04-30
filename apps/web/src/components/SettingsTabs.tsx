@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 type Tab = "profile" | "company" | "subscriptions" | "billing";
 
@@ -12,7 +13,15 @@ const TABS: { key: Tab; label: string }[] = [
 ];
 
 export default function SettingsTabs({ username }: { username: string }) {
-  const [tab, setTab] = useState<Tab>("profile");
+  const searchParams = useSearchParams();
+  const initialTab: Tab = (() => {
+    const t = searchParams?.get("tab");
+    if (t && (TABS as { key: Tab }[]).some((x) => x.key === t)) {
+      return t as Tab;
+    }
+    return "profile";
+  })();
+  const [tab, setTab] = useState<Tab>(initialTab);
 
   return (
     <div className="space-y-6">
