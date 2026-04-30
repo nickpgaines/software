@@ -52,6 +52,8 @@ export async function POST(req: Request) {
     price_cents: number;
     interval: SubscriptionInterval;
     active: boolean | number;
+    terms_id: number | null;
+    require_signature: boolean | number;
   }>;
 
   const name = (body.name || "").trim();
@@ -63,13 +65,28 @@ export async function POST(req: Request) {
   const interval = normalizeInterval(body.interval);
   const active =
     body.active === false || body.active === 0 ? 0 : 1;
+  const termsId =
+    body.terms_id === null || body.terms_id === undefined
+      ? null
+      : Number(body.terms_id) || null;
+  const requireSignature =
+    body.require_signature === true || body.require_signature === 1 ? 1 : 0;
 
   const result = await db
     .prepare(
-      `INSERT INTO subscription_templates (name, description, price_cents, interval, active)
-       VALUES (?, ?, ?, ?, ?)`
+      `INSERT INTO subscription_templates
+         (name, description, price_cents, interval, active, terms_id, require_signature)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
-    .run(name, description, price_cents, interval, active);
+    .run(
+      name,
+      description,
+      price_cents,
+      interval,
+      active,
+      termsId,
+      requireSignature
+    );
   const row = (await db
     .prepare("SELECT * FROM subscription_templates WHERE id = ?")
     .get(result.lastInsertRowid)) as SubscriptionTemplate;

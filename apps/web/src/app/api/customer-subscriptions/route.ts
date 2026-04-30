@@ -4,6 +4,7 @@ import {
   type CustomerSubscription,
   type SubscriptionInterval,
   type SubscriptionTemplate,
+  type SubscriptionTerms,
 } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 
@@ -78,6 +79,8 @@ export async function POST(req: Request) {
     description: string | null;
     price_cents: number;
     interval: SubscriptionInterval;
+    signature_data: string;
+    signature_name: string;
   }>;
 
   const customerId = Number(body.customer_id);
@@ -98,6 +101,8 @@ export async function POST(req: Request) {
       ? body.interval
       : "monthly";
   let templateId: number | null = null;
+  let termsSnapshot: string | null = null;
+  let requireSignature = 0;
 
   if (body.template_id) {
     const tpl = (await db
@@ -114,6 +119,31 @@ export async function POST(req: Request) {
     if (!description) description = tpl.description;
     if (body.price_cents === undefined) price_cents = tpl.price_cents;
     if (!body.interval) interval = tpl.interval;
+    requireSignature = tpl.require_signature ? 1 : 0;
+    if (tpl.terms_id) {
+      const terms = (await db
+        .prepare("SELECT * FROM subscription_terms WHERE id = ?")
+        .get(tpl.terms_id)) as SubscriptionTerms | undefined;
+      if (terms) {
+        termsSnapshot = `${terms.name}\n\n${terms.body}`;
+      }
+    }
+  }
+
+  const signatureData =
+    typeof body.signature_data === "string" && body.signature_data.trim()
+      ? body.signature_data.trim()
+      : null;
+  const signatureName =
+    typeof body.signature_name === "string" && body.signature_name.trim()
+      ? body.signature_name.trim()
+      : null;
+
+  if (action === "accept" && requireSignature && !signatureData) {
+    return NextResponse.json(
+      { error: "signature is required for this subscription" },
+      { status: 400 }
+    );
   }
 
   if (!name) {
@@ -134,13 +164,16 @@ export async function POST(req: Request) {
   const status = action === "accept" ? "active" : "pending";
   const sentAt = action === "send" ? now : null;
   const acceptedAt = action === "accept" ? now : null;
+  const signedAt = signatureData ? now : null;
 
   const result = await db
     .prepare(
       `INSERT INTO customer_subscriptions
          (customer_id, template_id, name, description, price_cents, interval,
-          status, sent_at, accepted_at, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          status, sent_at, accepted_at, created_by,
+          terms_snapshot, require_signature,
+          signature_data, signature_name, signed_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       customerId,
@@ -152,7 +185,12 @@ export async function POST(req: Request) {
       status,
       sentAt,
       acceptedAt,
-      user
+      user,
+      termsSnapshot,
+      requireSignature,
+      signatureData,
+      signatureName,
+      signedAt
     );
 
   if (action === "send") {

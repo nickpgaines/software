@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 type Tab = "profile" | "company" | "subscriptions" | "billing";
 
@@ -198,6 +198,16 @@ type SubscriptionTemplate = {
   price_cents: number;
   interval: SubscriptionInterval;
   active: number;
+  terms_id: number | null;
+  require_signature: number;
+  created_at: string;
+  updated_at: string;
+};
+
+type SubscriptionTerms = {
+  id: number;
+  name: string;
+  body: string;
   created_at: string;
   updated_at: string;
 };
@@ -236,19 +246,25 @@ function formatPrice(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-function emptyForm(): {
+type TemplateForm = {
   name: string;
   description: string;
   price: string;
   interval: SubscriptionInterval;
   active: boolean;
-} {
+  terms_id: number | null;
+  require_signature: boolean;
+};
+
+function emptyForm(): TemplateForm {
   return {
     name: "",
     description: "",
     price: "",
     interval: "monthly",
     active: true,
+    terms_id: null,
+    require_signature: false,
   };
 }
 
@@ -256,26 +272,30 @@ function SubscriptionsPanel() {
   const [templates, setTemplates] = useState<SubscriptionTemplate[]>([]);
   const [subscriptions, setSubscriptions] = useState<CustomerSubscription[]>([]);
   const [customers, setCustomers] = useState<CustomerLite[]>([]);
+  const [terms, setTerms] = useState<SubscriptionTerms[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const [editingId, setEditingId] = useState<number | "new" | null>(null);
-  const [form, setForm] = useState(emptyForm);
+  const [form, setForm] = useState<TemplateForm>(emptyForm);
   const [saving, setSaving] = useState(false);
 
   const [actionTpl, setActionTpl] = useState<SubscriptionTemplate | null>(null);
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   async function reload() {
     setLoading(true);
     try {
-      const [tplRes, subRes, custRes] = await Promise.all([
+      const [tplRes, subRes, custRes, termsRes] = await Promise.all([
         fetch("/api/settings/subscriptions"),
         fetch("/api/customer-subscriptions"),
         fetch("/api/customers"),
+        fetch("/api/settings/subscription-terms"),
       ]);
       if (tplRes.ok) setTemplates(await tplRes.json());
       if (subRes.ok) setSubscriptions(await subRes.json());
       if (custRes.ok) setCustomers(await custRes.json());
+      if (termsRes.ok) setTerms(await termsRes.json());
     } catch {
       setError("Could not load");
     } finally {
@@ -299,6 +319,8 @@ function SubscriptionsPanel() {
       price: (t.price_cents / 100).toFixed(2),
       interval: t.interval,
       active: t.active === 1,
+      terms_id: t.terms_id,
+      require_signature: t.require_signature === 1,
     });
     setEditingId(t.id);
   }
@@ -326,6 +348,8 @@ function SubscriptionsPanel() {
       price_cents: priceCents,
       interval: form.interval,
       active: form.active,
+      terms_id: form.terms_id,
+      require_signature: form.require_signature,
     };
     const url =
       editingId === "new"
@@ -451,6 +475,66 @@ function SubscriptionsPanel() {
               </select>
             </Field>
           </div>
+          <div className="space-y-3 pt-2 border-t border-slate-200">
+            <div>
+              <label className="block text-sm font-medium text-slate-900 mb-1">
+                Terms
+              </label>
+              <p className="text-xs text-slate-500 mb-2">
+                Optional terms shown to the customer when this subscription
+                is sent or accepted.
+              </p>
+              <select
+                value={form.terms_id ?? ""}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    terms_id: e.target.value ? Number(e.target.value) : null,
+                  })
+                }
+                className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+              >
+                <option value="">Select terms (optional)</option>
+                {terms.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => setShowTermsModal(true)}
+                className="mt-2 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+              >
+                Create new terms +
+              </button>
+            </div>
+            <label className="inline-flex items-center gap-3 text-sm text-slate-700">
+              <span>Require signature</span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={form.require_signature}
+                onClick={() =>
+                  setForm({
+                    ...form,
+                    require_signature: !form.require_signature,
+                  })
+                }
+                className={
+                  "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition " +
+                  (form.require_signature ? "bg-indigo-600" : "bg-slate-300")
+                }
+              >
+                <span
+                  className={
+                    "inline-block h-4 w-4 transform rounded-full bg-white transition " +
+                    (form.require_signature ? "translate-x-4" : "translate-x-0.5")
+                  }
+                />
+              </button>
+            </label>
+          </div>
           <label className="inline-flex items-center gap-2 text-sm text-slate-700">
             <input
               type="checkbox"
@@ -553,10 +637,22 @@ function SubscriptionsPanel() {
         <SendOrAcceptModal
           template={actionTpl}
           customers={customers}
+          terms={terms}
           onClose={() => setActionTpl(null)}
           onDone={async () => {
             setActionTpl(null);
             await reload();
+          }}
+        />
+      )}
+
+      {showTermsModal && (
+        <CreateTermsModal
+          onClose={() => setShowTermsModal(false)}
+          onCreated={async (created) => {
+            setShowTermsModal(false);
+            await reload();
+            setForm((f) => ({ ...f, terms_id: created.id }));
           }}
         />
       )}
@@ -672,11 +768,13 @@ function StatusBadge({ status }: { status: CustomerSubscription["status"] }) {
 function SendOrAcceptModal({
   template,
   customers,
+  terms,
   onClose,
   onDone,
 }: {
   template: SubscriptionTemplate;
   customers: CustomerLite[];
+  terms: SubscriptionTerms[];
   onClose: () => void;
   onDone: () => void | Promise<void>;
 }) {
@@ -685,10 +783,22 @@ function SendOrAcceptModal({
   );
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const [signatureData, setSignatureData] = useState<string | null>(null);
+  const [signatureName, setSignatureName] = useState("");
+
+  const linkedTerms = useMemo(
+    () => terms.find((t) => t.id === template.terms_id) || null,
+    [terms, template.terms_id]
+  );
+  const requireSignature = template.require_signature === 1;
 
   async function submit(action: "send" | "accept") {
     if (!customerId) {
       setErr("Pick a customer");
+      return;
+    }
+    if (action === "accept" && requireSignature && !signatureData) {
+      setErr("Customer signature is required");
       return;
     }
     setSubmitting(true);
@@ -700,6 +810,9 @@ function SendOrAcceptModal({
         customer_id: customerId,
         template_id: template.id,
         action,
+        signature_data: action === "accept" ? signatureData : undefined,
+        signature_name:
+          action === "accept" ? signatureName.trim() || undefined : undefined,
       }),
     });
     setSubmitting(false);
@@ -712,7 +825,7 @@ function SendOrAcceptModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4">
+      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="text-base font-semibold text-slate-900">
@@ -754,6 +867,37 @@ function SendOrAcceptModal({
           </select>
         </Field>
 
+        {linkedTerms && (
+          <div>
+            <div className="text-xs uppercase tracking-wide text-slate-400 mb-1.5">
+              Terms — {linkedTerms.name}
+            </div>
+            <div className="text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-xl p-3 max-h-40 overflow-y-auto whitespace-pre-wrap">
+              {linkedTerms.body}
+            </div>
+          </div>
+        )}
+
+        {requireSignature && (
+          <div className="space-y-2">
+            <div className="text-xs uppercase tracking-wide text-slate-400">
+              Customer signature
+            </div>
+            <SignaturePad value={signatureData} onChange={setSignatureData} />
+            <input
+              type="text"
+              value={signatureName}
+              onChange={(e) => setSignatureName(e.target.value)}
+              placeholder="Printed name"
+              className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+            />
+            <p className="text-[11px] text-slate-400">
+              Required for &quot;Accept on device&quot;. Not needed for
+              &quot;Send to customer&quot; — the customer will sign on their end.
+            </p>
+          </div>
+        )}
+
         {err && <p className="text-sm text-rose-600">{err}</p>}
 
         <div className="flex flex-col sm:flex-row gap-2 pt-2">
@@ -777,6 +921,204 @@ function SendOrAcceptModal({
           &quot;Accept on device&quot; activates it immediately for in-person
           sign-ups.
         </p>
+      </div>
+    </div>
+  );
+}
+
+function CreateTermsModal({
+  onClose,
+  onCreated,
+}: {
+  onClose: () => void;
+  onCreated: (terms: SubscriptionTerms) => void | Promise<void>;
+}) {
+  const [name, setName] = useState("");
+  const [body, setBody] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    if (!name.trim() || !body.trim()) {
+      setErr("Name and body are required");
+      return;
+    }
+    setSaving(true);
+    setErr(null);
+    const res = await fetch("/api/settings/subscription-terms", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name.trim(), body: body.trim() }),
+    });
+    setSaving(false);
+    if (!res.ok) {
+      setErr("Could not save terms");
+      return;
+    }
+    const created = (await res.json()) as SubscriptionTerms;
+    await onCreated(created);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+      <form
+        onSubmit={save}
+        className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto"
+      >
+        <div className="flex items-start justify-between gap-3">
+          <h3 className="text-base font-semibold text-slate-900">New terms</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-sm text-slate-400 hover:text-slate-700"
+          >
+            ✕
+          </button>
+        </div>
+        <Field label="Name">
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Standard subscription terms"
+            className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+            autoFocus
+          />
+        </Field>
+        <Field label="Body">
+          <textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            rows={10}
+            placeholder="Enter the full terms the customer will see and sign…"
+            className="w-full border border-slate-200 rounded-2xl px-4 py-2 text-sm bg-white font-mono"
+          />
+        </Field>
+        {err && <p className="text-sm text-rose-600">{err}</p>}
+        <div className="flex items-center gap-3 pt-1">
+          <button
+            type="submit"
+            disabled={saving}
+            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+          >
+            {saving ? "Saving…" : "Save terms"}
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-sm text-slate-600 hover:text-slate-900"
+          >
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function SignaturePad({
+  value,
+  onChange,
+}: {
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const drawingRef = useRef(false);
+  const lastRef = useRef<{ x: number; y: number } | null>(null);
+
+  useEffect(() => {
+    const c = canvasRef.current;
+    if (!c) return;
+    const ratio = window.devicePixelRatio || 1;
+    const w = c.clientWidth;
+    const h = c.clientHeight;
+    c.width = Math.round(w * ratio);
+    c.height = Math.round(h * ratio);
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+    ctx.scale(ratio, ratio);
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "#0f172a";
+    ctx.lineWidth = 2;
+  }, []);
+
+  function pos(e: React.PointerEvent<HTMLCanvasElement>) {
+    const c = canvasRef.current!;
+    const rect = c.getBoundingClientRect();
+    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+  }
+
+  function start(e: React.PointerEvent<HTMLCanvasElement>) {
+    e.preventDefault();
+    const c = canvasRef.current;
+    if (!c) return;
+    c.setPointerCapture(e.pointerId);
+    drawingRef.current = true;
+    lastRef.current = pos(e);
+  }
+
+  function move(e: React.PointerEvent<HTMLCanvasElement>) {
+    if (!drawingRef.current) return;
+    const c = canvasRef.current;
+    if (!c) return;
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+    const p = pos(e);
+    const last = lastRef.current;
+    if (last) {
+      ctx.beginPath();
+      ctx.moveTo(last.x, last.y);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+    }
+    lastRef.current = p;
+  }
+
+  function end() {
+    if (!drawingRef.current) return;
+    drawingRef.current = false;
+    lastRef.current = null;
+    const c = canvasRef.current;
+    if (!c) return;
+    onChange(c.toDataURL("image/png"));
+  }
+
+  function clear() {
+    const c = canvasRef.current;
+    if (!c) return;
+    const ctx = c.getContext("2d");
+    if (!ctx) return;
+    ctx.clearRect(0, 0, c.width, c.height);
+    onChange(null);
+  }
+
+  return (
+    <div className="space-y-2">
+      <div className="border border-slate-300 rounded-xl bg-white">
+        <canvas
+          ref={canvasRef}
+          onPointerDown={start}
+          onPointerMove={move}
+          onPointerUp={end}
+          onPointerLeave={end}
+          onPointerCancel={end}
+          className="w-full h-32 touch-none cursor-crosshair"
+        />
+      </div>
+      <div className="flex items-center justify-between">
+        <button
+          type="button"
+          onClick={clear}
+          className="text-xs text-slate-500 hover:text-slate-900"
+        >
+          Clear
+        </button>
+        {value && (
+          <span className="text-xs text-emerald-600">Signature captured</span>
+        )}
       </div>
     </div>
   );
