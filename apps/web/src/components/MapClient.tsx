@@ -38,17 +38,16 @@ export default function MapClient() {
     setStyleMode(next);
     const map = mapRef.current;
     if (!map) return;
-    // TODO: when adding pin/territory layers later, re-add them in the
-    // 'style.load' event handler after setStyle so they persist across
-    // style changes (Mapbox setStyle is destructive).
+    // TODO: when adding pin/territory layers later, re-add them in the 'style.load' event handler after setStyle so they persist across style changes.
     map.setStyle(next === "satellite" ? SATELLITE_STYLE : STREETS_STYLE);
   }
 
   return (
-    <div
-      style={{ position: "fixed", top: 0, left: "240px", right: 0, bottom: 0 }}
-    >
-      <div ref={containerRef} className="absolute inset-0" />
+    <div style={{ position: "relative", height: "100vh", marginLeft: "240px" }}>
+      <div
+        ref={containerRef}
+        style={{ position: "fixed", top: 0, left: "240px", right: 0, bottom: 0 }}
+      />
       <MapIconStrip styleMode={styleMode} onToggleStyle={toggleStyle} />
     </div>
   );
