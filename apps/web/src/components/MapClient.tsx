@@ -603,7 +603,7 @@ export default function MapClient() {
         : "";
 
     node.innerHTML =
-      `<div style="font-weight:600;color:#0f172a;font-size:16px;line-height:1.3;padding-right:18px;">${escapeHtml(
+      `<div data-pin-title style="font-weight:600;color:#0f172a;font-size:16px;line-height:1.3;padding-right:18px;">${escapeHtml(
         titleText
       )}</div>` +
       `<div style="margin-top:8px;display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;font-size:13px;">
@@ -630,6 +630,21 @@ export default function MapClient() {
       .setDOMContent(node)
       .addTo(map);
     openSinglePopup(popup);
+
+    if (!pin.address) {
+      reverseGeocode(pin.lng, pin.lat).then((addr) => {
+        if (!addr) return;
+        const titleEl = node.querySelector("[data-pin-title]");
+        if (titleEl) titleEl.textContent = addr;
+        const updated = { ...pin, address: addr };
+        pinsDataRef.current.set(pin.id, updated);
+        fetch(`/api/map/pins/${pin.id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ address: addr }),
+        }).catch(() => {});
+      });
+    }
 
     node
       .querySelector('[data-action="edit"]')

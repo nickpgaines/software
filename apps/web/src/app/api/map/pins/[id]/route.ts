@@ -66,6 +66,7 @@ export async function PATCH(
     note: string | null;
     notes: string | null;
     objections: string[] | null;
+    address: string | null;
   }>;
   const existing = (await db
     .prepare("SELECT * FROM map_pins WHERE id = ?")
@@ -86,11 +87,13 @@ export async function PATCH(
         ? JSON.stringify(body.objections)
         : null
       : existing.objections;
+  const nextAddress =
+    body.address !== undefined ? body.address : existing.address;
   await db
     .prepare(
-      "UPDATE map_pins SET status = ?, notes = ?, objections = ? WHERE id = ?"
+      "UPDATE map_pins SET status = ?, notes = ?, objections = ?, address = ? WHERE id = ?"
     )
-    .run(nextStatus, nextNotes, nextObjections, id);
+    .run(nextStatus, nextNotes, nextObjections, nextAddress, id);
   const updated = (await db
     .prepare("SELECT * FROM map_pins WHERE id = ?")
     .get(id)) as MapPin;
