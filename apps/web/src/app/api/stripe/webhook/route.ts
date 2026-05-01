@@ -1,18 +1,21 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
 import { getStripe, syncAccountStatus } from "@/lib/stripe";
+import { getDb, type Invoice } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Stripe webhook for the *platform* account. Listens for `account.updated`
- * so we can keep our cached charges/payouts/details flags in sync without
- * the user clicking Refresh in Settings.
+ * Stripe webhook. Handles both platform-level and Connect-relayed
+ * events:
+ *   - account.updated (platform):     refresh cached capability flags
+ *   - checkout.session.completed (Connect): mark invoice paid
  *
  * Configure in Stripe dashboard → Developers → Webhooks → Add endpoint:
  *   URL: https://<your-app>/api/stripe/webhook
- *   Events: account.updated
- * Then drop the signing secret in STRIPE_WEBHOOK_SECRET.
+ *   Events: account.updated, checkout.session.completed
+ *   ✓ Listen to events on Connected accounts
+ * Drop the signing secret in STRIPE_WEBHOOK_SECRET.
  */
 export async function POST(req: Request) {
   const secret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
@@ -49,6 +52,8 @@ export async function POST(req: Request) {
     if (event.type === "account.updated") {
       const account = event.data.object as Stripe.Account;
       await syncAccountStatus(account.id, account);
+    } else if (event.type === "checkout.session.completed") {
+      await handleCheckoutCompleted(event);
     }
   } catch (e) {
     console.error("Webhook handler failed:", e);
@@ -59,4 +64,42 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ received: true });
+}
+
+async function handleCheckoutCompleted(event: Stripe.Event) {
+  const session = event.data.object as Stripe.Checkout.Session;
+  // Only process invoice payments (sessions we minted carry invoice_id
+  // in metadata). Sessions for other purposes can be added later.
+  const invoiceIdRaw = session.metadata?.invoice_id;
+  if (!invoiceIdRaw) return;
+  const invoiceId = Number(invoiceIdRaw);
+  if (!Number.isFinite(invoiceId)) return;
+
+  // Stripe only signals "completed" when payment_status === "paid".
+  // Handle the rare async case (delayed bank methods) by checking it.
+  if (session.payment_status !== "paid") return;
+
+  const db = await getDb();
+  const invoice = (await db
+    .prepare("SELECT * FROM invoices WHERE id = ?")
+    .get(invoiceId)) as Invoice | undefined;
+  if (!invoice) return;
+  if (invoice.status === "paid") return; // idempotent
+
+  const paymentIntentId =
+    typeof session.payment_intent === "string"
+      ? session.payment_intent
+      : session.payment_intent?.id || null;
+
+  await db
+    .prepare(
+      `UPDATE invoices
+         SET status = 'paid',
+             paid_cents = total_cents,
+             paid_at = datetime('now'),
+             stripe_payment_intent_id = ?,
+             updated_at = datetime('now')
+       WHERE id = ?`
+    )
+    .run(paymentIntentId, invoiceId);
 }

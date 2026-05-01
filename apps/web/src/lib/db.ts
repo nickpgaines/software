@@ -383,6 +383,29 @@ async function init(): Promise<void> {
     await alterAddColumn("company", col, def, companyCols);
   }
 
+  // invoices: stripe-payment columns + opaque pay-link token. Best-effort
+  // because the table itself is created later in the same init() call —
+  // PRAGMA on a missing table returns an empty list, in which case we
+  // skip and rely on the column existing on the freshly-created table.
+  const invoiceCols = await _db
+    .prepare("PRAGMA table_info(invoices)")
+    .all<{ name: string }>();
+  if (invoiceCols.length > 0) {
+    const invoiceAdds: [string, string][] = [
+      ["stripe_pay_token", "TEXT"],
+      ["stripe_checkout_session_id", "TEXT"],
+      ["stripe_payment_intent_id", "TEXT"],
+    ];
+    for (const [col, def] of invoiceAdds) {
+      await alterAddColumn("invoices", col, def, invoiceCols);
+    }
+    await _db.exec(
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_stripe_pay_token
+         ON invoices(stripe_pay_token)
+         WHERE stripe_pay_token IS NOT NULL`
+    );
+  }
+
   await _db.exec(`
     UPDATE customers
     SET first_name = CASE
@@ -762,12 +785,18 @@ async function init(): Promise<void> {
       voided_at      TEXT,
       sold_by_id     INTEGER REFERENCES staff(id) ON DELETE SET NULL,
       created_by     TEXT,
+      stripe_pay_token             TEXT,
+      stripe_checkout_session_id   TEXT,
+      stripe_payment_intent_id     TEXT,
       created_at     TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_invoices_customer ON invoices(customer_id);
     CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
     CREATE INDEX IF NOT EXISTS idx_invoices_job ON invoices(job_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_invoices_stripe_pay_token
+      ON invoices(stripe_pay_token)
+      WHERE stripe_pay_token IS NOT NULL;
 
     CREATE TABLE IF NOT EXISTS invoice_items (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1261,6 +1290,9 @@ export type Invoice = {
   voided_at: string | null;
   sold_by_id: number | null;
   created_by: string | null;
+  stripe_pay_token: string | null;
+  stripe_checkout_session_id: string | null;
+  stripe_payment_intent_id: string | null;
   created_at: string;
   updated_at: string;
 };

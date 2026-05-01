@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomBytes } from "node:crypto";
 import {
   getDb,
   type Invoice,
@@ -6,8 +7,17 @@ import {
   type InvoiceStatus,
 } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
+import {
+  getCompany,
+  isStripeConfigured,
+  getAppOrigin,
+} from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
+
+function makePayToken() {
+  return randomBytes(24).toString("base64url");
+}
 
 type IncomingItem = {
   title?: string;
@@ -151,14 +161,32 @@ export async function POST(req: Request) {
   const title = body.title?.toString().trim() || null;
   const notes = body.notes?.toString().trim() || null;
 
+  // If we're sending and the merchant has Stripe connected, mint a
+  // pay-token now so we can include the pay URL in the message body.
+  let payToken: string | null = null;
+  let payUrl: string | null = null;
+  if (action === "send" && isStripeConfigured()) {
+    try {
+      const company = await getCompany();
+      if (company.stripe_account_id && company.stripe_charges_enabled) {
+        payToken = makePayToken();
+        payUrl = `${getAppOrigin(req)}/invoices/pay/${payToken}`;
+      }
+    } catch (e) {
+      // If anything goes wrong reading company state, fall back to
+      // sending the invoice without a pay link.
+      console.error("Skipping pay link: failed to read Stripe company state", e);
+    }
+  }
+
   const result = await db
     .prepare(
       `INSERT INTO invoices
          (customer_id, job_id, title, notes, status,
           total_cents, paid_cents, tax_rate_bps,
           due_date, sent_at, paid_at,
-          sold_by_id, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          sold_by_id, created_by, stripe_pay_token)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       customerId,
@@ -173,7 +201,8 @@ export async function POST(req: Request) {
       sentAt,
       paidAt,
       soldById,
-      user
+      user,
+      payToken
     );
   const invoiceId = result.lastInsertRowid;
 
@@ -198,10 +227,12 @@ export async function POST(req: Request) {
 
   if (action === "send") {
     const titleLine = title ? `${title}\n` : "";
+    const payLine = payUrl ? `\nPay online: ${payUrl}` : "";
     const messageBody =
       `Hi ${customer.name}! Here's your invoice:\n` +
       `${titleLine}Amount due: ${formatPrice(total)}` +
       (dueDate ? `\nDue ${dueDate}` : "") +
+      payLine +
       `\nReply with any questions.`;
     await db
       .prepare(
