@@ -120,26 +120,54 @@ export async function POST(req: Request) {
     );
   }
 
-  const result = await db
-    .prepare(
-      `INSERT INTO staff
-       (name, first_name, last_name, phone, email, password_hash, color,
-        permission_level, photo_url, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-    )
-    .run(
-      fullName,
-      first_name,
-      last_name,
-      phone,
-      email,
-      password_hash,
-      color,
-      permission_level,
-      photo_url
+  let result: { lastInsertRowid: number };
+  try {
+    result = await db
+      .prepare(
+        `INSERT INTO staff
+         (name, first_name, last_name, phone, email, password_hash, color,
+          permission_level, photo_url, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+      )
+      .run(
+        fullName,
+        first_name,
+        last_name,
+        phone,
+        email,
+        password_hash,
+        color,
+        permission_level,
+        photo_url
+      );
+  } catch (err) {
+    console.error("[/api/staff POST] insert failed:", err);
+    const message = err instanceof Error ? err.message : "Database error";
+    return NextResponse.json(
+      { error: `Could not create employee: ${message}` },
+      { status: 500 }
     );
+  }
+
   const created = (await db
     .prepare("SELECT * FROM staff WHERE id = ?")
-    .get(result.lastInsertRowid)) as Staff;
+    .get(result.lastInsertRowid)) as Staff | undefined;
+  if (!created) {
+    // Fall back to email lookup in case the driver didn't return lastInsertRowid.
+    const fallback = (await db
+      .prepare("SELECT * FROM staff WHERE email = ?")
+      .get(email)) as Staff | undefined;
+    if (fallback) {
+      return NextResponse.json(fallback, { status: 201 });
+    }
+    console.error(
+      "[/api/staff POST] insert appeared to succeed but row not found",
+      { lastInsertRowid: result.lastInsertRowid, email }
+    );
+    return NextResponse.json(
+      { error: "Employee was not saved. Check the server logs." },
+      { status: 500 }
+    );
+  }
   return NextResponse.json(created, { status: 201 });
 }
