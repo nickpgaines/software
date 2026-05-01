@@ -378,6 +378,13 @@ async function init(): Promise<void> {
     ["stripe_payouts_enabled", "INTEGER NOT NULL DEFAULT 0"],
     ["stripe_details_submitted", "INTEGER NOT NULL DEFAULT 0"],
     ["stripe_account_type", "TEXT"],
+    ["quickbooks_realm_id", "TEXT"],
+    ["quickbooks_access_token", "TEXT"],
+    ["quickbooks_refresh_token", "TEXT"],
+    ["quickbooks_token_expires_at", "TEXT"],
+    ["quickbooks_environment", "TEXT"],
+    ["quickbooks_company_name", "TEXT"],
+    ["quickbooks_connected_at", "TEXT"],
   ];
   for (const [col, def] of companyAdds) {
     await alterAddColumn("company", col, def, companyCols);
@@ -1035,6 +1042,13 @@ export type Company = {
   stripe_payouts_enabled: number;
   stripe_details_submitted: number;
   stripe_account_type: "express" | "standard" | null;
+  quickbooks_realm_id: string | null;
+  quickbooks_access_token: string | null;
+  quickbooks_refresh_token: string | null;
+  quickbooks_token_expires_at: string | null;
+  quickbooks_environment: "sandbox" | "production" | null;
+  quickbooks_company_name: string | null;
+  quickbooks_connected_at: string | null;
 };
 
 export type MessageStatus =

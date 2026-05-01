@@ -11,6 +11,7 @@ type Tab =
   | "messaging"
   | "calling"
   | "email"
+  | "integrations"
   | "billing";
 
 const TABS: { key: Tab; label: string }[] = [
@@ -21,6 +22,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "messaging", label: "Messaging" },
   { key: "calling", label: "Calling" },
   { key: "email", label: "Email" },
+  { key: "integrations", label: "Integrations" },
   { key: "billing", label: "Billing" },
 ];
 
@@ -88,6 +90,7 @@ function SettingsTabsInner({ username }: { username: string }) {
         {tab === "messaging" && <MessagingPanel />}
         {tab === "calling" && <CallingPanel />}
         {tab === "email" && <EmailPanel />}
+        {tab === "integrations" && <IntegrationsPanel />}
         {tab === "billing" && <BillingPanel />}
       </div>
     </div>
@@ -2270,6 +2273,81 @@ function EmailPanel() {
         )}
       </div>
     </form>
+  );
+}
+
+type QuickbooksStatus = {
+  configured: boolean;
+  connected: boolean;
+  realm_id?: string | null;
+  environment?: "sandbox" | "production" | null;
+  company_name?: string | null;
+  connected_at?: string | null;
+};
+
+function IntegrationsPanel() {
+  const router = useRouter();
+  const [qb, setQb] = useState<QuickbooksStatus | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/quickbooks/connect/status")
+      .then((r) => r.json())
+      .then((data) => {
+        if (!cancelled) setQb(data);
+      })
+      .catch(() => {
+        if (!cancelled) setQb({ configured: false, connected: false });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  return (
+    <div className="space-y-4">
+      <div>
+        <h2 className="text-lg font-semibold text-slate-900">Integrations</h2>
+        <p className="text-sm text-slate-500 mt-1">
+          Connect your home base to outside services to keep records in sync.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        onClick={() => router.push("/settings/integrations/quickbooks")}
+        className="w-full text-left border border-slate-200 hover:border-slate-300 hover:bg-slate-50 rounded-2xl px-4 py-4 flex items-center gap-4 transition"
+      >
+        <span className="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-semibold">
+          qb
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-sm font-medium text-slate-900">
+            QuickBooks Online
+          </span>
+          <span className="block text-xs text-slate-500 mt-0.5">
+            Sync customers, invoices, estimates, and payments with QuickBooks.
+          </span>
+        </span>
+        <span
+          className={
+            "text-xs font-medium px-2 py-1 rounded-full " +
+            (qb?.connected
+              ? "bg-emerald-50 text-emerald-700"
+              : "bg-slate-100 text-slate-500")
+          }
+        >
+          {qb === null
+            ? "…"
+            : qb.connected
+              ? "Connected"
+              : "Not connected"}
+        </span>
+        <span className="text-slate-400" aria-hidden>
+          ›
+        </span>
+      </button>
+    </div>
   );
 }
 
