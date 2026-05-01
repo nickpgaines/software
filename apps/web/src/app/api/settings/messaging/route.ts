@@ -29,19 +29,23 @@ function toPublic(s: MessagingSettings): PublicSettings {
 
 async function readSettings(): Promise<MessagingSettings> {
   const db = await getDb();
-  const row = (await db
-    .prepare("SELECT * FROM messaging_settings WHERE id = 1")
-    .get()) as MessagingSettings | undefined;
-  return (
-    row ?? {
-      id: 1,
-      provider: "twilio",
-      account_sid: null,
-      auth_token: null,
-      from_number: null,
-      updated_at: "",
-    }
-  );
+  // Wrap in a write transaction to force a primary read. Plain reads can hit
+  // a Turso edge replica that lags behind the primary.
+  return await db.transaction(async (tx) => {
+    const row = (await tx
+      .prepare("SELECT * FROM messaging_settings WHERE id = 1")
+      .get()) as MessagingSettings | undefined;
+    return (
+      row ?? {
+        id: 1,
+        provider: "twilio",
+        account_sid: null,
+        auth_token: null,
+        from_number: null,
+        updated_at: "",
+      }
+    );
+  });
 }
 
 const NO_CACHE_HEADERS = {

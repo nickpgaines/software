@@ -7,19 +7,24 @@ export type SmsSendResult =
 
 export async function getMessagingSettings(): Promise<MessagingSettings> {
   const db = await getDb();
-  const row = (await db
-    .prepare("SELECT * FROM messaging_settings WHERE id = 1")
-    .get()) as MessagingSettings | undefined;
-  return (
-    row ?? {
-      id: 1,
-      provider: "twilio",
-      account_sid: null,
-      auth_token: null,
-      from_number: null,
-      updated_at: "",
-    }
-  );
+  // Wrap in a write transaction to force a primary read. Turso may route
+  // plain reads to an edge replica that lags behind the primary, which would
+  // make freshly-saved credentials look unset.
+  return await db.transaction(async (tx) => {
+    const row = (await tx
+      .prepare("SELECT * FROM messaging_settings WHERE id = 1")
+      .get()) as MessagingSettings | undefined;
+    return (
+      row ?? {
+        id: 1,
+        provider: "twilio",
+        account_sid: null,
+        auth_token: null,
+        from_number: null,
+        updated_at: "",
+      }
+    );
+  });
 }
 
 export function isMessagingConfigured(s: MessagingSettings): boolean {
