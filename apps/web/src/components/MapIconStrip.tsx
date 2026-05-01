@@ -2,6 +2,7 @@
 
 import {
   Hexagon,
+  Lasso,
   Map as MapIcon,
   MapPin,
   Pencil,
@@ -25,6 +26,8 @@ export default function MapIconStrip({
   onToggleTerritoryList,
   filterOpen,
   onToggleFilter,
+  drawingLasso,
+  onToggleLasso,
 }: {
   styleMode: StyleMode;
   onToggleStyle: () => void;
@@ -38,6 +41,8 @@ export default function MapIconStrip({
   onToggleTerritoryList: () => void;
   filterOpen: boolean;
   onToggleFilter: () => void;
+  drawingLasso: boolean;
+  onToggleLasso: () => void;
 }) {
   const satelliteActive = styleMode === "satellite";
   const StyleIcon = satelliteActive ? Satellite : MapIcon;
@@ -128,6 +133,22 @@ export default function MapIconStrip({
         }
       >
         <SlidersHorizontal className="h-5 w-5" />
+      </button>
+      <button
+        type="button"
+        onClick={onToggleLasso}
+        title={drawingLasso ? "Cancel lasso" : "Lasso customers for text blast"}
+        aria-label={
+          drawingLasso ? "Cancel lasso" : "Lasso customers for text blast"
+        }
+        aria-pressed={drawingLasso}
+        className={
+          buttonBase +
+          " " +
+          (drawingLasso ? activeClasses : inactiveClasses)
+        }
+      >
+        <Lasso className="h-5 w-5" />
       </button>
     </div>
   );

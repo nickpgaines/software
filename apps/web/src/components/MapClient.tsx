@@ -14,6 +14,7 @@ import MapTerritoryModal, {
 } from "./MapTerritoryModal";
 import TerritoryListPanel from "./MapTerritoryListPanel";
 import MapFilterPanel, { type DateRange } from "./MapFilterPanel";
+import MapLassoPanel, { type LassoCustomer } from "./MapLassoPanel";
 import {
   PIN_STATUS,
   isPinStatus,
@@ -155,6 +156,7 @@ export default function MapClient() {
   const territoriesRef = useRef<Map<number, Territory>>(new Map());
   const drawRef = useRef<MapboxDraw | null>(null);
   const drawingTerritoryRef = useRef(false);
+  const drawingLassoRef = useRef(false);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holdStartRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -165,6 +167,10 @@ export default function MapClient() {
   const showCustomerPinsRef = useRef(true);
   const [staff, setStaff] = useState<TerritoryStaff[]>([]);
   const [drawingTerritory, setDrawingTerritory] = useState(false);
+  const [drawingLasso, setDrawingLasso] = useState(false);
+  const [lassoSelection, setLassoSelection] = useState<LassoCustomer[] | null>(
+    null
+  );
   const [territoryListOpen, setTerritoryListOpen] = useState(false);
   const [territoriesVersion, setTerritoriesVersion] = useState(0);
   const [filterOpen, setFilterOpen] = useState(false);
@@ -387,7 +393,73 @@ export default function MapClient() {
 
   function toggleDrawTerritory() {
     if (drawingTerritoryRef.current) cancelDrawTerritory();
-    else startDrawTerritory();
+    else {
+      if (drawingLassoRef.current) cancelLasso();
+      startDrawTerritory();
+    }
+  }
+
+  function startLasso() {
+    const draw = drawRef.current;
+    if (!draw) return;
+    draw.deleteAll();
+    draw.changeMode("draw_polygon");
+    drawingLassoRef.current = true;
+    setDrawingLasso(true);
+  }
+
+  function cancelLasso() {
+    const draw = drawRef.current;
+    if (draw) {
+      draw.deleteAll();
+      draw.changeMode("simple_select");
+    }
+    drawingLassoRef.current = false;
+    setDrawingLasso(false);
+  }
+
+  function toggleLasso() {
+    if (drawingLassoRef.current) cancelLasso();
+    else {
+      if (drawingTerritoryRef.current) cancelDrawTerritory();
+      setLassoSelection(null);
+      startLasso();
+    }
+  }
+
+  function pointInPolygon(
+    point: [number, number],
+    polygon: [number, number][]
+  ): boolean {
+    let inside = false;
+    for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+      const xi = polygon[i][0];
+      const yi = polygon[i][1];
+      const xj = polygon[j][0];
+      const yj = polygon[j][1];
+      const intersect =
+        yi > point[1] !== yj > point[1] &&
+        point[0] < ((xj - xi) * (point[1] - yi)) / (yj - yi) + xi;
+      if (intersect) inside = !inside;
+    }
+    return inside;
+  }
+
+  function selectCustomersInPolygon(ring: number[][]): LassoCustomer[] {
+    const polygon = ring.map((p) => [p[0], p[1]] as [number, number]);
+    const out: LassoCustomer[] = [];
+    for (const c of customerDataRef.current.values()) {
+      if (!isCustomerVisible(c)) continue;
+      if (pointInPolygon([c.longitude, c.latitude], polygon)) {
+        out.push({
+          id: c.id,
+          name: c.name,
+          phone: c.phone,
+          has_active_subscription: c.has_active_subscription,
+        });
+      }
+    }
+    return out;
   }
 
   function openPinPopup(id: number) {
@@ -491,8 +563,12 @@ export default function MapClient() {
 
     map.on("draw.create", (e: { features: GeoJSON.Feature[] }) => {
       const feature = e.features?.[0];
+      const wasLasso = drawingLassoRef.current;
+      const wasTerritory = drawingTerritoryRef.current;
       drawingTerritoryRef.current = false;
+      drawingLassoRef.current = false;
       setDrawingTerritory(false);
+      setDrawingLasso(false);
       draw.deleteAll();
       if (
         feature &&
@@ -501,10 +577,14 @@ export default function MapClient() {
       ) {
         const ring = feature.geometry.coordinates[0] as number[][];
         if (ring.length >= 4) {
-          // mapbox-gl-draw closes the ring by repeating the first point;
-          // strip the duplicate before persisting.
+          // mapbox-gl-draw closes the ring by repeating the first point.
           const polygon = ring.slice(0, -1);
-          setTerritoryModal({ open: true, draft: { polygon } });
+          if (wasLasso) {
+            const selected = selectCustomersInPolygon(polygon);
+            setLassoSelection(selected);
+          } else if (wasTerritory) {
+            setTerritoryModal({ open: true, draft: { polygon } });
+          }
         }
       }
     });
@@ -546,7 +626,7 @@ export default function MapClient() {
     });
 
     map.on("click", "territories-fill", (e) => {
-      if (drawingTerritoryRef.current) return;
+      if (drawingTerritoryRef.current || drawingLassoRef.current) return;
       const feature = e.features?.[0];
       const id = feature?.properties?.id as number | undefined;
       if (id == null) return;
@@ -577,7 +657,7 @@ export default function MapClient() {
     function onPressDown(
       e: mapboxgl.MapMouseEvent | mapboxgl.MapTouchEvent
     ) {
-      if (drawingTerritoryRef.current) return;
+      if (drawingTerritoryRef.current || drawingLassoRef.current) return;
       const target = e.originalEvent.target as HTMLElement | null;
       if (
         target &&
@@ -719,6 +799,8 @@ export default function MapClient() {
         onToggleTerritoryList={() => setTerritoryListOpen((v) => !v)}
         filterOpen={filterOpen}
         onToggleFilter={() => setFilterOpen((v) => !v)}
+        drawingLasso={drawingLasso}
+        onToggleLasso={toggleLasso}
       />
       {filterOpen && (
         <MapFilterPanel
@@ -763,6 +845,17 @@ export default function MapClient() {
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-slate-900 text-white text-sm rounded-full px-4 py-2 shadow-md pointer-events-none">
           Click points to outline a territory · double-click to finish
         </div>
+      )}
+      {drawingLasso && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-slate-900 text-white text-sm rounded-full px-4 py-2 shadow-md pointer-events-none">
+          Click points to lasso customers · double-click to finish
+        </div>
+      )}
+      {lassoSelection && (
+        <MapLassoPanel
+          customers={lassoSelection}
+          onClose={() => setLassoSelection(null)}
+        />
       )}
       <MapPinDropModal
         open={modal.open}
