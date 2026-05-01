@@ -41,6 +41,8 @@ type ApiPin = {
   status: string;
   notes: string | null;
   objections: string | null;
+  address: string | null;
+  created_at: string;
 };
 
 type CustomerPin = {
@@ -68,6 +70,51 @@ type ModalState = {
   initialNote?: string;
   initialObjections?: string[];
 };
+
+const STATUS_PILL: Record<PinStatus, { bg: string; text: string }> = {
+  sale: { bg: "#dcfce7", text: "#166534" },
+  not_home: { bg: "#fef9c3", text: "#854d0e" },
+  not_interested: { bg: "#fee2e2", text: "#991b1b" },
+  come_back: { bg: "#dbeafe", text: "#1e40af" },
+  quote_sent: { bg: "#ffedd5", text: "#9a3412" },
+  do_not_return: { bg: "#e2e8f0", text: "#0f172a" },
+};
+
+function pinCoordLabel(pin: { lat: number; lng: number }): string {
+  return `${pin.lat.toFixed(5)}, ${pin.lng.toFixed(5)}`;
+}
+
+function formatPinDate(raw: string): string {
+  if (!raw) return "—";
+  const iso = raw.includes("T") ? raw : raw.replace(" ", "T") + "Z";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return raw;
+  return d.toLocaleDateString(undefined, {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  });
+}
+
+async function reverseGeocode(lng: number, lat: number): Promise<string | null> {
+  if (!TOKEN) return null;
+  try {
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${TOKEN}&types=address&limit=1`;
+    const res = await fetch(url);
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      features?: { address?: string; text?: string; place_name?: string }[];
+    };
+    const f = data.features?.[0];
+    if (!f) return null;
+    if (f.address && f.text) return `${f.address} ${f.text}`;
+    if (f.text) return f.text;
+    if (f.place_name) return f.place_name.split(",")[0];
+    return null;
+  } catch {
+    return null;
+  }
+}
 
 function parseObjections(raw: string | null): string[] {
   if (!raw) return [];
@@ -481,36 +528,50 @@ export default function MapClient() {
     const map = mapRef.current;
     const pin = pinsDataRef.current.get(id);
     if (!map || !pin) return;
-    const meta = PIN_STATUS[statusOf(pin)];
+    const status = statusOf(pin);
+    const meta = PIN_STATUS[status];
+    const pill = STATUS_PILL[status];
 
     const node = document.createElement("div");
-    node.style.cssText = "min-width:200px;font-family:inherit;";
+    node.style.cssText = "min-width:240px;font-family:inherit;";
+
+    const titleText = pin.address || pinCoordLabel(pin);
+    const dateText = formatPinDate(pin.created_at);
     const noteHtml = pin.notes
-      ? `<div style="margin-top:6px;font-size:13px;color:#475569;white-space:pre-wrap;">${escapeHtml(
+      ? `<div style="margin-top:8px;font-size:13px;color:#475569;white-space:pre-wrap;">${escapeHtml(
           pin.notes
         )}</div>`
       : "";
     const pinObjections = parseObjections(pin.objections);
     const objectionsHtml =
       pinObjections.length > 0
-        ? `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;">` +
-          pinObjections
-            .map(
-              (o) =>
-                `<span style="font-size:11px;color:#475569;background:#f1f5f9;border-radius:9999px;padding:2px 8px;">${escapeHtml(
-                  o
-                )}</span>`
-            )
-            .join("") +
-          `</div>`
+        ? `<div style="margin-top:6px;display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:start;font-size:13px;">
+             <span style="color:#94a3b8;">Objection:</span>
+             <span style="color:#0f172a;">${pinObjections
+               .map((o) => escapeHtml(o))
+               .join(", ")}</span>
+           </div>`
         : "";
+
     node.innerHTML =
-      `<div style="font-weight:600;color:#0f172a;font-size:14px;">${escapeHtml(
-        meta.label
+      `<div style="font-weight:600;color:#0f172a;font-size:16px;line-height:1.3;padding-right:18px;">${escapeHtml(
+        titleText
       )}</div>` +
-      noteHtml +
+      `<div style="margin-top:8px;display:grid;grid-template-columns:auto 1fr;gap:6px 10px;align-items:center;font-size:13px;">
+         <span style="color:#94a3b8;">Status:</span>
+         <span><span style="display:inline-block;background:${
+           pill.bg
+         };color:${
+           pill.text
+         };font-weight:600;border-radius:9999px;padding:2px 10px;font-size:12px;">${escapeHtml(
+        meta.label
+      )}</span></span>
+         <span style="color:#94a3b8;">Date:</span>
+         <span style="color:#0f172a;">${escapeHtml(dateText)}</span>
+       </div>` +
       objectionsHtml +
-      `<div style="margin-top:10px;display:flex;gap:6px;">
+      noteHtml +
+      `<div style="margin-top:12px;display:flex;gap:6px;">
          <button data-action="edit" style="flex:1;padding:6px 10px;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;background:white;color:#0f172a;cursor:pointer;">Edit</button>
          <button data-action="delete" style="flex:1;padding:6px 10px;font-size:12px;border:1px solid #fecaca;border-radius:6px;background:white;color:#dc2626;cursor:pointer;">Delete</button>
        </div>`;
@@ -797,6 +858,7 @@ export default function MapClient() {
         addMarker(updated);
       }
     } else {
+      const address = await reverseGeocode(modal.lng, modal.lat);
       const r = await fetch("/api/map/pins", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -806,6 +868,7 @@ export default function MapClient() {
           status,
           note,
           objections,
+          address,
         }),
       });
       if (r.ok) {
