@@ -520,6 +520,8 @@ async function init(): Promise<void> {
       signature_data TEXT,
       signature_name TEXT,
       signed_at    TEXT,
+      start_date   TEXT,
+      sold_by_id   INTEGER REFERENCES staff(id) ON DELETE SET NULL,
       created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_customer_subscriptions_customer
@@ -528,6 +530,43 @@ async function init(): Promise<void> {
       ON customer_subscriptions(template_id);
     CREATE INDEX IF NOT EXISTS idx_customer_subscriptions_status
       ON customer_subscriptions(status);
+
+    CREATE TABLE IF NOT EXISTS estimates (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      customer_id    INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      title          TEXT,
+      notes          TEXT,
+      status         TEXT NOT NULL DEFAULT 'draft'
+                       CHECK (status IN ('draft','sent','accepted','declined','expired','canceled')),
+      total_cents    INTEGER NOT NULL DEFAULT 0,
+      tax_rate_bps   INTEGER NOT NULL DEFAULT 0,
+      valid_until    TEXT,
+      sent_at        TEXT,
+      accepted_at    TEXT,
+      declined_at    TEXT,
+      signature_data TEXT,
+      signature_name TEXT,
+      signed_at      TEXT,
+      sold_by_id     INTEGER REFERENCES staff(id) ON DELETE SET NULL,
+      created_by     TEXT,
+      created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_estimates_customer ON estimates(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_estimates_status ON estimates(status);
+
+    CREATE TABLE IF NOT EXISTS estimate_items (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      estimate_id  INTEGER NOT NULL REFERENCES estimates(id) ON DELETE CASCADE,
+      title        TEXT NOT NULL,
+      description  TEXT,
+      quantity     REAL NOT NULL DEFAULT 1,
+      price_cents  INTEGER NOT NULL DEFAULT 0,
+      taxable      INTEGER NOT NULL DEFAULT 0,
+      position     INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS idx_estimate_items_estimate
+      ON estimate_items(estimate_id);
   `);
 
   const tplCols = await _db
@@ -552,6 +591,8 @@ async function init(): Promise<void> {
     ["signature_data", "TEXT"],
     ["signature_name", "TEXT"],
     ["signed_at", "TEXT"],
+    ["start_date", "TEXT"],
+    ["sold_by_id", "INTEGER REFERENCES staff(id) ON DELETE SET NULL"],
   ];
   for (const [col, def] of subAdds) {
     if (!subCols.some((c) => c.name === col)) {
@@ -809,7 +850,49 @@ export type CustomerSubscription = {
   signature_data: string | null;
   signature_name: string | null;
   signed_at: string | null;
+  start_date: string | null;
+  sold_by_id: number | null;
   created_at: string;
+};
+
+export type EstimateStatus =
+  | "draft"
+  | "sent"
+  | "accepted"
+  | "declined"
+  | "expired"
+  | "canceled";
+
+export type Estimate = {
+  id: number;
+  customer_id: number;
+  title: string | null;
+  notes: string | null;
+  status: EstimateStatus;
+  total_cents: number;
+  tax_rate_bps: number;
+  valid_until: string | null;
+  sent_at: string | null;
+  accepted_at: string | null;
+  declined_at: string | null;
+  signature_data: string | null;
+  signature_name: string | null;
+  signed_at: string | null;
+  sold_by_id: number | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type EstimateItem = {
+  id: number;
+  estimate_id: number;
+  title: string;
+  description: string | null;
+  quantity: number;
+  price_cents: number;
+  taxable: number;
+  position: number;
 };
 
 export type PaymentMethod =

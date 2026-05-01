@@ -81,6 +81,8 @@ export async function POST(req: Request) {
     interval: SubscriptionInterval;
     signature_data: string;
     signature_name: string;
+    start_date: string;
+    sold_by_id: number | null;
   }>;
 
   const customerId = Number(body.customer_id);
@@ -165,6 +167,14 @@ export async function POST(req: Request) {
   const sentAt = action === "send" ? now : null;
   const acceptedAt = action === "accept" ? now : null;
   const signedAt = signatureData ? now : null;
+  const startDate =
+    typeof body.start_date === "string" && body.start_date.trim()
+      ? body.start_date.trim()
+      : null;
+  const soldById =
+    body.sold_by_id === undefined || body.sold_by_id === null
+      ? null
+      : Number(body.sold_by_id) || null;
 
   const result = await db
     .prepare(
@@ -172,8 +182,9 @@ export async function POST(req: Request) {
          (customer_id, template_id, name, description, price_cents, interval,
           status, sent_at, accepted_at, created_by,
           terms_snapshot, require_signature,
-          signature_data, signature_name, signed_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          signature_data, signature_name, signed_at,
+          start_date, sold_by_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       customerId,
@@ -190,7 +201,9 @@ export async function POST(req: Request) {
       requireSignature,
       signatureData,
       signatureName,
-      signedAt
+      signedAt,
+      startDate,
+      soldById
     );
 
   if (action === "send") {
