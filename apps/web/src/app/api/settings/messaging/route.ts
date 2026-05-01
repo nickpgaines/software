@@ -42,6 +42,10 @@ async function readSettings(): Promise<MessagingSettings> {
         account_sid: null,
         auth_token: null,
         from_number: null,
+        voice_api_key_sid: null,
+        voice_api_key_secret: null,
+        voice_twiml_app_sid: null,
+        voice_record_calls: 1,
         updated_at: "",
       }
     );
@@ -125,6 +129,7 @@ export async function PUT(req: Request) {
   // would briefly report the row as unconfigured even though the write
   // succeeded.
   const updated: MessagingSettings = {
+    ...current,
     id: 1,
     provider: current.provider || "twilio",
     account_sid: nextSid,

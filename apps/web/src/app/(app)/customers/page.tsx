@@ -7,6 +7,7 @@ import AddressFields, {
   EMPTY_ADDRESS,
   type AddressValue,
 } from "@/components/customers/AddressFields";
+import { usePhone } from "@/components/PhoneClient";
 
 type Customer = {
   id: number;
@@ -68,6 +69,7 @@ function CustomersPage() {
   const [importing, setImporting] = useState(false);
   const searchParams = useSearchParams();
   const router = useRouter();
+  const phone = usePhone();
 
   async function load() {
     const res = await fetch("/api/customers");
@@ -142,6 +144,21 @@ function CustomersPage() {
                   <td className="px-4 py-2 text-slate-700">{c.phone || "—"}</td>
                   <td className="px-4 py-2 text-slate-700">{c.email || "—"}</td>
                   <td className="px-4 py-2 text-right">
+                    {phone.configured && c.phone && (
+                      <button
+                        onClick={() =>
+                          phone.startCall({
+                            customerId: c.id,
+                            customerName: fullName(c) || c.name,
+                            toPhone: c.phone || "",
+                          })
+                        }
+                        disabled={phone.state.kind !== "idle"}
+                        className="text-xs text-emerald-700 hover:text-emerald-900 disabled:opacity-40 mr-3"
+                      >
+                        Call
+                      </button>
+                    )}
                     <button
                       onClick={() => setEditing(c)}
                       className="text-xs text-slate-500 hover:text-slate-900 mr-3"

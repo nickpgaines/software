@@ -15,6 +15,7 @@
     "@mapbox/mapbox-gl-draw": "^1.5.0",
     "@stripe/react-stripe-js": "^6.3.0",
     "@stripe/stripe-js": "^9.4.0",
+    "@twilio/voice-sdk": "^2.18.2",
     "@vis.gl/react-google-maps": "^1.8.3",
     "better-sqlite3": "^11.3.0",
     "lucide-react": "^1.14.0",
@@ -23,7 +24,8 @@
     "papaparse": "^5.5.3",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "stripe": "^22.1.0"
+    "stripe": "^22.1.0",
+    "twilio": "^5.13.1"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.11",

@@ -21,6 +21,10 @@ export async function getMessagingSettings(): Promise<MessagingSettings> {
         account_sid: null,
         auth_token: null,
         from_number: null,
+        voice_api_key_sid: null,
+        voice_api_key_secret: null,
+        voice_twiml_app_sid: null,
+        voice_record_calls: 1,
         updated_at: "",
       }
     );

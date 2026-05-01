@@ -3,7 +3,14 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-type Tab = "profile" | "company" | "payments" | "subscriptions" | "messaging" | "billing";
+type Tab =
+  | "profile"
+  | "company"
+  | "payments"
+  | "subscriptions"
+  | "messaging"
+  | "calling"
+  | "billing";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "profile", label: "Profile" },
@@ -11,6 +18,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "payments", label: "Payments" },
   { key: "subscriptions", label: "Subscriptions" },
   { key: "messaging", label: "Messaging" },
+  { key: "calling", label: "Calling" },
   { key: "billing", label: "Billing" },
 ];
 
@@ -76,6 +84,7 @@ function SettingsTabsInner({ username }: { username: string }) {
         {tab === "payments" && <PaymentsPanel />}
         {tab === "subscriptions" && <SubscriptionsPanel />}
         {tab === "messaging" && <MessagingPanel />}
+        {tab === "calling" && <CallingPanel />}
         {tab === "billing" && <BillingPanel />}
       </div>
     </div>
@@ -1843,6 +1852,219 @@ function MessagingPanel() {
           placeholder="e.g. +18435551234 (your Twilio number)"
         />
       </Field>
+
+      {error && <p className="text-sm text-rose-600">{error}</p>}
+      <div className="flex items-center gap-3 pt-2">
+        <button
+          type="submit"
+          disabled={saving || loading}
+          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+        >
+          {saving ? "Saving…" : "Save changes"}
+        </button>
+        {savedAt && !saving && (
+          <span className="text-xs text-emerald-600">Saved</span>
+        )}
+      </div>
+    </form>
+  );
+}
+
+type CallingStatus = {
+  api_key_sid_masked: string | null;
+  api_key_secret_set: boolean;
+  twiml_app_sid_masked: string | null;
+  record_calls: boolean;
+  configured: boolean;
+  has_account_credentials: boolean;
+  has_business_number: boolean;
+  business_number: string | null;
+};
+
+function CallingPanel() {
+  const [status, setStatus] = useState<CallingStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const [apiKeySid, setApiKeySid] = useState("");
+  const [apiKeySecret, setApiKeySecret] = useState("");
+  const [twimlAppSid, setTwimlAppSid] = useState("");
+  const [recordCalls, setRecordCalls] = useState(true);
+  const [twimlVoiceUrl, setTwimlVoiceUrl] = useState("");
+
+  async function load() {
+    const res = await fetch("/api/settings/voice", { cache: "no-store" });
+    if (res.ok) {
+      const s = (await res.json()) as CallingStatus;
+      setStatus(s);
+      setRecordCalls(s.record_calls);
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setTwimlVoiceUrl(`${window.location.origin}/api/voice/outbound`);
+    }
+  }, []);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSaving(true);
+    const res = await fetch("/api/settings/voice", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key_sid: apiKeySid || undefined,
+        api_key_secret: apiKeySecret || undefined,
+        twiml_app_sid: twimlAppSid || undefined,
+        record_calls: recordCalls,
+      }),
+    });
+    setSaving(false);
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(data.error || "Could not save");
+      return;
+    }
+    const s = (await res.json()) as CallingStatus;
+    setStatus(s);
+    setApiKeySid("");
+    setApiKeySecret("");
+    setTwimlAppSid("");
+    setSavedAt(Date.now());
+  }
+
+  return (
+    <form onSubmit={save} className="space-y-5">
+      <div>
+        <h2 className="text-lg font-semibold text-slate-900">Calling</h2>
+        <p className="text-sm text-slate-500 mt-1">
+          Place and receive calls from the browser using your Twilio number.
+          Calls can be recorded automatically and saved to the call log.
+        </p>
+      </div>
+
+      <div
+        className={
+          "flex items-center gap-2 text-xs font-medium rounded-full px-3 py-1 w-fit " +
+          (status?.configured
+            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+            : "bg-slate-100 text-slate-600 border border-slate-200")
+        }
+      >
+        <span
+          className={
+            "w-1.5 h-1.5 rounded-full " +
+            (status?.configured ? "bg-emerald-500" : "bg-slate-400")
+          }
+        />
+        {status?.configured ? "Connected" : "Not connected"}
+        {status?.business_number && (
+          <span className="text-slate-500 font-normal">
+            · {status.business_number}
+          </span>
+        )}
+      </div>
+
+      {!status?.has_account_credentials && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          Connect your Twilio account in <strong>Settings → Messaging</strong>{" "}
+          first. Calling reuses the same Account SID, Auth Token, and number.
+        </div>
+      )}
+
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3 text-sm">
+        <div className="font-medium text-slate-900">Setup steps</div>
+        <ol className="list-decimal list-inside space-y-1 text-slate-600">
+          <li>
+            In the Twilio Console, go to{" "}
+            <span className="font-medium">Account → API keys & tokens</span>{" "}
+            and click <strong>Create API key</strong>. Type:{" "}
+            <span className="font-mono">Standard</span>. Copy the{" "}
+            <span className="font-mono">SID</span> (starts with{" "}
+            <span className="font-mono">SK</span>) and the{" "}
+            <span className="font-mono">Secret</span>. The Secret is only shown
+            once.
+          </li>
+          <li>
+            In Twilio, go to <span className="font-medium">Voice → Manage → TwiML Apps</span>{" "}
+            and click <strong>Create new TwiML App</strong>. Set the{" "}
+            <span className="font-medium">Voice → Request URL</span> to the
+            URL below (HTTP POST). Save and copy the App SID (starts with{" "}
+            <span className="font-mono">AP</span>).
+          </li>
+          <li>Paste all three values below.</li>
+        </ol>
+        <div>
+          <div className="text-xs uppercase tracking-wide text-slate-400 mb-1.5">
+            TwiML App Voice URL
+          </div>
+          <input
+            type="text"
+            readOnly
+            value={twimlVoiceUrl}
+            onFocus={(e) => e.currentTarget.select()}
+            className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono text-xs"
+          />
+        </div>
+      </div>
+
+      <Field label="API Key SID">
+        <input
+          type="text"
+          value={apiKeySid}
+          disabled={loading}
+          onChange={(e) => setApiKeySid(e.target.value)}
+          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono"
+          placeholder={
+            status?.api_key_sid_masked || "SKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          }
+        />
+      </Field>
+      <Field label="API Key Secret">
+        <input
+          type="password"
+          value={apiKeySecret}
+          disabled={loading}
+          onChange={(e) => setApiKeySecret(e.target.value)}
+          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono"
+          placeholder={
+            status?.api_key_secret_set
+              ? "•••••••••••••••• (saved)"
+              : "API Key Secret"
+          }
+        />
+      </Field>
+      <Field label="TwiML App SID">
+        <input
+          type="text"
+          value={twimlAppSid}
+          disabled={loading}
+          onChange={(e) => setTwimlAppSid(e.target.value)}
+          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono"
+          placeholder={
+            status?.twiml_app_sid_masked || "APxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          }
+        />
+      </Field>
+
+      <label className="flex items-center gap-2 text-sm text-slate-700">
+        <input
+          type="checkbox"
+          checked={recordCalls}
+          onChange={(e) => setRecordCalls(e.target.checked)}
+          className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+        />
+        Record calls
+      </label>
 
       {error && <p className="text-sm text-rose-600">{error}</p>}
       <div className="flex items-center gap-3 pt-2">
