@@ -98,8 +98,20 @@ export default async function EmployeesPage() {
                     className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
                   >
                     <td className="px-4 py-4">
-                      <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400">
-                        <User className="w-5 h-5" strokeWidth={1.5} />
+                      <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
+                        {e.photo_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={e.photo_url}
+                            alt={displayName(e)}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <User
+                            className="w-5 h-5 text-slate-400"
+                            strokeWidth={1.5}
+                          />
+                        )}
                       </div>
                     </td>
                     <td className="px-4 py-4 text-sm font-semibold text-slate-900">

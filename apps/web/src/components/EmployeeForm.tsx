@@ -99,6 +99,12 @@ export default function EmployeeForm({
   const [permission, setPermission] = useState<PermissionLevel>(
     initial?.permission_level || "manager"
   );
+  const [photoUrl, setPhotoUrl] = useState<string | null>(
+    initial?.photo_url ?? null
+  );
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [colorOpen, setColorOpen] = useState(false);
   const colorRef = useRef<HTMLDivElement>(null);
@@ -113,6 +119,55 @@ export default function EmployeeForm({
     if (colorOpen) document.addEventListener("mousedown", onDoc);
     return () => document.removeEventListener("mousedown", onDoc);
   }, [colorOpen]);
+
+  async function processImage(file: File): Promise<string> {
+    const objectUrl = URL.createObjectURL(file);
+    try {
+      const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const el = new Image();
+        el.onload = () => resolve(el);
+        el.onerror = () => reject(new Error("Could not read image"));
+        el.src = objectUrl;
+      });
+      const MAX = 320;
+      const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("Canvas not supported");
+      ctx.drawImage(img, 0, 0, w, h);
+      return canvas.toDataURL("image/jpeg", 0.85);
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+    }
+  }
+
+  async function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setPhotoError(null);
+    if (!file.type.startsWith("image/")) {
+      setPhotoError("Please choose an image file");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setPhotoError("Image is too large (max 8 MB)");
+      return;
+    }
+    setPhotoBusy(true);
+    try {
+      const dataUrl = await processImage(file);
+      setPhotoUrl(dataUrl);
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : "Could not load image");
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
 
   async function save(e?: React.FormEvent) {
     e?.preventDefault();
@@ -130,6 +185,7 @@ export default function EmployeeForm({
       email: email.trim(),
       color,
       permission_level: permission,
+      photo_url: photoUrl,
     };
     if (password) body.password = password;
 
@@ -209,18 +265,52 @@ export default function EmployeeForm({
         <div className="px-6 py-6 grid grid-cols-1 md:grid-cols-[160px_1fr] gap-6">
           {/* Photo column */}
           <div className="flex flex-col gap-3">
-            <div className="w-[140px] h-[140px] rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-400">
-              <User className="w-14 h-14" strokeWidth={1.5} />
+            <div className="w-[140px] h-[140px] rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
+              {photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={photoUrl}
+                  alt="Employee"
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <User
+                  className="w-14 h-14 text-slate-400"
+                  strokeWidth={1.5}
+                />
+              )}
             </div>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={onPickFile}
+              className="hidden"
+            />
             <button
               type="button"
-              onClick={() =>
-                console.log("Photo upload not yet implemented")
-              }
-              className="w-[140px] text-sm border border-slate-300 hover:border-slate-400 rounded-lg px-3 py-2 text-slate-700"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={photoBusy}
+              className="w-[140px] text-sm border border-slate-300 hover:border-slate-400 rounded-lg px-3 py-2 text-slate-700 disabled:opacity-60"
             >
-              Add Photo
+              {photoBusy
+                ? "Loading…"
+                : photoUrl
+                ? "Change Photo"
+                : "Add Photo"}
             </button>
+            {photoUrl && (
+              <button
+                type="button"
+                onClick={() => setPhotoUrl(null)}
+                className="w-[140px] text-xs text-slate-500 hover:text-slate-900"
+              >
+                Remove
+              </button>
+            )}
+            {photoError && (
+              <p className="w-[140px] text-xs text-rose-600">{photoError}</p>
+            )}
           </div>
 
           {/* Fields */}
