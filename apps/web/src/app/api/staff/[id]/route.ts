@@ -61,6 +61,15 @@ export async function PATCH(
   const db = await getDb();
   const id = Number(params.id);
   const body = (await req.json().catch(() => ({}))) as PatchBody;
+  console.log("[/api/staff PATCH] received body keys:", Object.keys(body), {
+    photo_url_type: typeof body.photo_url,
+    photo_url_length:
+      typeof body.photo_url === "string" ? body.photo_url.length : null,
+    photo_url_preview:
+      typeof body.photo_url === "string"
+        ? body.photo_url.slice(0, 40) + "…"
+        : body.photo_url,
+  });
   const existing = (await db.prepare("SELECT * FROM staff WHERE id = ?").get(id)) as
     | Staff
     | undefined;
@@ -172,6 +181,11 @@ export async function PATCH(
     id
   );
   const updated = (await db.prepare("SELECT * FROM staff WHERE id = ?").get(id)) as Staff;
+  console.log("[/api/staff PATCH] post-update photo_url:", {
+    type: typeof updated.photo_url,
+    length:
+      typeof updated.photo_url === "string" ? updated.photo_url.length : null,
+  });
   return NextResponse.json(updated);
 }
 
