@@ -14,6 +14,22 @@ type Body = {
   body?: string;
 };
 
+function applyMergeTags(template: string, customer: Customer): string {
+  const first =
+    (customer.first_name && customer.first_name.trim()) ||
+    customer.name?.trim().split(/\s+/)[0] ||
+    "";
+  const last =
+    (customer.last_name && customer.last_name.trim()) ||
+    customer.name?.trim().split(/\s+/).slice(1).join(" ") ||
+    "";
+  const full = customer.name?.trim() || `${first} ${last}`.trim();
+  return template
+    .replace(/\{first_name\}/gi, first)
+    .replace(/\{last_name\}/gi, last)
+    .replace(/\{name\}/gi, full);
+}
+
 export async function POST(req: Request) {
   const db = await getDb();
   const body = (await req.json().catch(() => ({}))) as Body;
@@ -65,6 +81,7 @@ export async function POST(req: Request) {
       failed++;
       continue;
     }
+    const personalizedText = applyMergeTags(text, customer);
     const toPhone = normalizeUSPhone(customer.phone);
     let status: string;
     let errorMsg: string | null = null;
@@ -75,7 +92,7 @@ export async function POST(req: Request) {
       errorMsg = "Customer has no valid phone number.";
       noPhone++;
     } else {
-      const result = await sendSms({ settings, to: toPhone, body: text });
+      const result = await sendSms({ settings, to: toPhone, body: personalizedText });
       if (result.ok) {
         status = result.status || "queued";
         providerSid = result.sid;
@@ -93,7 +110,7 @@ export async function POST(req: Request) {
            (customer_id, body, direction, status, error, provider_sid, to_phone, from_phone)
          VALUES (?, ?, 'outbound', ?, ?, ?, ?, ?)`
       )
-      .run(id, text, status, errorMsg, providerSid, toPhone, fromPhone);
+      .run(id, personalizedText, status, errorMsg, providerSid, toPhone, fromPhone);
     const created = (await db
       .prepare("SELECT * FROM messages WHERE id = ?")
       .get(insert.lastInsertRowid)) as Message;
