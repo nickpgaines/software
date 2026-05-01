@@ -19,6 +19,9 @@ type SendResult = {
 
 const MAX_LEN = 400;
 
+const DEFAULT_MESSAGE =
+  "Hey {first_name}, we're running a special this month — would you like us to service your house again?";
+
 const MERGE_TAGS: { token: string; label: string }[] = [
   { token: "{first_name}", label: "First name" },
   { token: "{last_name}", label: "Last name" },
@@ -32,7 +35,7 @@ export default function MapLassoPanel({
   onClose: () => void;
 }) {
   const [customers, setCustomers] = useState<LassoCustomer[]>(initialCustomers);
-  const [body, setBody] = useState("");
+  const [body, setBody] = useState(DEFAULT_MESSAGE);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<SendResult | null>(null);
@@ -41,7 +44,7 @@ export default function MapLassoPanel({
   // Reset local state if the parent re-opens with a new selection.
   useEffect(() => {
     setCustomers(initialCustomers);
-    setBody("");
+    setBody(DEFAULT_MESSAGE);
     setError(null);
     setResult(null);
   }, [initialCustomers]);
