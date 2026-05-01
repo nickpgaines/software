@@ -14,7 +14,7 @@ const ITEMS: Item[] = [
   { key: "job", label: "Job", href: "/schedule/new" },
   { key: "subscription", label: "Subscription", href: "/subscriptions/new" },
   { key: "invoice", label: "Invoice", disabled: true },
-  { key: "estimate", label: "Estimate", disabled: true },
+  { key: "estimate", label: "Estimate", href: "/estimates/new" },
   { key: "customer", label: "Customer", href: "/customers?new=1" },
 ];
 

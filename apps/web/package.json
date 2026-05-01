@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@libsql/client": "^0.17.3",
+    "@mapbox/mapbox-gl-draw": "^1.5.0",
     "@stripe/react-stripe-js": "^6.3.0",
     "@stripe/stripe-js": "^9.4.0",
     "@vis.gl/react-google-maps": "^1.8.3",
@@ -26,6 +27,7 @@
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.11",
+    "@types/mapbox__mapbox-gl-draw": "^1.4.8",
     "@types/mapbox-gl": "^3.4.1",
     "@types/node": "^20.16.10",
     "@types/papaparse": "^5.5.2",
