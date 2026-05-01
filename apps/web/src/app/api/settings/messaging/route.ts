@@ -44,9 +44,14 @@ async function readSettings(): Promise<MessagingSettings> {
   );
 }
 
+const NO_CACHE_HEADERS = {
+  "Cache-Control": "no-store, no-cache, must-revalidate, max-age=0",
+  Pragma: "no-cache",
+} as const;
+
 export async function GET() {
   const s = await readSettings();
-  return NextResponse.json(toPublic(s));
+  return NextResponse.json(toPublic(s), { headers: NO_CACHE_HEADERS });
 }
 
 export async function PUT(req: Request) {
@@ -123,5 +128,5 @@ export async function PUT(req: Request) {
     from_number: nextFrom,
     updated_at: new Date().toISOString(),
   };
-  return NextResponse.json(toPublic(updated));
+  return NextResponse.json(toPublic(updated), { headers: NO_CACHE_HEADERS });
 }

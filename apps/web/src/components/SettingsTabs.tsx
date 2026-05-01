@@ -1623,7 +1623,7 @@ function MessagingPanel() {
   const [copied, setCopied] = useState(false);
 
   async function load() {
-    const res = await fetch("/api/settings/messaging");
+    const res = await fetch("/api/settings/messaging", { cache: "no-store" });
     if (res.ok) {
       const s = (await res.json()) as MessagingStatus;
       setStatus(s);
