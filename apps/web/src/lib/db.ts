@@ -567,6 +567,43 @@ async function init(): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS idx_estimate_items_estimate
       ON estimate_items(estimate_id);
+
+    CREATE TABLE IF NOT EXISTS invoices (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      customer_id    INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      job_id         INTEGER REFERENCES jobs(id) ON DELETE SET NULL,
+      title          TEXT,
+      notes          TEXT,
+      status         TEXT NOT NULL DEFAULT 'draft'
+                       CHECK (status IN ('draft','sent','partial','paid','overdue','void')),
+      total_cents    INTEGER NOT NULL DEFAULT 0,
+      paid_cents     INTEGER NOT NULL DEFAULT 0,
+      tax_rate_bps   INTEGER NOT NULL DEFAULT 0,
+      due_date       TEXT,
+      sent_at        TEXT,
+      paid_at        TEXT,
+      voided_at      TEXT,
+      sold_by_id     INTEGER REFERENCES staff(id) ON DELETE SET NULL,
+      created_by     TEXT,
+      created_at     TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_invoices_customer ON invoices(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_invoices_status ON invoices(status);
+    CREATE INDEX IF NOT EXISTS idx_invoices_job ON invoices(job_id);
+
+    CREATE TABLE IF NOT EXISTS invoice_items (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      invoice_id   INTEGER NOT NULL REFERENCES invoices(id) ON DELETE CASCADE,
+      title        TEXT NOT NULL,
+      description  TEXT,
+      quantity     REAL NOT NULL DEFAULT 1,
+      price_cents  INTEGER NOT NULL DEFAULT 0,
+      taxable      INTEGER NOT NULL DEFAULT 0,
+      position     INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS idx_invoice_items_invoice
+      ON invoice_items(invoice_id);
   `);
 
   const tplCols = await _db
@@ -887,6 +924,45 @@ export type Estimate = {
 export type EstimateItem = {
   id: number;
   estimate_id: number;
+  title: string;
+  description: string | null;
+  quantity: number;
+  price_cents: number;
+  taxable: number;
+  position: number;
+};
+
+export type InvoiceStatus =
+  | "draft"
+  | "sent"
+  | "partial"
+  | "paid"
+  | "overdue"
+  | "void";
+
+export type Invoice = {
+  id: number;
+  customer_id: number;
+  job_id: number | null;
+  title: string | null;
+  notes: string | null;
+  status: InvoiceStatus;
+  total_cents: number;
+  paid_cents: number;
+  tax_rate_bps: number;
+  due_date: string | null;
+  sent_at: string | null;
+  paid_at: string | null;
+  voided_at: string | null;
+  sold_by_id: number | null;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type InvoiceItem = {
+  id: number;
+  invoice_id: number;
   title: string;
   description: string | null;
   quantity: number;
