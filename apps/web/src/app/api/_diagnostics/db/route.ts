@@ -36,6 +36,50 @@ export async function GET() {
     .prepare("PRAGMA table_info(customers)")
     .all<{ name: string; type: string; notnull: number }>();
 
+  let messagingSettingsExists = false;
+  let messagingRows: Array<{
+    id: number | null;
+    has_account_sid: boolean;
+    account_sid_prefix: string | null;
+    has_auth_token: boolean;
+    auth_token_length: number;
+    from_number: string | null;
+    updated_at: string | null;
+  }> = [];
+  let messagingError: string | null = null;
+  try {
+    const tbl = await db
+      .prepare(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='messaging_settings'"
+      )
+      .get<{ name: string }>();
+    messagingSettingsExists = !!tbl;
+    if (tbl) {
+      const rows = await db
+        .prepare(
+          "SELECT id, account_sid, auth_token, from_number, updated_at FROM messaging_settings"
+        )
+        .all<{
+          id: number | null;
+          account_sid: string | null;
+          auth_token: string | null;
+          from_number: string | null;
+          updated_at: string | null;
+        }>();
+      messagingRows = rows.map((r) => ({
+        id: r.id,
+        has_account_sid: !!r.account_sid,
+        account_sid_prefix: r.account_sid ? r.account_sid.slice(0, 4) : null,
+        has_auth_token: !!r.auth_token,
+        auth_token_length: r.auth_token?.length ?? 0,
+        from_number: r.from_number,
+        updated_at: r.updated_at,
+      }));
+    }
+  } catch (e) {
+    messagingError = (e as Error).message;
+  }
+
   return NextResponse.json({
     env: {
       TURSO_DATABASE_URL_host: host,
@@ -47,5 +91,8 @@ export async function GET() {
     customers_with_lat_and_lng: withCoords.n,
     customers_schema: cols.map((c) => `${c.name}:${c.type}${c.notnull ? " NN" : ""}`),
     customers_sample: sample,
+    messaging_settings_table_exists: messagingSettingsExists,
+    messaging_settings_rows: messagingRows,
+    messaging_settings_error: messagingError,
   });
 }
