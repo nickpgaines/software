@@ -9,6 +9,8 @@ type Row = {
   id: number;
   name: string;
   role: string | null;
+  photo_url: string | null;
+  color: string | null;
   revenue_cents: number;
   job_count: number;
   last_sale_at: string | null;
@@ -423,11 +425,20 @@ export default function LeaderboardClient({
                         <div className="flex items-center gap-3">
                           <div
                             className={
-                              "w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs " +
-                              avatarColor(r.name)
+                              "w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs overflow-hidden " +
+                              (r.photo_url ? "" : avatarColor(r.name))
                             }
                           >
-                            {initials(r.name)}
+                            {r.photo_url ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img
+                                src={r.photo_url}
+                                alt={r.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              initials(r.name)
+                            )}
                           </div>
                           <span className="font-medium text-slate-900">
                             {r.name}

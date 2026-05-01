@@ -80,24 +80,236 @@ function SettingsTabsInner({ username }: { username: string }) {
   );
 }
 
+type Me = {
+  identity: string;
+  is_admin_account: boolean;
+  staff: {
+    id: number;
+    name: string;
+    first_name: string | null;
+    last_name: string | null;
+    email: string | null;
+    phone: string | null;
+    color: string;
+    permission_level: string;
+    photo_url: string | null;
+  } | null;
+};
+
+const PERMISSION_LABELS: Record<string, string> = {
+  admin: "Admin",
+  manager: "Manager",
+  team_lead: "Team Lead",
+  salesperson_all: "Salesperson (All Jobs)",
+  salesperson_own: "Salesperson (Own Jobs Only)",
+  field_tech: "Field Tech",
+  custom: "Custom",
+};
+
+async function processProfileImage(file: File): Promise<string> {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("Could not read image"));
+      el.src = objectUrl;
+    });
+    const MAX = 320;
+    const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+    const w = Math.max(1, Math.round(img.width * scale));
+    const h = Math.max(1, Math.round(img.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas not supported");
+    ctx.drawImage(img, 0, 0, w, h);
+    return canvas.toDataURL("image/jpeg", 0.85);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
 function ProfilePanel({ username }: { username: string }) {
-  const display = username || "—";
+  const [me, setMe] = useState<Me | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    fetch("/api/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((m: Me | null) => {
+        setMe(m);
+        setPhotoUrl(m?.staff?.photo_url ?? null);
+      })
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setPhotoError(null);
+    if (!file.type.startsWith("image/")) {
+      setPhotoError("Please choose an image file");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setPhotoError("Image is too large (max 8 MB)");
+      return;
+    }
+    setPhotoBusy(true);
+    try {
+      const dataUrl = await processProfileImage(file);
+      setPhotoUrl(dataUrl);
+    } catch (err) {
+      setPhotoError(err instanceof Error ? err.message : "Could not load image");
+    } finally {
+      setPhotoBusy(false);
+    }
+  }
+
+  async function save() {
+    setSaving(true);
+    setSavedAt(null);
+    setPhotoError(null);
+    try {
+      const res = await fetch("/api/me", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ photo_url: photoUrl }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setPhotoError(data.error || `Could not save (HTTP ${res.status})`);
+        return;
+      }
+      const updated = (await res.json()) as Me;
+      setMe(updated);
+      setPhotoUrl(updated.staff?.photo_url ?? null);
+      setSavedAt(Date.now());
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const staff = me?.staff;
+  const displayName =
+    staff?.name?.trim() ||
+    (me?.is_admin_account ? "Admin" : me?.identity || username || "—");
+  const email = staff?.email || (me?.is_admin_account ? "—" : "—");
+  const role = staff
+    ? PERMISSION_LABELS[staff.permission_level] || "Staff"
+    : me?.is_admin_account
+    ? "Admin"
+    : "—";
+  const isAdminEnv = me?.is_admin_account === true;
+  const dirty = (staff?.photo_url ?? null) !== photoUrl;
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <div>
         <h2 className="text-lg font-semibold text-slate-900">Profile</h2>
         <p className="text-sm text-slate-500 mt-1">
           Your account information.
         </p>
       </div>
-      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <ReadOnlyField label="Name" value={display} />
-        <ReadOnlyField label="Email" value="—" />
-        <ReadOnlyField label="Role" value="Admin" />
-      </dl>
-      <p className="text-xs text-slate-400">
-        Profile editing is coming soon.
-      </p>
+
+      {loading ? (
+        <p className="text-sm text-slate-400">Loading…</p>
+      ) : (
+        <>
+          <div className="flex items-start gap-5">
+            <div className="w-[120px] h-[120px] rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+              {photoUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={photoUrl}
+                  alt={displayName}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-3xl text-slate-400">
+                  {(displayName[0] || "?").toUpperCase()}
+                </span>
+              )}
+            </div>
+            <div className="flex-1 space-y-2">
+              <div className="flex flex-wrap gap-2">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={onPickFile}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={photoBusy || isAdminEnv}
+                  className="text-sm border border-slate-300 hover:border-slate-400 rounded-full px-4 py-2 text-slate-700 disabled:opacity-50"
+                >
+                  {photoBusy
+                    ? "Loading…"
+                    : photoUrl
+                    ? "Change photo"
+                    : "Add photo"}
+                </button>
+                {photoUrl && !isAdminEnv && (
+                  <button
+                    type="button"
+                    onClick={() => setPhotoUrl(null)}
+                    className="text-sm text-slate-500 hover:text-slate-900"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+              {isAdminEnv && (
+                <p className="text-xs text-slate-400">
+                  This is the built-in admin account. Create an employee record to
+                  manage your own profile.
+                </p>
+              )}
+              {photoError && (
+                <p className="text-xs text-rose-600">{photoError}</p>
+              )}
+              {dirty && !isAdminEnv && (
+                <button
+                  type="button"
+                  onClick={save}
+                  disabled={saving}
+                  className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-4 py-2 font-medium"
+                >
+                  {saving ? "Saving…" : "Save photo"}
+                </button>
+              )}
+              {savedAt && !saving && !dirty && (
+                <p className="text-xs text-emerald-600">Saved</p>
+              )}
+            </div>
+          </div>
+
+          <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <ReadOnlyField label="Name" value={displayName} />
+            <ReadOnlyField label="Email" value={email} />
+            <ReadOnlyField label="Role" value={role} />
+          </dl>
+
+          {!isAdminEnv && (
+            <p className="text-xs text-slate-400">
+              To change your name, email, or password, edit your record from
+              the <span className="font-medium">Employees</span> page.
+            </p>
+          )}
+        </>
+      )}
     </div>
   );
 }
