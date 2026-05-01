@@ -100,9 +100,14 @@ export async function PUT(req: Request) {
 
   await db
     .prepare(
-      `UPDATE messaging_settings
-         SET account_sid = ?, auth_token = ?, from_number = ?, updated_at = datetime('now')
-       WHERE id = 1`
+      `INSERT INTO messaging_settings
+         (id, provider, account_sid, auth_token, from_number, updated_at)
+       VALUES (1, 'twilio', ?, ?, ?, datetime('now'))
+       ON CONFLICT(id) DO UPDATE SET
+         account_sid = excluded.account_sid,
+         auth_token  = excluded.auth_token,
+         from_number = excluded.from_number,
+         updated_at  = excluded.updated_at`
     )
     .run(nextSid, nextToken, nextFrom);
 
