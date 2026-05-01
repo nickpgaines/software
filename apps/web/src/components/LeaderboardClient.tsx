@@ -90,8 +90,10 @@ function todayDateInput() {
 
 export default function LeaderboardClient({
   currentUser,
+  currentStaffId,
 }: {
   currentUser: string;
+  currentStaffId: number | null;
 }) {
   const [view, setView] = useState<View>("sales");
   const [range, setRange] = useState<Range>("month");
@@ -155,16 +157,17 @@ export default function LeaderboardClient({
 
   const me = useMemo(() => {
     if (!data) return null;
+    if (currentStaffId != null) {
+      const byId = data.rows.find((r) => r.id === currentStaffId);
+      if (byId) return byId;
+    }
     const u = currentUser.trim().toLowerCase();
     if (u) {
       const exact = data.rows.find((r) => r.name.trim().toLowerCase() === u);
       if (exact) return exact;
     }
-    const admin = data.rows.find(
-      (r) => (r.role || "").trim().toLowerCase() === "admin"
-    );
-    return admin || null;
-  }, [data, currentUser]);
+    return null;
+  }, [data, currentUser, currentStaffId]);
   const myRank = me ? activeRows.findIndex((r) => r.id === me.id) + 1 : null;
   const meName = me?.name || (currentUser ? currentUser : "You");
   const meRevenue = me?.revenue_cents ?? total;
@@ -217,10 +220,20 @@ export default function LeaderboardClient({
       >
         <div
           className={
-            "w-12 h-12 rounded-full flex items-center justify-center font-semibold text-base bg-amber-100 text-amber-700"
+            "w-12 h-12 rounded-full flex items-center justify-center font-semibold text-base overflow-hidden " +
+            (me?.photo_url ? "" : "bg-amber-100 text-amber-700")
           }
         >
-          {initials(meName)}
+          {me?.photo_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={me.photo_url}
+              alt={meName}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            initials(meName)
+          )}
         </div>
         <div className="flex-1">
           <div className="font-semibold text-slate-900">Your Stats</div>
