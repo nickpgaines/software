@@ -90,7 +90,14 @@ export async function POST(
     const stripe = getStripe();
     // Direct charge on the connected account: money lands in the
     // merchant's Stripe balance and Stripe pays it out to their bank.
-    // The platform takes 0% application fee for now.
+    // The platform takes a small application fee (default 50 bps =
+    // 0.5%) which lands in the platform's Stripe balance. Configure
+    // via STRIPE_APPLICATION_FEE_BPS — set to 0 to disable.
+    const feeBps = Number(process.env.STRIPE_APPLICATION_FEE_BPS ?? 50);
+    const applicationFee =
+      Number.isFinite(feeBps) && feeBps > 0
+        ? Math.round((total * feeBps) / 10_000)
+        : 0;
     const intent = await stripe.paymentIntents.create(
       {
         amount: total,
@@ -102,8 +109,12 @@ export async function POST(
           customer_id: String(job.customer_id),
           amount_cents: String(Math.round(amount)),
           tip_cents: String(Math.round(tip)),
+          application_fee_cents: String(applicationFee),
         },
         receipt_email: job.email || undefined,
+        ...(applicationFee > 0
+          ? { application_fee_amount: applicationFee }
+          : {}),
       },
       { stripeAccount: company.stripe_account_id }
     );
