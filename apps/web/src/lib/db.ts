@@ -175,6 +175,24 @@ const topLevelExecMany: ExecMany = async (sql) => {
 
 const _db: Db = makeDb(topLevelExec, topLevelExecMany, true);
 
+// SQLite has no atomic "add column if not exists". Multiple Vercel function
+// instances may race init(): both see "column missing", both try to ALTER,
+// the second errors with "duplicate column name". Wrap each ALTER so a
+// concurrent winner doesn't tear down init().
+async function alterAddColumn(
+  table: string,
+  col: string,
+  def: string,
+  existing: { name: string }[]
+): Promise<void> {
+  if (existing.some((c) => c.name === col)) return;
+  try {
+    await _db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
+  } catch (e) {
+    if (!/duplicate column/i.test(String((e as Error)?.message ?? e))) throw e;
+  }
+}
+
 async function init(): Promise<void> {
   // Pragmas. Best-effort — Turso ignores some, local file accepts both.
   try {
@@ -232,9 +250,7 @@ async function init(): Promise<void> {
     ["recurring", "INTEGER NOT NULL DEFAULT 0"],
   ];
   for (const [col, def] of jobAdds) {
-    if (!jobsCols.some((c) => c.name === col)) {
-      await _db.exec(`ALTER TABLE jobs ADD COLUMN ${col} ${def}`);
-    }
+    await alterAddColumn("jobs", col, def, jobsCols);
   }
 
   const staffCols = await _db
@@ -253,9 +269,7 @@ async function init(): Promise<void> {
     ["updated_at", "TEXT"],
   ];
   for (const [col, def] of staffAdds) {
-    if (!staffCols.some((c) => c.name === col)) {
-      await _db.exec(`ALTER TABLE staff ADD COLUMN ${col} ${def}`);
-    }
+    await alterAddColumn("staff", col, def, staffCols);
   }
   await _db.exec(`
     UPDATE staff
@@ -279,12 +293,8 @@ async function init(): Promise<void> {
   const customerCols = await _db
     .prepare("PRAGMA table_info(customers)")
     .all<{ name: string }>();
-  if (!customerCols.some((c) => c.name === "first_name")) {
-    await _db.exec("ALTER TABLE customers ADD COLUMN first_name TEXT");
-  }
-  if (!customerCols.some((c) => c.name === "last_name")) {
-    await _db.exec("ALTER TABLE customers ADD COLUMN last_name TEXT");
-  }
+  await alterAddColumn("customers", "first_name", "TEXT", customerCols);
+  await alterAddColumn("customers", "last_name", "TEXT", customerCols);
   const customerAddressAdds: [string, string][] = [
     ["address_line1", "TEXT"],
     ["unit", "TEXT"],
@@ -296,17 +306,16 @@ async function init(): Promise<void> {
     ["formatted_address", "TEXT"],
   ];
   for (const [col, def] of customerAddressAdds) {
-    if (!customerCols.some((c) => c.name === col)) {
-      await _db.exec(`ALTER TABLE customers ADD COLUMN ${col} ${def}`);
-    }
+    await alterAddColumn("customers", col, def, customerCols);
   }
-  if (!customerCols.some((c) => c.name === "is_recurring")) {
-    await _db.exec(
-      "ALTER TABLE customers ADD COLUMN is_recurring INTEGER NOT NULL DEFAULT 0"
-    );
-  }
+  await alterAddColumn(
+    "customers",
+    "is_recurring",
+    "INTEGER NOT NULL DEFAULT 0",
+    customerCols
+  );
   if (!customerCols.some((c) => c.name === "updated_at")) {
-    await _db.exec("ALTER TABLE customers ADD COLUMN updated_at TEXT");
+    await alterAddColumn("customers", "updated_at", "TEXT", customerCols);
     await _db.exec(
       "UPDATE customers SET updated_at = created_at WHERE updated_at IS NULL"
     );
@@ -326,9 +335,7 @@ async function init(): Promise<void> {
     ["from_phone", "TEXT"],
   ];
   for (const [col, def] of messageAdds) {
-    if (!messageCols.some((c) => c.name === col)) {
-      await _db.exec(`ALTER TABLE messages ADD COLUMN ${col} ${def}`);
-    }
+    await alterAddColumn("messages", col, def, messageCols);
   }
 
   const messagingSettingsCols = await _db
@@ -341,28 +348,24 @@ async function init(): Promise<void> {
     ["voice_record_calls", "INTEGER NOT NULL DEFAULT 1"],
   ];
   for (const [col, def] of messagingSettingsAdds) {
-    if (!messagingSettingsCols.some((c) => c.name === col)) {
-      await _db.exec(`ALTER TABLE messaging_settings ADD COLUMN ${col} ${def}`);
-    }
+    await alterAddColumn("messaging_settings", col, def, messagingSettingsCols);
   }
 
   const paymentCols = await _db
     .prepare("PRAGMA table_info(payments)")
     .all<{ name: string }>();
-  if (
-    paymentCols.length > 0 &&
-    !paymentCols.some((c) => c.name === "tip_cents")
-  ) {
-    await _db.exec(
-      "ALTER TABLE payments ADD COLUMN tip_cents INTEGER NOT NULL DEFAULT 0"
+  if (paymentCols.length > 0) {
+    await alterAddColumn(
+      "payments",
+      "tip_cents",
+      "INTEGER NOT NULL DEFAULT 0",
+      paymentCols
     );
-  }
-  if (
-    paymentCols.length > 0 &&
-    !paymentCols.some((c) => c.name === "stripe_payment_intent_id")
-  ) {
-    await _db.exec(
-      "ALTER TABLE payments ADD COLUMN stripe_payment_intent_id TEXT"
+    await alterAddColumn(
+      "payments",
+      "stripe_payment_intent_id",
+      "TEXT",
+      paymentCols
     );
   }
 
@@ -377,9 +380,7 @@ async function init(): Promise<void> {
     ["stripe_account_type", "TEXT"],
   ];
   for (const [col, def] of companyAdds) {
-    if (!companyCols.some((c) => c.name === col)) {
-      await _db.exec(`ALTER TABLE company ADD COLUMN ${col} ${def}`);
-    }
+    await alterAddColumn("company", col, def, companyCols);
   }
 
   await _db.exec(`
@@ -678,9 +679,7 @@ async function init(): Promise<void> {
     ["require_signature", "INTEGER NOT NULL DEFAULT 0"],
   ];
   for (const [col, def] of tplAdds) {
-    if (!tplCols.some((c) => c.name === col)) {
-      await _db.exec(`ALTER TABLE subscription_templates ADD COLUMN ${col} ${def}`);
-    }
+    await alterAddColumn("subscription_templates", col, def, tplCols);
   }
 
   const subCols = await _db
@@ -696,9 +695,7 @@ async function init(): Promise<void> {
     ["sold_by_id", "INTEGER REFERENCES staff(id) ON DELETE SET NULL"],
   ];
   for (const [col, def] of subAdds) {
-    if (!subCols.some((c) => c.name === col)) {
-      await _db.exec(`ALTER TABLE customer_subscriptions ADD COLUMN ${col} ${def}`);
-    }
+    await alterAddColumn("customer_subscriptions", col, def, subCols);
   }
 
   const legacy = await _db
@@ -742,7 +739,15 @@ async function init(): Promise<void> {
 }
 
 export async function getDb(): Promise<Db> {
-  if (!_initPromise) _initPromise = init();
+  if (!_initPromise) {
+    _initPromise = init().catch((e) => {
+      // A rejected init() promise sticks for the entire Lambda lifetime, so
+      // every subsequent request would fail. Clear it on failure so the next
+      // caller retries with a fresh init().
+      _initPromise = null;
+      throw e;
+    });
+  }
   await _initPromise;
   return _db;
 }
