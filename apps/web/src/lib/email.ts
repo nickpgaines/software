@@ -3,6 +3,7 @@ import {
   getDb,
   type Customer,
   type EmailAudience,
+  type EmailAutomation,
   type EmailSettings,
 } from "@/lib/db";
 
@@ -12,29 +13,24 @@ export type SendEmailResult =
 
 export async function getEmailSettings(): Promise<EmailSettings> {
   const db = await getDb();
-  // Plain read with one-shot retry: matches the pattern that worked
-  // reliably for voice settings. Turso replicas can briefly serve stale
-  // data after a write, but a re-read typically lands on primary.
-  let row = (await db
-    .prepare("SELECT * FROM email_settings WHERE id = 1")
-    .get()) as EmailSettings | undefined;
-  if (row && !row.api_key) {
-    const retry = (await db
+  // Wrap in a write transaction to force a primary read. Plain reads can hit
+  // a Turso edge replica that lags behind the primary right after a save.
+  return await db.transaction(async (tx) => {
+    const row = (await tx
       .prepare("SELECT * FROM email_settings WHERE id = 1")
       .get()) as EmailSettings | undefined;
-    if (retry) row = retry;
-  }
-  return (
-    row ?? {
-      id: 1,
-      provider: "resend",
-      api_key: null,
-      from_address: null,
-      from_name: null,
-      reply_to: null,
-      updated_at: "",
-    }
-  );
+    return (
+      row ?? {
+        id: 1,
+        provider: "resend",
+        api_key: null,
+        from_address: null,
+        from_name: null,
+        reply_to: null,
+        updated_at: "",
+      }
+    );
+  });
 }
 
 export function isEmailConfigured(s: EmailSettings): boolean {
@@ -293,4 +289,208 @@ function escapeHtml(s: string): string {
     .replace(/>/g, "&gt;")
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
+}
+
+export type AutomationSendSummary = {
+  attempted: number;
+  sent: number;
+  failed: number;
+  blastId: number | null;
+  skipped?: string;
+};
+
+// Send a seasonal-style automation to its configured audience. Writes a row
+// into email_blasts so it shows up in the blasts history alongside manual sends.
+export async function sendAutomationToAudience(
+  automation: EmailAutomation,
+  origin: string
+): Promise<AutomationSendSummary> {
+  const settings = await getEmailSettings();
+  if (!isEmailConfigured(settings)) {
+    return { attempted: 0, sent: 0, failed: 0, blastId: null, skipped: "not_configured" };
+  }
+  const subject = automation.subject.trim();
+  const html = automation.body_html.trim();
+  if (!subject || !html) {
+    return { attempted: 0, sent: 0, failed: 0, blastId: null, skipped: "empty" };
+  }
+
+  const recipients = await fetchAudience(automation.audience as EmailAudience);
+  if (recipients.length === 0) {
+    return { attempted: 0, sent: 0, failed: 0, blastId: null, skipped: "no_recipients" };
+  }
+
+  const db = await getDb();
+  const insert = await db
+    .prepare(
+      `INSERT INTO email_blasts
+         (audience, subject, body_html, body_text, from_address, from_name,
+          status, recipient_count, sent_count, failed_count, created_by, created_at)
+       VALUES (?, ?, ?, NULL, ?, ?, 'sending', ?, 0, 0, ?, datetime('now'))`
+    )
+    .run(
+      automation.audience,
+      subject,
+      html,
+      settings.from_address,
+      settings.from_name,
+      recipients.length,
+      `automation:${automation.key}`
+    );
+  const blastId = Number(insert.lastInsertRowid);
+
+  for (const r of recipients) {
+    await db
+      .prepare(
+        `INSERT INTO email_recipients
+           (blast_id, customer_id, email, name, status)
+         VALUES (?, ?, ?, ?, 'queued')`
+      )
+      .run(blastId, r.customer_id, r.email, r.name);
+  }
+
+  const company = await getCompanyForFooter();
+  let sent = 0;
+  let failed = 0;
+  for (const r of recipients) {
+    const unsubToken = buildUnsubscribeToken(r.email);
+    const unsubscribeUrl = `${origin}/api/email/unsubscribe?token=${encodeURIComponent(
+      unsubToken
+    )}`;
+    const fullHtml = applyEmailFooter({ bodyHtml: html, unsubscribeUrl, company });
+    const result = await sendEmailViaResend({
+      settings,
+      to: r.email,
+      subject,
+      html: fullHtml,
+      text: buildPlainTextFallback(fullHtml),
+      unsubscribeUrl,
+    });
+    if (result.ok) {
+      sent++;
+      await db
+        .prepare(
+          `UPDATE email_recipients
+             SET status = 'sent', provider_id = ?, sent_at = datetime('now')
+           WHERE blast_id = ? AND email = ?`
+        )
+        .run(result.id, blastId, r.email);
+    } else {
+      failed++;
+      await db
+        .prepare(
+          `UPDATE email_recipients
+             SET status = 'failed', error = ?
+           WHERE blast_id = ? AND email = ?`
+        )
+        .run(result.error, blastId, r.email);
+    }
+  }
+
+  await db
+    .prepare(
+      `UPDATE email_blasts
+         SET status = ?, sent_count = ?, failed_count = ?, sent_at = datetime('now')
+       WHERE id = ?`
+    )
+    .run(
+      failed === 0 ? "sent" : sent === 0 ? "failed" : "partial",
+      sent,
+      failed,
+      blastId
+    );
+
+  const now = new Date();
+  await db
+    .prepare(
+      `UPDATE email_automations
+         SET last_sent_at = datetime('now'),
+             last_sent_year = ?,
+             updated_at = datetime('now')
+       WHERE id = ?`
+    )
+    .run(now.getUTCFullYear(), automation.id);
+
+  return { attempted: recipients.length, sent, failed, blastId };
+}
+
+// Send a welcome automation to a single customer. Records send time on the
+// automation row but does not write to email_blasts (these are 1-to-1 sends,
+// not marketing blasts).
+export async function sendWelcomeToCustomer(
+  customerId: number,
+  origin: string
+): Promise<AutomationSendSummary> {
+  const db = await getDb();
+  const automation = (await db
+    .prepare(`SELECT * FROM email_automations WHERE key = 'welcome' LIMIT 1`)
+    .get()) as EmailAutomation | undefined;
+  if (!automation || !automation.enabled) {
+    return { attempted: 0, sent: 0, failed: 0, blastId: null, skipped: "disabled" };
+  }
+  const subject = automation.subject.trim();
+  const html = automation.body_html.trim();
+  if (!subject || !html) {
+    return { attempted: 0, sent: 0, failed: 0, blastId: null, skipped: "empty" };
+  }
+  const settings = await getEmailSettings();
+  if (!isEmailConfigured(settings)) {
+    return { attempted: 0, sent: 0, failed: 0, blastId: null, skipped: "not_configured" };
+  }
+  const customer = (await db
+    .prepare("SELECT id, email FROM customers WHERE id = ?")
+    .get(customerId)) as { id: number; email: string | null } | undefined;
+  if (!customer || !customer.email || !customer.email.trim()) {
+    return { attempted: 0, sent: 0, failed: 0, blastId: null, skipped: "no_email" };
+  }
+  // Skip if customer is unsubscribed.
+  const unsub = (await db
+    .prepare(
+      `SELECT 1 AS found FROM email_unsubscribes
+        WHERE LOWER(TRIM(email)) = LOWER(TRIM(?))`
+    )
+    .get(customer.email)) as { found: number } | undefined;
+  if (unsub) {
+    return { attempted: 0, sent: 0, failed: 0, blastId: null, skipped: "unsubscribed" };
+  }
+
+  const company = await getCompanyForFooter();
+  const unsubToken = buildUnsubscribeToken(customer.email);
+  const unsubscribeUrl = `${origin}/api/email/unsubscribe?token=${encodeURIComponent(
+    unsubToken
+  )}`;
+  const fullHtml = applyEmailFooter({ bodyHtml: html, unsubscribeUrl, company });
+
+  const result = await sendEmailViaResend({
+    settings,
+    to: customer.email,
+    subject,
+    html: fullHtml,
+    text: buildPlainTextFallback(fullHtml),
+    unsubscribeUrl,
+  });
+
+  if (result.ok) {
+    const now = new Date();
+    await db
+      .prepare(
+        `UPDATE email_automations
+           SET last_sent_at = datetime('now'),
+               last_sent_year = ?,
+               updated_at = datetime('now')
+         WHERE id = ?`
+      )
+      .run(now.getUTCFullYear(), automation.id);
+    return { attempted: 1, sent: 1, failed: 0, blastId: null };
+  }
+  return { attempted: 1, sent: 0, failed: 1, blastId: null };
+}
+
+export function buildOriginFromRequest(req: Request): string {
+  const url = new URL(req.url);
+  const proto =
+    req.headers.get("x-forwarded-proto") || url.protocol.replace(":", "");
+  const host =
+    req.headers.get("x-forwarded-host") || req.headers.get("host") || url.host;
+  return `${proto}://${host}`;
 }
