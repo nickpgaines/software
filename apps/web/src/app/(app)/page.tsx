@@ -11,10 +11,6 @@ function greeting(h: number) {
   return "Good evening";
 }
 
-function capitalize(s: string) {
-  return s ? s.charAt(0).toUpperCase() + s.slice(1) : s;
-}
-
 export default async function DashboardPage() {
   const db = await getDb();
   const now = new Date();
@@ -40,8 +36,28 @@ export default async function DashboardPage() {
     )
     .all(today.toISOString(), tomorrow.toISOString())) as JobWithCustomer[];
 
-  const user = getSessionUser() || "there";
-  const name = capitalize(user);
+  const user = getSessionUser() || "";
+  const adminUsername = process.env.ADMIN_USERNAME || "admin";
+  let name: string;
+  if (!user) {
+    name = "there";
+  } else if (user === adminUsername) {
+    name = "Admin";
+  } else {
+    const row = (await db
+      .prepare(
+        "SELECT first_name, name FROM staff WHERE LOWER(email) = ? LIMIT 1"
+      )
+      .get(user.toLowerCase())) as
+      | { first_name: string | null; name: string }
+      | undefined;
+    if (row) {
+      const first = row.first_name?.trim();
+      name = first || row.name?.trim().split(/\s+/)[0] || user;
+    } else {
+      name = user;
+    }
+  }
 
   return (
     <div className="space-y-6">
