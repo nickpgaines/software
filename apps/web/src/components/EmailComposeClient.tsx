@@ -1,0 +1,248 @@
+"use client";
+
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+
+type AudienceCount = {
+  audience: "all_customers" | "active_subscribers" | "non_subscribers" | "prospects";
+  label: string;
+  count: number;
+};
+
+type EmailStatus = {
+  configured: boolean;
+  from_address: string | null;
+  from_name: string | null;
+};
+
+const AUDIENCE_DESCRIPTIONS: Record<string, string> = {
+  all_customers: "Every customer with an email on file.",
+  active_subscribers: "Customers with an active recurring subscription.",
+  non_subscribers: "Customers without an active subscription.",
+  prospects: "Customers who have an estimate but no completed job.",
+};
+
+export default function EmailComposeClient() {
+  const router = useRouter();
+  const [audiences, setAudiences] = useState<AudienceCount[]>([]);
+  const [emailStatus, setEmailStatus] = useState<EmailStatus | null>(null);
+  const [audience, setAudience] = useState<AudienceCount["audience"] | "">("");
+  const [subject, setSubject] = useState("");
+  const [bodyHtml, setBodyHtml] = useState("");
+  const [testEmail, setTestEmail] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetch("/api/email/audiences", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { audiences: [] }))
+      .then((data: { audiences: AudienceCount[] }) => setAudiences(data.audiences || []));
+    fetch("/api/settings/email", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((s: EmailStatus | null) => setEmailStatus(s));
+  }, []);
+
+  const selectedCount = useMemo(
+    () => audiences.find((a) => a.audience === audience)?.count ?? 0,
+    [audience, audiences]
+  );
+
+  async function handleTestSend() {
+    setError(null);
+    setInfo(null);
+    if (!subject.trim() || !bodyHtml.trim()) {
+      setError("Subject and message are required.");
+      return;
+    }
+    if (!testEmail.trim()) {
+      setError("Enter your email address to send a test.");
+      return;
+    }
+    setSending(true);
+    const res = await fetch("/api/email/blasts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        audience: "all_customers", // ignored when test_email is set
+        subject,
+        body_html: bodyHtml,
+        test_email: testEmail.trim(),
+      }),
+    });
+    setSending(false);
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(data.error || "Could not send test");
+      return;
+    }
+    setInfo(`Test sent to ${testEmail.trim()}.`);
+  }
+
+  async function handleSend() {
+    setError(null);
+    setInfo(null);
+    if (!audience) {
+      setError("Pick an audience.");
+      return;
+    }
+    if (!subject.trim() || !bodyHtml.trim()) {
+      setError("Subject and message are required.");
+      return;
+    }
+    if (selectedCount === 0) {
+      setError("That audience has no recipients with email addresses.");
+      return;
+    }
+    const ok = window.confirm(
+      `Send "${subject.trim()}" to ${selectedCount} recipient${
+        selectedCount === 1 ? "" : "s"
+      }?`
+    );
+    if (!ok) return;
+    setSending(true);
+    const res = await fetch("/api/email/blasts", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        audience,
+        subject,
+        body_html: bodyHtml,
+      }),
+    });
+    setSending(false);
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(data.error || "Could not send");
+      return;
+    }
+    const blast = (await res.json()) as { id: number };
+    router.push(`/email/${blast.id}`);
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <Link
+          href="/email"
+          className="text-xs text-slate-500 hover:text-slate-900"
+        >
+          ← All blasts
+        </Link>
+        <h1 className="text-2xl font-semibold text-slate-900 mt-2">
+          New email blast
+        </h1>
+      </div>
+
+      {!emailStatus?.configured && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          Email isn&apos;t connected yet. Go to{" "}
+          <Link
+            href="/settings?tab=email"
+            className="underline font-medium"
+          >
+            Settings → Email
+          </Link>{" "}
+          to add your Resend API key and verified sending address before you
+          can send.
+        </div>
+      )}
+
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-5">
+        <div>
+          <label className="block text-xs uppercase tracking-wide text-slate-400 mb-2">
+            Audience
+          </label>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            {audiences.map((a) => (
+              <button
+                type="button"
+                key={a.audience}
+                onClick={() => setAudience(a.audience)}
+                className={
+                  "text-left p-3 rounded-xl border transition " +
+                  (audience === a.audience
+                    ? "border-slate-900 bg-slate-50"
+                    : "border-slate-200 hover:border-slate-400")
+                }
+              >
+                <div className="flex items-baseline justify-between">
+                  <span className="font-medium text-slate-900">{a.label}</span>
+                  <span className="text-xs text-slate-500 tabular-nums">
+                    {a.count}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  {AUDIENCE_DESCRIPTIONS[a.audience] || ""}
+                </p>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1.5">
+            Subject
+          </label>
+          <input
+            type="text"
+            value={subject}
+            onChange={(e) => setSubject(e.target.value)}
+            placeholder="Spring window cleaning special — 15% off this month"
+            className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+          />
+        </div>
+
+        <div>
+          <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1.5">
+            Message (HTML or plain text)
+          </label>
+          <textarea
+            value={bodyHtml}
+            onChange={(e) => setBodyHtml(e.target.value)}
+            rows={12}
+            placeholder={"Hi there,\n\nWe're running a 15% off special on..."}
+            className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-sm bg-white font-mono"
+          />
+          <p className="text-xs text-slate-400 mt-2">
+            An unsubscribe link and your business address are appended to every
+            email automatically.
+          </p>
+        </div>
+
+        {error && <p className="text-sm text-rose-600">{error}</p>}
+        {info && <p className="text-sm text-emerald-700">{info}</p>}
+
+        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100">
+          <input
+            type="email"
+            value={testEmail}
+            onChange={(e) => setTestEmail(e.target.value)}
+            placeholder="you@example.com"
+            className="border border-slate-200 rounded-full px-4 py-2 text-sm bg-white w-64"
+          />
+          <button
+            type="button"
+            onClick={handleTestSend}
+            disabled={sending || !emailStatus?.configured}
+            className="text-sm bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 rounded-full px-4 py-2 font-medium"
+          >
+            Send test
+          </button>
+          <div className="flex-1" />
+          <button
+            type="button"
+            onClick={handleSend}
+            disabled={sending || !emailStatus?.configured}
+            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+          >
+            {sending
+              ? "Sending…"
+              : `Send to ${selectedCount} recipient${selectedCount === 1 ? "" : "s"}`}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
