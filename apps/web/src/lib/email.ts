@@ -13,29 +13,24 @@ export type SendEmailResult =
 
 export async function getEmailSettings(): Promise<EmailSettings> {
   const db = await getDb();
-  // Plain read with one-shot retry: matches the pattern that worked
-  // reliably for voice settings. Turso replicas can briefly serve stale
-  // data after a write, but a re-read typically lands on primary.
-  let row = (await db
-    .prepare("SELECT * FROM email_settings WHERE id = 1")
-    .get()) as EmailSettings | undefined;
-  if (row && !row.api_key) {
-    const retry = (await db
+  // Wrap in a write transaction to force a primary read. Plain reads can hit
+  // a Turso edge replica that lags behind the primary right after a save.
+  return await db.transaction(async (tx) => {
+    const row = (await tx
       .prepare("SELECT * FROM email_settings WHERE id = 1")
       .get()) as EmailSettings | undefined;
-    if (retry) row = retry;
-  }
-  return (
-    row ?? {
-      id: 1,
-      provider: "resend",
-      api_key: null,
-      from_address: null,
-      from_name: null,
-      reply_to: null,
-      updated_at: "",
-    }
-  );
+    return (
+      row ?? {
+        id: 1,
+        provider: "resend",
+        api_key: null,
+        from_address: null,
+        from_name: null,
+        reply_to: null,
+        updated_at: "",
+      }
+    );
+  });
 }
 
 export function isEmailConfigured(s: EmailSettings): boolean {
