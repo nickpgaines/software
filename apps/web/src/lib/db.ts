@@ -359,6 +359,7 @@ async function init(): Promise<void> {
     ["stripe_charges_enabled", "INTEGER NOT NULL DEFAULT 0"],
     ["stripe_payouts_enabled", "INTEGER NOT NULL DEFAULT 0"],
     ["stripe_details_submitted", "INTEGER NOT NULL DEFAULT 0"],
+    ["stripe_account_type", "TEXT"],
   ];
   for (const [col, def] of companyAdds) {
     if (!companyCols.some((c) => c.name === col)) {
@@ -850,6 +851,7 @@ export type Company = {
   stripe_charges_enabled: number;
   stripe_payouts_enabled: number;
   stripe_details_submitted: number;
+  stripe_account_type: "express" | "standard" | null;
 };
 
 export type MessageStatus =

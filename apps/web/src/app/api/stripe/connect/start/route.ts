@@ -46,7 +46,7 @@ export async function POST(req: Request) {
       const db = await getDb();
       await db
         .prepare(
-          "UPDATE company SET stripe_account_id = ?, updated_at = datetime('now') WHERE id = 1"
+          "UPDATE company SET stripe_account_id = ?, stripe_account_type = 'express', updated_at = datetime('now') WHERE id = 1"
         )
         .run(accountId);
     }

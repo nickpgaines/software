@@ -13,9 +13,12 @@ export const dynamic = "force-dynamic";
  * Stripe so the UI reflects the most up-to-date capability flags.
  */
 export async function GET() {
+  const oauthConfigured = !!process.env.STRIPE_CONNECT_CLIENT_ID?.trim();
+
   if (!isStripeConfigured()) {
     return NextResponse.json({
       configured: false,
+      oauth_configured: oauthConfigured,
       connected: false,
       charges_enabled: false,
       payouts_enabled: false,
@@ -28,6 +31,7 @@ export async function GET() {
     if (!company.stripe_account_id) {
       return NextResponse.json({
         configured: true,
+        oauth_configured: oauthConfigured,
         connected: false,
         charges_enabled: false,
         payouts_enabled: false,
@@ -41,8 +45,10 @@ export async function GET() {
 
     return NextResponse.json({
       configured: true,
+      oauth_configured: oauthConfigured,
       connected: true,
       account_id: company.stripe_account_id,
+      account_type: company.stripe_account_type || "express",
       email: account.email || null,
       business_name:
         account.business_profile?.name ||

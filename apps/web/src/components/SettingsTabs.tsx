@@ -431,8 +431,10 @@ function CompanyPanel() {
 }
 type StripeStatus = {
   configured: boolean;
+  oauth_configured?: boolean;
   connected: boolean;
   account_id?: string;
+  account_type?: "express" | "standard";
   email?: string | null;
   business_name?: string | null;
   charges_enabled: boolean;
@@ -447,6 +449,20 @@ function PaymentsPanel() {
   const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  useEffect(() => {
+    const oauthError = searchParams.get("connect_error");
+    if (oauthError) {
+      setError(oauthError);
+      const next = new URLSearchParams(searchParams);
+      next.delete("connect_error");
+      const qs = next.toString();
+      router.replace(`/settings${qs ? `?${qs}` : ""}`);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   async function load() {
     setError(null);
@@ -471,11 +487,11 @@ function PaymentsPanel() {
     load();
   }, []);
 
-  async function startConnect() {
+  async function go(endpoint: string, busyLabel: string) {
     setError(null);
     setWorking(true);
     try {
-      const res = await fetch("/api/stripe/connect/start", { method: "POST" });
+      const res = await fetch(endpoint, { method: "POST" });
       const data = (await res.json()) as { url?: string; error?: string };
       if (!res.ok || !data.url) {
         setError(data.error || `HTTP ${res.status}`);
@@ -483,11 +499,14 @@ function PaymentsPanel() {
       }
       window.location.href = data.url;
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to start onboarding");
+      setError(e instanceof Error ? e.message : busyLabel);
     } finally {
       setWorking(false);
     }
   }
+
+  const startConnect = () => go("/api/stripe/connect/start", "Failed to start onboarding");
+  const startOAuth = () => go("/api/stripe/connect/oauth-start", "Failed to start sign-in");
 
   async function disconnect() {
     if (
@@ -529,24 +548,47 @@ function PaymentsPanel() {
           </p>
         </div>
       ) : !status.connected ? (
-        <div className="border border-slate-200 rounded-2xl px-4 py-4 space-y-3">
+        <div className="border border-slate-200 rounded-2xl px-4 py-4 space-y-4">
           <div>
             <p className="text-sm font-medium text-slate-900">
               No Stripe account connected
             </p>
             <p className="text-xs text-slate-500 mt-1">
-              You&apos;ll be redirected to Stripe to enter business info, ID,
-              and bank account details. This usually takes a few minutes.
+              Already use Stripe? Sign in to connect your existing account.
+              Otherwise, create a new one — we&apos;ll guide you through bank
+              and ID verification in a few minutes.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={startConnect}
-            disabled={working}
-            className="text-sm bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
-          >
-            {working ? "Opening Stripe…" : "Connect Stripe"}
-          </button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <button
+              type="button"
+              onClick={startConnect}
+              disabled={working}
+              className="text-sm bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+            >
+              {working ? "Opening Stripe…" : "Create new Stripe account"}
+            </button>
+            <button
+              type="button"
+              onClick={startOAuth}
+              disabled={working || !status.oauth_configured}
+              title={
+                status.oauth_configured
+                  ? undefined
+                  : "Set STRIPE_CONNECT_CLIENT_ID to enable sign-in"
+              }
+              className="text-sm border border-slate-300 bg-white hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed text-slate-700 rounded-full px-5 py-2 font-medium"
+            >
+              Sign in to existing Stripe
+            </button>
+          </div>
+          {!status.oauth_configured && (
+            <p className="text-xs text-slate-400">
+              The &ldquo;Sign in&rdquo; option is unavailable until{" "}
+              <code>STRIPE_CONNECT_CLIENT_ID</code> is set in the deployment
+              environment.
+            </p>
+          )}
         </div>
       ) : (
         <div className="border border-slate-200 rounded-2xl px-4 py-4 space-y-3">
@@ -569,6 +611,13 @@ function PaymentsPanel() {
               </div>
               <p className="text-xs text-slate-500 mt-1 font-mono">
                 {status.account_id}
+                {status.account_type && (
+                  <span className="ml-2 inline-block px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] uppercase tracking-wide font-sans not-italic">
+                    {status.account_type === "standard"
+                      ? "Existing account"
+                      : "New account"}
+                  </span>
+                )}
               </p>
             </div>
             <button
