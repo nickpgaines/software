@@ -560,6 +560,16 @@ async function init(): Promise<void> {
     );
     INSERT OR IGNORE INTO email_settings (id) VALUES (1);
 
+    CREATE TABLE IF NOT EXISTS ai_settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      provider TEXT NOT NULL DEFAULT 'anthropic',
+      api_key TEXT,
+      model TEXT NOT NULL DEFAULT 'claude-sonnet-4-6',
+      company_voice TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    INSERT OR IGNORE INTO ai_settings (id) VALUES (1);
+
     CREATE TABLE IF NOT EXISTS email_blasts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       audience TEXT NOT NULL,
@@ -1100,6 +1110,15 @@ export type EmailSettings = {
   from_address: string | null;
   from_name: string | null;
   reply_to: string | null;
+  updated_at: string;
+};
+
+export type AiSettings = {
+  id: number;
+  provider: string;
+  api_key: string | null;
+  model: string;
+  company_voice: string | null;
   updated_at: string;
 };
 

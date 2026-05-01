@@ -11,6 +11,7 @@ type Tab =
   | "messaging"
   | "calling"
   | "email"
+  | "ai"
   | "billing";
 
 const TABS: { key: Tab; label: string }[] = [
@@ -21,6 +22,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "messaging", label: "Messaging" },
   { key: "calling", label: "Calling" },
   { key: "email", label: "Email" },
+  { key: "ai", label: "AI" },
   { key: "billing", label: "Billing" },
 ];
 
@@ -88,6 +90,7 @@ function SettingsTabsInner({ username }: { username: string }) {
         {tab === "messaging" && <MessagingPanel />}
         {tab === "calling" && <CallingPanel />}
         {tab === "email" && <EmailPanel />}
+        {tab === "ai" && <AiPanel />}
         {tab === "billing" && <BillingPanel />}
       </div>
     </div>
@@ -2254,6 +2257,189 @@ function EmailPanel() {
           className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
           placeholder="support@yourcompany.com"
         />
+      </Field>
+
+      {error && <p className="text-sm text-rose-600">{error}</p>}
+      <div className="flex items-center gap-3 pt-2">
+        <button
+          type="submit"
+          disabled={saving || loading}
+          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+        >
+          {saving ? "Saving…" : "Save changes"}
+        </button>
+        {savedAt && !saving && (
+          <span className="text-xs text-emerald-600">Saved</span>
+        )}
+      </div>
+    </form>
+  );
+}
+
+type AiStatus = {
+  provider: string;
+  api_key_set: boolean;
+  api_key_prefix: string | null;
+  model: string;
+  company_voice: string | null;
+  configured: boolean;
+};
+
+const AI_MODEL_LABELS: Record<string, string> = {
+  "claude-sonnet-4-6": "Claude Sonnet 4.6 (recommended — fast & cheap)",
+  "claude-opus-4-7": "Claude Opus 4.7 (smartest, slower & pricier)",
+  "claude-haiku-4-5": "Claude Haiku 4.5 (fastest, cheapest)",
+};
+
+function AiPanel() {
+  const [status, setStatus] = useState<AiStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const [apiKey, setApiKey] = useState("");
+  const [model, setModel] = useState("claude-sonnet-4-6");
+  const [voice, setVoice] = useState("");
+
+  async function load() {
+    const res = await fetch("/api/settings/ai", { cache: "no-store" });
+    if (res.ok) {
+      const s = (await res.json()) as AiStatus;
+      setStatus(s);
+      setModel(s.model || "claude-sonnet-4-6");
+      setVoice(s.company_voice ?? "");
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSaving(true);
+    const res = await fetch("/api/settings/ai", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: apiKey || undefined,
+        model,
+        company_voice: voice,
+      }),
+    });
+    setSaving(false);
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(data.error || "Could not save");
+      return;
+    }
+    const s = (await res.json()) as AiStatus;
+    setStatus(s);
+    setApiKey("");
+    setSavedAt(Date.now());
+  }
+
+  return (
+    <form onSubmit={save} className="space-y-5">
+      <div>
+        <h2 className="text-lg font-semibold text-slate-900">AI</h2>
+        <p className="text-sm text-slate-500 mt-1">
+          Connect Claude to draft replies in the Messages tab. The AI reads the
+          recent conversation and writes a suggested reply you can edit before
+          sending.
+        </p>
+      </div>
+
+      <div
+        className={
+          "flex items-center gap-2 text-xs font-medium rounded-full px-3 py-1 w-fit " +
+          (status?.configured
+            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+            : "bg-slate-100 text-slate-600 border border-slate-200")
+        }
+      >
+        <span
+          className={
+            "w-1.5 h-1.5 rounded-full " +
+            (status?.configured ? "bg-emerald-500" : "bg-slate-400")
+          }
+        />
+        {status?.configured ? "Connected" : "Not connected"}
+        {status?.configured && status?.model && (
+          <span className="text-slate-500 font-normal">· {status.model}</span>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3 text-sm">
+        <div className="font-medium text-slate-900">Setup steps</div>
+        <ol className="list-decimal list-inside space-y-1 text-slate-600">
+          <li>
+            Sign up at{" "}
+            <a
+              href="https://console.anthropic.com"
+              target="_blank"
+              rel="noreferrer"
+              className="text-slate-900 underline"
+            >
+              console.anthropic.com
+            </a>
+            .
+          </li>
+          <li>
+            Create an API key under{" "}
+            <span className="font-mono">Settings → API Keys</span>. Add credit
+            to your account ($5–10 is plenty to start).
+          </li>
+          <li>Paste the key below and choose a model.</li>
+        </ol>
+      </div>
+
+      <Field label="Anthropic API key">
+        <input
+          type="password"
+          value={apiKey}
+          disabled={loading}
+          onChange={(e) => setApiKey(e.target.value)}
+          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono"
+          placeholder={
+            status?.api_key_set
+              ? `${status.api_key_prefix || "sk-ant-"}…  (saved)`
+              : "sk-ant-api03-…"
+          }
+        />
+      </Field>
+      <Field label="Model">
+        <select
+          value={model}
+          disabled={loading}
+          onChange={(e) => setModel(e.target.value)}
+          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+        >
+          {Object.entries(AI_MODEL_LABELS).map(([id, label]) => (
+            <option key={id} value={id}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Company voice (optional)">
+        <textarea
+          value={voice}
+          disabled={loading}
+          onChange={(e) => setVoice(e.target.value)}
+          rows={4}
+          className="w-full border border-slate-200 rounded-2xl px-4 py-2 text-sm bg-white"
+          placeholder={
+            "e.g. Friendly and concise. Never defensive. If a customer complains, always offer a free re-clean and a callback within 24 hours."
+          }
+        />
+        <p className="text-xs text-slate-400 mt-1">
+          Used as part of the prompt for every drafted reply. Describe tone,
+          policies, and how you want to handle complaints.
+        </p>
       </Field>
 
       {error && <p className="text-sm text-rose-600">{error}</p>}

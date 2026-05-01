@@ -243,7 +243,32 @@ function Thread({
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [drafting, setDrafting] = useState(false);
+  const [draftError, setDraftError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  async function draftReply() {
+    setDraftError(null);
+    setDrafting(true);
+    try {
+      const res = await fetch("/api/messages/draft", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customer_id: conversation.id }),
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setDraftError(data.error || `Could not draft (HTTP ${res.status})`);
+        return;
+      }
+      const data = (await res.json()) as { draft: string };
+      setBody(data.draft);
+    } catch (e) {
+      setDraftError(e instanceof Error ? e.message : "Network error");
+    } finally {
+      setDrafting(false);
+    }
+  }
 
   async function load() {
     setLoading(true);
@@ -359,37 +384,70 @@ function Thread({
         )}
       </div>
 
-      <form
-        onSubmit={send}
-        className="border-t border-slate-200 px-4 py-3 flex items-center gap-2"
-      >
-        <input
-          type="text"
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          placeholder="Type a message…"
-          className="flex-1 border border-slate-200 rounded-full px-4 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-400"
-        />
-        <button
-          type="submit"
-          disabled={sending || !body.trim()}
-          className="bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full w-10 h-10 flex items-center justify-center"
-          aria-label="Send"
+      <div className="border-t border-slate-200">
+        {(drafting || draftError) && (
+          <div className="px-4 pt-2 text-xs">
+            {drafting && (
+              <span className="text-slate-500">Drafting reply with Claude…</span>
+            )}
+            {draftError && (
+              <span className="text-rose-600">{draftError}</span>
+            )}
+          </div>
+        )}
+        <form
+          onSubmit={send}
+          className="px-4 py-3 flex items-center gap-2"
         >
-          <svg
-            className="w-4 h-4"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
+          <button
+            type="button"
+            onClick={draftReply}
+            disabled={drafting}
+            title="Draft a reply with Claude"
+            className="shrink-0 inline-flex items-center gap-1 text-xs font-medium bg-violet-50 hover:bg-violet-100 disabled:opacity-50 text-violet-900 border border-violet-200 rounded-full px-3 py-2"
           >
-            <line x1="22" y1="2" x2="11" y2="13" />
-            <polygon points="22 2 15 22 11 13 2 9 22 2" />
-          </svg>
-        </button>
-      </form>
+            <svg
+              className="w-3.5 h-3.5"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z" />
+            </svg>
+            {drafting ? "Drafting…" : "Draft"}
+          </button>
+          <input
+            type="text"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Type a message…"
+            className="flex-1 border border-slate-200 rounded-full px-4 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-400"
+          />
+          <button
+            type="submit"
+            disabled={sending || !body.trim()}
+            className="bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full w-10 h-10 flex items-center justify-center"
+            aria-label="Send"
+          >
+            <svg
+              className="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <line x1="22" y1="2" x2="11" y2="13" />
+              <polygon points="22 2 15 22 11 13 2 9 22 2" />
+            </svg>
+          </button>
+        </form>
+      </div>
     </>
   );
 }
