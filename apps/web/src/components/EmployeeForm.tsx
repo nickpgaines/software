@@ -136,15 +136,29 @@ export default function EmployeeForm({
     setSaving(true);
     const url = isEdit ? `/api/staff/${initial!.id}` : "/api/staff";
     const method = isEdit ? "PATCH" : "POST";
-    const res = await fetch(url, {
-      method,
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+    } catch (err) {
+      setSaving(false);
+      setError(err instanceof Error ? err.message : "Network error");
+      return;
+    }
     setSaving(false);
     if (!res.ok) {
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
-      setError(data.error || "Could not save");
+      const text = await res.text().catch(() => "");
+      let message = "";
+      try {
+        message = (JSON.parse(text) as { error?: string }).error || "";
+      } catch {
+        // not JSON — surface raw text trimmed
+        message = text.slice(0, 200);
+      }
+      setError(message || `Could not save (HTTP ${res.status})`);
       return;
     }
     router.push("/employees");
