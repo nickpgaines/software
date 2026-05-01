@@ -96,24 +96,62 @@ function formatPinDate(raw: string): string {
   });
 }
 
-async function reverseGeocode(lng: number, lat: number): Promise<string | null> {
+type GeocodingFeature = {
+  id?: string;
+  address?: string;
+  text?: string;
+  place_name?: string;
+  place_type?: string[];
+};
+
+async function fetchGeocoding(
+  lng: number,
+  lat: number,
+  types: string | null
+): Promise<GeocodingFeature[] | null> {
   if (!TOKEN) return null;
   try {
-    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?access_token=${TOKEN}&types=address&limit=1`;
+    const params = new URLSearchParams({
+      access_token: TOKEN,
+      limit: "5",
+    });
+    if (types) params.set("types", types);
+    const url = `https://api.mapbox.com/geocoding/v5/mapbox.places/${lng},${lat}.json?${params.toString()}`;
     const res = await fetch(url);
     if (!res.ok) return null;
-    const data = (await res.json()) as {
-      features?: { address?: string; text?: string; place_name?: string }[];
-    };
-    const f = data.features?.[0];
-    if (!f) return null;
-    if (f.address && f.text) return `${f.address} ${f.text}`;
-    if (f.text) return f.text;
-    if (f.place_name) return f.place_name.split(",")[0];
-    return null;
+    const data = (await res.json()) as { features?: GeocodingFeature[] };
+    return data.features ?? null;
   } catch {
     return null;
   }
+}
+
+function pickStreetAddress(features: GeocodingFeature[]): string | null {
+  const isAddressFeature = (f: GeocodingFeature) =>
+    f.place_type?.includes("address") || (f.id || "").startsWith("address.");
+  const f = features.find(isAddressFeature) || features[0];
+  if (!f) return null;
+  if (f.address && f.text) return `${f.address} ${f.text}`;
+  if (f.place_name) return f.place_name.split(",")[0].trim();
+  if (f.text) return f.text;
+  return null;
+}
+
+async function reverseGeocode(lng: number, lat: number): Promise<string | null> {
+  // Try address-typed first for the cleanest "123 Main St" result.
+  const addressFeatures = await fetchGeocoding(lng, lat, "address");
+  if (addressFeatures && addressFeatures.length > 0) {
+    const picked = pickStreetAddress(addressFeatures);
+    if (picked) return picked;
+  }
+  // Fall back to all types — for points just off a known address (driveways,
+  // yards near water, etc.) Mapbox often returns the nearest street address
+  // when the type filter is dropped.
+  const allFeatures = await fetchGeocoding(lng, lat, null);
+  if (allFeatures && allFeatures.length > 0) {
+    return pickStreetAddress(allFeatures);
+  }
+  return null;
 }
 
 function parseObjections(raw: string | null): string[] {
@@ -221,6 +259,17 @@ export default function MapClient() {
   const drawingLassoRef = useRef(false);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holdStartRef = useRef<{ x: number; y: number } | null>(null);
+  const currentPopupRef = useRef<mapboxgl.Popup | null>(null);
+
+  function openSinglePopup(popup: mapboxgl.Popup) {
+    currentPopupRef.current?.remove();
+    currentPopupRef.current = popup;
+    popup.on("close", () => {
+      if (currentPopupRef.current === popup) {
+        currentPopupRef.current = null;
+      }
+    });
+  }
 
   const [styleMode, setStyleMode] = useState<StyleMode>("satellite");
   const [pinsVisible, setPinsVisible] = useState(true);
@@ -580,6 +629,7 @@ export default function MapClient() {
       .setLngLat([pin.lng, pin.lat])
       .setDOMContent(node)
       .addTo(map);
+    openSinglePopup(popup);
 
     node
       .querySelector('[data-action="edit"]')
@@ -628,10 +678,11 @@ export default function MapClient() {
       `<div style="margin-top:10px;">
          <a href="/customers/${c.id}" data-action="view" style="display:inline-block;padding:6px 10px;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;background:white;color:#0f172a;cursor:pointer;text-decoration:none;">View Customer</a>
        </div>`;
-    new mapboxgl.Popup({ offset: 28, closeButton: true })
+    const popup = new mapboxgl.Popup({ offset: 28, closeButton: true })
       .setLngLat([c.longitude, c.latitude])
       .setDOMContent(node)
       .addTo(map);
+    openSinglePopup(popup);
   }
 
   useEffect(() => {
@@ -803,6 +854,8 @@ export default function MapClient() {
       customerDataRef.current.clear();
       territoriesRef.current.clear();
       drawRef.current = null;
+      currentPopupRef.current?.remove();
+      currentPopupRef.current = null;
       map.remove();
       mapRef.current = null;
     };
