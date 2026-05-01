@@ -579,6 +579,65 @@ async function init(): Promise<void> {
     );
     CREATE UNIQUE INDEX IF NOT EXISTS idx_email_unsubscribes_email ON email_unsubscribes(email);
 
+    CREATE TABLE IF NOT EXISTS email_automations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key TEXT NOT NULL UNIQUE,
+      kind TEXT NOT NULL CHECK (kind IN ('welcome','seasonal')),
+      season TEXT,
+      name TEXT NOT NULL,
+      description TEXT,
+      audience TEXT NOT NULL DEFAULT 'all_customers',
+      subject TEXT NOT NULL DEFAULT '',
+      body_html TEXT NOT NULL DEFAULT '',
+      send_month INTEGER,
+      send_day INTEGER,
+      enabled INTEGER NOT NULL DEFAULT 0,
+      last_sent_at TEXT,
+      last_sent_year INTEGER,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_email_automations_kind ON email_automations(kind);
+
+    INSERT OR IGNORE INTO email_automations
+      (key, kind, season, name, description, audience, subject, body_html, send_month, send_day)
+    VALUES
+      ('welcome', 'welcome', NULL,
+       'Welcome email',
+       'Sent automatically the first time a customer with an email is added.',
+       'all_customers',
+       'Welcome — thanks for choosing us',
+       '<p>Hi there,</p><p>Thanks for choosing us. We''re glad to have you, and we''ll be in touch soon to confirm your service.</p><p>If you have any questions, just reply to this email.</p>',
+       NULL, NULL),
+      ('spring_blast', 'seasonal', 'spring',
+       'Spring blast',
+       'Goes out once each spring — a seasonal reminder, service kickoff, or discount.',
+       'all_customers',
+       'Spring is here — book your seasonal service',
+       '<p>Spring is here!</p><p>Now''s the perfect time to schedule your seasonal service. Reply to this email or give us a call to get on the schedule.</p>',
+       3, 21),
+      ('summer_blast', 'seasonal', 'summer',
+       'Summer blast',
+       'Goes out once each summer.',
+       'all_customers',
+       'Summer special — book now',
+       '<p>Summer''s in full swing.</p><p>We''re running a seasonal special this month — reach out to take advantage before it ends.</p>',
+       6, 21),
+      ('fall_blast', 'seasonal', 'fall',
+       'Fall blast',
+       'Goes out once each fall.',
+       'all_customers',
+       'Fall reminder — get ready for the season',
+       '<p>Fall is here.</p><p>Time to wrap up the year''s service and get ready for what''s next. Reply to schedule.</p>',
+       9, 21),
+      ('winter_blast', 'seasonal', 'winter',
+       'Winter blast',
+       'Goes out once each winter.',
+       'all_customers',
+       'Winter check-in',
+       '<p>Hi,</p><p>Just checking in for the winter season. Let us know if there''s anything we can help with.</p>',
+       12, 21);
+
     CREATE TABLE IF NOT EXISTS payments (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
       job_id       INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
@@ -1057,6 +1116,28 @@ export type EmailUnsubscribe = {
   reason: string | null;
   source: string | null;
   unsubscribed_at: string;
+};
+
+export type EmailAutomationKind = "welcome" | "seasonal";
+export type EmailSeason = "spring" | "summer" | "fall" | "winter";
+
+export type EmailAutomation = {
+  id: number;
+  key: string;
+  kind: EmailAutomationKind;
+  season: EmailSeason | null;
+  name: string;
+  description: string | null;
+  audience: EmailAudience | string;
+  subject: string;
+  body_html: string;
+  send_month: number | null;
+  send_day: number | null;
+  enabled: number;
+  last_sent_at: string | null;
+  last_sent_year: number | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type SubscriptionInterval =

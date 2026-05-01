@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, type Customer } from "@/lib/db";
 import { normalizeAddress } from "@/lib/customer-address";
+import { buildOriginFromRequest, sendWelcomeToCustomer } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -73,6 +74,12 @@ export async function POST(req: Request) {
     const created = (await db
       .prepare("SELECT * FROM customers WHERE id = ?")
       .get(result.lastInsertRowid)) as Customer;
+    if (created.email && created.email.trim()) {
+      const origin = buildOriginFromRequest(req);
+      void sendWelcomeToCustomer(created.id, origin).catch((e) => {
+        console.error("welcome email failed", e);
+      });
+    }
     return NextResponse.json(created, { status: 201 });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";
