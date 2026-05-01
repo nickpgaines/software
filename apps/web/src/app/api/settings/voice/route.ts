@@ -46,25 +46,37 @@ function toPublic(s: MessagingSettings): PublicVoiceSettings {
 
 async function readSettings(): Promise<MessagingSettings> {
   const db = await getDb();
-  return await db.transaction(async (tx) => {
-    const row = (await tx
+  // Run the read twice if the first response looks empty -- libsql HTTP clients
+  // can briefly land on a stale Turso replica after a write, but a second
+  // request typically re-routes and sees the just-written row.
+  let row = (await db
+    .prepare("SELECT * FROM messaging_settings WHERE id = 1")
+    .get()) as MessagingSettings | undefined;
+  if (
+    row &&
+    !row.voice_api_key_sid &&
+    !row.voice_api_key_secret &&
+    !row.voice_twiml_app_sid
+  ) {
+    const retry = (await db
       .prepare("SELECT * FROM messaging_settings WHERE id = 1")
       .get()) as MessagingSettings | undefined;
-    return (
-      row ?? {
-        id: 1,
-        provider: "twilio",
-        account_sid: null,
-        auth_token: null,
-        from_number: null,
-        voice_api_key_sid: null,
-        voice_api_key_secret: null,
-        voice_twiml_app_sid: null,
-        voice_record_calls: 1,
-        updated_at: "",
-      }
-    );
-  });
+    if (retry) row = retry;
+  }
+  return (
+    row ?? {
+      id: 1,
+      provider: "twilio",
+      account_sid: null,
+      auth_token: null,
+      from_number: null,
+      voice_api_key_sid: null,
+      voice_api_key_secret: null,
+      voice_twiml_app_sid: null,
+      voice_record_calls: 1,
+      updated_at: "",
+    }
+  );
 }
 
 export async function GET() {
