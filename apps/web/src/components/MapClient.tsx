@@ -13,6 +13,7 @@ import MapTerritoryModal, {
   type TerritoryDraft,
 } from "./MapTerritoryModal";
 import TerritoryListPanel from "./MapTerritoryListPanel";
+import MapFilterPanel, { type DateRange } from "./MapFilterPanel";
 import {
   PIN_STATUS,
   isPinStatus,
@@ -28,6 +29,7 @@ const HOLD_MS = 600;
 const MOVE_THRESHOLD_PX = 5;
 
 const CUSTOMER_PIN_COLOR = "#dc2626";
+const SUBSCRIPTION_PIN_COLOR = "#22c55e";
 
 type StyleMode = "satellite" | "streets";
 
@@ -48,6 +50,11 @@ type CustomerPin = {
   latitude: number;
   longitude: number;
   is_recurring: number;
+  created_at: string;
+  has_active_subscription: number;
+  latest_subscription_created_at: string | null;
+  subscription_employee_ids: number[];
+  customer_employee_ids: number[];
 };
 
 type ModalState = {
@@ -113,6 +120,12 @@ function makeMarkerElement(status: PinStatus): HTMLElement {
   return el;
 }
 
+function customerPinColor(c: CustomerPin): string {
+  return c.has_active_subscription
+    ? SUBSCRIPTION_PIN_COLOR
+    : CUSTOMER_PIN_COLOR;
+}
+
 function makeCustomerMarkerElement(c: CustomerPin): HTMLElement {
   const el = document.createElement("div");
   el.className = "mp-customer-pin";
@@ -123,7 +136,7 @@ function makeCustomerMarkerElement(c: CustomerPin): HTMLElement {
   el.innerHTML = `
     <svg viewBox="0 0 24 32" width="28" height="36" xmlns="http://www.w3.org/2000/svg">
       <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20C24 5.4 18.6 0 12 0z"
-            fill="${CUSTOMER_PIN_COLOR}" stroke="white" stroke-width="2"/>
+            fill="${customerPinColor(c)}" stroke="white" stroke-width="2"/>
       <circle cx="12" cy="12" r="4" fill="white"/>
     </svg>
   `;
@@ -154,6 +167,17 @@ export default function MapClient() {
   const [drawingTerritory, setDrawingTerritory] = useState(false);
   const [territoryListOpen, setTerritoryListOpen] = useState(false);
   const [territoriesVersion, setTerritoriesVersion] = useState(0);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [showCustomersFilter, setShowCustomersFilter] = useState(true);
+  const [showSubscriptionsFilter, setShowSubscriptionsFilter] = useState(true);
+  const [dateRange, setDateRange] = useState<DateRange>("all");
+  const [selectedEmployeeIds, setSelectedEmployeeIds] = useState<
+    number[] | null
+  >(null);
+  const showCustomersFilterRef = useRef(true);
+  const showSubscriptionsFilterRef = useRef(true);
+  const dateRangeRef = useRef<DateRange>("all");
+  const selectedEmployeeIdsRef = useRef<number[] | null>(null);
   const [territoryModal, setTerritoryModal] = useState<TerritoryModalState>({
     open: false,
   });
@@ -199,7 +223,7 @@ export default function MapClient() {
     const map = mapRef.current;
     if (!map) return;
     const el = makeCustomerMarkerElement(c);
-    if (!showCustomerPinsRef.current) el.style.display = "none";
+    if (!isCustomerVisible(c)) el.style.display = "none";
     const marker = new mapboxgl.Marker({ element: el, anchor: "bottom" })
       .setLngLat([c.longitude, c.latitude])
       .addTo(map);
@@ -209,6 +233,63 @@ export default function MapClient() {
     });
     customerMarkersRef.current.set(c.id, marker);
     customerDataRef.current.set(c.id, c);
+  }
+
+  function rangeStartMs(range: DateRange): number | null {
+    const now = Date.now();
+    if (range === "today") {
+      const d = new Date();
+      d.setHours(0, 0, 0, 0);
+      return d.getTime();
+    }
+    if (range === "7d") return now - 7 * 24 * 60 * 60 * 1000;
+    if (range === "1m") return now - 30 * 24 * 60 * 60 * 1000;
+    if (range === "3m") return now - 90 * 24 * 60 * 60 * 1000;
+    if (range === "6m") return now - 180 * 24 * 60 * 60 * 1000;
+    if (range === "1y") return now - 365 * 24 * 60 * 60 * 1000;
+    return null;
+  }
+
+  function parseDbDateMs(s: string | null | undefined): number | null {
+    if (!s) return null;
+    const iso = s.includes("T") ? s : s.replace(" ", "T") + "Z";
+    const t = new Date(iso).getTime();
+    return Number.isFinite(t) ? t : null;
+  }
+
+  function isCustomerVisible(c: CustomerPin): boolean {
+    if (!showCustomerPinsRef.current) return false;
+    const isSub = !!c.has_active_subscription;
+    if (isSub && !showSubscriptionsFilterRef.current) return false;
+    if (!isSub && !showCustomersFilterRef.current) return false;
+
+    const start = rangeStartMs(dateRangeRef.current);
+    if (start !== null) {
+      const dateStr = isSub
+        ? c.latest_subscription_created_at
+        : c.created_at;
+      const ms = parseDbDateMs(dateStr);
+      if (ms === null || ms < start) return false;
+    }
+
+    const sel = selectedEmployeeIdsRef.current;
+    if (sel !== null) {
+      const ids = isSub
+        ? c.subscription_employee_ids
+        : c.customer_employee_ids;
+      if (ids.length === 0) return false;
+      if (!ids.some((id) => sel.includes(id))) return false;
+    }
+
+    return true;
+  }
+
+  function applyCustomerFilters() {
+    for (const [id, marker] of customerMarkersRef.current) {
+      const c = customerDataRef.current.get(id);
+      if (!c) continue;
+      marker.getElement().style.display = isCustomerVisible(c) ? "" : "none";
+    }
   }
 
   function parseTerritory(t: ApiTerritory): Territory {
@@ -564,10 +645,18 @@ export default function MapClient() {
 
   useEffect(() => {
     showCustomerPinsRef.current = showCustomerPins;
-    for (const [, marker] of customerMarkersRef.current) {
-      marker.getElement().style.display = showCustomerPins ? "" : "none";
-    }
-  }, [showCustomerPins]);
+    showCustomersFilterRef.current = showCustomersFilter;
+    showSubscriptionsFilterRef.current = showSubscriptionsFilter;
+    dateRangeRef.current = dateRange;
+    selectedEmployeeIdsRef.current = selectedEmployeeIds;
+    applyCustomerFilters();
+  }, [
+    showCustomerPins,
+    showCustomersFilter,
+    showSubscriptionsFilter,
+    dateRange,
+    selectedEmployeeIds,
+  ]);
 
   function toggleStyle() {
     const next: StyleMode = styleMode === "satellite" ? "streets" : "satellite";
@@ -628,7 +717,27 @@ export default function MapClient() {
         onToggleDrawTerritory={toggleDrawTerritory}
         territoryListOpen={territoryListOpen}
         onToggleTerritoryList={() => setTerritoryListOpen((v) => !v)}
+        filterOpen={filterOpen}
+        onToggleFilter={() => setFilterOpen((v) => !v)}
       />
+      {filterOpen && (
+        <MapFilterPanel
+          showCustomers={showCustomersFilter}
+          showSubscriptions={showSubscriptionsFilter}
+          dateRange={dateRange}
+          selectedEmployeeIds={selectedEmployeeIds}
+          staff={staff.map((s) => ({
+            id: s.id,
+            name: s.name,
+            color: s.color,
+          }))}
+          onChangeShowCustomers={setShowCustomersFilter}
+          onChangeShowSubscriptions={setShowSubscriptionsFilter}
+          onChangeDateRange={setDateRange}
+          onChangeEmployeeIds={setSelectedEmployeeIds}
+          onClose={() => setFilterOpen(false)}
+        />
+      )}
       {territoryListOpen && (
         <TerritoryListPanel
           version={territoriesVersion}

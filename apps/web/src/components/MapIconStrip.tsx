@@ -6,6 +6,7 @@ import {
   MapPin,
   Pencil,
   Satellite,
+  SlidersHorizontal,
   Users,
 } from "lucide-react";
 
@@ -22,6 +23,8 @@ export default function MapIconStrip({
   onToggleDrawTerritory,
   territoryListOpen,
   onToggleTerritoryList,
+  filterOpen,
+  onToggleFilter,
 }: {
   styleMode: StyleMode;
   onToggleStyle: () => void;
@@ -33,6 +36,8 @@ export default function MapIconStrip({
   onToggleDrawTerritory: () => void;
   territoryListOpen: boolean;
   onToggleTerritoryList: () => void;
+  filterOpen: boolean;
+  onToggleFilter: () => void;
 }) {
   const satelliteActive = styleMode === "satellite";
   const StyleIcon = satelliteActive ? Satellite : MapIcon;
@@ -111,6 +116,18 @@ export default function MapIconStrip({
         }
       >
         <Pencil className="h-5 w-5" />
+      </button>
+      <button
+        type="button"
+        onClick={onToggleFilter}
+        title="Filters"
+        aria-label="Filters"
+        aria-pressed={filterOpen}
+        className={
+          buttonBase + " " + (filterOpen ? activeClasses : inactiveClasses)
+        }
+      >
+        <SlidersHorizontal className="h-5 w-5" />
       </button>
     </div>
   );

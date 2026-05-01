@@ -1,266 +1,217 @@
 "use client";
 
-import { useState } from "react";
-import { STATUSES } from "@/lib/map-status";
+import { X } from "lucide-react";
+import { staffColorHex } from "@/lib/staff-colors";
 
-export type Filters = {
-  showCustomers: boolean;
-  statuses: string[];
-  fromDate: string;
-  toDate: string;
-  dateRangeOn: boolean;
-  staffIds: number[];
+export type DateRange =
+  | "all"
+  | "today"
+  | "7d"
+  | "1m"
+  | "3m"
+  | "6m"
+  | "1y";
+
+export const DATE_RANGES: { key: DateRange; label: string }[] = [
+  { key: "today", label: "Today" },
+  { key: "7d", label: "Last 7 days" },
+  { key: "1m", label: "Last month" },
+  { key: "3m", label: "Last 3 months" },
+  { key: "6m", label: "Last 6 months" },
+  { key: "1y", label: "Last year" },
+  { key: "all", label: "All time" },
+];
+
+export type FilterStaff = {
+  id: number;
+  name: string;
+  color: string | null;
 };
 
-export type Staff = { id: number; name: string; role: string | null };
-
-export const DEFAULT_FILTERS: Filters = {
-  showCustomers: true,
-  statuses: STATUSES.map((s) => s.key),
-  fromDate: "",
-  toDate: "",
-  dateRangeOn: false,
-  staffIds: [],
-};
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
 
 export default function MapFilterPanel({
-  filters,
-  setFilters,
-  onClose,
+  showCustomers,
+  showSubscriptions,
+  dateRange,
+  selectedEmployeeIds,
   staff,
+  onChangeShowCustomers,
+  onChangeShowSubscriptions,
+  onChangeDateRange,
+  onChangeEmployeeIds,
+  onClose,
 }: {
-  filters: Filters;
-  setFilters: (f: Filters) => void;
+  showCustomers: boolean;
+  showSubscriptions: boolean;
+  dateRange: DateRange;
+  selectedEmployeeIds: number[] | null; // null = all
+  staff: FilterStaff[];
+  onChangeShowCustomers: (v: boolean) => void;
+  onChangeShowSubscriptions: (v: boolean) => void;
+  onChangeDateRange: (v: DateRange) => void;
+  onChangeEmployeeIds: (v: number[] | null) => void;
   onClose: () => void;
-  staff: Staff[];
 }) {
-  const [staffOpen, setStaffOpen] = useState(false);
+  const allEmployees = selectedEmployeeIds === null;
 
-  function toggleStatus(key: string) {
-    setFilters({
-      ...filters,
-      statuses: filters.statuses.includes(key)
-        ? filters.statuses.filter((k) => k !== key)
-        : [...filters.statuses, key],
-    });
-  }
-
-  function toggleStaff(id: number) {
-    setFilters({
-      ...filters,
-      staffIds: filters.staffIds.includes(id)
-        ? filters.staffIds.filter((x) => x !== id)
-        : [...filters.staffIds, id],
-    });
-  }
-
-  function reset() {
-    setFilters(DEFAULT_FILTERS);
+  function toggleEmployee(id: number) {
+    if (allEmployees) {
+      onChangeEmployeeIds([id]);
+      return;
+    }
+    const next = selectedEmployeeIds!.includes(id)
+      ? selectedEmployeeIds!.filter((x) => x !== id)
+      : [...selectedEmployeeIds!, id];
+    onChangeEmployeeIds(next.length === 0 ? null : next);
   }
 
   return (
-    <>
-      <div
-        className="fixed inset-0 bg-black/30 z-30"
-        onClick={onClose}
-        aria-hidden
-      />
-      <aside className="fixed top-14 bottom-0 right-0 z-40 w-full sm:w-[380px] bg-white shadow-2xl flex flex-col rounded-l-3xl">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="font-semibold text-slate-900">Filters</h3>
-          <button
-            onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 text-2xl leading-none"
-            aria-label="Close"
-          >
-            ×
-          </button>
-        </div>
+    <div className="absolute top-4 right-16 z-10 w-72 max-h-[80vh] flex flex-col rounded-lg border border-slate-200 bg-white shadow-md">
+      <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+        <h3 className="font-semibold text-slate-900 text-sm">Filters</h3>
+        <button
+          onClick={onClose}
+          className="text-slate-400 hover:text-slate-700"
+          aria-label="Close"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
 
-        <div className="flex-1 overflow-y-auto p-5 space-y-6">
-          <Section
-            title="Custom range"
-            action={
-              <Toggle
-                on={filters.dateRangeOn}
-                onChange={(on) => setFilters({ ...filters, dateRangeOn: on })}
-              />
-            }
-          >
-            {filters.dateRangeOn && (
-              <div className="grid grid-cols-2 gap-2">
-                <input
-                  type="date"
-                  value={filters.fromDate}
-                  onChange={(e) =>
-                    setFilters({ ...filters, fromDate: e.target.value })
-                  }
-                  className="border border-slate-200 rounded-full px-3 py-1.5 text-sm"
-                />
-                <input
-                  type="date"
-                  value={filters.toDate}
-                  onChange={(e) =>
-                    setFilters({ ...filters, toDate: e.target.value })
-                  }
-                  className="border border-slate-200 rounded-full px-3 py-1.5 text-sm"
-                />
-              </div>
-            )}
-          </Section>
-
-          <Section title="Filter by pin status">
-            <div className="grid grid-cols-2 gap-2">
-              {STATUSES.map((s) => {
-                const active = filters.statuses.includes(s.key);
-                return (
-                  <button
-                    key={s.key}
-                    type="button"
-                    onClick={() => toggleStatus(s.key)}
-                    className={
-                      "rounded-full px-3 py-1.5 text-xs font-medium border transition flex items-center gap-2 " +
-                      (active
-                        ? "text-white border-transparent"
-                        : "text-slate-600 bg-white hover:bg-slate-50 border-slate-200")
-                    }
-                    style={
-                      active
-                        ? { backgroundColor: s.color }
-                        : { borderColor: s.color, color: s.color }
-                    }
-                  >
-                    <span
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: active ? "white" : s.color }}
-                    />
-                    {s.label}
-                  </button>
-                );
-              })}
-            </div>
-          </Section>
-
-          <Section
-            title="Show Customers"
-            action={
-              <Toggle
-                on={filters.showCustomers}
-                onChange={(on) =>
-                  setFilters({ ...filters, showCustomers: on })
-                }
-              />
-            }
+      <div className="overflow-y-auto p-4 space-y-5">
+        <Section label="Show">
+          <CheckRow
+            checked={showCustomers}
+            onChange={onChangeShowCustomers}
+            label="Customers"
+            swatch="#dc2626"
           />
+          <CheckRow
+            checked={showSubscriptions}
+            onChange={onChangeShowSubscriptions}
+            label="Subscriptions"
+            swatch="#22c55e"
+          />
+        </Section>
 
-          <Section
-            title="Filter by person"
-            action={
-              <button
-                onClick={() => setStaffOpen((o) => !o)}
-                className="text-xs text-slate-500"
+        <Section label="Date">
+          <div className="space-y-1">
+            {DATE_RANGES.map((r) => (
+              <label
+                key={r.key}
+                className="flex items-center gap-2 text-sm cursor-pointer py-1"
               >
-                {staffOpen ? "Hide" : "Show"}
-              </button>
+                <input
+                  type="radio"
+                  name="map-filter-date"
+                  checked={dateRange === r.key}
+                  onChange={() => onChangeDateRange(r.key)}
+                  className="accent-slate-900"
+                />
+                <span className="text-slate-700">{r.label}</span>
+              </label>
+            ))}
+          </div>
+        </Section>
+
+        <Section label="Employee">
+          <button
+            type="button"
+            onClick={() => onChangeEmployeeIds(null)}
+            className={
+              "text-xs px-2 py-1 rounded-full mb-2 " +
+              (allEmployees
+                ? "bg-slate-900 text-white"
+                : "bg-slate-100 text-slate-600 hover:bg-slate-200")
             }
           >
-            {staffOpen && (
-              <div className="space-y-1.5">
-                {staff.length === 0 ? (
-                  <p className="text-sm text-slate-400">No team members yet.</p>
-                ) : (
-                  staff.map((s) => (
-                    <label
-                      key={s.id}
-                      className="flex items-center gap-2 text-sm text-slate-700"
-                    >
-                      <input
-                        type="checkbox"
-                        checked={filters.staffIds.includes(s.id)}
-                        onChange={() => toggleStaff(s.id)}
-                        className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
-                      />
-                      {s.name}
-                      {s.role && (
-                        <span className="text-xs text-slate-400">
-                          · {s.role}
-                        </span>
-                      )}
-                    </label>
-                  ))
-                )}
-                {filters.staffIds.length === 0 && staff.length > 0 && (
-                  <p className="text-xs text-slate-400 mt-1">
-                    Empty selection shows all pins.
-                  </p>
-                )}
-              </div>
+            All employees
+          </button>
+          <div className="flex flex-wrap gap-1.5">
+            {staff.length === 0 && (
+              <p className="text-xs text-slate-400">No employees yet.</p>
             )}
-          </Section>
-        </div>
-
-        <div className="px-5 py-4 border-t border-slate-100 flex items-center justify-between gap-2">
-          <button
-            onClick={reset}
-            className="text-sm text-slate-500 hover:text-slate-900"
-          >
-            Reset
-          </button>
-          <button
-            onClick={onClose}
-            className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-5 py-2 font-medium"
-          >
-            Done
-          </button>
-        </div>
-      </aside>
-    </>
+            {staff.map((s) => {
+              const active =
+                !allEmployees && selectedEmployeeIds!.includes(s.id);
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => toggleEmployee(s.id)}
+                  className={
+                    "inline-flex items-center gap-1.5 rounded-full pl-1 pr-2 py-0.5 text-xs border transition " +
+                    (active
+                      ? "border-transparent text-white"
+                      : "border-slate-200 text-slate-700 hover:bg-slate-50")
+                  }
+                  style={
+                    active ? { backgroundColor: staffColorHex(s.color) } : {}
+                  }
+                >
+                  <span
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold text-white"
+                    style={{ backgroundColor: staffColorHex(s.color) }}
+                  >
+                    {initials(s.name)}
+                  </span>
+                  {s.name}
+                </button>
+              );
+            })}
+          </div>
+        </Section>
+      </div>
+    </div>
   );
 }
 
 function Section({
-  title,
-  action,
+  label,
   children,
 }: {
-  title: string;
-  action?: React.ReactNode;
-  children?: React.ReactNode;
+  label: string;
+  children: React.ReactNode;
 }) {
   return (
-    <section>
-      <div className="flex items-center justify-between mb-2">
-        <h4 className="font-medium text-slate-700 text-sm">{title}</h4>
-        {action}
+    <div>
+      <div className="text-xs uppercase tracking-wide text-slate-400 mb-2">
+        {label}
       </div>
       {children}
-    </section>
+    </div>
   );
 }
 
-function Toggle({
-  on,
+function CheckRow({
+  checked,
   onChange,
+  label,
+  swatch,
 }: {
-  on: boolean;
-  onChange: (on: boolean) => void;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  label: string;
+  swatch: string;
 }) {
   return (
-    <button
-      type="button"
-      onClick={() => onChange(!on)}
-      className={
-        "relative w-10 h-6 rounded-full transition " +
-        (on ? "bg-slate-900" : "bg-slate-200")
-      }
-      aria-pressed={on}
-    >
-      <span
-        className={
-          "absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition " +
-          (on ? "left-[18px]" : "left-0.5")
-        }
+    <label className="flex items-center gap-2 text-sm cursor-pointer py-1">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+        className="accent-slate-900"
       />
-    </button>
+      <span
+        className="w-3.5 h-3.5 rounded-full border border-white shadow-sm"
+        style={{ backgroundColor: swatch }}
+      />
+      <span className="text-slate-700">{label}</span>
+    </label>
   );
 }
