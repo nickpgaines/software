@@ -69,13 +69,8 @@ export async function POST(req: Request) {
       )}" recordingStatusCallbackMethod="POST" recordingStatusCallbackEvent="completed"`
     : "";
 
-  const consent = record
-    ? `<Say voice="alice">This call may be recorded for quality and training.</Say>`
-    : "";
-
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  ${consent}
   <Dial callerId="${escapeXml(from)}" answerOnBridge="true"${recordAttrs} action="${escapeXml(
     statusUrl
   )}" method="POST">

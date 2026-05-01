@@ -1899,8 +1899,7 @@ function CallingPanel() {
         <h2 className="text-lg font-semibold text-slate-900">Calling</h2>
         <p className="text-sm text-slate-500 mt-1">
           Place and receive calls from the browser using your Twilio number.
-          Calls can be recorded automatically with a consent message played at
-          the start.
+          Calls can be recorded automatically and saved to the call log.
         </p>
       </div>
 
@@ -2015,7 +2014,7 @@ function CallingPanel() {
           onChange={(e) => setRecordCalls(e.target.checked)}
           className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
         />
-        Record calls (plays a consent message at the start)
+        Record calls
       </label>
 
       {error && <p className="text-sm text-rose-600">{error}</p>}
