@@ -40,6 +40,7 @@ type ApiPin = {
   lng: number;
   status: string;
   notes: string | null;
+  objections: string | null;
 };
 
 type CustomerPin = {
@@ -65,7 +66,21 @@ type ModalState = {
   editingId?: number;
   initialStatus?: PinStatus;
   initialNote?: string;
+  initialObjections?: string[];
 };
+
+function parseObjections(raw: string | null): string[] {
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) {
+      return parsed.filter((x) => typeof x === "string");
+    }
+  } catch {
+    // ignore
+  }
+  return [];
+}
 
 type ApiTerritory = {
   id: number;
@@ -475,11 +490,26 @@ export default function MapClient() {
           pin.notes
         )}</div>`
       : "";
+    const pinObjections = parseObjections(pin.objections);
+    const objectionsHtml =
+      pinObjections.length > 0
+        ? `<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:4px;">` +
+          pinObjections
+            .map(
+              (o) =>
+                `<span style="font-size:11px;color:#475569;background:#f1f5f9;border-radius:9999px;padding:2px 8px;">${escapeHtml(
+                  o
+                )}</span>`
+            )
+            .join("") +
+          `</div>`
+        : "";
     node.innerHTML =
       `<div style="font-weight:600;color:#0f172a;font-size:14px;">${escapeHtml(
         meta.label
       )}</div>` +
       noteHtml +
+      objectionsHtml +
       `<div style="margin-top:10px;display:flex;gap:6px;">
          <button data-action="edit" style="flex:1;padding:6px 10px;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;background:white;color:#0f172a;cursor:pointer;">Edit</button>
          <button data-action="delete" style="flex:1;padding:6px 10px;font-size:12px;border:1px solid #fecaca;border-radius:6px;background:white;color:#dc2626;cursor:pointer;">Delete</button>
@@ -501,6 +531,7 @@ export default function MapClient() {
           editingId: pin.id,
           initialStatus: statusOf(pin),
           initialNote: pin.notes ?? "",
+          initialObjections: parseObjections(pin.objections),
         });
       });
 
@@ -749,12 +780,16 @@ export default function MapClient() {
     });
   }
 
-  async function submitModal(status: PinStatus, note: string) {
+  async function submitModal(
+    status: PinStatus,
+    note: string,
+    objections: string[]
+  ) {
     if (modal.editingId != null) {
       const r = await fetch(`/api/map/pins/${modal.editingId}`, {
         method: "PATCH",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ status, note }),
+        body: JSON.stringify({ status, note, objections }),
       });
       if (r.ok) {
         const updated = (await r.json()) as ApiPin;
@@ -770,6 +805,7 @@ export default function MapClient() {
           lng: modal.lng,
           status,
           note,
+          objections,
         }),
       });
       if (r.ok) {
@@ -861,6 +897,7 @@ export default function MapClient() {
         open={modal.open}
         initialStatus={modal.initialStatus}
         initialNote={modal.initialNote}
+        initialObjections={modal.initialObjections}
         onCancel={() => setModal({ open: false, lng: 0, lat: 0 })}
         onSubmit={submitModal}
       />
