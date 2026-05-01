@@ -331,6 +331,21 @@ async function init(): Promise<void> {
     }
   }
 
+  const messagingSettingsCols = await _db
+    .prepare("PRAGMA table_info(messaging_settings)")
+    .all<{ name: string }>();
+  const messagingSettingsAdds: [string, string][] = [
+    ["voice_api_key_sid", "TEXT"],
+    ["voice_api_key_secret", "TEXT"],
+    ["voice_twiml_app_sid", "TEXT"],
+    ["voice_record_calls", "INTEGER NOT NULL DEFAULT 1"],
+  ];
+  for (const [col, def] of messagingSettingsAdds) {
+    if (!messagingSettingsCols.some((c) => c.name === col)) {
+      await _db.exec(`ALTER TABLE messaging_settings ADD COLUMN ${col} ${def}`);
+    }
+  }
+
   const paymentCols = await _db
     .prepare("PRAGMA table_info(payments)")
     .all<{ name: string }>();
@@ -486,6 +501,28 @@ async function init(): Promise<void> {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     INSERT OR IGNORE INTO messaging_settings (id) VALUES (1);
+
+    CREATE TABLE IF NOT EXISTS calls (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
+      twilio_call_sid TEXT,
+      direction TEXT NOT NULL CHECK (direction IN ('outbound', 'inbound')),
+      status TEXT NOT NULL DEFAULT 'queued',
+      from_phone TEXT,
+      to_phone TEXT,
+      duration_seconds INTEGER,
+      recording_sid TEXT,
+      recording_url TEXT,
+      recording_duration_seconds INTEGER,
+      started_at TEXT,
+      answered_at TEXT,
+      ended_at TEXT,
+      notes TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_calls_customer_id ON calls(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_calls_created_at ON calls(created_at);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_calls_twilio_call_sid ON calls(twilio_call_sid) WHERE twilio_call_sid IS NOT NULL;
 
     CREATE TABLE IF NOT EXISTS payments (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -880,7 +917,32 @@ export type MessagingSettings = {
   account_sid: string | null;
   auth_token: string | null;
   from_number: string | null;
+  voice_api_key_sid: string | null;
+  voice_api_key_secret: string | null;
+  voice_twiml_app_sid: string | null;
+  voice_record_calls: number;
   updated_at: string;
+};
+
+export type CallDirection = "outbound" | "inbound";
+
+export type Call = {
+  id: number;
+  customer_id: number | null;
+  twilio_call_sid: string | null;
+  direction: CallDirection;
+  status: string;
+  from_phone: string | null;
+  to_phone: string | null;
+  duration_seconds: number | null;
+  recording_sid: string | null;
+  recording_url: string | null;
+  recording_duration_seconds: number | null;
+  started_at: string | null;
+  answered_at: string | null;
+  ended_at: string | null;
+  notes: string | null;
+  created_at: string;
 };
 
 export type SubscriptionInterval =

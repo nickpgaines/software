@@ -64,5 +64,7 @@ export async function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/((?!_next/|favicon.ico|api/login|api/messages/webhook).*)"],
+  matcher: [
+    "/((?!_next/|favicon.ico|api/login|api/messages/webhook|api/voice/outbound|api/voice/status|api/voice/recording).*)",
+  ],
 };
