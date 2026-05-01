@@ -192,19 +192,6 @@ export default function EmployeeForm({
     setSaving(true);
     const url = isEdit ? `/api/staff/${initial!.id}` : "/api/staff";
     const method = isEdit ? "PATCH" : "POST";
-    // eslint-disable-next-line no-console
-    console.log("[EmployeeForm save] photo_url:", {
-      type: typeof body.photo_url,
-      isString: typeof body.photo_url === "string",
-      length:
-        typeof body.photo_url === "string"
-          ? (body.photo_url as string).length
-          : null,
-      preview:
-        typeof body.photo_url === "string"
-          ? (body.photo_url as string).slice(0, 40) + "…"
-          : body.photo_url,
-    });
     let res: Response;
     try {
       res = await fetch(url, {
