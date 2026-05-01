@@ -1,6 +1,13 @@
 "use client";
 
-import { Hexagon, Map as MapIcon, MapPin, Satellite, Users } from "lucide-react";
+import {
+  Hexagon,
+  Map as MapIcon,
+  MapPin,
+  Pencil,
+  Satellite,
+  Users,
+} from "lucide-react";
 
 type StyleMode = "satellite" | "streets";
 
@@ -13,6 +20,8 @@ export default function MapIconStrip({
   onToggleCustomerPins,
   drawingTerritory,
   onToggleDrawTerritory,
+  territoryListOpen,
+  onToggleTerritoryList,
 }: {
   styleMode: StyleMode;
   onToggleStyle: () => void;
@@ -22,6 +31,8 @@ export default function MapIconStrip({
   onToggleCustomerPins: () => void;
   drawingTerritory: boolean;
   onToggleDrawTerritory: () => void;
+  territoryListOpen: boolean;
+  onToggleTerritoryList: () => void;
 }) {
   const satelliteActive = styleMode === "satellite";
   const StyleIcon = satelliteActive ? Satellite : MapIcon;
@@ -86,6 +97,20 @@ export default function MapIconStrip({
         }
       >
         <Hexagon className="h-5 w-5" />
+      </button>
+      <button
+        type="button"
+        onClick={onToggleTerritoryList}
+        title="Edit territory"
+        aria-label="Edit territory"
+        aria-pressed={territoryListOpen}
+        className={
+          buttonBase +
+          " " +
+          (territoryListOpen ? activeClasses : inactiveClasses)
+        }
+      >
+        <Pencil className="h-5 w-5" />
       </button>
     </div>
   );

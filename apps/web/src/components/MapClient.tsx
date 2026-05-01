@@ -12,6 +12,7 @@ import MapTerritoryModal, {
   type Staff as TerritoryStaff,
   type TerritoryDraft,
 } from "./MapTerritoryModal";
+import TerritoryListPanel from "./MapTerritoryListPanel";
 import {
   PIN_STATUS,
   isPinStatus,
@@ -151,6 +152,8 @@ export default function MapClient() {
   const showCustomerPinsRef = useRef(true);
   const [staff, setStaff] = useState<TerritoryStaff[]>([]);
   const [drawingTerritory, setDrawingTerritory] = useState(false);
+  const [territoryListOpen, setTerritoryListOpen] = useState(false);
+  const [territoriesVersion, setTerritoriesVersion] = useState(0);
   const [territoryModal, setTerritoryModal] = useState<TerritoryModalState>({
     open: false,
   });
@@ -450,6 +453,7 @@ export default function MapClient() {
             territoriesRef.current.set(parsed.id, parsed);
           }
           setTerritoryData();
+          setTerritoriesVersion((v) => v + 1);
         }
         if (staffRes.ok) {
           const list = (await staffRes.json()) as TerritoryStaff[];
@@ -622,7 +626,30 @@ export default function MapClient() {
         onToggleCustomerPins={() => setShowCustomerPins((v) => !v)}
         drawingTerritory={drawingTerritory}
         onToggleDrawTerritory={toggleDrawTerritory}
+        territoryListOpen={territoryListOpen}
+        onToggleTerritoryList={() => setTerritoryListOpen((v) => !v)}
       />
+      {territoryListOpen && (
+        <TerritoryListPanel
+          version={territoriesVersion}
+          territoriesRef={territoriesRef}
+          staff={staff}
+          onClose={() => setTerritoryListOpen(false)}
+          onPick={(t) => {
+            setTerritoryListOpen(false);
+            setTerritoryModal({
+              open: true,
+              draft: {
+                id: t.id,
+                name: t.name,
+                color: t.color,
+                polygon: t.polygon,
+                assigned_employee_ids: t.assigned_employee_ids,
+              },
+            });
+          }}
+        />
+      )}
       {drawingTerritory && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-slate-900 text-white text-sm rounded-full px-4 py-2 shadow-md pointer-events-none">
           Click points to outline a territory · double-click to finish
@@ -650,6 +677,7 @@ export default function MapClient() {
             };
             territoriesRef.current.set(t.id, t);
             setTerritoryData();
+            setTerritoriesVersion((v) => v + 1);
             setTerritoryModal({ open: false });
           }}
           onDelete={async (id) => {
@@ -659,6 +687,7 @@ export default function MapClient() {
             if (r.ok) {
               territoriesRef.current.delete(id);
               setTerritoryData();
+              setTerritoriesVersion((v) => v + 1);
               setTerritoryModal({ open: false });
             }
           }}
