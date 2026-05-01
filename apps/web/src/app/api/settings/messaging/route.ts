@@ -106,6 +106,17 @@ export async function PUT(req: Request) {
     )
     .run(nextSid, nextToken, nextFrom);
 
-  const updated = await readSettings();
+  // Build the response from the values we just wrote. Reading back via a
+  // separate query can hit a Turso replica that hasn't caught up yet, which
+  // would briefly report the row as unconfigured even though the write
+  // succeeded.
+  const updated: MessagingSettings = {
+    id: 1,
+    provider: current.provider || "twilio",
+    account_sid: nextSid,
+    auth_token: nextToken,
+    from_number: nextFrom,
+    updated_at: new Date().toISOString(),
+  };
   return NextResponse.json(toPublic(updated));
 }
