@@ -2,10 +2,17 @@
 
 import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
+import MapboxDraw from "@mapbox/mapbox-gl-draw";
+import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
 import { createElement, useEffect, useRef, useState } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import MapIconStrip from "./MapIconStrip";
 import MapPinDropModal from "./MapPinDropModal";
+import MapTerritoryModal, {
+  type Staff as TerritoryStaff,
+  type TerritoryDraft,
+} from "./MapTerritoryModal";
+import TerritoryListPanel from "./MapTerritoryListPanel";
 import {
   PIN_STATUS,
   isPinStatus,
@@ -51,6 +58,28 @@ type ModalState = {
   initialStatus?: PinStatus;
   initialNote?: string;
 };
+
+type ApiTerritory = {
+  id: number;
+  name: string;
+  color: string;
+  polygon: string;
+  assigned_employee_ids: string | null;
+  created_by: string | null;
+  created_at: string;
+};
+
+type Territory = {
+  id: number;
+  name: string;
+  color: string;
+  polygon: number[][];
+  assigned_employee_ids: number[];
+};
+
+type TerritoryModalState =
+  | { open: false }
+  | { open: true; draft: TerritoryDraft };
 
 function escapeHtml(s: string): string {
   return s
@@ -110,6 +139,9 @@ export default function MapClient() {
   const pinsDataRef = useRef<Map<number, ApiPin>>(new Map());
   const customerMarkersRef = useRef<Map<number, mapboxgl.Marker>>(new Map());
   const customerDataRef = useRef<Map<number, CustomerPin>>(new Map());
+  const territoriesRef = useRef<Map<number, Territory>>(new Map());
+  const drawRef = useRef<MapboxDraw | null>(null);
+  const drawingTerritoryRef = useRef(false);
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holdStartRef = useRef<{ x: number; y: number } | null>(null);
 
@@ -118,6 +150,13 @@ export default function MapClient() {
   const pinsVisibleRef = useRef(true);
   const [showCustomerPins, setShowCustomerPins] = useState(true);
   const showCustomerPinsRef = useRef(true);
+  const [staff, setStaff] = useState<TerritoryStaff[]>([]);
+  const [drawingTerritory, setDrawingTerritory] = useState(false);
+  const [territoryListOpen, setTerritoryListOpen] = useState(false);
+  const [territoriesVersion, setTerritoriesVersion] = useState(0);
+  const [territoryModal, setTerritoryModal] = useState<TerritoryModalState>({
+    open: false,
+  });
   const [modal, setModal] = useState<ModalState>({
     open: false,
     lng: 0,
@@ -170,6 +209,104 @@ export default function MapClient() {
     });
     customerMarkersRef.current.set(c.id, marker);
     customerDataRef.current.set(c.id, c);
+  }
+
+  function parseTerritory(t: ApiTerritory): Territory {
+    let polygon: number[][] = [];
+    let assigned: number[] = [];
+    try {
+      polygon = JSON.parse(t.polygon);
+    } catch {
+      // ignore
+    }
+    try {
+      if (t.assigned_employee_ids) {
+        assigned = JSON.parse(t.assigned_employee_ids);
+      }
+    } catch {
+      // ignore
+    }
+    return {
+      id: t.id,
+      name: t.name,
+      color: t.color,
+      polygon,
+      assigned_employee_ids: assigned,
+    };
+  }
+
+  function setTerritoryData() {
+    const map = mapRef.current;
+    if (!map) return;
+    const source = map.getSource("territories") as
+      | mapboxgl.GeoJSONSource
+      | undefined;
+    if (!source) return;
+    const features = Array.from(territoriesRef.current.values()).map((t) => ({
+      type: "Feature" as const,
+      id: t.id,
+      properties: { id: t.id, name: t.name, color: t.color },
+      geometry: { type: "Polygon" as const, coordinates: [t.polygon] },
+    }));
+    source.setData({ type: "FeatureCollection", features });
+  }
+
+  function ensureTerritoryLayers() {
+    const map = mapRef.current;
+    if (!map) return;
+    if (!map.getSource("territories")) {
+      map.addSource("territories", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+      });
+    }
+    if (!map.getLayer("territories-fill")) {
+      map.addLayer({
+        id: "territories-fill",
+        type: "fill",
+        source: "territories",
+        paint: {
+          "fill-color": ["get", "color"],
+          "fill-opacity": 0.25,
+        },
+      });
+    }
+    if (!map.getLayer("territories-line")) {
+      map.addLayer({
+        id: "territories-line",
+        type: "line",
+        source: "territories",
+        paint: {
+          "line-color": ["get", "color"],
+          "line-width": 2,
+        },
+      });
+    }
+    setTerritoryData();
+  }
+
+  function startDrawTerritory() {
+    const draw = drawRef.current;
+    if (!draw) return;
+    draw.deleteAll();
+    draw.changeMode("draw_polygon");
+    drawingTerritoryRef.current = true;
+    setDrawingTerritory(true);
+  }
+
+  function cancelDrawTerritory() {
+    const draw = drawRef.current;
+    if (draw) {
+      draw.deleteAll();
+      draw.changeMode("simple_select");
+    }
+    drawingTerritoryRef.current = false;
+    setDrawingTerritory(false);
+  }
+
+  function toggleDrawTerritory() {
+    if (drawingTerritoryRef.current) cancelDrawTerritory();
+    else startDrawTerritory();
   }
 
   function openPinPopup(id: number) {
@@ -263,12 +400,44 @@ export default function MapClient() {
     });
     mapRef.current = map;
 
+    const draw = new MapboxDraw({
+      displayControlsDefault: false,
+      controls: {},
+      defaultMode: "simple_select",
+    });
+    map.addControl(draw);
+    drawRef.current = draw;
+
+    map.on("draw.create", (e: { features: GeoJSON.Feature[] }) => {
+      const feature = e.features?.[0];
+      drawingTerritoryRef.current = false;
+      setDrawingTerritory(false);
+      draw.deleteAll();
+      if (
+        feature &&
+        feature.geometry &&
+        feature.geometry.type === "Polygon"
+      ) {
+        const ring = feature.geometry.coordinates[0] as number[][];
+        if (ring.length >= 4) {
+          // mapbox-gl-draw closes the ring by repeating the first point;
+          // strip the duplicate before persisting.
+          const polygon = ring.slice(0, -1);
+          setTerritoryModal({ open: true, draft: { polygon } });
+        }
+      }
+    });
+
     map.on("load", async () => {
+      ensureTerritoryLayers();
       try {
-        const [pinsRes, customersRes] = await Promise.all([
-          fetch("/api/map/pins"),
-          fetch("/api/map/customer-pins"),
-        ]);
+        const [pinsRes, customersRes, territoriesRes, staffRes] =
+          await Promise.all([
+            fetch("/api/map/pins"),
+            fetch("/api/map/customer-pins"),
+            fetch("/api/territories"),
+            fetch("/api/staff"),
+          ]);
         if (pinsRes.ok) {
           const list = (await pinsRes.json()) as ApiPin[];
           for (const p of list) addMarker(p);
@@ -277,14 +446,57 @@ export default function MapClient() {
           const list = (await customersRes.json()) as CustomerPin[];
           for (const c of list) addCustomerMarker(c);
         }
+        if (territoriesRes.ok) {
+          const list = (await territoriesRes.json()) as ApiTerritory[];
+          for (const t of list) {
+            const parsed = parseTerritory(t);
+            territoriesRef.current.set(parsed.id, parsed);
+          }
+          setTerritoryData();
+          setTerritoriesVersion((v) => v + 1);
+        }
+        if (staffRes.ok) {
+          const list = (await staffRes.json()) as TerritoryStaff[];
+          setStaff(list);
+        }
       } catch {
         // ignore
+      }
+    });
+
+    map.on("click", "territories-fill", (e) => {
+      if (drawingTerritoryRef.current) return;
+      const feature = e.features?.[0];
+      const id = feature?.properties?.id as number | undefined;
+      if (id == null) return;
+      const t = territoriesRef.current.get(id);
+      if (!t) return;
+      setTerritoryModal({
+        open: true,
+        draft: {
+          id: t.id,
+          name: t.name,
+          color: t.color,
+          polygon: t.polygon,
+          assigned_employee_ids: t.assigned_employee_ids,
+        },
+      });
+    });
+    map.on("mouseenter", "territories-fill", () => {
+      if (!drawingTerritoryRef.current) {
+        map.getCanvas().style.cursor = "pointer";
+      }
+    });
+    map.on("mouseleave", "territories-fill", () => {
+      if (!drawingTerritoryRef.current) {
+        map.getCanvas().style.cursor = "";
       }
     });
 
     function onPressDown(
       e: mapboxgl.MapMouseEvent | mapboxgl.MapTouchEvent
     ) {
+      if (drawingTerritoryRef.current) return;
       const target = e.originalEvent.target as HTMLElement | null;
       if (
         target &&
@@ -292,6 +504,12 @@ export default function MapClient() {
         (target.closest(".mp-pin") || target.closest(".mp-customer-pin"))
       ) {
         return;
+      }
+      if (map.getLayer("territories-fill")) {
+        const hits = map.queryRenderedFeatures(e.point, {
+          layers: ["territories-fill"],
+        });
+        if (hits.length > 0) return;
       }
       holdStartRef.current = { x: e.point.x, y: e.point.y };
       const point = e.point;
@@ -330,6 +548,8 @@ export default function MapClient() {
       for (const [, m] of customerMarkersRef.current) m.remove();
       customerMarkersRef.current.clear();
       customerDataRef.current.clear();
+      territoriesRef.current.clear();
+      drawRef.current = null;
       map.remove();
       mapRef.current = null;
     };
@@ -354,8 +574,10 @@ export default function MapClient() {
     setStyleMode(next);
     const map = mapRef.current;
     if (!map) return;
-    // TODO: when adding pin/territory layers later, re-add them in the 'style.load' event handler after setStyle so they persist across style changes.
     map.setStyle(next === "satellite" ? SATELLITE_STYLE : STREETS_STYLE);
+    map.once("style.load", () => {
+      ensureTerritoryLayers();
+    });
   }
 
   async function submitModal(status: PinStatus, note: string) {
@@ -402,7 +624,37 @@ export default function MapClient() {
         onTogglePins={() => setPinsVisible((v) => !v)}
         customerPinsVisible={showCustomerPins}
         onToggleCustomerPins={() => setShowCustomerPins((v) => !v)}
+        drawingTerritory={drawingTerritory}
+        onToggleDrawTerritory={toggleDrawTerritory}
+        territoryListOpen={territoryListOpen}
+        onToggleTerritoryList={() => setTerritoryListOpen((v) => !v)}
       />
+      {territoryListOpen && (
+        <TerritoryListPanel
+          version={territoriesVersion}
+          territoriesRef={territoriesRef}
+          staff={staff}
+          onClose={() => setTerritoryListOpen(false)}
+          onPick={(t) => {
+            setTerritoryListOpen(false);
+            setTerritoryModal({
+              open: true,
+              draft: {
+                id: t.id,
+                name: t.name,
+                color: t.color,
+                polygon: t.polygon,
+                assigned_employee_ids: t.assigned_employee_ids,
+              },
+            });
+          }}
+        />
+      )}
+      {drawingTerritory && (
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-slate-900 text-white text-sm rounded-full px-4 py-2 shadow-md pointer-events-none">
+          Click points to outline a territory · double-click to finish
+        </div>
+      )}
       <MapPinDropModal
         open={modal.open}
         initialStatus={modal.initialStatus}
@@ -410,6 +662,37 @@ export default function MapClient() {
         onCancel={() => setModal({ open: false, lng: 0, lat: 0 })}
         onSubmit={submitModal}
       />
+      {territoryModal.open && (
+        <MapTerritoryModal
+          draft={territoryModal.draft}
+          staff={staff}
+          onClose={() => setTerritoryModal({ open: false })}
+          onSaved={(saved) => {
+            const t: Territory = {
+              id: saved.id,
+              name: saved.name || "",
+              color: saved.color || "#3b82f6",
+              polygon: saved.polygon,
+              assigned_employee_ids: saved.assigned_employee_ids || [],
+            };
+            territoriesRef.current.set(t.id, t);
+            setTerritoryData();
+            setTerritoriesVersion((v) => v + 1);
+            setTerritoryModal({ open: false });
+          }}
+          onDelete={async (id) => {
+            const r = await fetch(`/api/territories/${id}`, {
+              method: "DELETE",
+            });
+            if (r.ok) {
+              territoriesRef.current.delete(id);
+              setTerritoryData();
+              setTerritoriesVersion((v) => v + 1);
+              setTerritoryModal({ open: false });
+            }
+          }}
+        />
+      )}
     </div>
   );
 }
