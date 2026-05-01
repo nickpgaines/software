@@ -315,6 +315,22 @@ async function init(): Promise<void> {
     "CREATE INDEX IF NOT EXISTS idx_customers_lat_lng ON customers(latitude, longitude)"
   );
 
+  const messageCols = await _db
+    .prepare("PRAGMA table_info(messages)")
+    .all<{ name: string }>();
+  const messageAdds: [string, string][] = [
+    ["status", "TEXT"],
+    ["error", "TEXT"],
+    ["provider_sid", "TEXT"],
+    ["to_phone", "TEXT"],
+    ["from_phone", "TEXT"],
+  ];
+  for (const [col, def] of messageAdds) {
+    if (!messageCols.some((c) => c.name === col)) {
+      await _db.exec(`ALTER TABLE messages ADD COLUMN ${col} ${def}`);
+    }
+  }
+
   const paymentCols = await _db
     .prepare("PRAGMA table_info(payments)")
     .all<{ name: string }>();
@@ -460,6 +476,16 @@ async function init(): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS idx_messages_customer_id ON messages(customer_id);
     CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
+
+    CREATE TABLE IF NOT EXISTS messaging_settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      provider TEXT NOT NULL DEFAULT 'twilio',
+      account_sid TEXT,
+      auth_token TEXT,
+      from_number TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    INSERT OR IGNORE INTO messaging_settings (id) VALUES (1);
 
     CREATE TABLE IF NOT EXISTS payments (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -826,6 +852,14 @@ export type Company = {
   stripe_details_submitted: number;
 };
 
+export type MessageStatus =
+  | "queued"
+  | "sent"
+  | "delivered"
+  | "failed"
+  | "received"
+  | "not_configured";
+
 export type Message = {
   id: number;
   customer_id: number;
@@ -833,6 +867,20 @@ export type Message = {
   direction: "outbound" | "inbound";
   created_at: string;
   read_at: string | null;
+  status: MessageStatus | null;
+  error: string | null;
+  provider_sid: string | null;
+  to_phone: string | null;
+  from_phone: string | null;
+};
+
+export type MessagingSettings = {
+  id: number;
+  provider: string;
+  account_sid: string | null;
+  auth_token: string | null;
+  from_number: string | null;
+  updated_at: string;
 };
 
 export type SubscriptionInterval =

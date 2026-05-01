@@ -3,13 +3,14 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
-type Tab = "profile" | "company" | "payments" | "subscriptions" | "billing";
+type Tab = "profile" | "company" | "payments" | "subscriptions" | "messaging" | "billing";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "profile", label: "Profile" },
   { key: "company", label: "Company" },
   { key: "payments", label: "Payments" },
   { key: "subscriptions", label: "Subscriptions" },
+  { key: "messaging", label: "Messaging" },
   { key: "billing", label: "Billing" },
 ];
 
@@ -74,6 +75,7 @@ function SettingsTabsInner({ username }: { username: string }) {
         {tab === "company" && <CompanyPanel />}
         {tab === "payments" && <PaymentsPanel />}
         {tab === "subscriptions" && <SubscriptionsPanel />}
+        {tab === "messaging" && <MessagingPanel />}
         {tab === "billing" && <BillingPanel />}
       </div>
     </div>
@@ -1595,6 +1597,218 @@ function SignaturePad({
         )}
       </div>
     </div>
+  );
+}
+
+type MessagingStatus = {
+  provider: string;
+  account_sid_masked: string | null;
+  auth_token_set: boolean;
+  from_number: string | null;
+  configured: boolean;
+  updated_at: string;
+};
+
+function MessagingPanel() {
+  const [status, setStatus] = useState<MessagingStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const [accountSid, setAccountSid] = useState("");
+  const [authToken, setAuthToken] = useState("");
+  const [fromNumber, setFromNumber] = useState("");
+  const [webhookUrl, setWebhookUrl] = useState("");
+  const [copied, setCopied] = useState(false);
+
+  async function load() {
+    const res = await fetch("/api/settings/messaging");
+    if (res.ok) {
+      const s = (await res.json()) as MessagingStatus;
+      setStatus(s);
+      setFromNumber(s.from_number ?? "");
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setWebhookUrl(`${window.location.origin}/api/messages/webhook`);
+    }
+  }, []);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSaving(true);
+    const res = await fetch("/api/settings/messaging", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        account_sid: accountSid || undefined,
+        auth_token: authToken || undefined,
+        from_number: fromNumber || undefined,
+      }),
+    });
+    setSaving(false);
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(data.error || "Could not save");
+      return;
+    }
+    const s = (await res.json()) as MessagingStatus;
+    setStatus(s);
+    setAccountSid("");
+    setAuthToken("");
+    setFromNumber(s.from_number ?? "");
+    setSavedAt(Date.now());
+  }
+
+  async function copyWebhook() {
+    try {
+      await navigator.clipboard.writeText(webhookUrl);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // ignore
+    }
+  }
+
+  return (
+    <form onSubmit={save} className="space-y-5">
+      <div>
+        <h2 className="text-lg font-semibold text-slate-900">Messaging</h2>
+        <p className="text-sm text-slate-500 mt-1">
+          Connect your Twilio account to send and receive SMS from the Messages
+          tab. Each business uses its own Twilio number.
+        </p>
+      </div>
+
+      <div
+        className={
+          "flex items-center gap-2 text-xs font-medium rounded-full px-3 py-1 w-fit " +
+          (status?.configured
+            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+            : "bg-slate-100 text-slate-600 border border-slate-200")
+        }
+      >
+        <span
+          className={
+            "w-1.5 h-1.5 rounded-full " +
+            (status?.configured ? "bg-emerald-500" : "bg-slate-400")
+          }
+        />
+        {status?.configured ? "Connected" : "Not connected"}
+        {status?.from_number && (
+          <span className="text-slate-500 font-normal">
+            · {status.from_number}
+          </span>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3 text-sm">
+        <div className="font-medium text-slate-900">Setup steps</div>
+        <ol className="list-decimal list-inside space-y-1 text-slate-600">
+          <li>
+            Sign up at{" "}
+            <a
+              href="https://www.twilio.com/try-twilio"
+              target="_blank"
+              rel="noreferrer"
+              className="text-slate-900 underline"
+            >
+              twilio.com
+            </a>{" "}
+            and buy a local number with SMS enabled.
+          </li>
+          <li>
+            Copy your <span className="font-mono">Account SID</span> and{" "}
+            <span className="font-mono">Auth Token</span> from the Twilio
+            Console dashboard.
+          </li>
+          <li>Paste them below along with the number you bought.</li>
+          <li>
+            In Twilio, open your number&apos;s settings and set{" "}
+            <span className="font-medium">A message comes in</span> to the
+            webhook URL below (HTTP POST).
+          </li>
+        </ol>
+        <div>
+          <div className="text-xs uppercase tracking-wide text-slate-400 mb-1.5">
+            Inbound webhook URL
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              readOnly
+              value={webhookUrl}
+              className="flex-1 border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono text-xs"
+            />
+            <button
+              type="button"
+              onClick={copyWebhook}
+              className="text-sm bg-white border border-slate-200 hover:bg-slate-100 rounded-full px-4 py-2 font-medium"
+            >
+              {copied ? "Copied" : "Copy"}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <Field label="Account SID">
+        <input
+          type="text"
+          value={accountSid}
+          disabled={loading}
+          onChange={(e) => setAccountSid(e.target.value)}
+          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono"
+          placeholder={
+            status?.account_sid_masked || "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+          }
+        />
+      </Field>
+      <Field label="Auth Token">
+        <input
+          type="password"
+          value={authToken}
+          disabled={loading}
+          onChange={(e) => setAuthToken(e.target.value)}
+          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono"
+          placeholder={
+            status?.auth_token_set ? "•••••••••••••••• (saved)" : "Auth Token"
+          }
+        />
+      </Field>
+      <Field label="From number">
+        <input
+          type="tel"
+          value={fromNumber}
+          disabled={loading}
+          onChange={(e) => setFromNumber(e.target.value)}
+          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+          placeholder="+18435551234"
+        />
+      </Field>
+
+      {error && <p className="text-sm text-rose-600">{error}</p>}
+      <div className="flex items-center gap-3 pt-2">
+        <button
+          type="submit"
+          disabled={saving || loading}
+          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+        >
+          {saving ? "Saving…" : "Save changes"}
+        </button>
+        {savedAt && !saving && (
+          <span className="text-xs text-emerald-600">Saved</span>
+        )}
+      </div>
+    </form>
   );
 }
 

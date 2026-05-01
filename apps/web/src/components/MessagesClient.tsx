@@ -20,6 +20,11 @@ type Message = {
   direction: "outbound" | "inbound";
   created_at: string;
   read_at: string | null;
+  status: string | null;
+  error: string | null;
+  provider_sid: string | null;
+  to_phone: string | null;
+  from_phone: string | null;
 };
 
 function relativeTime(iso: string | null) {
@@ -306,29 +311,46 @@ function Thread({
           <ul className="space-y-2">
             {messages.map((m) => {
               const out = m.direction === "outbound";
+              const failed =
+                out && (m.status === "failed" || m.status === "not_configured");
               return (
                 <li
                   key={m.id}
                   className={"flex " + (out ? "justify-end" : "justify-start")}
                 >
-                  <div
-                    className={
-                      "max-w-[75%] rounded-2xl px-3 py-2 text-sm break-words " +
-                      (out
-                        ? "bg-slate-900 text-white rounded-br-sm"
-                        : "bg-white border border-slate-200 text-slate-900 rounded-bl-sm")
-                    }
-                  >
-                    <div>{m.body}</div>
+                  <div className="max-w-[75%] flex flex-col items-end gap-1">
                     <div
                       className={
-                        "text-[10px] mt-1 " +
-                        (out ? "text-slate-300" : "text-slate-400")
+                        "rounded-2xl px-3 py-2 text-sm break-words " +
+                        (out
+                          ? failed
+                            ? "bg-rose-100 border border-rose-200 text-rose-900 rounded-br-sm"
+                            : "bg-slate-900 text-white rounded-br-sm"
+                          : "bg-white border border-slate-200 text-slate-900 rounded-bl-sm")
                       }
-                      suppressHydrationWarning
                     >
-                      {mounted ? fullTime(m.created_at) : ""}
+                      <div>{m.body}</div>
+                      <div
+                        className={
+                          "text-[10px] mt-1 " +
+                          (out
+                            ? failed
+                              ? "text-rose-700"
+                              : "text-slate-300"
+                            : "text-slate-400")
+                        }
+                        suppressHydrationWarning
+                      >
+                        {mounted ? fullTime(m.created_at) : ""}
+                      </div>
                     </div>
+                    {failed && (
+                      <div className="text-[10px] text-rose-600 max-w-full text-right">
+                        {m.status === "not_configured"
+                          ? "Not sent — connect Twilio in Settings → Messaging"
+                          : `Not delivered${m.error ? ` — ${m.error}` : ""}`}
+                      </div>
+                    )}
                   </div>
                 </li>
               );
