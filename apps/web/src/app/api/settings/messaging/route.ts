@@ -82,10 +82,21 @@ export async function PUT(req: Request) {
   const current = await readSettings();
 
   const nextSid = sid || current.account_sid;
-  // Only overwrite the token if a new one was supplied; this lets PUT requests
-  // update SID/from-number without re-sending the token.
   const nextToken = token || current.auth_token;
-  const nextFrom = fromNormalized || (fromInput === "" ? null : current.from_number);
+  const nextFrom = fromNormalized || current.from_number;
+
+  if (!nextSid || !nextToken || !nextFrom) {
+    const missing: string[] = [];
+    if (!nextSid) missing.push("Account SID");
+    if (!nextToken) missing.push("Auth Token");
+    if (!nextFrom) missing.push("From number");
+    return NextResponse.json(
+      {
+        error: `Please fill in: ${missing.join(", ")}.`,
+      },
+      { status: 400 }
+    );
+  }
 
   await db
     .prepare(
@@ -93,7 +104,7 @@ export async function PUT(req: Request) {
          SET account_sid = ?, auth_token = ?, from_number = ?, updated_at = datetime('now')
        WHERE id = 1`
     )
-    .run(nextSid ?? null, nextToken ?? null, nextFrom ?? null);
+    .run(nextSid, nextToken, nextFrom);
 
   const updated = await readSettings();
   return NextResponse.json(toPublic(updated));

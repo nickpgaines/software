@@ -1791,7 +1791,7 @@ function MessagingPanel() {
           disabled={loading}
           onChange={(e) => setFromNumber(e.target.value)}
           className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
-          placeholder="+18435551234"
+          placeholder="e.g. +18435551234 (your Twilio number)"
         />
       </Field>
 
