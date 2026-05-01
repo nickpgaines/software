@@ -10,6 +10,7 @@ type Tab =
   | "subscriptions"
   | "messaging"
   | "calling"
+  | "email"
   | "billing";
 
 const TABS: { key: Tab; label: string }[] = [
@@ -19,6 +20,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "subscriptions", label: "Subscriptions" },
   { key: "messaging", label: "Messaging" },
   { key: "calling", label: "Calling" },
+  { key: "email", label: "Email" },
   { key: "billing", label: "Billing" },
 ];
 
@@ -85,6 +87,7 @@ function SettingsTabsInner({ username }: { username: string }) {
         {tab === "subscriptions" && <SubscriptionsPanel />}
         {tab === "messaging" && <MessagingPanel />}
         {tab === "calling" && <CallingPanel />}
+        {tab === "email" && <EmailPanel />}
         {tab === "billing" && <BillingPanel />}
       </div>
     </div>
@@ -2065,6 +2068,193 @@ function CallingPanel() {
         />
         Record calls
       </label>
+
+      {error && <p className="text-sm text-rose-600">{error}</p>}
+      <div className="flex items-center gap-3 pt-2">
+        <button
+          type="submit"
+          disabled={saving || loading}
+          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+        >
+          {saving ? "Saving…" : "Save changes"}
+        </button>
+        {savedAt && !saving && (
+          <span className="text-xs text-emerald-600">Saved</span>
+        )}
+      </div>
+    </form>
+  );
+}
+
+type EmailStatus = {
+  provider: string;
+  api_key_set: boolean;
+  api_key_prefix: string | null;
+  from_address: string | null;
+  from_name: string | null;
+  reply_to: string | null;
+  configured: boolean;
+};
+
+function EmailPanel() {
+  const [status, setStatus] = useState<EmailStatus | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const [apiKey, setApiKey] = useState("");
+  const [fromAddress, setFromAddress] = useState("");
+  const [fromName, setFromName] = useState("");
+  const [replyTo, setReplyTo] = useState("");
+
+  async function load() {
+    const res = await fetch("/api/settings/email", { cache: "no-store" });
+    if (res.ok) {
+      const s = (await res.json()) as EmailStatus;
+      setStatus(s);
+      setFromAddress(s.from_address ?? "");
+      setFromName(s.from_name ?? "");
+      setReplyTo(s.reply_to ?? "");
+    }
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setSaving(true);
+    const res = await fetch("/api/settings/email", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: apiKey || undefined,
+        from_address: fromAddress || undefined,
+        from_name: fromName,
+        reply_to: replyTo,
+      }),
+    });
+    setSaving(false);
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(data.error || "Could not save");
+      return;
+    }
+    const s = (await res.json()) as EmailStatus;
+    setStatus(s);
+    setApiKey("");
+    setSavedAt(Date.now());
+  }
+
+  return (
+    <form onSubmit={save} className="space-y-5">
+      <div>
+        <h2 className="text-lg font-semibold text-slate-900">Email</h2>
+        <p className="text-sm text-slate-500 mt-1">
+          Connect your Resend account to send email blasts to customers,
+          subscribers, and prospects.
+        </p>
+      </div>
+
+      <div
+        className={
+          "flex items-center gap-2 text-xs font-medium rounded-full px-3 py-1 w-fit " +
+          (status?.configured
+            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
+            : "bg-slate-100 text-slate-600 border border-slate-200")
+        }
+      >
+        <span
+          className={
+            "w-1.5 h-1.5 rounded-full " +
+            (status?.configured ? "bg-emerald-500" : "bg-slate-400")
+          }
+        />
+        {status?.configured ? "Connected" : "Not connected"}
+        {status?.from_address && (
+          <span className="text-slate-500 font-normal">
+            · {status.from_address}
+          </span>
+        )}
+      </div>
+
+      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3 text-sm">
+        <div className="font-medium text-slate-900">Setup steps</div>
+        <ol className="list-decimal list-inside space-y-1 text-slate-600">
+          <li>
+            Sign up at{" "}
+            <a
+              href="https://resend.com"
+              target="_blank"
+              rel="noreferrer"
+              className="text-slate-900 underline"
+            >
+              resend.com
+            </a>
+            .
+          </li>
+          <li>
+            Add your sending domain (e.g. <span className="font-mono">yourcompany.com</span>) in <strong>Resend → Domains</strong>, then add the SPF, DKIM, and DMARC DNS records they show you. Wait a few minutes for verification.
+          </li>
+          <li>
+            In <strong>Resend → API Keys</strong>, create a new API key with{" "}
+            <span className="font-mono">Sending access</span>. Copy it (only shown once).
+          </li>
+          <li>
+            Paste below. The <span className="font-mono">From address</span>{" "}
+            must be on a verified domain.
+          </li>
+        </ol>
+      </div>
+
+      <Field label="Resend API key">
+        <input
+          type="password"
+          value={apiKey}
+          disabled={loading}
+          onChange={(e) => setApiKey(e.target.value)}
+          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono"
+          placeholder={
+            status?.api_key_set
+              ? `${status.api_key_prefix || "re_"}…  (saved)`
+              : "re_xxxxxxxxxxxxxxxxxxxxxxxx"
+          }
+        />
+      </Field>
+      <Field label="From address">
+        <input
+          type="email"
+          value={fromAddress}
+          disabled={loading}
+          onChange={(e) => setFromAddress(e.target.value)}
+          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+          placeholder="hello@yourcompany.com"
+        />
+      </Field>
+      <Field label="From name">
+        <input
+          type="text"
+          value={fromName}
+          disabled={loading}
+          onChange={(e) => setFromName(e.target.value)}
+          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+          placeholder="Acme Window Cleaning"
+        />
+      </Field>
+      <Field label="Reply-to (optional)">
+        <input
+          type="email"
+          value={replyTo}
+          disabled={loading}
+          onChange={(e) => setReplyTo(e.target.value)}
+          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+          placeholder="support@yourcompany.com"
+        />
+      </Field>
 
       {error && <p className="text-sm text-rose-600">{error}</p>}
       <div className="flex items-center gap-3 pt-2">

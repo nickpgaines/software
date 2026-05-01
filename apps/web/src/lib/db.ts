@@ -526,6 +526,59 @@ async function init(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_calls_created_at ON calls(created_at);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_calls_twilio_call_sid ON calls(twilio_call_sid) WHERE twilio_call_sid IS NOT NULL;
 
+    CREATE TABLE IF NOT EXISTS email_settings (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      provider TEXT NOT NULL DEFAULT 'resend',
+      api_key TEXT,
+      from_address TEXT,
+      from_name TEXT,
+      reply_to TEXT,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    INSERT OR IGNORE INTO email_settings (id) VALUES (1);
+
+    CREATE TABLE IF NOT EXISTS email_blasts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      audience TEXT NOT NULL,
+      subject TEXT NOT NULL,
+      body_html TEXT NOT NULL,
+      body_text TEXT,
+      from_address TEXT,
+      from_name TEXT,
+      status TEXT NOT NULL DEFAULT 'queued',
+      recipient_count INTEGER NOT NULL DEFAULT 0,
+      sent_count INTEGER NOT NULL DEFAULT 0,
+      failed_count INTEGER NOT NULL DEFAULT 0,
+      created_by TEXT,
+      sent_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_email_blasts_created_at ON email_blasts(created_at);
+
+    CREATE TABLE IF NOT EXISTS email_recipients (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      blast_id INTEGER NOT NULL REFERENCES email_blasts(id) ON DELETE CASCADE,
+      customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
+      email TEXT NOT NULL,
+      name TEXT,
+      status TEXT NOT NULL DEFAULT 'queued',
+      provider_id TEXT,
+      error TEXT,
+      sent_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_email_recipients_blast ON email_recipients(blast_id);
+    CREATE INDEX IF NOT EXISTS idx_email_recipients_email ON email_recipients(email);
+
+    CREATE TABLE IF NOT EXISTS email_unsubscribes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL,
+      reason TEXT,
+      source TEXT,
+      unsubscribed_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_email_unsubscribes_email ON email_unsubscribes(email);
+
     CREATE TABLE IF NOT EXISTS payments (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
       job_id       INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
@@ -950,6 +1003,60 @@ export type Call = {
   ended_at: string | null;
   notes: string | null;
   created_at: string;
+};
+
+export type EmailSettings = {
+  id: number;
+  provider: string;
+  api_key: string | null;
+  from_address: string | null;
+  from_name: string | null;
+  reply_to: string | null;
+  updated_at: string;
+};
+
+export type EmailAudience =
+  | "all_customers"
+  | "active_subscribers"
+  | "non_subscribers"
+  | "prospects";
+
+export type EmailBlast = {
+  id: number;
+  audience: EmailAudience | string;
+  subject: string;
+  body_html: string;
+  body_text: string | null;
+  from_address: string | null;
+  from_name: string | null;
+  status: string;
+  recipient_count: number;
+  sent_count: number;
+  failed_count: number;
+  created_by: string | null;
+  sent_at: string | null;
+  created_at: string;
+};
+
+export type EmailRecipient = {
+  id: number;
+  blast_id: number;
+  customer_id: number | null;
+  email: string;
+  name: string | null;
+  status: string;
+  provider_id: string | null;
+  error: string | null;
+  sent_at: string | null;
+  created_at: string;
+};
+
+export type EmailUnsubscribe = {
+  id: number;
+  email: string;
+  reason: string | null;
+  source: string | null;
+  unsubscribed_at: string;
 };
 
 export type SubscriptionInterval =
