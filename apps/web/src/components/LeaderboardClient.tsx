@@ -1,6 +1,9 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import StaffScorecardModal from "./StaffScorecardModal";
+import NewSprintModal from "./NewSprintModal";
+import SprintWidget, { type Sprint } from "./SprintWidget";
 
 type View = "sales" | "tech";
 type Range = "today" | "week" | "month" | "year" | "custom";
@@ -91,9 +94,11 @@ function todayDateInput() {
 export default function LeaderboardClient({
   currentUser,
   currentStaffId,
+  isAdmin,
 }: {
   currentUser: string;
   currentStaffId: number | null;
+  isAdmin: boolean;
 }) {
   const [view, setView] = useState<View>("sales");
   const [range, setRange] = useState<Range>("month");
@@ -103,6 +108,30 @@ export default function LeaderboardClient({
   const [data, setData] = useState<Resp | null>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [scorecardId, setScorecardId] = useState<number | null>(null);
+  const [showNewSprint, setShowNewSprint] = useState(false);
+  const [sprints, setSprints] = useState<Sprint[]>([]);
+
+  const loadSprints = useCallback(async () => {
+    try {
+      const r = await fetch(`/api/sprints?view=${view}`);
+      if (!r.ok) return;
+      const j = (await r.json()) as { sprints: Sprint[] };
+      setSprints(j.sprints || []);
+    } catch {
+      // ignore
+    }
+  }, [view]);
+
+  useEffect(() => {
+    loadSprints();
+  }, [loadSprints]);
+
+  // Refresh sprint standings periodically so revenue numbers stay current.
+  useEffect(() => {
+    const t = setInterval(loadSprints, 60_000);
+    return () => clearInterval(t);
+  }, [loadSprints]);
 
   useEffect(() => {
     setMounted(true);
@@ -208,15 +237,40 @@ export default function LeaderboardClient({
         </div>
       </div>
 
-      <div className="flex justify-end">
-        <button className="text-sm border border-slate-200 bg-white hover:bg-slate-50 rounded-full px-4 py-2 flex items-center gap-2 text-slate-700">
-          <span className="text-lg leading-none">+</span> Start a sprint
-        </button>
-      </div>
+      {isAdmin && (
+        <div className="flex justify-end">
+          <button
+            onClick={() => setShowNewSprint(true)}
+            className="text-sm border border-slate-200 bg-white hover:bg-slate-50 rounded-full px-4 py-2 flex items-center gap-2 text-slate-700"
+          >
+            <span className="text-lg leading-none">+</span> Start a sprint
+          </button>
+        </div>
+      )}
 
-      <a
-        href="#rankings"
-        className="flex items-center gap-3 bg-white border border-slate-200 rounded-2xl px-5 py-4 hover:bg-slate-50 shadow-sm"
+      {sprints.length > 0 && (
+        <div className="space-y-3">
+          {sprints.map((s) => (
+            <SprintWidget
+              key={s.id}
+              sprint={s}
+              isAdmin={isAdmin}
+              onDeleted={loadSprints}
+            />
+          ))}
+        </div>
+      )}
+
+      <button
+        type="button"
+        onClick={() => {
+          if (me) setScorecardId(me.id);
+          else {
+            const el = document.getElementById("rankings");
+            if (el) el.scrollIntoView({ behavior: "smooth" });
+          }
+        }}
+        className="w-full text-left flex items-center gap-3 bg-white border border-slate-200 rounded-2xl px-5 py-4 hover:bg-slate-50 shadow-sm"
       >
         <div
           className={
@@ -247,7 +301,7 @@ export default function LeaderboardClient({
           </div>
         </div>
         <span className="text-slate-300 text-2xl leading-none">›</span>
-      </a>
+      </button>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard label="Total Revenue" value={money(total)} />
@@ -415,8 +469,9 @@ export default function LeaderboardClient({
                   return (
                     <tr
                       key={r.id}
+                      onClick={() => setScorecardId(r.id)}
                       className={
-                        "border-t border-slate-100 " +
+                        "border-t border-slate-100 cursor-pointer hover:bg-slate-50 " +
                         (isMe
                           ? "bg-amber-50/60 ring-1 ring-amber-200"
                           : isTop
@@ -491,6 +546,24 @@ export default function LeaderboardClient({
           </div>
         )}
       </div>
+
+      {scorecardId !== null && (
+        <StaffScorecardModal
+          staffId={scorecardId}
+          defaultView={view}
+          onClose={() => setScorecardId(null)}
+        />
+      )}
+      {showNewSprint && (
+        <NewSprintModal
+          view={view}
+          onClose={() => setShowNewSprint(false)}
+          onCreated={() => {
+            setShowNewSprint(false);
+            loadSprints();
+          }}
+        />
+      )}
     </div>
   );
 }

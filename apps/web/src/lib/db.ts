@@ -912,6 +912,26 @@ async function init(): Promise<void> {
       (1, 'Missed Call Text-Back', 'lead_created', 3, 0, '[]'),
       (2, 'CRACKED lead follow-up sequence', 'lead_created', 3, 0, '[]'),
       (3, 'Contact fresh leads', 'lead_created', 3, 0, '[]');
+
+    CREATE TABLE IF NOT EXISTS sprints (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      name         TEXT    NOT NULL,
+      description  TEXT,
+      view         TEXT    NOT NULL CHECK (view IN ('sales', 'tech')),
+      start_at     TEXT    NOT NULL,
+      end_at       TEXT    NOT NULL,
+      created_by   TEXT,
+      created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_sprints_view_end ON sprints(view, end_at);
+
+    CREATE TABLE IF NOT EXISTS sprint_prizes (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      sprint_id  INTEGER NOT NULL REFERENCES sprints(id) ON DELETE CASCADE,
+      place      INTEGER NOT NULL,
+      title      TEXT    NOT NULL DEFAULT ''
+    );
+    CREATE INDEX IF NOT EXISTS idx_sprint_prizes_sprint ON sprint_prizes(sprint_id);
   `);
 
   const tplCols = await _db
@@ -1505,6 +1525,24 @@ export type PaymentMethod =
   | "check"
   | "e_transfer"
   | "other";
+
+export type Sprint = {
+  id: number;
+  name: string;
+  description: string | null;
+  view: "sales" | "tech";
+  start_at: string;
+  end_at: string;
+  created_by: string | null;
+  created_at: string;
+};
+
+export type SprintPrize = {
+  id: number;
+  sprint_id: number;
+  place: number;
+  title: string;
+};
 
 export type Payment = {
   id: number;
