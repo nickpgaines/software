@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, type PayrollSettings, type CommissionTier } from "@/lib/db";
 import { resolveReportRange } from "@/lib/report-range";
 
 export const dynamic = "force-dynamic";
@@ -18,6 +18,7 @@ type StaffRow = {
 type RevenueRow = { staff_id: number; revenue: number };
 type TipsRow = { staff_id: number; tips: number };
 type PaidRow = { staff_id: number; role: "sales" | "tech" };
+type PlanSaleRow = { staff_id: number; sales: number };
 
 function displayName(s: StaffRow): string {
   const fn = (s.first_name || "").trim();
@@ -26,12 +27,56 @@ function displayName(s: StaffRow): string {
   return joined || (s.name || "").trim() || `Staff #${s.id}`;
 }
 
+function parseTiers(s: string): CommissionTier[] {
+  try {
+    const arr = JSON.parse(s);
+    if (!Array.isArray(arr)) return [];
+    const out: CommissionTier[] = [];
+    for (const t of arr) {
+      const threshold = Number(t?.threshold_cents);
+      const rate = Number(t?.rate);
+      if (Number.isFinite(threshold) && threshold >= 0 && Number.isFinite(rate) && rate >= 0 && rate <= 1) {
+        out.push({ threshold_cents: Math.round(threshold), rate });
+      }
+    }
+    out.sort((a, b) => a.threshold_cents - b.threshold_cents);
+    return out;
+  } catch {
+    return [];
+  }
+}
+
+// Progressive-tier commission: each portion of revenue between consecutive
+// thresholds is paid at that tier's rate. If no tier with threshold 0 exists,
+// revenue below the lowest threshold pays nothing.
+function tieredPayout(revenueCents: number, tiers: CommissionTier[]): number {
+  if (revenueCents <= 0 || tiers.length === 0) return 0;
+  let payout = 0;
+  for (let i = 0; i < tiers.length; i++) {
+    const tier = tiers[i];
+    const next = tiers[i + 1];
+    if (revenueCents <= tier.threshold_cents) break;
+    const upper = next ? next.threshold_cents : revenueCents;
+    const portion = Math.min(revenueCents, upper) - tier.threshold_cents;
+    if (portion > 0) payout += portion * tier.rate;
+  }
+  return Math.round(payout);
+}
+
 export async function GET(req: Request) {
   const db = await getDb();
   const url = new URL(req.url);
   const { range, start, end } = resolveReportRange(url.searchParams.get("range"));
   const startIso = start.toISOString();
   const endIso = end.toISOString();
+
+  const settings = (await db
+    .prepare(`SELECT * FROM payroll_settings WHERE id = 1`)
+    .get<PayrollSettings>()) || null;
+
+  const excludeOneTime = settings?.exclude_one_time_services === 1;
+  const jobFilter = excludeOneTime ? `AND j.recurring = 1` : ``;
+  const totalsJobFilter = excludeOneTime ? `AND recurring = 1` : ``;
 
   const staff = await db
     .prepare(
@@ -50,6 +95,7 @@ export async function GET(req: Request) {
          JOIN jobs j ON j.id = ja.job_id
         WHERE ja.role = 'sales'
           AND j.scheduled_at >= ? AND j.scheduled_at < ?
+          ${jobFilter}
         GROUP BY ja.staff_id`
     )
     .all<RevenueRow>(startIso, endIso);
@@ -62,6 +108,7 @@ export async function GET(req: Request) {
          JOIN jobs j ON j.id = ja.job_id
         WHERE ja.role = 'tech'
           AND j.scheduled_at >= ? AND j.scheduled_at < ?
+          ${jobFilter}
         GROUP BY ja.staff_id`
     )
     .all<RevenueRow>(startIso, endIso);
@@ -86,11 +133,26 @@ export async function GET(req: Request) {
     )
     .all<PaidRow>(startIso, endIso);
 
+  const planSaleRows = settings?.plan_sale_bonuses_enabled
+    ? await db
+        .prepare(
+          `SELECT sold_by_id AS staff_id, COUNT(*) AS sales
+             FROM customer_subscriptions
+            WHERE sold_by_id IS NOT NULL
+              AND status = 'active'
+              AND accepted_at IS NOT NULL
+              AND accepted_at >= ? AND accepted_at < ?
+            GROUP BY sold_by_id`
+        )
+        .all<PlanSaleRow>(startIso, endIso)
+    : [];
+
   const totalRevenueRow = (await db
     .prepare(
       `SELECT COALESCE(SUM(price_cents), 0) AS total
          FROM jobs
-        WHERE scheduled_at >= ? AND scheduled_at < ?`
+        WHERE scheduled_at >= ? AND scheduled_at < ?
+          ${totalsJobFilter}`
     )
     .get<{ total: number }>(startIso, endIso)) || { total: 0 };
 
@@ -106,49 +168,78 @@ export async function GET(req: Request) {
   const techRevById = new Map(techRevenue.map((r) => [r.staff_id, r.revenue]));
   const techTipsById = new Map(techTips.map((r) => [r.staff_id, r.tips]));
   const paidSet = new Set(paidRows.map((r) => `${r.staff_id}:${r.role}`));
+  const planSalesById = new Map(planSaleRows.map((r) => [r.staff_id, r.sales]));
+
+  const salesMode = settings?.sales_commission_mode || "flat";
+  const techMode = settings?.tech_commission_mode || "flat";
+  const salesTiers = parseTiers(settings?.sales_commission_tiers ?? "[]");
+  const techTiers = parseTiers(settings?.tech_commission_tiers ?? "[]");
+  const planBonusCents =
+    settings?.plan_sale_bonuses_enabled && settings.plan_sale_bonus_cents > 0
+      ? settings.plan_sale_bonus_cents
+      : 0;
 
   const sales = staff.map((s) => {
-    const rate = Number(s.sales_commission_rate) || 0;
     const revenue = salesRevById.get(s.id) || 0;
-    const payout = Math.round(revenue * rate);
+    const planBonus = (planSalesById.get(s.id) || 0) * planBonusCents;
+    let baseCommission = 0;
+    let effectiveRate = Number(s.sales_commission_rate) || 0;
+    if (salesMode === "tiers") {
+      baseCommission = tieredPayout(revenue, salesTiers);
+      effectiveRate = revenue > 0 ? baseCommission / revenue : 0;
+    } else {
+      baseCommission = Math.round(revenue * effectiveRate);
+    }
     return {
       id: s.id,
       name: displayName(s),
       email: s.email,
       role: s.permission_level,
-      rate,
+      rate: effectiveRate,
       total_cents: revenue,
       tips_cents: 0,
-      payout_cents: payout,
+      bonus_cents: planBonus,
+      payout_cents: baseCommission + planBonus,
       paid: paidSet.has(`${s.id}:sales`),
     };
   });
 
   const tech = staff.map((s) => {
-    const rate = Number(s.tech_commission_rate) || 0;
     const revenue = techRevById.get(s.id) || 0;
     const tips = techTipsById.get(s.id) || 0;
-    const payout = Math.round(revenue * rate) + tips;
+    let baseCommission = 0;
+    let effectiveRate = Number(s.tech_commission_rate) || 0;
+    if (techMode === "tiers") {
+      baseCommission = tieredPayout(revenue, techTiers);
+      effectiveRate = revenue > 0 ? baseCommission / revenue : 0;
+    } else {
+      baseCommission = Math.round(revenue * effectiveRate);
+    }
     return {
       id: s.id,
       name: displayName(s),
       email: s.email,
       role: s.permission_level,
-      rate,
+      rate: effectiveRate,
       total_cents: revenue,
       tips_cents: tips,
-      payout_cents: payout,
+      bonus_cents: 0,
+      payout_cents: baseCommission + tips,
       paid: paidSet.has(`${s.id}:tech`),
     };
   });
 
-  const salesCommission = sales.reduce((sum, r) => sum + r.payout_cents, 0);
+  const salesCommission = sales.reduce(
+    (sum, r) => sum + (r.payout_cents - r.bonus_cents),
+    0
+  );
   const techCommission = tech.reduce(
     (sum, r) => sum + (r.payout_cents - r.tips_cents),
     0
   );
   const tipsTotal = tech.reduce((sum, r) => sum + r.tips_cents, 0);
-  const totalPayout = salesCommission + techCommission + tipsTotal;
+  const planBonusTotal = sales.reduce((sum, r) => sum + r.bonus_cents, 0);
+  const totalPayout = salesCommission + techCommission + tipsTotal + planBonusTotal;
   const totalRevenue = totalRevenueRow.total;
   const netProfit = totalRevenue - totalPayout;
 
@@ -162,9 +253,11 @@ export async function GET(req: Request) {
       sales_commission_cents: salesCommission,
       tech_commission_cents: techCommission,
       tips_cents: tipsTotal,
+      plan_sale_bonus_cents: planBonusTotal,
       total_payout_cents: totalPayout,
       net_profit_cents: netProfit,
       total_tips_collected_cents: totalTipsRow.total,
     },
+    settings: settings,
   });
 }
