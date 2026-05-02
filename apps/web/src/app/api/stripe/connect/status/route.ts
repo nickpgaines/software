@@ -5,6 +5,7 @@ import {
   getCompany,
   syncAccountStatus,
 } from "@/lib/stripe";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -27,7 +28,8 @@ export async function GET() {
   }
 
   try {
-    const company = await getCompany();
+    const companyId = await requireCompanyId();
+    const company = await getCompany(companyId);
     if (!company.stripe_account_id) {
       return NextResponse.json({
         configured: true,
@@ -41,7 +43,7 @@ export async function GET() {
 
     const stripe = getStripe();
     const account = await stripe.accounts.retrieve(company.stripe_account_id);
-    await syncAccountStatus(company.stripe_account_id, account);
+    await syncAccountStatus(companyId, company.stripe_account_id, account);
 
     return NextResponse.json({
       configured: true,

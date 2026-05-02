@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 import {
   getStripe,
   isStripeConfigured,
@@ -20,7 +21,8 @@ export async function POST(
   }
 
   try {
-    const company = await getCompany();
+    const companyId = await requireCompanyId();
+    const company = await getCompany(companyId);
     if (!company.stripe_account_id) {
       return NextResponse.json(
         {
@@ -44,9 +46,9 @@ export async function POST(
     const jobId = Number(params.id);
     const job = (await db
       .prepare(
-        "SELECT j.id, j.customer_id, c.first_name, c.last_name, c.name, c.email FROM jobs j JOIN customers c ON c.id = j.customer_id WHERE j.id = ?"
+        "SELECT j.id, j.customer_id, c.first_name, c.last_name, c.name, c.email FROM jobs j JOIN customers c ON c.id = j.customer_id WHERE j.id = ? AND j.company_id = ?"
       )
-      .get(jobId)) as
+      .get(jobId, companyId)) as
       | {
           id: number;
           customer_id: number;

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type Staff } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -73,6 +74,7 @@ export async function GET(
   req: Request,
   { params }: { params: { id: string } }
 ) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const id = Number(params.id);
   const url = new URL(req.url);
@@ -86,8 +88,8 @@ export async function GET(
   );
 
   const staff = (await db
-    .prepare("SELECT * FROM staff WHERE id = ?")
-    .get(id)) as Staff | undefined;
+    .prepare("SELECT * FROM staff WHERE id = ? AND company_id = ?")
+    .get(id, companyId)) as Staff | undefined;
   if (!staff) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -99,10 +101,11 @@ export async function GET(
       `SELECT id, price_cents, interval, status, created_at
        FROM customer_subscriptions
        WHERE sold_by_id = ?
+         AND company_id = ?
          AND created_at >= ? AND created_at < ?
          AND status != 'canceled'`
     )
-    .all(id, start, end)) as {
+    .all(id, companyId, start, end)) as {
     id: number;
     price_cents: number;
     interval: string;
@@ -124,10 +127,11 @@ export async function GET(
        FROM jobs j
        JOIN job_assignments ja ON ja.job_id = j.id AND ja.role = ?
        WHERE ja.staff_id = ?
+         AND j.company_id = ?
          AND j.scheduled_at >= ? AND j.scheduled_at < ?
          AND COALESCE(j.recurring, 0) = 0`
     )
-    .get(role, id, start, end)) as { revenue: number; n: number };
+    .get(role, id, companyId, start, end)) as { revenue: number; n: number };
 
   const oneTimeAvg =
     oneTime.n > 0 ? Math.round(oneTime.revenue / oneTime.n) : 0;
@@ -137,11 +141,12 @@ export async function GET(
     .prepare(
       `SELECT status, COUNT(*) AS n
        FROM map_pins
-       WHERE LOWER(created_by) = LOWER(?)
+       WHERE company_id = ?
+         AND LOWER(created_by) = LOWER(?)
          AND created_at >= ? AND created_at < ?
        GROUP BY status`
     )
-    .all(staff.name, start, end)) as { status: string; n: number }[];
+    .all(companyId, staff.name, start, end)) as { status: string; n: number }[];
 
   const pin_counts: Record<PinStatus, number> = {
     sale: 0,

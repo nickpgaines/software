@@ -6,7 +6,7 @@ import {
   type InvoiceItem,
   type InvoiceStatus,
 } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionUser, getSessionContext } from "@/lib/auth";
 import {
   getCompany,
   isStripeConfigured,
@@ -62,9 +62,11 @@ function formatPrice(cents: number) {
 }
 
 export async function GET(req: Request) {
-  if (!getSessionUser()) {
+  const ctx = await getSessionContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const companyId = ctx.companyId;
   const db = await getDb();
   const url = new URL(req.url);
   const customerId = url.searchParams.get("customer_id");
@@ -73,24 +75,26 @@ export async function GET(req: Request) {
   if (customerId) {
     rows = (await db
       .prepare(
-        `SELECT * FROM invoices WHERE customer_id = ? ORDER BY created_at DESC, id DESC`
+        `SELECT * FROM invoices WHERE customer_id = ? AND company_id = ? ORDER BY created_at DESC, id DESC`
       )
-      .all(Number(customerId))) as Invoice[];
+      .all(Number(customerId), companyId)) as Invoice[];
   } else {
     rows = (await db
       .prepare(
-        `SELECT * FROM invoices ORDER BY created_at DESC, id DESC`
+        `SELECT * FROM invoices WHERE company_id = ? ORDER BY created_at DESC, id DESC`
       )
-      .all()) as Invoice[];
+      .all(companyId)) as Invoice[];
   }
   return NextResponse.json(rows);
 }
 
 export async function POST(req: Request) {
-  const user = getSessionUser();
-  if (!user) {
+  const ctx = await getSessionContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const user = ctx.identity;
+  const companyId = ctx.companyId;
   const db = await getDb();
   const body = (await req.json().catch(() => ({}))) as Partial<{
     customer_id: number;
@@ -113,8 +117,8 @@ export async function POST(req: Request) {
   }
 
   const customer = await db
-    .prepare("SELECT id, name FROM customers WHERE id = ?")
-    .get<{ id: number; name: string }>(customerId);
+    .prepare("SELECT id, name FROM customers WHERE id = ? AND company_id = ?")
+    .get<{ id: number; name: string }>(customerId, companyId);
   if (!customer) {
     return NextResponse.json({ error: "customer not found" }, { status: 404 });
   }
@@ -167,7 +171,7 @@ export async function POST(req: Request) {
   let payUrl: string | null = null;
   if (action === "send" && isStripeConfigured()) {
     try {
-      const company = await getCompany();
+      const company = await getCompany(companyId);
       if (company.stripe_account_id && company.stripe_charges_enabled) {
         payToken = makePayToken();
         payUrl = `${getAppOrigin(req)}/invoices/pay/${payToken}`;
@@ -182,13 +186,14 @@ export async function POST(req: Request) {
   const result = await db
     .prepare(
       `INSERT INTO invoices
-         (customer_id, job_id, title, notes, status,
+         (company_id, customer_id, job_id, title, notes, status,
           total_cents, paid_cents, tax_rate_bps,
           due_date, sent_at, paid_at,
           sold_by_id, created_by, stripe_pay_token)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
+      companyId,
       customerId,
       jobId,
       title,
@@ -236,15 +241,15 @@ export async function POST(req: Request) {
       `\nReply with any questions.`;
     await db
       .prepare(
-        `INSERT INTO messages (customer_id, body, direction)
-         VALUES (?, ?, 'outbound')`
+        `INSERT INTO messages (company_id, customer_id, body, direction)
+         VALUES (?, ?, ?, 'outbound')`
       )
-      .run(customerId, messageBody);
+      .run(companyId, customerId, messageBody);
   }
 
   const invoice = (await db
-    .prepare("SELECT * FROM invoices WHERE id = ?")
-    .get(invoiceId)) as Invoice;
+    .prepare("SELECT * FROM invoices WHERE id = ? AND company_id = ?")
+    .get(invoiceId, companyId)) as Invoice;
   const lineItems = (await db
     .prepare(
       "SELECT * FROM invoice_items WHERE invoice_id = ? ORDER BY position ASC, id ASC"

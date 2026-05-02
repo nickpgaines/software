@@ -23,20 +23,36 @@ export function isStripeConfigured(): boolean {
   );
 }
 
-export async function getCompany(): Promise<Company> {
+export async function getCompany(companyId: number): Promise<Company> {
   const db = await getDb();
   const row = (await db
-    .prepare("SELECT * FROM company WHERE id = 1")
-    .get()) as Company | undefined;
+    .prepare("SELECT * FROM company WHERE id = ? LIMIT 1")
+    .get(companyId)) as Company | undefined;
   if (!row) {
     throw new Error("Company row not found");
   }
   return row;
 }
 
-export async function getConnectedAccountId(): Promise<string | null> {
-  const c = await getCompany();
+export async function getConnectedAccountId(
+  companyId: number
+): Promise<string | null> {
+  const c = await getCompany(companyId);
   return c.stripe_account_id || null;
+}
+
+// Look up the company that owns a given Stripe connected account. Used by the
+// webhook handler, which knows the account id but not the session.
+export async function getCompanyByStripeAccount(
+  accountId: string
+): Promise<Company | null> {
+  const db = await getDb();
+  const row = (await db
+    .prepare(
+      "SELECT * FROM company WHERE stripe_account_id = ? LIMIT 1"
+    )
+    .get(accountId)) as Company | undefined;
+  return row ?? null;
 }
 
 /**
@@ -45,6 +61,7 @@ export async function getConnectedAccountId(): Promise<string | null> {
  * return, after a webhook).
  */
 export async function syncAccountStatus(
+  companyId: number,
   accountId: string,
   account: Stripe.Account
 ): Promise<void> {
@@ -57,13 +74,14 @@ export async function syncAccountStatus(
              stripe_payouts_enabled = ?,
              stripe_details_submitted = ?,
              updated_at = datetime('now')
-       WHERE id = 1`
+       WHERE id = ?`
     )
     .run(
       accountId,
       account.charges_enabled ? 1 : 0,
       account.payouts_enabled ? 1 : 0,
-      account.details_submitted ? 1 : 0
+      account.details_submitted ? 1 : 0,
+      companyId
     );
 }
 

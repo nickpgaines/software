@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
-import { getDb, type Customer } from "@/lib/db";
+import { getDb, type Customer, type MessagingSettings } from "@/lib/db";
 import {
-  getMessagingSettings,
   isMessagingConfigured,
   normalizeUSPhone,
   verifyTwilioSignature,
@@ -20,14 +19,28 @@ function buildPublicUrl(req: Request): string {
 }
 
 export async function POST(req: Request) {
-  const settings = await getMessagingSettings();
-  if (!isMessagingConfigured(settings)) {
-    return new NextResponse("Messaging not configured", { status: 503 });
-  }
-
   const raw = await req.text();
   const params: Record<string, string> = {};
   for (const [k, v] of new URLSearchParams(raw)) params[k] = v;
+
+  // Tenant identification: Twilio sends AccountSid on every webhook. Look up
+  // the messaging_settings row that holds it; that row's company_id is the
+  // tenant the inbound SMS belongs to.
+  const accountSid = params.AccountSid || "";
+  if (!accountSid) {
+    return new NextResponse("Missing AccountSid", { status: 400 });
+  }
+  const db = await getDb();
+  const settings = (await db
+    .prepare("SELECT * FROM messaging_settings WHERE account_sid = ? LIMIT 1")
+    .get(accountSid)) as MessagingSettings | undefined;
+  if (!settings || !isMessagingConfigured(settings)) {
+    console.warn(
+      `[messages/webhook] Webhook from unknown AccountSid ${accountSid}; dropping.`
+    );
+    return new NextResponse("Unknown account", { status: 404 });
+  }
+  const companyId = settings.company_id;
 
   const signature = req.headers.get("x-twilio-signature") || "";
   const url = buildPublicUrl(req);
@@ -48,12 +61,11 @@ export async function POST(req: Request) {
 
   const normalizedFrom = normalizeUSPhone(fromPhone) || fromPhone;
 
-  const db = await getDb();
   const customers = (await db
     .prepare(
-      "SELECT id, phone FROM customers WHERE phone IS NOT NULL AND TRIM(phone) != ''"
+      "SELECT id, phone FROM customers WHERE company_id = ? AND phone IS NOT NULL AND TRIM(phone) != ''"
     )
-    .all()) as Pick<Customer, "id" | "phone">[];
+    .all(companyId)) as Pick<Customer, "id" | "phone">[];
 
   const match = customers.find(
     (c) => normalizeUSPhone(c.phone) === normalizedFrom
@@ -61,7 +73,7 @@ export async function POST(req: Request) {
 
   if (!match) {
     console.warn(
-      `[messages/webhook] Inbound SMS from unknown number ${fromPhone}; dropping.`
+      `[messages/webhook] Inbound SMS from unknown number ${fromPhone} for company ${companyId}; dropping.`
     );
     return new NextResponse(TWIML_OK, { status: 200, headers: TWIML_HEADERS });
   }
@@ -69,10 +81,10 @@ export async function POST(req: Request) {
   await db
     .prepare(
       `INSERT INTO messages
-         (customer_id, body, direction, status, provider_sid, to_phone, from_phone)
-       VALUES (?, ?, 'inbound', 'received', ?, ?, ?)`
+         (company_id, customer_id, body, direction, status, provider_sid, to_phone, from_phone)
+       VALUES (?, ?, ?, 'inbound', 'received', ?, ?, ?)`
     )
-    .run(match.id, body, providerSid, toPhone, normalizedFrom);
+    .run(companyId, match.id, body, providerSid, toPhone, normalizedFrom);
 
   return new NextResponse(TWIML_OK, { status: 200, headers: TWIML_HEADERS });
 }

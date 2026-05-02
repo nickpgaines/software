@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type Customer } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 import { normalizeAddress } from "@/lib/customer-address";
 import { buildOriginFromRequest, sendWelcomeToCustomer } from "@/lib/email";
 
@@ -10,17 +11,19 @@ function buildName(first: string, last: string) {
 }
 
 export async function GET() {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const rows = (await db
     .prepare(
-      "SELECT * FROM customers ORDER BY first_name COLLATE NOCASE ASC, last_name COLLATE NOCASE ASC"
+      "SELECT * FROM customers WHERE company_id = ? ORDER BY first_name COLLATE NOCASE ASC, last_name COLLATE NOCASE ASC"
     )
-    .all()) as Customer[];
+    .all(companyId)) as Customer[];
   return NextResponse.json(rows);
 }
 
 export async function POST(req: Request) {
   try {
+    const companyId = await requireCompanyId();
     const db = await getDb();
     const body = (await req.json().catch(() => ({}))) as Partial<Customer>;
     const first = (body.first_name || "").trim();
@@ -47,14 +50,15 @@ export async function POST(req: Request) {
     );
     const stmt = db.prepare(
       `INSERT INTO customers
-         (name, first_name, last_name, phone, email,
+         (company_id, name, first_name, last_name, phone, email,
           address, address_line1, unit, city, state, zip,
           latitude, longitude, formatted_address, notes)
-       VALUES (?, ?, ?, ?, ?,
+       VALUES (?, ?, ?, ?, ?, ?,
                ?, ?, ?, ?, ?, ?,
                ?, ?, ?, ?)`
     );
     const result = await stmt.run(
+      companyId,
       name,
       first,
       last,
@@ -72,11 +76,11 @@ export async function POST(req: Request) {
       body.notes || null
     );
     const created = (await db
-      .prepare("SELECT * FROM customers WHERE id = ?")
-      .get(result.lastInsertRowid)) as Customer;
+      .prepare("SELECT * FROM customers WHERE id = ? AND company_id = ?")
+      .get(result.lastInsertRowid, companyId)) as Customer;
     if (created.email && created.email.trim()) {
       const origin = buildOriginFromRequest(req);
-      void sendWelcomeToCustomer(created.id, origin).catch((e) => {
+      void sendWelcomeToCustomer(created.id, companyId, origin).catch((e) => {
         console.error("welcome email failed", e);
       });
     }

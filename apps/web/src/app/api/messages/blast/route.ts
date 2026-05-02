@@ -6,6 +6,7 @@ import {
   normalizeUSPhone,
   sendSms,
 } from "@/lib/sms";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,7 @@ function applyMergeTags(template: string, customer: Customer): string {
 }
 
 export async function POST(req: Request) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const body = (await req.json().catch(() => ({}))) as Body;
   const text = (body.body || "").trim();
@@ -54,7 +56,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const settings = await getMessagingSettings();
+  const settings = await getMessagingSettings(companyId);
   if (!isMessagingConfigured(settings)) {
     return NextResponse.json(
       { error: "Messaging is not configured. Add Twilio credentials in Settings." },
@@ -64,8 +66,10 @@ export async function POST(req: Request) {
 
   const placeholders = ids.map(() => "?").join(",");
   const customers = (await db
-    .prepare(`SELECT * FROM customers WHERE id IN (${placeholders})`)
-    .all(...ids)) as Customer[];
+    .prepare(
+      `SELECT * FROM customers WHERE company_id = ? AND id IN (${placeholders})`
+    )
+    .all(companyId, ...ids)) as Customer[];
   const byId = new Map<number, Customer>();
   for (const c of customers) byId.set(c.id, c);
 
@@ -107,13 +111,13 @@ export async function POST(req: Request) {
     const insert = await db
       .prepare(
         `INSERT INTO messages
-           (customer_id, body, direction, status, error, provider_sid, to_phone, from_phone)
-         VALUES (?, ?, 'outbound', ?, ?, ?, ?, ?)`
+           (company_id, customer_id, body, direction, status, error, provider_sid, to_phone, from_phone)
+         VALUES (?, ?, ?, 'outbound', ?, ?, ?, ?, ?)`
       )
-      .run(id, personalizedText, status, errorMsg, providerSid, toPhone, fromPhone);
+      .run(companyId, id, personalizedText, status, errorMsg, providerSid, toPhone, fromPhone);
     const created = (await db
-      .prepare("SELECT * FROM messages WHERE id = ?")
-      .get(insert.lastInsertRowid)) as Message;
+      .prepare("SELECT * FROM messages WHERE id = ? AND company_id = ?")
+      .get(insert.lastInsertRowid, companyId)) as Message;
     messages.push(created);
   }
 

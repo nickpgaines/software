@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { getDb, type LeadForm } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -15,14 +16,18 @@ function slugify(name: string) {
 }
 
 export async function GET() {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const rows = (await db
-    .prepare("SELECT * FROM lead_forms ORDER BY created_at DESC")
-    .all()) as LeadForm[];
+    .prepare(
+      "SELECT * FROM lead_forms WHERE company_id = ? ORDER BY created_at DESC"
+    )
+    .all(companyId)) as LeadForm[];
   return NextResponse.json(rows);
 }
 
 export async function POST(req: Request) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const body = (await req.json().catch(() => ({}))) as Partial<LeadForm>;
   const name = (body.name || "").trim();
@@ -42,11 +47,11 @@ export async function POST(req: Request) {
         ]);
   const result = await db
     .prepare(
-      `INSERT INTO lead_forms (name, slug, fields, enabled) VALUES (?, ?, ?, 1)`
+      `INSERT INTO lead_forms (company_id, name, slug, fields, enabled) VALUES (?, ?, ?, ?, 1)`
     )
-    .run(name, slug, fields);
+    .run(companyId, name, slug, fields);
   const created = (await db
-    .prepare("SELECT * FROM lead_forms WHERE id = ?")
-    .get(result.lastInsertRowid)) as LeadForm;
+    .prepare("SELECT * FROM lead_forms WHERE id = ? AND company_id = ?")
+    .get(result.lastInsertRowid, companyId)) as LeadForm;
   return NextResponse.json(created, { status: 201 });
 }

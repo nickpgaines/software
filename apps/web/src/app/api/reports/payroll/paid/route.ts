@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { resolveReportRange } from "@/lib/report-range";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -31,23 +32,32 @@ export async function POST(req: Request) {
   const startIso = start.toISOString();
   const endIso = end.toISOString();
 
+  const companyId = await requireCompanyId();
   const db = await getDb();
+  // Confirm the staff member belongs to this tenant before recording.
+  const staff = await db
+    .prepare("SELECT id FROM staff WHERE id = ? AND company_id = ?")
+    .get(staff_id, companyId);
+  if (!staff) {
+    return NextResponse.json({ error: "Staff not found" }, { status: 404 });
+  }
   if (paid) {
     await db
       .prepare(
         `INSERT OR IGNORE INTO payroll_payouts
-           (staff_id, role, period_start, period_end)
-         VALUES (?, ?, ?, ?)`
+           (company_id, staff_id, role, period_start, period_end)
+         VALUES (?, ?, ?, ?, ?)`
       )
-      .run(staff_id, role, startIso, endIso);
+      .run(companyId, staff_id, role, startIso, endIso);
   } else {
     await db
       .prepare(
         `DELETE FROM payroll_payouts
-           WHERE staff_id = ? AND role = ?
+           WHERE company_id = ?
+             AND staff_id = ? AND role = ?
              AND period_start = ? AND period_end = ?`
       )
-      .run(staff_id, role, startIso, endIso);
+      .run(companyId, staff_id, role, startIso, endIso);
   }
   return NextResponse.json({ ok: true });
 }

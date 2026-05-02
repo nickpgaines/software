@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, type Call } from "@/lib/db";
 import { fetchTwilioRecording, getVoiceSettings } from "@/lib/voice";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -12,14 +13,15 @@ export async function GET(
   if (!id) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const call = (await db
-    .prepare("SELECT * FROM calls WHERE id = ?")
-    .get(id)) as Call | undefined;
+    .prepare("SELECT * FROM calls WHERE id = ? AND company_id = ?")
+    .get(id, companyId)) as Call | undefined;
   if (!call || !call.recording_sid) {
     return NextResponse.json({ error: "Recording not found" }, { status: 404 });
   }
-  const settings = await getVoiceSettings();
+  const settings = await getVoiceSettings(companyId);
   const result = await fetchTwilioRecording({
     settings,
     recordingSid: call.recording_sid,

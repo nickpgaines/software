@@ -4,6 +4,7 @@ import {
   buildOriginFromRequest,
   sendAutomationToAudience,
 } from "@/lib/email";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -15,10 +16,13 @@ export async function POST(req: Request, { params }: Params) {
   if (!Number.isFinite(id)) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const automation = (await db
-    .prepare(`SELECT * FROM email_automations WHERE id = ?`)
-    .get(id)) as EmailAutomation | undefined;
+    .prepare(
+      `SELECT * FROM email_automations WHERE id = ? AND company_id = ?`
+    )
+    .get(id, companyId)) as EmailAutomation | undefined;
   if (!automation) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, type MessagingSettings } from "@/lib/db";
 import { normalizeUSPhone } from "@/lib/sms";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -27,18 +28,20 @@ function toPublic(s: MessagingSettings): PublicSettings {
   };
 }
 
-async function readSettings(): Promise<MessagingSettings> {
+async function readSettings(companyId: number): Promise<MessagingSettings> {
   const db = await getDb();
   // Wrap in a write transaction to force a primary read. Plain reads can hit
   // a Turso edge replica that lags behind the primary.
   return await db.transaction(async (tx) => {
     const row = (await tx
-      .prepare("SELECT * FROM messaging_settings WHERE id = 1")
-      .get()) as MessagingSettings | undefined;
+      .prepare(
+        "SELECT * FROM messaging_settings WHERE company_id = ? LIMIT 1"
+      )
+      .get(companyId)) as MessagingSettings | undefined;
     return (
       row ?? {
-        id: 1,
-        company_id: 1,
+        id: 0,
+        company_id: companyId,
         provider: "twilio",
         account_sid: null,
         auth_token: null,
@@ -59,11 +62,13 @@ const NO_CACHE_HEADERS = {
 } as const;
 
 export async function GET() {
-  const s = await readSettings();
+  const companyId = await requireCompanyId();
+  const s = await readSettings(companyId);
   return NextResponse.json(toPublic(s), { headers: NO_CACHE_HEADERS });
 }
 
 export async function PUT(req: Request) {
+  const companyId = await requireCompanyId();
   const body = (await req.json().catch(() => ({}))) as Partial<{
     account_sid: string;
     auth_token: string;
@@ -93,7 +98,7 @@ export async function PUT(req: Request) {
   }
 
   const db = await getDb();
-  const current = await readSettings();
+  const current = await readSettings(companyId);
 
   const nextSid = sid || current.account_sid;
   const nextToken = token || current.auth_token;
@@ -112,18 +117,24 @@ export async function PUT(req: Request) {
     );
   }
 
-  await db
-    .prepare(
-      `INSERT INTO messaging_settings
-         (id, provider, account_sid, auth_token, from_number, updated_at)
-       VALUES (1, 'twilio', ?, ?, ?, datetime('now'))
-       ON CONFLICT(id) DO UPDATE SET
-         account_sid = excluded.account_sid,
-         auth_token  = excluded.auth_token,
-         from_number = excluded.from_number,
-         updated_at  = excluded.updated_at`
-    )
-    .run(nextSid, nextToken, nextFrom);
+  if (current.id) {
+    await db
+      .prepare(
+        `UPDATE messaging_settings
+            SET account_sid = ?, auth_token = ?, from_number = ?,
+                updated_at  = datetime('now')
+          WHERE id = ? AND company_id = ?`
+      )
+      .run(nextSid, nextToken, nextFrom, current.id, companyId);
+  } else {
+    await db
+      .prepare(
+        `INSERT INTO messaging_settings
+           (company_id, provider, account_sid, auth_token, from_number, updated_at)
+         VALUES (?, 'twilio', ?, ?, ?, datetime('now'))`
+      )
+      .run(companyId, nextSid, nextToken, nextFrom);
+  }
 
   // Build the response from the values we just wrote. Reading back via a
   // separate query can hit a Turso replica that hasn't caught up yet, which
@@ -131,7 +142,8 @@ export async function PUT(req: Request) {
   // succeeded.
   const updated: MessagingSettings = {
     ...current,
-    id: 1,
+    id: current.id || 0,
+    company_id: companyId,
     provider: current.provider || "twilio",
     account_sid: nextSid,
     auth_token: nextToken,

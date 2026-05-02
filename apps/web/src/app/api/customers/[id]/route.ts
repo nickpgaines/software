@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type Customer } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 import { normalizeAddress } from "@/lib/customer-address";
 
 export const dynamic = "force-dynamic";
@@ -16,12 +17,13 @@ export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const id = Number(params.id);
   const body = (await req.json().catch(() => ({}))) as Partial<Customer>;
   const existing = (await db
-    .prepare("SELECT * FROM customers WHERE id = ?")
-    .get(id)) as Customer | undefined;
+    .prepare("SELECT * FROM customers WHERE id = ? AND company_id = ?")
+    .get(id, companyId)) as Customer | undefined;
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -83,7 +85,7 @@ export async function PATCH(
      SET name = ?, first_name = ?, last_name = ?, phone = ?, email = ?,
          address = ?, address_line1 = ?, unit = ?, city = ?, state = ?, zip = ?,
          latitude = ?, longitude = ?, formatted_address = ?, notes = ?
-     WHERE id = ?`
+     WHERE id = ? AND company_id = ?`
   ).run(
     name,
     first,
@@ -100,11 +102,12 @@ export async function PATCH(
     addr.longitude,
     addr.formatted_address,
     body.notes ?? existing.notes,
-    id
+    id,
+    companyId
   );
   const updated = (await db
-    .prepare("SELECT * FROM customers WHERE id = ?")
-    .get(id)) as Customer;
+    .prepare("SELECT * FROM customers WHERE id = ? AND company_id = ?")
+    .get(id, companyId)) as Customer;
   return NextResponse.json(updated);
 }
 
@@ -112,8 +115,11 @@ export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const id = Number(params.id);
-  await db.prepare("DELETE FROM customers WHERE id = ?").run(id);
+  await db
+    .prepare("DELETE FROM customers WHERE id = ? AND company_id = ?")
+    .run(id, companyId);
   return NextResponse.json({ ok: true });
 }

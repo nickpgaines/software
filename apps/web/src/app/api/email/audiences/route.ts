@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { fetchAudience } from "@/lib/email";
 import type { EmailAudience } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +20,7 @@ const LABELS: Record<EmailAudience, string> = {
 };
 
 export async function GET(req: Request) {
+  const companyId = await requireCompanyId();
   const url = new URL(req.url);
   const audienceParam = url.searchParams.get("audience") as
     | EmailAudience
@@ -31,7 +33,7 @@ export async function GET(req: Request) {
         { status: 400 }
       );
     }
-    const recipients = await fetchAudience(audienceParam);
+    const recipients = await fetchAudience(audienceParam, companyId);
     return NextResponse.json({
       audience: audienceParam,
       label: LABELS[audienceParam],
@@ -44,7 +46,7 @@ export async function GET(req: Request) {
     ALL_AUDIENCES.map(async (a) => ({
       audience: a,
       label: LABELS[a],
-      count: (await fetchAudience(a)).length,
+      count: (await fetchAudience(a, companyId)).length,
     }))
   );
   return NextResponse.json({ audiences: counts });

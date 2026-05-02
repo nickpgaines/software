@@ -6,6 +6,7 @@ import {
   syncAccountStatus,
 } from "@/lib/stripe";
 import { getDb } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,7 @@ export async function GET(req: Request) {
   }
 
   try {
+    const companyId = await requireCompanyId();
     const stripe = getStripe();
     const token = await stripe.oauth.token({
       grant_type: "authorization_code",
@@ -55,13 +57,13 @@ export async function GET(req: Request) {
     const db = await getDb();
     await db
       .prepare(
-        "UPDATE company SET stripe_account_id = ?, stripe_account_type = 'standard', updated_at = datetime('now') WHERE id = 1"
+        "UPDATE company SET stripe_account_id = ?, stripe_account_type = 'standard', updated_at = datetime('now') WHERE id = ?"
       )
-      .run(accountId);
+      .run(accountId, companyId);
 
     try {
       const account = await stripe.accounts.retrieve(accountId);
-      await syncAccountStatus(accountId, account);
+      await syncAccountStatus(companyId, accountId, account);
     } catch {
       // ignore — the dashboard will refresh on next status check
     }

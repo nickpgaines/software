@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
 import { getDb, type Lead } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const url = new URL(req.url);
   const stage = url.searchParams.get("stage");
   const search = url.searchParams.get("q")?.trim();
-  const where: string[] = [];
-  const args: (string | number)[] = [];
+  const where: string[] = ["company_id = ?"];
+  const args: (string | number)[] = [companyId];
   if (stage) {
     where.push("stage = ?");
     args.push(stage);
@@ -25,13 +27,14 @@ export async function GET(req: Request) {
     args.push(like, like, like, like);
   }
   const sql =
-    `SELECT * FROM leads ${where.length ? "WHERE " + where.join(" AND ") : ""}` +
+    `SELECT * FROM leads WHERE ${where.join(" AND ")}` +
     " ORDER BY position ASC, created_at DESC";
   const rows = (await db.prepare(sql).all(...args)) as Lead[];
   return NextResponse.json(rows);
 }
 
 export async function POST(req: Request) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const body = (await req.json().catch(() => ({}))) as Partial<Lead>;
   const first = (body.first_name || "").trim() || null;
@@ -46,12 +49,13 @@ export async function POST(req: Request) {
   const result = await db
     .prepare(
       `INSERT INTO leads
-         (first_name, last_name, email, phone, address, source,
+         (company_id, first_name, last_name, email, phone, address, source,
           source_page_id, source_page_name, source_form_id, source_form_name,
           stage, notes)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
+      companyId,
       first,
       last,
       body.email || null,
@@ -66,7 +70,7 @@ export async function POST(req: Request) {
       body.notes || null
     );
   const created = (await db
-    .prepare("SELECT * FROM leads WHERE id = ?")
-    .get(result.lastInsertRowid)) as Lead;
+    .prepare("SELECT * FROM leads WHERE id = ? AND company_id = ?")
+    .get(result.lastInsertRowid, companyId)) as Lead;
   return NextResponse.json(created, { status: 201 });
 }

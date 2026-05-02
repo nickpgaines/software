@@ -28,20 +28,15 @@ export async function POST(
     );
   }
 
-  const company = await getCompany();
-  if (!company.stripe_account_id || !company.stripe_charges_enabled) {
-    return NextResponse.json(
-      { error: "Payments aren't available right now." },
-      { status: 503 }
-    );
-  }
-
   const db = await getDb();
   const token = String(params.token || "");
   if (!token) {
     return NextResponse.json({ error: "Invalid link" }, { status: 400 });
   }
 
+  // Tenant identification: the unguessable pay-token belongs to exactly one
+  // invoice, and the invoice carries its tenant's company_id. Resolve the
+  // company from there rather than the session (this route has no session).
   const invoice = (await db
     .prepare(
       "SELECT * FROM invoices WHERE stripe_pay_token = ? LIMIT 1"
@@ -49,6 +44,13 @@ export async function POST(
     .get(token)) as Invoice | undefined;
   if (!invoice) {
     return NextResponse.json({ error: "Invoice not found" }, { status: 404 });
+  }
+  const company = await getCompany(invoice.company_id);
+  if (!company.stripe_account_id || !company.stripe_charges_enabled) {
+    return NextResponse.json(
+      { error: "Payments aren't available right now." },
+      { status: 503 }
+    );
   }
   if (invoice.status === "paid") {
     return NextResponse.json(
@@ -77,8 +79,8 @@ export async function POST(
   }
 
   const customer = (await db
-    .prepare("SELECT name, email FROM customers WHERE id = ?")
-    .get(invoice.customer_id)) as
+    .prepare("SELECT name, email FROM customers WHERE id = ? AND company_id = ?")
+    .get(invoice.customer_id, invoice.company_id)) as
     | { name: string | null; email: string | null }
     | undefined;
 
@@ -145,9 +147,9 @@ export async function POST(
   if (session.url) {
     await db
       .prepare(
-        "UPDATE invoices SET stripe_checkout_session_id = ?, updated_at = datetime('now') WHERE id = ?"
+        "UPDATE invoices SET stripe_checkout_session_id = ?, updated_at = datetime('now') WHERE id = ? AND company_id = ?"
       )
-      .run(session.id, invoice.id);
+      .run(session.id, invoice.id, invoice.company_id);
   }
 
   return NextResponse.json({ url: session.url });

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type SubscriptionTerms } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionContext } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -8,13 +8,18 @@ export async function GET(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  if (!getSessionUser()) {
+  const ctx = await getSessionContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const db = await getDb();
   const row = (await db
-    .prepare("SELECT * FROM subscription_terms WHERE id = ?")
-    .get(Number(params.id))) as SubscriptionTerms | undefined;
+    .prepare(
+      "SELECT * FROM subscription_terms WHERE id = ? AND company_id = ?"
+    )
+    .get(Number(params.id), ctx.companyId)) as
+    | SubscriptionTerms
+    | undefined;
   if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(row);
 }
@@ -23,14 +28,17 @@ export async function PUT(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  if (!getSessionUser()) {
+  const ctx = await getSessionContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const db = await getDb();
   const id = Number(params.id);
   const existing = (await db
-    .prepare("SELECT * FROM subscription_terms WHERE id = ?")
-    .get(id)) as SubscriptionTerms | undefined;
+    .prepare(
+      "SELECT * FROM subscription_terms WHERE id = ? AND company_id = ?"
+    )
+    .get(id, ctx.companyId)) as SubscriptionTerms | undefined;
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -50,12 +58,14 @@ export async function PUT(
     .prepare(
       `UPDATE subscription_terms
          SET name = ?, body = ?, updated_at = datetime('now')
-       WHERE id = ?`
+       WHERE id = ? AND company_id = ?`
     )
-    .run(name, text, id);
+    .run(name, text, id, ctx.companyId);
   const row = (await db
-    .prepare("SELECT * FROM subscription_terms WHERE id = ?")
-    .get(id)) as SubscriptionTerms;
+    .prepare(
+      "SELECT * FROM subscription_terms WHERE id = ? AND company_id = ?"
+    )
+    .get(id, ctx.companyId)) as SubscriptionTerms;
   return NextResponse.json(row);
 }
 
@@ -63,13 +73,16 @@ export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  if (!getSessionUser()) {
+  const ctx = await getSessionContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const db = await getDb();
   const result = await db
-    .prepare("DELETE FROM subscription_terms WHERE id = ?")
-    .run(Number(params.id));
+    .prepare(
+      "DELETE FROM subscription_terms WHERE id = ? AND company_id = ?"
+    )
+    .run(Number(params.id), ctx.companyId);
   if (result.changes === 0) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

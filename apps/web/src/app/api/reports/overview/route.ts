@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { resolveReportRange } from "@/lib/report-range";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const url = new URL(req.url);
   const { range, start, end } = resolveReportRange(url.searchParams.get("range"));
@@ -18,9 +20,10 @@ export async function GET(req: Request) {
          COALESCE(SUM(CASE WHEN status = 'completed' THEN price_cents ELSE 0 END), 0) AS collected,
          COALESCE(SUM(CASE WHEN status = 'scheduled' THEN price_cents ELSE 0 END), 0) AS unpaid
        FROM jobs
-       WHERE scheduled_at >= ? AND scheduled_at < ?`
+       WHERE company_id = ?
+         AND scheduled_at >= ? AND scheduled_at < ?`
     )
-    .get(startIso, endIso)) as {
+    .get(companyId, startIso, endIso)) as {
     total: number;
     collected: number;
     unpaid: number;
@@ -37,9 +40,10 @@ export async function GET(req: Request) {
          COALESCE(SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END), 0) AS cancelled,
          COALESCE(AVG(price_cents), 0) AS avg_value
        FROM jobs
-       WHERE scheduled_at >= ? AND scheduled_at < ?`
+       WHERE company_id = ?
+         AND scheduled_at >= ? AND scheduled_at < ?`
     )
-    .get(startIso, endIso)) as {
+    .get(companyId, startIso, endIso)) as {
     total: number;
     completed: number;
     scheduled: number;
@@ -48,23 +52,27 @@ export async function GET(req: Request) {
   };
 
   const totalCustomers = (
-    (await db.prepare("SELECT COUNT(*) AS n FROM customers").get()) as { n: number }
+    (await db
+      .prepare("SELECT COUNT(*) AS n FROM customers WHERE company_id = ?")
+      .get(companyId)) as { n: number }
   ).n;
   const newCustomers = (
     (await db
       .prepare(
-        "SELECT COUNT(*) AS n FROM customers WHERE created_at >= ? AND created_at < ?"
+        "SELECT COUNT(*) AS n FROM customers WHERE company_id = ? AND created_at >= ? AND created_at < ?"
       )
-      .get(startIso, endIso)) as { n: number }
+      .get(companyId, startIso, endIso)) as { n: number }
   ).n;
   const repeatCustomers = (
     (await db
       .prepare(
         `SELECT COUNT(*) AS n FROM (
-           SELECT customer_id FROM jobs GROUP BY customer_id HAVING COUNT(*) > 1
+           SELECT customer_id FROM jobs
+            WHERE company_id = ?
+            GROUP BY customer_id HAVING COUNT(*) > 1
          )`
       )
-      .get()) as { n: number }
+      .get(companyId)) as { n: number }
   ).n;
 
   return NextResponse.json({

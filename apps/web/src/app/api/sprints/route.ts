@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { getDb, type Sprint, type SprintPrize, type Staff } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth";
+import { getDb, type Sprint, type SprintPrize } from "@/lib/db";
+import { getSessionContext } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -19,26 +19,33 @@ type SprintWithExtras = Sprint & {
   standings: Standing[];
 };
 
-function adminUsername() {
-  return process.env.ADMIN_USERNAME || "admin";
-}
-
-async function requireAdmin(): Promise<{ ok: true; user: string } | NextResponse> {
-  const user = getSessionUser();
-  if (!user) {
+async function requireAdmin(): Promise<
+  { ok: true; user: string; companyId: number } | NextResponse
+> {
+  const ctx = await getSessionContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   }
-  if (user === adminUsername()) return { ok: true, user };
+  if (ctx.isPlatformAdmin) {
+    return { ok: true, user: ctx.identity, companyId: ctx.companyId };
+  }
   const db = await getDb();
   const staff = (await db
-    .prepare("SELECT * FROM staff WHERE LOWER(email) = ? LIMIT 1")
-    .get(user.toLowerCase())) as Staff | undefined;
-  if (staff?.permission_level === "admin") return { ok: true, user };
+    .prepare(
+      "SELECT permission_level FROM staff WHERE id = ? AND company_id = ? LIMIT 1"
+    )
+    .get(ctx.staffId, ctx.companyId)) as
+    | { permission_level: string }
+    | undefined;
+  if (staff?.permission_level === "admin") {
+    return { ok: true, user: ctx.identity, companyId: ctx.companyId };
+  }
   return NextResponse.json({ error: "Admins only" }, { status: 403 });
 }
 
 async function loadStandings(
-  sprint: Sprint
+  sprint: Sprint,
+  companyId: number
 ): Promise<Standing[]> {
   const db = await getDb();
   const role = sprint.view === "tech" ? "tech" : "sales";
@@ -50,27 +57,37 @@ async function loadStandings(
        FROM staff s
        LEFT JOIN job_assignments ja ON ja.staff_id = s.id AND ja.role = ?
        LEFT JOIN jobs j ON j.id = ja.job_id
+         AND j.company_id = ?
          AND j.scheduled_at >= ? AND j.scheduled_at < ?
+       WHERE s.company_id = ?
        GROUP BY s.id
        HAVING COUNT(j.id) > 0
        ORDER BY revenue_cents DESC, s.name COLLATE NOCASE ASC`
     )
-    .all(role, sprint.start_at, sprint.end_at)) as Standing[];
+    .all(role, companyId, sprint.start_at, sprint.end_at, companyId)) as Standing[];
   return rows;
 }
 
-async function hydrate(sprint: Sprint): Promise<SprintWithExtras> {
+async function hydrate(
+  sprint: Sprint,
+  companyId: number
+): Promise<SprintWithExtras> {
   const db = await getDb();
   const prizes = (await db
     .prepare(
       `SELECT * FROM sprint_prizes WHERE sprint_id = ? ORDER BY place ASC`
     )
     .all(sprint.id)) as SprintPrize[];
-  const standings = await loadStandings(sprint);
+  const standings = await loadStandings(sprint, companyId);
   return { ...sprint, prizes, standings };
 }
 
 export async function GET(req: Request) {
+  const ctx = await getSessionContext();
+  if (!ctx) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const companyId = ctx.companyId;
   const db = await getDb();
   const url = new URL(req.url);
   const view = (url.searchParams.get("view") || "sales") as View;
@@ -79,11 +96,13 @@ export async function GET(req: Request) {
   const sprints = (await db
     .prepare(
       includeEnded
-        ? `SELECT * FROM sprints WHERE view = ? ORDER BY end_at DESC`
-        : `SELECT * FROM sprints WHERE view = ? AND end_at > ? ORDER BY end_at ASC`
+        ? `SELECT * FROM sprints WHERE company_id = ? AND view = ? ORDER BY end_at DESC`
+        : `SELECT * FROM sprints WHERE company_id = ? AND view = ? AND end_at > ? ORDER BY end_at ASC`
     )
-    .all(...(includeEnded ? [view] : [view, nowIso]))) as Sprint[];
-  const out = await Promise.all(sprints.map(hydrate));
+    .all(
+      ...(includeEnded ? [companyId, view] : [companyId, view, nowIso])
+    )) as Sprint[];
+  const out = await Promise.all(sprints.map((s) => hydrate(s, companyId)));
   return NextResponse.json({ sprints: out });
 }
 
@@ -126,10 +145,11 @@ export async function POST(req: Request) {
   const db = await getDb();
   const r = await db
     .prepare(
-      `INSERT INTO sprints (name, description, view, start_at, end_at, created_by)
-       VALUES (?, ?, ?, ?, ?, ?)`
+      `INSERT INTO sprints (company_id, name, description, view, start_at, end_at, created_by)
+       VALUES (?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
+      auth.companyId,
       name,
       body.description?.trim() || null,
       view,
@@ -155,7 +175,7 @@ export async function POST(req: Request) {
   }
 
   const sprint = (await db
-    .prepare(`SELECT * FROM sprints WHERE id = ?`)
-    .get(sprintId)) as Sprint;
-  return NextResponse.json(await hydrate(sprint));
+    .prepare(`SELECT * FROM sprints WHERE id = ? AND company_id = ?`)
+    .get(sprintId, auth.companyId)) as Sprint;
+  return NextResponse.json(await hydrate(sprint, auth.companyId));
 }

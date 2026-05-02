@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, type Staff, type PermissionLevel } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -30,11 +31,12 @@ export async function GET(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const id = Number(params.id);
-  const row = (await db.prepare("SELECT * FROM staff WHERE id = ?").get(id)) as
-    | Staff
-    | undefined;
+  const row = (await db
+    .prepare("SELECT * FROM staff WHERE id = ? AND company_id = ?")
+    .get(id, companyId)) as Staff | undefined;
   if (!row) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -58,12 +60,13 @@ export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const id = Number(params.id);
   const body = (await req.json().catch(() => ({}))) as PatchBody;
-  const existing = (await db.prepare("SELECT * FROM staff WHERE id = ?").get(id)) as
-    | Staff
-    | undefined;
+  const existing = (await db
+    .prepare("SELECT * FROM staff WHERE id = ? AND company_id = ?")
+    .get(id, companyId)) as Staff | undefined;
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -83,12 +86,14 @@ export async function PATCH(
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
     const role = body.role === undefined ? existing.role : body.role;
-    await db.prepare("UPDATE staff SET name = ?, role = ? WHERE id = ?").run(
-      name,
-      role,
-      id
-    );
-    const updated = (await db.prepare("SELECT * FROM staff WHERE id = ?").get(id)) as Staff;
+    await db
+      .prepare(
+        "UPDATE staff SET name = ?, role = ? WHERE id = ? AND company_id = ?"
+      )
+      .run(name, role, id, companyId);
+    const updated = (await db
+      .prepare("SELECT * FROM staff WHERE id = ? AND company_id = ?")
+      .get(id, companyId)) as Staff;
     return NextResponse.json(updated);
   }
 
@@ -158,7 +163,7 @@ export async function PATCH(
      SET name = ?, first_name = ?, last_name = ?, phone = ?, email = ?,
          password_hash = ?, color = ?, permission_level = ?, photo_url = ?,
          updated_at = datetime('now')
-     WHERE id = ?`
+     WHERE id = ? AND company_id = ?`
   ).run(
     fullName,
     first_name,
@@ -169,9 +174,12 @@ export async function PATCH(
     color,
     permission_level,
     photo_url,
-    id
+    id,
+    companyId
   );
-  const updated = (await db.prepare("SELECT * FROM staff WHERE id = ?").get(id)) as Staff;
+  const updated = (await db
+    .prepare("SELECT * FROM staff WHERE id = ? AND company_id = ?")
+    .get(id, companyId)) as Staff;
   return NextResponse.json(updated);
 }
 
@@ -179,8 +187,11 @@ export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const id = Number(params.id);
-  await db.prepare("DELETE FROM staff WHERE id = ?").run(id);
+  await db
+    .prepare("DELETE FROM staff WHERE id = ? AND company_id = ?")
+    .run(id, companyId);
   return NextResponse.json({ ok: true });
 }

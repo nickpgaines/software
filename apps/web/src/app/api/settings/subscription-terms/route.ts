@@ -1,24 +1,26 @@
 import { NextResponse } from "next/server";
 import { getDb, type SubscriptionTerms } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionContext } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  if (!getSessionUser()) {
+  const ctx = await getSessionContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const db = await getDb();
   const rows = (await db
     .prepare(
-      "SELECT * FROM subscription_terms ORDER BY name COLLATE NOCASE ASC, id ASC"
+      "SELECT * FROM subscription_terms WHERE company_id = ? ORDER BY name COLLATE NOCASE ASC, id ASC"
     )
-    .all()) as SubscriptionTerms[];
+    .all(ctx.companyId)) as SubscriptionTerms[];
   return NextResponse.json(rows);
 }
 
 export async function POST(req: Request) {
-  if (!getSessionUser()) {
+  const ctx = await getSessionContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const db = await getDb();
@@ -36,11 +38,13 @@ export async function POST(req: Request) {
   }
   const result = await db
     .prepare(
-      `INSERT INTO subscription_terms (name, body) VALUES (?, ?)`
+      `INSERT INTO subscription_terms (company_id, name, body) VALUES (?, ?, ?)`
     )
-    .run(name, text);
+    .run(ctx.companyId, name, text);
   const row = (await db
-    .prepare("SELECT * FROM subscription_terms WHERE id = ?")
-    .get(result.lastInsertRowid)) as SubscriptionTerms;
+    .prepare(
+      "SELECT * FROM subscription_terms WHERE id = ? AND company_id = ?"
+    )
+    .get(result.lastInsertRowid, ctx.companyId)) as SubscriptionTerms;
   return NextResponse.json(row, { status: 201 });
 }

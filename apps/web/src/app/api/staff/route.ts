@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, type Staff, type PermissionLevel } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -27,10 +28,13 @@ const ALLOWED_COLORS = [
 ];
 
 export async function GET() {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const rows = (await db
-    .prepare("SELECT * FROM staff ORDER BY name COLLATE NOCASE ASC")
-    .all()) as Staff[];
+    .prepare(
+      "SELECT * FROM staff WHERE company_id = ? ORDER BY name COLLATE NOCASE ASC"
+    )
+    .all(companyId)) as Staff[];
   return NextResponse.json(rows);
 }
 
@@ -49,6 +53,7 @@ type CreateBody = {
 };
 
 export async function POST(req: Request) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const body = (await req.json().catch(() => ({}))) as CreateBody;
 
@@ -60,12 +65,12 @@ export async function POST(req: Request) {
     }
     const result = await db
       .prepare(
-        "INSERT INTO staff (name, role, first_name) VALUES (?, ?, ?)"
+        "INSERT INTO staff (company_id, name, role, first_name) VALUES (?, ?, ?, ?)"
       )
-      .run(name, body.role || null, name.split(/\s+/)[0] || name);
+      .run(companyId, name, body.role || null, name.split(/\s+/)[0] || name);
     const created = (await db
-      .prepare("SELECT * FROM staff WHERE id = ?")
-      .get(result.lastInsertRowid)) as Staff;
+      .prepare("SELECT * FROM staff WHERE id = ? AND company_id = ?")
+      .get(result.lastInsertRowid, companyId)) as Staff;
     return NextResponse.json(created, { status: 201 });
   }
 
@@ -125,11 +130,12 @@ export async function POST(req: Request) {
     result = await db
       .prepare(
         `INSERT INTO staff
-         (name, first_name, last_name, phone, email, password_hash, color,
-          permission_level, photo_url, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+         (company_id, name, first_name, last_name, phone, email, password_hash,
+          color, permission_level, photo_url, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
       )
       .run(
+        companyId,
         fullName,
         first_name,
         last_name,
@@ -150,13 +156,13 @@ export async function POST(req: Request) {
   }
 
   const created = (await db
-    .prepare("SELECT * FROM staff WHERE id = ?")
-    .get(result.lastInsertRowid)) as Staff | undefined;
+    .prepare("SELECT * FROM staff WHERE id = ? AND company_id = ?")
+    .get(result.lastInsertRowid, companyId)) as Staff | undefined;
   if (!created) {
     // Fall back to email lookup in case the driver didn't return lastInsertRowid.
     const fallback = (await db
-      .prepare("SELECT * FROM staff WHERE email = ?")
-      .get(email)) as Staff | undefined;
+      .prepare("SELECT * FROM staff WHERE email = ? AND company_id = ?")
+      .get(email, companyId)) as Staff | undefined;
     if (fallback) {
       return NextResponse.json(fallback, { status: 201 });
     }

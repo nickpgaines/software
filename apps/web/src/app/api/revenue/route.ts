@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -42,6 +43,7 @@ function dateKey(d: Date) {
 }
 
 export async function GET(req: Request) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const url = new URL(req.url);
   const range = (url.searchParams.get("range") || "1m") as Range;
@@ -51,9 +53,10 @@ export async function GET(req: Request) {
     .prepare(
       `SELECT scheduled_at, price_cents
        FROM jobs
-       WHERE scheduled_at >= ? AND scheduled_at <= ?`
+       WHERE company_id = ?
+         AND scheduled_at >= ? AND scheduled_at <= ?`
     )
-    .all(start.toISOString(), end.toISOString())) as {
+    .all(companyId, start.toISOString(), end.toISOString())) as {
     scheduled_at: string;
     price_cents: number;
   }[];

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type EmailAudience, type EmailAutomation } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -12,11 +13,16 @@ const ALLOWED_AUDIENCES: EmailAudience[] = [
 
 type Params = { params: Promise<{ id: string }> };
 
-async function loadAutomation(id: number): Promise<EmailAutomation | null> {
+async function loadAutomation(
+  id: number,
+  companyId: number
+): Promise<EmailAutomation | null> {
   const db = await getDb();
   const row = (await db
-    .prepare(`SELECT * FROM email_automations WHERE id = ?`)
-    .get(id)) as EmailAutomation | undefined;
+    .prepare(
+      `SELECT * FROM email_automations WHERE id = ? AND company_id = ?`
+    )
+    .get(id, companyId)) as EmailAutomation | undefined;
   return row ?? null;
 }
 
@@ -26,7 +32,8 @@ export async function GET(_req: Request, { params }: Params) {
   if (!Number.isFinite(id)) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
-  const row = await loadAutomation(id);
+  const companyId = await requireCompanyId();
+  const row = await loadAutomation(id, companyId);
   if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(row);
 }
@@ -37,7 +44,8 @@ export async function PATCH(req: Request, { params }: Params) {
   if (!Number.isFinite(id)) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
-  const existing = await loadAutomation(id);
+  const companyId = await requireCompanyId();
+  const existing = await loadAutomation(id, companyId);
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -108,14 +116,15 @@ export async function PATCH(req: Request, { params }: Params) {
 
   updates.push("updated_at = datetime('now')");
   args.push(id);
+  args.push(companyId);
 
   const db = await getDb();
   await db
     .prepare(
-      `UPDATE email_automations SET ${updates.join(", ")} WHERE id = ?`
+      `UPDATE email_automations SET ${updates.join(", ")} WHERE id = ? AND company_id = ?`
     )
     .run(...args);
 
-  const updated = await loadAutomation(id);
+  const updated = await loadAutomation(id, companyId);
   return NextResponse.json(updated);
 }

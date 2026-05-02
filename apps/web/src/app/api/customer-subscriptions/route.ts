@@ -6,7 +6,7 @@ import {
   type SubscriptionTemplate,
   type SubscriptionTerms,
 } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionContext } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -38,9 +38,11 @@ function formatPrice(cents: number): string {
 }
 
 export async function GET(req: Request) {
-  if (!getSessionUser()) {
+  const ctx = await getSessionContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const companyId = ctx.companyId;
   const db = await getDb();
   const url = new URL(req.url);
   const customerId = url.searchParams.get("customer_id");
@@ -50,26 +52,29 @@ export async function GET(req: Request) {
     rows = (await db
       .prepare(
         `SELECT * FROM customer_subscriptions
-         WHERE customer_id = ?
+         WHERE customer_id = ? AND company_id = ?
          ORDER BY created_at DESC, id DESC`
       )
-      .all(Number(customerId))) as CustomerSubscription[];
+      .all(Number(customerId), companyId)) as CustomerSubscription[];
   } else {
     rows = (await db
       .prepare(
         `SELECT * FROM customer_subscriptions
+         WHERE company_id = ?
          ORDER BY created_at DESC, id DESC`
       )
-      .all()) as CustomerSubscription[];
+      .all(companyId)) as CustomerSubscription[];
   }
   return NextResponse.json(rows);
 }
 
 export async function POST(req: Request) {
-  const user = getSessionUser();
-  if (!user) {
+  const ctx = await getSessionContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const user = ctx.identity;
+  const companyId = ctx.companyId;
   const db = await getDb();
   const body = (await req.json().catch(() => ({}))) as Partial<{
     customer_id: number;
@@ -108,8 +113,12 @@ export async function POST(req: Request) {
 
   if (body.template_id) {
     const tpl = (await db
-      .prepare("SELECT * FROM subscription_templates WHERE id = ?")
-      .get(Number(body.template_id))) as SubscriptionTemplate | undefined;
+      .prepare(
+        "SELECT * FROM subscription_templates WHERE id = ? AND company_id = ?"
+      )
+      .get(Number(body.template_id), companyId)) as
+      | SubscriptionTemplate
+      | undefined;
     if (!tpl) {
       return NextResponse.json(
         { error: "template not found" },
@@ -124,8 +133,10 @@ export async function POST(req: Request) {
     requireSignature = tpl.require_signature ? 1 : 0;
     if (tpl.terms_id) {
       const terms = (await db
-        .prepare("SELECT * FROM subscription_terms WHERE id = ?")
-        .get(tpl.terms_id)) as SubscriptionTerms | undefined;
+        .prepare(
+          "SELECT * FROM subscription_terms WHERE id = ? AND company_id = ?"
+        )
+        .get(tpl.terms_id, companyId)) as SubscriptionTerms | undefined;
       if (terms) {
         termsSnapshot = `${terms.name}\n\n${terms.body}`;
       }
@@ -156,8 +167,8 @@ export async function POST(req: Request) {
   }
 
   const customer = await db
-    .prepare("SELECT id FROM customers WHERE id = ?")
-    .get<{ id: number }>(customerId);
+    .prepare("SELECT id FROM customers WHERE id = ? AND company_id = ?")
+    .get<{ id: number }>(customerId, companyId);
   if (!customer) {
     return NextResponse.json({ error: "customer not found" }, { status: 404 });
   }
@@ -179,14 +190,15 @@ export async function POST(req: Request) {
   const result = await db
     .prepare(
       `INSERT INTO customer_subscriptions
-         (customer_id, template_id, name, description, price_cents, interval,
+         (company_id, customer_id, template_id, name, description, price_cents, interval,
           status, sent_at, accepted_at, created_by,
           terms_snapshot, require_signature,
           signature_data, signature_name, signed_at,
           start_date, sold_by_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
+      companyId,
       customerId,
       templateId,
       name,
@@ -214,14 +226,16 @@ export async function POST(req: Request) {
       `Reply YES to accept and we'll get you set up.`;
     await db
       .prepare(
-        `INSERT INTO messages (customer_id, body, direction)
-         VALUES (?, ?, 'outbound')`
+        `INSERT INTO messages (company_id, customer_id, body, direction)
+         VALUES (?, ?, ?, 'outbound')`
       )
-      .run(customerId, messageBody);
+      .run(companyId, customerId, messageBody);
   }
 
   const row = (await db
-    .prepare("SELECT * FROM customer_subscriptions WHERE id = ?")
-    .get(result.lastInsertRowid)) as CustomerSubscription;
+    .prepare(
+      "SELECT * FROM customer_subscriptions WHERE id = ? AND company_id = ?"
+    )
+    .get(result.lastInsertRowid, companyId)) as CustomerSubscription;
   return NextResponse.json(row, { status: 201 });
 }

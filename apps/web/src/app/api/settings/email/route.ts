@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type EmailSettings } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -31,19 +32,19 @@ function toPublic(s: EmailSettings): PublicEmailSettings {
   };
 }
 
-async function readSettings(): Promise<EmailSettings> {
+async function readSettings(companyId: number): Promise<EmailSettings> {
   const db = await getDb();
   // Wrap in a write transaction to force a primary read. Plain reads can hit
   // a Turso edge replica that lags behind the primary, which made the page
   // flip back to "Not connected" right after a successful save.
   return await db.transaction(async (tx) => {
     const row = (await tx
-      .prepare("SELECT * FROM email_settings WHERE id = 1")
-      .get()) as EmailSettings | undefined;
+      .prepare("SELECT * FROM email_settings WHERE company_id = ? LIMIT 1")
+      .get(companyId)) as EmailSettings | undefined;
     return (
       row ?? {
-        id: 1,
-        company_id: 1,
+        id: 0,
+        company_id: companyId,
         provider: "resend",
         api_key: null,
         from_address: null,
@@ -56,11 +57,13 @@ async function readSettings(): Promise<EmailSettings> {
 }
 
 export async function GET() {
-  const s = await readSettings();
+  const companyId = await requireCompanyId();
+  const s = await readSettings(companyId);
   return NextResponse.json(toPublic(s), { headers: NO_CACHE_HEADERS });
 }
 
 export async function PUT(req: Request) {
+  const companyId = await requireCompanyId();
   const body = (await req.json().catch(() => ({}))) as Partial<{
     api_key: string;
     from_address: string;
@@ -87,7 +90,7 @@ export async function PUT(req: Request) {
   }
 
   const db = await getDb();
-  const current = await readSettings();
+  const current = await readSettings(companyId);
 
   const nextKey = apiKey || current.api_key;
   const nextFromAddress = fromAddress || current.from_address;
@@ -108,23 +111,30 @@ export async function PUT(req: Request) {
     );
   }
 
-  await db
-    .prepare(
-      `INSERT INTO email_settings
-         (id, provider, api_key, from_address, from_name, reply_to, updated_at)
-       VALUES (1, 'resend', ?, ?, ?, ?, datetime('now'))
-       ON CONFLICT(id) DO UPDATE SET
-         api_key      = excluded.api_key,
-         from_address = excluded.from_address,
-         from_name    = excluded.from_name,
-         reply_to     = excluded.reply_to,
-         updated_at   = excluded.updated_at`
-    )
-    .run(nextKey, nextFromAddress, nextFromName, nextReplyTo);
+  // Upsert this tenant's row. There's no UNIQUE on company_id (predates
+  // multi-tenancy), so we test-and-update instead of relying on ON CONFLICT.
+  if (current.id) {
+    await db
+      .prepare(
+        `UPDATE email_settings
+            SET api_key = ?, from_address = ?, from_name = ?, reply_to = ?,
+                updated_at = datetime('now')
+          WHERE id = ? AND company_id = ?`
+      )
+      .run(nextKey, nextFromAddress, nextFromName, nextReplyTo, current.id, companyId);
+  } else {
+    await db
+      .prepare(
+        `INSERT INTO email_settings
+           (company_id, provider, api_key, from_address, from_name, reply_to, updated_at)
+         VALUES (?, 'resend', ?, ?, ?, ?, datetime('now'))`
+      )
+      .run(companyId, nextKey, nextFromAddress, nextFromName, nextReplyTo);
+  }
 
   const updated: EmailSettings = {
-    id: 1,
-    company_id: 1,
+    id: current.id || 0,
+    company_id: companyId,
     provider: current.provider || "resend",
     api_key: nextKey,
     from_address: nextFromAddress,

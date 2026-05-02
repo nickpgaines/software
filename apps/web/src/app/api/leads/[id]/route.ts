@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type Lead } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -14,11 +15,12 @@ export async function GET(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const id = Number(params.id);
   const row = (await db
-    .prepare("SELECT * FROM leads WHERE id = ?")
-    .get(id)) as Lead | undefined;
+    .prepare("SELECT * FROM leads WHERE id = ? AND company_id = ?")
+    .get(id, companyId)) as Lead | undefined;
   if (!row) return NextResponse.json({ error: "Not found" }, { status: 404 });
   return NextResponse.json(row);
 }
@@ -27,11 +29,12 @@ export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const id = Number(params.id);
   const existing = (await db
-    .prepare("SELECT * FROM leads WHERE id = ?")
-    .get(id)) as Lead | undefined;
+    .prepare("SELECT * FROM leads WHERE id = ? AND company_id = ?")
+    .get(id, companyId)) as Lead | undefined;
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -65,12 +68,15 @@ export async function PATCH(
   }
   fields.push("updated_at = datetime('now')");
   args.push(id);
+  args.push(companyId);
   await db
-    .prepare(`UPDATE leads SET ${fields.join(", ")} WHERE id = ?`)
+    .prepare(
+      `UPDATE leads SET ${fields.join(", ")} WHERE id = ? AND company_id = ?`
+    )
     .run(...args);
   const updated = (await db
-    .prepare("SELECT * FROM leads WHERE id = ?")
-    .get(id)) as Lead;
+    .prepare("SELECT * FROM leads WHERE id = ? AND company_id = ?")
+    .get(id, companyId)) as Lead;
   return NextResponse.json(updated);
 }
 
@@ -78,8 +84,11 @@ export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const id = Number(params.id);
-  await db.prepare("DELETE FROM leads WHERE id = ?").run(id);
+  await db
+    .prepare("DELETE FROM leads WHERE id = ? AND company_id = ?")
+    .run(id, companyId);
   return NextResponse.json({ ok: true });
 }

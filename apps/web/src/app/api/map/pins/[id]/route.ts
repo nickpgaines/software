@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type MapPin } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -7,6 +8,7 @@ export async function PUT(
   req: Request,
   { params }: { params: { id: string } }
 ) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const id = Number(params.id);
   const body = (await req.json().catch(() => ({}))) as Partial<{
@@ -22,8 +24,8 @@ export async function PUT(
     customer_id: number | null;
   }>;
   const existing = (await db
-    .prepare("SELECT * FROM map_pins WHERE id = ?")
-    .get(id)) as MapPin | undefined;
+    .prepare("SELECT * FROM map_pins WHERE id = ? AND company_id = ?")
+    .get(id, companyId)) as MapPin | undefined;
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -31,7 +33,7 @@ export async function PUT(
     `UPDATE map_pins
        SET lat = ?, lng = ?, address = ?, first_name = ?, last_name = ?,
            phone = ?, status = ?, objections = ?, notes = ?, customer_id = ?
-     WHERE id = ?`
+     WHERE id = ? AND company_id = ?`
   ).run(
     body.lat ?? existing.lat,
     body.lng ?? existing.lng,
@@ -47,11 +49,12 @@ export async function PUT(
       : existing.objections,
     body.notes !== undefined ? body.notes : existing.notes,
     body.customer_id !== undefined ? body.customer_id : existing.customer_id,
-    id
+    id,
+    companyId
   );
   const updated = (await db
-    .prepare("SELECT * FROM map_pins WHERE id = ?")
-    .get(id)) as MapPin;
+    .prepare("SELECT * FROM map_pins WHERE id = ? AND company_id = ?")
+    .get(id, companyId)) as MapPin;
   return NextResponse.json(updated);
 }
 
@@ -59,6 +62,7 @@ export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const id = Number(params.id);
   const body = (await req.json().catch(() => ({}))) as Partial<{
@@ -69,8 +73,8 @@ export async function PATCH(
     address: string | null;
   }>;
   const existing = (await db
-    .prepare("SELECT * FROM map_pins WHERE id = ?")
-    .get(id)) as MapPin | undefined;
+    .prepare("SELECT * FROM map_pins WHERE id = ? AND company_id = ?")
+    .get(id, companyId)) as MapPin | undefined;
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -91,12 +95,12 @@ export async function PATCH(
     body.address !== undefined ? body.address : existing.address;
   await db
     .prepare(
-      "UPDATE map_pins SET status = ?, notes = ?, objections = ?, address = ? WHERE id = ?"
+      "UPDATE map_pins SET status = ?, notes = ?, objections = ?, address = ? WHERE id = ? AND company_id = ?"
     )
-    .run(nextStatus, nextNotes, nextObjections, nextAddress, id);
+    .run(nextStatus, nextNotes, nextObjections, nextAddress, id, companyId);
   const updated = (await db
-    .prepare("SELECT * FROM map_pins WHERE id = ?")
-    .get(id)) as MapPin;
+    .prepare("SELECT * FROM map_pins WHERE id = ? AND company_id = ?")
+    .get(id, companyId)) as MapPin;
   return NextResponse.json(updated);
 }
 
@@ -104,7 +108,10 @@ export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
-  await db.prepare("DELETE FROM map_pins WHERE id = ?").run(Number(params.id));
+  await db
+    .prepare("DELETE FROM map_pins WHERE id = ? AND company_id = ?")
+    .run(Number(params.id), companyId);
   return NextResponse.json({ ok: true });
 }

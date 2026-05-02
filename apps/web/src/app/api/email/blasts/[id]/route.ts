@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type EmailBlast, type EmailRecipient } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -11,10 +12,11 @@ export async function GET(
   if (!id) {
     return NextResponse.json({ error: "Invalid id" }, { status: 400 });
   }
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const blast = (await db
-    .prepare("SELECT * FROM email_blasts WHERE id = ?")
-    .get(id)) as EmailBlast | undefined;
+    .prepare("SELECT * FROM email_blasts WHERE id = ? AND company_id = ?")
+    .get(id, companyId)) as EmailBlast | undefined;
   if (!blast) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

@@ -1,16 +1,20 @@
 import twilio from "twilio";
 import { getDb, type MessagingSettings } from "@/lib/db";
 
-export async function getVoiceSettings(): Promise<MessagingSettings> {
+export async function getVoiceSettings(
+  companyId: number
+): Promise<MessagingSettings> {
   const db = await getDb();
   return await db.transaction(async (tx) => {
     const row = (await tx
-      .prepare("SELECT * FROM messaging_settings WHERE id = 1")
-      .get()) as MessagingSettings | undefined;
+      .prepare(
+        "SELECT * FROM messaging_settings WHERE company_id = ? LIMIT 1"
+      )
+      .get(companyId)) as MessagingSettings | undefined;
     return (
       row ?? {
-        id: 1,
-        company_id: 1,
+        id: 0,
+        company_id: companyId,
         provider: "twilio",
         account_sid: null,
         auth_token: null,
