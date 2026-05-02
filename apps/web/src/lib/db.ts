@@ -946,6 +946,36 @@ async function init(): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS idx_payroll_payouts_period
       ON payroll_payouts(period_start, period_end);
+
+    CREATE TABLE IF NOT EXISTS payroll_settings (
+      id                              INTEGER PRIMARY KEY CHECK (id = 1),
+      pay_period_frequency            TEXT NOT NULL DEFAULT 'monthly'
+                                        CHECK (pay_period_frequency IN
+                                          ('weekly','biweekly','semimonthly','monthly')),
+      hourly_time_calculation         TEXT NOT NULL DEFAULT 'scheduled'
+                                        CHECK (hourly_time_calculation IN
+                                          ('scheduled','en_route_to_complete','start_to_complete')),
+      hourly_bonus_enabled            INTEGER NOT NULL DEFAULT 0,
+      hourly_bonus_threshold_cents    INTEGER NOT NULL DEFAULT 0,
+      hourly_bonus_amount_cents       INTEGER NOT NULL DEFAULT 0,
+      sales_commission_mode           TEXT NOT NULL DEFAULT 'flat'
+                                        CHECK (sales_commission_mode IN ('flat','tiers')),
+      sales_commission_flat_rate      REAL NOT NULL DEFAULT 0.30,
+      sales_commission_tiers          TEXT NOT NULL DEFAULT '[]',
+      tech_commission_mode            TEXT NOT NULL DEFAULT 'flat'
+                                        CHECK (tech_commission_mode IN ('flat','tiers')),
+      tech_commission_flat_rate       REAL NOT NULL DEFAULT 0.20,
+      tech_commission_tiers           TEXT NOT NULL DEFAULT '[]',
+      sales_overrides_enabled         INTEGER NOT NULL DEFAULT 0,
+      sales_overrides_rate            REAL NOT NULL DEFAULT 0.05,
+      tech_overrides_enabled          INTEGER NOT NULL DEFAULT 0,
+      tech_overrides_rate             REAL NOT NULL DEFAULT 0.05,
+      plan_sale_bonuses_enabled       INTEGER NOT NULL DEFAULT 0,
+      plan_sale_bonus_cents           INTEGER NOT NULL DEFAULT 0,
+      exclude_one_time_services       INTEGER NOT NULL DEFAULT 0,
+      updated_at                      TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    INSERT OR IGNORE INTO payroll_settings (id) VALUES (1);
   `);
 
   const tplCols = await _db
@@ -1572,6 +1602,47 @@ export type Payment = {
   send_sms: number;
   stripe_payment_intent_id: string | null;
   created_at: string;
+};
+
+export type PayPeriodFrequency =
+  | "weekly"
+  | "biweekly"
+  | "semimonthly"
+  | "monthly";
+
+export type HourlyTimeCalculation =
+  | "scheduled"
+  | "en_route_to_complete"
+  | "start_to_complete";
+
+export type CommissionMode = "flat" | "tiers";
+
+export type CommissionTier = {
+  threshold_cents: number;
+  rate: number;
+};
+
+export type PayrollSettings = {
+  id: number;
+  pay_period_frequency: PayPeriodFrequency;
+  hourly_time_calculation: HourlyTimeCalculation;
+  hourly_bonus_enabled: number;
+  hourly_bonus_threshold_cents: number;
+  hourly_bonus_amount_cents: number;
+  sales_commission_mode: CommissionMode;
+  sales_commission_flat_rate: number;
+  sales_commission_tiers: string;
+  tech_commission_mode: CommissionMode;
+  tech_commission_flat_rate: number;
+  tech_commission_tiers: string;
+  sales_overrides_enabled: number;
+  sales_overrides_rate: number;
+  tech_overrides_enabled: number;
+  tech_overrides_rate: number;
+  plan_sale_bonuses_enabled: number;
+  plan_sale_bonus_cents: number;
+  exclude_one_time_services: number;
+  updated_at: string;
 };
 
 export default getDb;

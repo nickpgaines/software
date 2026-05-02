@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Settings } from "lucide-react";
+import PayrollSettingsModal, {
+  type PayrollSettingsValue,
+} from "./PayrollSettingsModal";
 
 type Tab = "overview" | "sales" | "subscriptions" | "payroll";
 type Range = "1w" | "1m" | "3m" | "1y";
@@ -352,6 +356,7 @@ type PayrollRow = {
   rate: number;
   total_cents: number;
   tips_cents: number;
+  bonus_cents?: number;
   payout_cents: number;
   paid: boolean;
 };
@@ -366,16 +371,19 @@ type PayrollData = {
     sales_commission_cents: number;
     tech_commission_cents: number;
     tips_cents: number;
+    plan_sale_bonus_cents?: number;
     total_payout_cents: number;
     net_profit_cents: number;
     total_tips_collected_cents: number;
   };
+  settings: PayrollSettingsValue | null;
 };
 
 function PayrollPanel({ range }: { range: Range }) {
   const [data, setData] = useState<PayrollData | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -421,19 +429,35 @@ function PayrollPanel({ range }: { range: Range }) {
     );
   if (!data) return null;
 
+  const salesTiered = data.settings?.sales_commission_mode === "tiers";
+  const techTiered = data.settings?.tech_commission_mode === "tiers";
+
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-semibold text-slate-900">Payroll</h2>
-        <p className="text-sm text-slate-500 mt-1">
-          Calculate commissions for sales and technician teams.
-        </p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-900">Payroll</h2>
+          <p className="text-sm text-slate-500 mt-1">
+            Calculate commissions for sales and technician teams.
+          </p>
+        </div>
+        <button
+          onClick={() => setSettingsOpen(true)}
+          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-full hover:bg-slate-50 shadow-sm"
+          aria-label="Payroll settings"
+        >
+          <Settings className="w-4 h-4" />
+          <span>Payroll settings</span>
+        </button>
       </div>
 
       <PayrollTable
         title="Sales Payroll"
         rows={data.sales}
         showTips={false}
+        showBonus={!!data.summary.plan_sale_bonus_cents}
+        rateEditable={!salesTiered}
+        rateLabel={salesTiered ? "Effective" : "Rate"}
         onRateChange={(id, rate) => updateRate(id, "sales", rate)}
         onPaidToggle={(id, paid) => togglePaid(id, "sales", paid)}
       />
@@ -442,11 +466,23 @@ function PayrollPanel({ range }: { range: Range }) {
         title="Technician Payroll"
         rows={data.tech}
         showTips
+        showBonus={false}
+        rateEditable={!techTiered}
+        rateLabel={techTiered ? "Effective" : "Rate"}
         onRateChange={(id, rate) => updateRate(id, "tech", rate)}
         onPaidToggle={(id, paid) => togglePaid(id, "tech", paid)}
       />
 
       <PayrollSummary summary={data.summary} />
+
+      {data.settings && (
+        <PayrollSettingsModal
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          initial={data.settings}
+          onSaved={() => setReloadKey((k) => k + 1)}
+        />
+      )}
     </div>
   );
 }
@@ -455,12 +491,18 @@ function PayrollTable({
   title,
   rows,
   showTips,
+  showBonus,
+  rateEditable,
+  rateLabel,
   onRateChange,
   onPaidToggle,
 }: {
   title: string;
   rows: PayrollRow[];
   showTips: boolean;
+  showBonus: boolean;
+  rateEditable: boolean;
+  rateLabel: string;
   onRateChange: (staffId: number, rate: number) => void;
   onPaidToggle: (staffId: number, paid: boolean) => void;
 }) {
@@ -478,10 +520,13 @@ function PayrollTable({
                 <th className="text-left px-5 py-3 font-medium">Employee</th>
                 <th className="text-left px-5 py-3 font-medium">Email</th>
                 <th className="text-left px-5 py-3 font-medium">Role</th>
-                <th className="text-right px-5 py-3 font-medium">Rate</th>
+                <th className="text-right px-5 py-3 font-medium">{rateLabel}</th>
                 <th className="text-right px-5 py-3 font-medium">Total</th>
                 {showTips && (
                   <th className="text-right px-5 py-3 font-medium">Tips</th>
+                )}
+                {showBonus && (
+                  <th className="text-right px-5 py-3 font-medium">Bonus</th>
                 )}
                 <th className="text-right px-5 py-3 font-medium">Payout</th>
                 <th className="text-center px-5 py-3 font-medium">Paid</th>
@@ -493,6 +538,8 @@ function PayrollTable({
                   key={r.id}
                   row={r}
                   showTips={showTips}
+                  showBonus={showBonus}
+                  rateEditable={rateEditable}
                   onRateChange={(rate) => onRateChange(r.id, rate)}
                   onPaidToggle={(paid) => onPaidToggle(r.id, paid)}
                 />
@@ -508,11 +555,15 @@ function PayrollTable({
 function PayrollRowView({
   row,
   showTips,
+  showBonus,
+  rateEditable,
   onRateChange,
   onPaidToggle,
 }: {
   row: PayrollRow;
   showTips: boolean;
+  showBonus: boolean;
+  rateEditable: boolean;
   onRateChange: (rate: number) => void;
   onPaidToggle: (paid: boolean) => void;
 }) {
@@ -541,28 +592,34 @@ function PayrollRowView({
         </span>
       </td>
       <td className="px-5 py-3 text-right tabular-nums">
-        {editing ? (
-          <input
-            autoFocus
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            onBlur={commit}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") commit();
-              if (e.key === "Escape") {
-                setDraft((row.rate * 100).toFixed(1));
-                setEditing(false);
-              }
-            }}
-            className="w-20 text-right border border-slate-300 rounded px-2 py-1"
-          />
+        {rateEditable ? (
+          editing ? (
+            <input
+              autoFocus
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onBlur={commit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commit();
+                if (e.key === "Escape") {
+                  setDraft((row.rate * 100).toFixed(1));
+                  setEditing(false);
+                }
+              }}
+              className="w-20 text-right border border-slate-300 rounded px-2 py-1"
+            />
+          ) : (
+            <button
+              onClick={() => setEditing(true)}
+              className="text-slate-700 hover:text-slate-900 hover:underline"
+            >
+              {(row.rate * 100).toFixed(1)}%
+            </button>
+          )
         ) : (
-          <button
-            onClick={() => setEditing(true)}
-            className="text-slate-700 hover:text-slate-900 hover:underline"
-          >
+          <span className="text-slate-700">
             {(row.rate * 100).toFixed(1)}%
-          </button>
+          </span>
         )}
       </td>
       <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
@@ -571,6 +628,11 @@ function PayrollRowView({
       {showTips && (
         <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
           {money(row.tips_cents)}
+        </td>
+      )}
+      {showBonus && (
+        <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+          {money(row.bonus_cents || 0)}
         </td>
       )}
       <td className="px-5 py-3 text-right font-semibold text-slate-900 tabular-nums">
@@ -601,16 +663,24 @@ function PayrollSummary({
       value: money(summary.tech_commission_cents),
     },
     { label: "Tips", value: money(summary.tips_cents) },
+  ];
+  if ((summary.plan_sale_bonus_cents || 0) > 0) {
+    items.push({
+      label: "Plan Sale Bonuses",
+      value: money(summary.plan_sale_bonus_cents || 0),
+    });
+  }
+  items.push(
     {
-      label: "Total Payout (Commissions + Tips)",
+      label: "Total Payout (Commissions + Tips + Bonuses)",
       value: money(summary.total_payout_cents),
     },
     {
       label: "Net Profit",
       value: money(summary.net_profit_cents),
       emphasis: true,
-    },
-  ];
+    }
+  );
   return (
     <div className="bg-white border border-slate-200 rounded-2xl shadow-sm divide-y divide-slate-100">
       {items.map((it) => (
