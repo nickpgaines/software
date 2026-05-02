@@ -60,6 +60,7 @@ export async function PUT(
     active: boolean | number;
     terms_id: number | null;
     require_signature: boolean | number;
+    tax_rate_bps: number;
   }>;
 
   const name =
@@ -98,12 +99,16 @@ export async function PUT(
       : body.require_signature === true || body.require_signature === 1
         ? 1
         : 0;
+  const taxRateBps =
+    body.tax_rate_bps === undefined
+      ? existing.tax_rate_bps
+      : Math.max(0, Math.round(Number(body.tax_rate_bps) || 0));
 
   await db
     .prepare(
       `UPDATE subscription_templates
          SET name = ?, description = ?, price_cents = ?, interval = ?, active = ?,
-             terms_id = ?, require_signature = ?,
+             terms_id = ?, require_signature = ?, tax_rate_bps = ?,
              updated_at = datetime('now')
        WHERE id = ?`
     )
@@ -115,6 +120,7 @@ export async function PUT(
       active,
       termsId,
       requireSignature,
+      taxRateBps,
       id
     );
   const row = (await db

@@ -54,6 +54,7 @@ export async function POST(req: Request) {
     active: boolean | number;
     terms_id: number | null;
     require_signature: boolean | number;
+    tax_rate_bps: number;
   }>;
 
   const name = (body.name || "").trim();
@@ -71,12 +72,13 @@ export async function POST(req: Request) {
       : Number(body.terms_id) || null;
   const requireSignature =
     body.require_signature === true || body.require_signature === 1 ? 1 : 0;
+  const taxRateBps = Math.max(0, Math.round(Number(body.tax_rate_bps) || 0));
 
   const result = await db
     .prepare(
       `INSERT INTO subscription_templates
-         (name, description, price_cents, interval, active, terms_id, require_signature)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`
+         (name, description, price_cents, interval, active, terms_id, require_signature, tax_rate_bps)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       name,
@@ -85,7 +87,8 @@ export async function POST(req: Request) {
       interval,
       active,
       termsId,
-      requireSignature
+      requireSignature,
+      taxRateBps
     );
   const row = (await db
     .prepare("SELECT * FROM subscription_templates WHERE id = ?")

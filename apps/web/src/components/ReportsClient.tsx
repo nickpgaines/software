@@ -277,29 +277,339 @@ function SalesPanel({ range }: { range: Range }) {
   );
 }
 
+type SubscriptionsReport = {
+  filters: {
+    customers: { id: number; name: string }[];
+    templates: { id: number; name: string; active: boolean }[];
+    sold_by: { id: number; name: string }[];
+  };
+  options: {
+    include_tax: boolean;
+    include_paid_cancellations: boolean;
+  };
+  totals: {
+    total: number;
+    active: number;
+    pending: number;
+    canceled: number;
+    declined: number;
+  };
+  revenue: { mrr_cents: number; arr_cents: number };
+  monthly: { label: string; iso: string; mrr_cents: number }[];
+  breakdowns: {
+    by_template: {
+      template_id: number | null;
+      name: string;
+      count: number;
+      mrr_cents: number;
+    }[];
+    by_sold_by: {
+      sold_by_id: number;
+      name: string;
+      count: number;
+      mrr_cents: number;
+    }[];
+  };
+};
+
 function SubscriptionsPanel() {
+  const [data, setData] = useState<SubscriptionsReport | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [customerId, setCustomerId] = useState<string>("");
+  const [templateId, setTemplateId] = useState<string>("");
+  const [soldById, setSoldById] = useState<string>("");
+  const [includeTax, setIncludeTax] = useState(true);
+  const [includeCanceled, setIncludeCanceled] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    const params = new URLSearchParams();
+    if (customerId) params.set("customers", customerId);
+    if (templateId) params.set("templates", templateId);
+    if (soldById) params.set("sold_by", soldById);
+    if (!includeTax) params.set("include_tax", "0");
+    if (!includeCanceled) params.set("include_paid_cancellations", "0");
+    const qs = params.toString();
+    fetch(`/api/reports/subscriptions${qs ? `?${qs}` : ""}`)
+      .then((r) => r.json())
+      .then((d: SubscriptionsReport) => {
+        if (!cancelled) setData(d);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [customerId, templateId, soldById, includeTax, includeCanceled]);
+
+  if (loading && !data)
+    return (
+      <p className="text-sm text-slate-400 py-10 text-center">Loading…</p>
+    );
+  if (!data) return null;
+
+  const monthlyMax = Math.max(1, ...data.monthly.map((m) => m.mrr_cents));
+
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm py-20 text-center">
-      <div className="mx-auto w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-3">
-        <svg
-          className="w-5 h-5"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          <path d="M21 12a9 9 0 1 1-9-9c2.5 0 4.7 1 6.4 2.6" />
-          <polyline points="21 4 21 10 15 10" />
-        </svg>
+    <div className="space-y-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <SelectFilter
+          label="Customers"
+          value={customerId}
+          onChange={setCustomerId}
+          options={data.filters.customers}
+        />
+        <SelectFilter
+          label="Templates"
+          value={templateId}
+          onChange={setTemplateId}
+          options={data.filters.templates.map((t) => ({
+            id: t.id,
+            name: t.active ? t.name : `${t.name} (inactive)`,
+          }))}
+        />
+        <SelectFilter
+          label="Sold By"
+          value={soldById}
+          onChange={setSoldById}
+          options={data.filters.sold_by}
+        />
       </div>
-      <h2 className="text-lg font-semibold text-slate-900">
-        Subscriptions coming soon
-      </h2>
-      <p className="text-sm text-slate-500 mt-1">
-        Recurring revenue tracking will live here.
-      </p>
+
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+          Statistics
+        </h2>
+        <div className="flex items-center gap-6">
+          <Toggle
+            label="Include Taxes"
+            checked={includeTax}
+            onChange={setIncludeTax}
+          />
+          <Toggle
+            label="Include Paid Cancellations"
+            checked={includeCanceled}
+            onChange={setIncludeCanceled}
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid gap-4 grid-cols-2 lg:col-span-2">
+          <StatCard label="Total Subscriptions" value={String(data.totals.total)} />
+          <StatCard
+            label="Active Subscriptions"
+            value={String(data.totals.active)}
+            valueClassName="text-emerald-600"
+          />
+          <StatCard
+            label={`Current MRR${includeTax ? " (w/ tax)" : ""}`}
+            value={money(data.revenue.mrr_cents)}
+          />
+          <StatCard
+            label={`Current ARR${includeTax ? " (w/ tax)" : ""}`}
+            value={money(data.revenue.arr_cents)}
+          />
+        </div>
+
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+          <div className="text-sm font-semibold text-slate-900">
+            Monthly Recurring Revenue
+          </div>
+          <div className="text-xs text-slate-400 mt-0.5">
+            {data.monthly[0]?.iso} – {data.monthly[data.monthly.length - 1]?.iso}
+          </div>
+          <div className="mt-4 flex items-end gap-2 h-40">
+            {data.monthly.map((m) => {
+              const h = Math.max(2, Math.round((m.mrr_cents / monthlyMax) * 100));
+              return (
+                <div
+                  key={m.iso}
+                  className="flex-1 flex flex-col items-center justify-end gap-1"
+                >
+                  <div className="text-[10px] text-slate-500 tabular-nums">
+                    {m.mrr_cents > 0 ? money(m.mrr_cents) : "—"}
+                  </div>
+                  <div
+                    className="w-full bg-amber-400 rounded-sm"
+                    style={{ height: `${h}%` }}
+                  />
+                  <div className="text-[10px] text-slate-500">{m.label}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <StatCard label="Pending" value={String(data.totals.pending)} compact />
+        <StatCard label="Canceled" value={String(data.totals.canceled)} compact />
+        <StatCard label="Declined" value={String(data.totals.declined)} compact />
+      </div>
+
+      <Section title="By template">
+        <BreakdownTable
+          header="Template"
+          rows={data.breakdowns.by_template.map((t) => ({
+            key: `${t.template_id ?? "none"}-${t.name}`,
+            name: t.name,
+            count: t.count,
+            mrr_cents: t.mrr_cents,
+          }))}
+        />
+      </Section>
+
+      <Section title="By salesperson">
+        <BreakdownTable
+          header="Sold By"
+          rows={data.breakdowns.by_sold_by.map((s) => ({
+            key: String(s.sold_by_id),
+            name: s.name,
+            count: s.count,
+            mrr_cents: s.mrr_cents,
+          }))}
+        />
+      </Section>
+    </div>
+  );
+}
+
+function SelectFilter({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { id: number; name: string }[];
+}) {
+  return (
+    <label className="block">
+      <span className="text-xs font-medium text-slate-500">{label}</span>
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+      >
+        <option value="">All</option>
+        {options.map((o) => (
+          <option key={o.id} value={o.id}>
+            {o.name}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function Toggle({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <label className="inline-flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+      <span>{label}</span>
+      <button
+        type="button"
+        onClick={() => onChange(!checked)}
+        className={
+          "relative inline-flex h-5 w-9 items-center rounded-full transition " +
+          (checked ? "bg-emerald-500" : "bg-slate-300")
+        }
+        aria-pressed={checked}
+      >
+        <span
+          className={
+            "inline-block h-4 w-4 transform rounded-full bg-white shadow transition " +
+            (checked ? "translate-x-4" : "translate-x-0.5")
+          }
+        />
+      </button>
+    </label>
+  );
+}
+
+function StatCard({
+  label,
+  value,
+  valueClassName,
+  compact,
+}: {
+  label: string;
+  value: string;
+  valueClassName?: string;
+  compact?: boolean;
+}) {
+  return (
+    <div
+      className={
+        "bg-white border border-slate-200 rounded-2xl shadow-sm " +
+        (compact ? "p-4" : "p-5")
+      }
+    >
+      <div className="text-xs text-slate-400">{label}</div>
+      <div
+        className={
+          (compact ? "text-xl" : "text-2xl") +
+          " font-bold mt-1 tabular-nums " +
+          (valueClassName || "text-slate-900")
+        }
+      >
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function BreakdownTable({
+  header,
+  rows,
+}: {
+  header: string;
+  rows: { key: string; name: string; count: number; mrr_cents: number }[];
+}) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      {rows.length === 0 ? (
+        <p className="p-8 text-sm text-slate-400 text-center">
+          No subscriptions yet.
+        </p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs uppercase tracking-wider text-slate-400 bg-slate-50">
+              <th className="text-left px-5 py-3 font-medium">{header}</th>
+              <th className="text-right px-5 py-3 font-medium">Count</th>
+              <th className="text-right px-5 py-3 font-medium">MRR</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.key} className="border-t border-slate-100">
+                <td className="px-5 py-3 font-medium text-slate-900">
+                  {r.name}
+                </td>
+                <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                  {r.count}
+                </td>
+                <td className="px-5 py-3 text-right font-semibold text-slate-900 tabular-nums">
+                  {money(r.mrr_cents)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
