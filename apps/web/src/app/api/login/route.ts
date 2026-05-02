@@ -2,14 +2,32 @@ import { NextResponse } from "next/server";
 import { createSessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { getDb, type Staff } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
+import {
+  checkLoginRate,
+  clientIp,
+  recordLoginAttempt,
+} from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
+  const ip = clientIp(req);
+  const rate = await checkLoginRate(ip);
+  if (!rate.allowed) {
+    return NextResponse.json(
+      { error: "Too many failed attempts. Try again later." },
+      {
+        status: 429,
+        headers: { "Retry-After": String(rate.retryAfterSeconds) },
+      }
+    );
+  }
+
   const { username, password } = (await req.json().catch(() => ({}))) as {
     username?: string;
     password?: string;
   };
 
   if (!password) {
+    await recordLoginAttempt(ip, false);
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
   }
 
@@ -30,6 +48,7 @@ export async function POST(req: Request) {
     username === expectedUser &&
     password === expectedPass
   ) {
+    await recordLoginAttempt(ip, true);
     return issueSession(username);
   }
 
@@ -41,10 +60,12 @@ export async function POST(req: Request) {
       .prepare("SELECT * FROM staff WHERE LOWER(email) = ? LIMIT 1")
       .get(identifier)) as Staff | undefined;
     if (row && row.password_hash && verifyPassword(password, row.password_hash)) {
+      await recordLoginAttempt(ip, true);
       return issueSession(row.email || identifier);
     }
   }
 
+  await recordLoginAttempt(ip, false);
   return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
 }
 

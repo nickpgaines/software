@@ -953,6 +953,15 @@ async function init(): Promise<void> {
       received_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS login_attempts (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      ip           TEXT NOT NULL,
+      success      INTEGER NOT NULL DEFAULT 0,
+      attempted_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_login_attempts_ip_time
+      ON login_attempts(ip, attempted_at);
+
     CREATE TABLE IF NOT EXISTS payroll_settings (
       id                              INTEGER PRIMARY KEY CHECK (id = 1),
       pay_period_frequency            TEXT NOT NULL DEFAULT 'monthly'
