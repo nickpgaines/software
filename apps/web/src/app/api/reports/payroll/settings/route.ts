@@ -13,10 +13,12 @@ const HOURLY_TIME_CALCULATIONS = [
   "scheduled",
   "en_route_to_complete",
   "start_to_complete",
+  "day_rate",
 ] as const;
 const COMMISSION_MODES = ["flat", "tiers"] as const;
 
 type Tier = { threshold_cents: number; rate: number };
+type BonusTier = { threshold_cents: number; amount_cents: number };
 
 function normalizeTiers(input: unknown): Tier[] {
   if (!Array.isArray(input)) return [];
@@ -28,6 +30,24 @@ function normalizeTiers(input: unknown): Tier[] {
     if (!Number.isFinite(threshold) || threshold < 0) continue;
     if (!Number.isFinite(rate) || rate < 0 || rate > 1) continue;
     out.push({ threshold_cents: Math.round(threshold), rate });
+  }
+  out.sort((a, b) => a.threshold_cents - b.threshold_cents);
+  return out;
+}
+
+function normalizeBonusTiers(input: unknown): BonusTier[] {
+  if (!Array.isArray(input)) return [];
+  const out: BonusTier[] = [];
+  for (const t of input) {
+    if (!t || typeof t !== "object") continue;
+    const threshold = Number((t as { threshold_cents?: unknown }).threshold_cents);
+    const amount = Number((t as { amount_cents?: unknown }).amount_cents);
+    if (!Number.isFinite(threshold) || threshold < 0) continue;
+    if (!Number.isFinite(amount) || amount < 0) continue;
+    out.push({
+      threshold_cents: Math.round(threshold),
+      amount_cents: Math.round(amount),
+    });
   }
   out.sort((a, b) => a.threshold_cents - b.threshold_cents);
   return out;
@@ -72,20 +92,19 @@ export async function PATCH(req: Request) {
     updates.hourly_time_calculation = body.hourly_time_calculation;
   }
 
+  if (body.day_rate_cents != null) {
+    const v = Number(body.day_rate_cents);
+    if (!Number.isFinite(v) || v < 0)
+      return NextResponse.json({ error: "Invalid day_rate_cents" }, { status: 400 });
+    updates.day_rate_cents = Math.round(v);
+  }
   if (body.hourly_bonus_enabled != null) {
     updates.hourly_bonus_enabled = body.hourly_bonus_enabled ? 1 : 0;
   }
-  if (body.hourly_bonus_threshold_cents != null) {
-    const v = Number(body.hourly_bonus_threshold_cents);
-    if (!Number.isFinite(v) || v < 0)
-      return NextResponse.json({ error: "Invalid hourly_bonus_threshold_cents" }, { status: 400 });
-    updates.hourly_bonus_threshold_cents = Math.round(v);
-  }
-  if (body.hourly_bonus_amount_cents != null) {
-    const v = Number(body.hourly_bonus_amount_cents);
-    if (!Number.isFinite(v) || v < 0)
-      return NextResponse.json({ error: "Invalid hourly_bonus_amount_cents" }, { status: 400 });
-    updates.hourly_bonus_amount_cents = Math.round(v);
+  if (body.hourly_bonus_tiers != null) {
+    updates.hourly_bonus_tiers = JSON.stringify(
+      normalizeBonusTiers(body.hourly_bonus_tiers)
+    );
   }
 
   for (const role of ["sales", "tech"] as const) {

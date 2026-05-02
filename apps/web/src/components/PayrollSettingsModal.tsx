@@ -12,18 +12,20 @@ type PayPeriodFrequency =
 type HourlyTimeCalculation =
   | "scheduled"
   | "en_route_to_complete"
-  | "start_to_complete";
+  | "start_to_complete"
+  | "day_rate";
 
 type CommissionMode = "flat" | "tiers";
 
 type Tier = { threshold_cents: number; rate: number };
+type BonusTier = { threshold_cents: number; amount_cents: number };
 
 export type PayrollSettingsValue = {
   pay_period_frequency: PayPeriodFrequency;
   hourly_time_calculation: HourlyTimeCalculation;
+  day_rate_cents: number;
   hourly_bonus_enabled: number;
-  hourly_bonus_threshold_cents: number;
-  hourly_bonus_amount_cents: number;
+  hourly_bonus_tiers: string;
   sales_commission_mode: CommissionMode;
   sales_commission_flat_rate: number;
   sales_commission_tiers: string;
@@ -50,6 +52,7 @@ const HOURLY_TIME_LABELS: Record<HourlyTimeCalculation, string> = {
   scheduled: "Scheduled time",
   en_route_to_complete: "En route to last job completed",
   start_to_complete: "Start to complete time",
+  day_rate: "Fixed day rate",
 };
 
 function parseTiers(s: string): Tier[] {
@@ -60,6 +63,21 @@ function parseTiers(s: string): Tier[] {
       .map((t) => ({
         threshold_cents: Number(t?.threshold_cents) || 0,
         rate: Number(t?.rate) || 0,
+      }))
+      .sort((a, b) => a.threshold_cents - b.threshold_cents);
+  } catch {
+    return [];
+  }
+}
+
+function parseBonusTiers(s: string): BonusTier[] {
+  try {
+    const arr = JSON.parse(s);
+    if (!Array.isArray(arr)) return [];
+    return arr
+      .map((t) => ({
+        threshold_cents: Number(t?.threshold_cents) || 0,
+        amount_cents: Number(t?.amount_cents) || 0,
       }))
       .sort((a, b) => a.threshold_cents - b.threshold_cents);
   } catch {
@@ -94,6 +112,9 @@ export default function PayrollSettingsModal({
   const [techTiers, setTechTiers] = useState<Tier[]>(
     parseTiers(initial.tech_commission_tiers)
   );
+  const [bonusTiers, setBonusTiers] = useState<BonusTier[]>(
+    parseBonusTiers(initial.hourly_bonus_tiers)
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -102,6 +123,7 @@ export default function PayrollSettingsModal({
       setDraft(initial);
       setSalesTiers(parseTiers(initial.sales_commission_tiers));
       setTechTiers(parseTiers(initial.tech_commission_tiers));
+      setBonusTiers(parseBonusTiers(initial.hourly_bonus_tiers));
       setError(null);
     }
   }, [open, initial]);
@@ -131,6 +153,7 @@ export default function PayrollSettingsModal({
       ...draft,
       sales_commission_tiers: JSON.stringify(salesTiers),
       tech_commission_tiers: JSON.stringify(techTiers),
+      hourly_bonus_tiers: JSON.stringify(bonusTiers),
     };
     try {
       const res = await fetch("/api/reports/payroll/settings", {
@@ -206,31 +229,36 @@ export default function PayrollSettingsModal({
                     "scheduled",
                     "en_route_to_complete",
                     "start_to_complete",
+                    "day_rate",
                   ] as const
                 ).map((k) => ({ value: k, label: HOURLY_TIME_LABELS[k] }))}
               />
             </Field>
 
+            {draft.hourly_time_calculation === "day_rate" && (
+              <Field
+                label="Day rate ($)"
+                help="Flat amount paid per full day worked."
+              >
+                <DollarInput
+                  cents={draft.day_rate_cents}
+                  onChange={(c) => patch("day_rate_cents", c)}
+                />
+              </Field>
+            )}
+
             <ToggleRow
               title="Daily revenue bonus"
-              description="Pay a one-time cash bonus when an hourly employee completes a daily revenue threshold."
+              description="Pay a one-time cash bonus when an hourly employee hits a daily revenue threshold. Add multiple tiers for stacking bonuses."
               checked={draft.hourly_bonus_enabled === 1}
               onChange={(v) => patch("hourly_bonus_enabled", v ? 1 : 0)}
             />
             {draft.hourly_bonus_enabled === 1 && (
-              <div className="grid grid-cols-2 gap-3 pl-1">
-                <Field label="Revenue threshold ($)">
-                  <DollarInput
-                    cents={draft.hourly_bonus_threshold_cents}
-                    onChange={(c) => patch("hourly_bonus_threshold_cents", c)}
-                  />
-                </Field>
-                <Field label="Bonus amount ($)">
-                  <DollarInput
-                    cents={draft.hourly_bonus_amount_cents}
-                    onChange={(c) => patch("hourly_bonus_amount_cents", c)}
-                  />
-                </Field>
+              <div className="pl-1">
+                <BonusTiersEditor
+                  tiers={bonusTiers}
+                  onChange={setBonusTiers}
+                />
               </div>
             )}
           </Section>
@@ -681,6 +709,81 @@ function TiersEditor({
         className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:text-slate-900"
       >
         <Plus className="w-4 h-4" /> Add tier
+      </button>
+    </div>
+  );
+}
+
+function BonusTiersEditor({
+  tiers,
+  onChange,
+}: {
+  tiers: BonusTier[];
+  onChange: (tiers: BonusTier[]) => void;
+}) {
+  function update(idx: number, patch: Partial<BonusTier>) {
+    const next = tiers.map((t, i) => (i === idx ? { ...t, ...patch } : t));
+    onChange(next);
+  }
+  function add() {
+    const last = tiers[tiers.length - 1];
+    const nextThreshold = last ? last.threshold_cents + 50000 : 100000;
+    const nextAmount = last ? last.amount_cents : 2500;
+    onChange([
+      ...tiers,
+      { threshold_cents: nextThreshold, amount_cents: nextAmount },
+    ]);
+  }
+  function remove(idx: number) {
+    onChange(tiers.filter((_, i) => i !== idx));
+  }
+  return (
+    <div className="space-y-2">
+      {tiers.length === 0 && (
+        <p className="text-sm text-slate-500">
+          No bonus tiers yet. Add one to pay a bonus when daily revenue
+          reaches a threshold.
+        </p>
+      )}
+      {tiers.map((t, idx) => (
+        <div
+          key={idx}
+          className="flex items-center gap-2 bg-slate-50 rounded-2xl p-2"
+        >
+          <div className="flex-1">
+            <label className="block text-[11px] uppercase tracking-wider text-slate-500 px-2">
+              Daily revenue ≥ ($)
+            </label>
+            <DollarInput
+              cents={t.threshold_cents}
+              onChange={(c) => update(idx, { threshold_cents: c })}
+            />
+          </div>
+          <div className="flex-1">
+            <label className="block text-[11px] uppercase tracking-wider text-slate-500 px-2">
+              Bonus ($)
+            </label>
+            <DollarInput
+              cents={t.amount_cents}
+              onChange={(c) => update(idx, { amount_cents: c })}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => remove(idx)}
+            className="text-slate-400 hover:text-rose-600 p-2"
+            aria-label="Remove bonus tier"
+          >
+            <Trash2 className="w-4 h-4" />
+          </button>
+        </div>
+      ))}
+      <button
+        type="button"
+        onClick={add}
+        className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:text-slate-900"
+      >
+        <Plus className="w-4 h-4" /> Add bonus tier
       </button>
     </div>
   );

@@ -984,21 +984,15 @@ async function init(): Promise<void> {
 
     CREATE TABLE IF NOT EXISTS payroll_settings (
       id                              INTEGER PRIMARY KEY CHECK (id = 1),
-      pay_period_frequency            TEXT NOT NULL DEFAULT 'monthly'
-                                        CHECK (pay_period_frequency IN
-                                          ('weekly','biweekly','semimonthly','monthly')),
-      hourly_time_calculation         TEXT NOT NULL DEFAULT 'scheduled'
-                                        CHECK (hourly_time_calculation IN
-                                          ('scheduled','en_route_to_complete','start_to_complete')),
+      pay_period_frequency            TEXT NOT NULL DEFAULT 'monthly',
+      hourly_time_calculation         TEXT NOT NULL DEFAULT 'scheduled',
+      day_rate_cents                  INTEGER NOT NULL DEFAULT 20000,
       hourly_bonus_enabled            INTEGER NOT NULL DEFAULT 0,
-      hourly_bonus_threshold_cents    INTEGER NOT NULL DEFAULT 0,
-      hourly_bonus_amount_cents       INTEGER NOT NULL DEFAULT 0,
-      sales_commission_mode           TEXT NOT NULL DEFAULT 'flat'
-                                        CHECK (sales_commission_mode IN ('flat','tiers')),
+      hourly_bonus_tiers              TEXT NOT NULL DEFAULT '[]',
+      sales_commission_mode           TEXT NOT NULL DEFAULT 'flat',
       sales_commission_flat_rate      REAL NOT NULL DEFAULT 0.30,
       sales_commission_tiers          TEXT NOT NULL DEFAULT '[]',
-      tech_commission_mode            TEXT NOT NULL DEFAULT 'flat'
-                                        CHECK (tech_commission_mode IN ('flat','tiers')),
+      tech_commission_mode            TEXT NOT NULL DEFAULT 'flat',
       tech_commission_flat_rate       REAL NOT NULL DEFAULT 0.20,
       tech_commission_tiers           TEXT NOT NULL DEFAULT '[]',
       sales_overrides_enabled         INTEGER NOT NULL DEFAULT 0,
@@ -1141,6 +1135,85 @@ async function init(): Promise<void> {
     await _db.exec(
       `CREATE INDEX IF NOT EXISTS idx_${table}_company_id ON ${table}(company_id)`
     );
+  }
+
+  // payroll_settings: add day_rate_cents and convert single-bonus columns
+  // into a JSON tier list. Drops the legacy CHECK constraints so new values
+  // (e.g. 'day_rate' for hourly_time_calculation) can be stored.
+  const psCols = await _db
+    .prepare("PRAGMA table_info(payroll_settings)")
+    .all<{ name: string }>();
+  if (psCols.length > 0 && !psCols.some((c) => c.name === "day_rate_cents")) {
+    const hasOldBonusCols = psCols.some(
+      (c) => c.name === "hourly_bonus_threshold_cents"
+    );
+    await _db.exec(`
+      CREATE TABLE __rebuild_payroll_settings (
+        id                              INTEGER PRIMARY KEY CHECK (id = 1),
+        pay_period_frequency            TEXT NOT NULL DEFAULT 'monthly',
+        hourly_time_calculation         TEXT NOT NULL DEFAULT 'scheduled',
+        day_rate_cents                  INTEGER NOT NULL DEFAULT 20000,
+        hourly_bonus_enabled            INTEGER NOT NULL DEFAULT 0,
+        hourly_bonus_tiers              TEXT NOT NULL DEFAULT '[]',
+        sales_commission_mode           TEXT NOT NULL DEFAULT 'flat',
+        sales_commission_flat_rate      REAL NOT NULL DEFAULT 0.30,
+        sales_commission_tiers          TEXT NOT NULL DEFAULT '[]',
+        tech_commission_mode            TEXT NOT NULL DEFAULT 'flat',
+        tech_commission_flat_rate       REAL NOT NULL DEFAULT 0.20,
+        tech_commission_tiers           TEXT NOT NULL DEFAULT '[]',
+        sales_overrides_enabled         INTEGER NOT NULL DEFAULT 0,
+        sales_overrides_rate            REAL NOT NULL DEFAULT 0.05,
+        tech_overrides_enabled          INTEGER NOT NULL DEFAULT 0,
+        tech_overrides_rate             REAL NOT NULL DEFAULT 0.05,
+        plan_sale_bonuses_enabled       INTEGER NOT NULL DEFAULT 0,
+        plan_sale_bonus_cents           INTEGER NOT NULL DEFAULT 0,
+        exclude_one_time_services       INTEGER NOT NULL DEFAULT 0,
+        updated_at                      TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `);
+    if (hasOldBonusCols) {
+      await _db.exec(`
+        INSERT INTO __rebuild_payroll_settings (
+          id, pay_period_frequency, hourly_time_calculation, day_rate_cents,
+          hourly_bonus_enabled, hourly_bonus_tiers,
+          sales_commission_mode, sales_commission_flat_rate, sales_commission_tiers,
+          tech_commission_mode, tech_commission_flat_rate, tech_commission_tiers,
+          sales_overrides_enabled, sales_overrides_rate,
+          tech_overrides_enabled, tech_overrides_rate,
+          plan_sale_bonuses_enabled, plan_sale_bonus_cents,
+          exclude_one_time_services, updated_at
+        )
+        SELECT
+          id, pay_period_frequency, hourly_time_calculation, 20000,
+          hourly_bonus_enabled,
+          CASE
+            WHEN hourly_bonus_threshold_cents > 0
+              OR hourly_bonus_amount_cents > 0
+            THEN '[{"threshold_cents":' || hourly_bonus_threshold_cents
+                 || ',"amount_cents":' || hourly_bonus_amount_cents || '}]'
+            ELSE '[]'
+          END,
+          sales_commission_mode, sales_commission_flat_rate, sales_commission_tiers,
+          tech_commission_mode, tech_commission_flat_rate, tech_commission_tiers,
+          sales_overrides_enabled, sales_overrides_rate,
+          tech_overrides_enabled, tech_overrides_rate,
+          plan_sale_bonuses_enabled, plan_sale_bonus_cents,
+          exclude_one_time_services, updated_at
+        FROM payroll_settings;
+      `);
+    } else {
+      const carry = psCols.map((c) => c.name).join(", ");
+      await _db.exec(
+        `INSERT INTO __rebuild_payroll_settings (${carry}) SELECT ${carry} FROM payroll_settings`
+      );
+    }
+    await _db.exec(`DROP TABLE payroll_settings`);
+    await _db.exec(
+      `ALTER TABLE __rebuild_payroll_settings RENAME TO payroll_settings`
+    );
+    await _db
+      .prepare(`INSERT OR IGNORE INTO payroll_settings (id) VALUES (1)`)
+      .run();
   }
 }
 
@@ -1737,7 +1810,8 @@ export type PayPeriodFrequency =
 export type HourlyTimeCalculation =
   | "scheduled"
   | "en_route_to_complete"
-  | "start_to_complete";
+  | "start_to_complete"
+  | "day_rate";
 
 export type CommissionMode = "flat" | "tiers";
 
@@ -1746,13 +1820,18 @@ export type CommissionTier = {
   rate: number;
 };
 
+export type HourlyBonusTier = {
+  threshold_cents: number;
+  amount_cents: number;
+};
+
 export type PayrollSettings = {
   id: number;
   pay_period_frequency: PayPeriodFrequency;
   hourly_time_calculation: HourlyTimeCalculation;
+  day_rate_cents: number;
   hourly_bonus_enabled: number;
-  hourly_bonus_threshold_cents: number;
-  hourly_bonus_amount_cents: number;
+  hourly_bonus_tiers: string;
   sales_commission_mode: CommissionMode;
   sales_commission_flat_rate: number;
   sales_commission_tiers: string;
