@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 
-type Tab = "overview" | "sales" | "subscriptions";
+type Tab = "overview" | "sales" | "subscriptions" | "payroll";
 type Range = "1w" | "1m" | "3m" | "1y";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "sales", label: "Sales" },
   { key: "subscriptions", label: "Subscriptions" },
+  { key: "payroll", label: "Payroll" },
 ];
 
 const RANGES: { key: Range; label: string }[] = [
@@ -63,6 +64,7 @@ export default function ReportsClient() {
       {tab === "overview" && <OverviewPanel range={range} />}
       {tab === "sales" && <SalesPanel range={range} />}
       {tab === "subscriptions" && <SubscriptionsPanel />}
+      {tab === "payroll" && <PayrollPanel range={range} />}
     </div>
   );
 }
@@ -336,6 +338,306 @@ function Stats({
           <div className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">
             {it.value}
           </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+type PayrollRow = {
+  id: number;
+  name: string;
+  email: string | null;
+  role: string;
+  rate: number;
+  total_cents: number;
+  tips_cents: number;
+  payout_cents: number;
+  paid: boolean;
+};
+
+type PayrollData = {
+  range: Range;
+  period: { start: string; end: string };
+  sales: PayrollRow[];
+  tech: PayrollRow[];
+  summary: {
+    total_revenue_cents: number;
+    sales_commission_cents: number;
+    tech_commission_cents: number;
+    tips_cents: number;
+    total_payout_cents: number;
+    net_profit_cents: number;
+    total_tips_collected_cents: number;
+  };
+};
+
+function PayrollPanel({ range }: { range: Range }) {
+  const [data, setData] = useState<PayrollData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [reloadKey, setReloadKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/reports/payroll?range=${range}`)
+      .then((r) => r.json())
+      .then((d: PayrollData) => {
+        if (!cancelled) setData(d);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [range, reloadKey]);
+
+  async function updateRate(staffId: number, role: "sales" | "tech", rate: number) {
+    await fetch(`/api/reports/payroll/rate`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ staff_id: staffId, role, rate }),
+    });
+    setReloadKey((k) => k + 1);
+  }
+
+  async function togglePaid(
+    staffId: number,
+    role: "sales" | "tech",
+    paid: boolean
+  ) {
+    await fetch(`/api/reports/payroll/paid`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ staff_id: staffId, role, paid, range }),
+    });
+    setReloadKey((k) => k + 1);
+  }
+
+  if (loading && !data)
+    return (
+      <p className="text-sm text-slate-400 py-10 text-center">Loading…</p>
+    );
+  if (!data) return null;
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-semibold text-slate-900">Payroll</h2>
+        <p className="text-sm text-slate-500 mt-1">
+          Calculate commissions for sales and technician teams.
+        </p>
+      </div>
+
+      <PayrollTable
+        title="Sales Payroll"
+        rows={data.sales}
+        showTips={false}
+        onRateChange={(id, rate) => updateRate(id, "sales", rate)}
+        onPaidToggle={(id, paid) => togglePaid(id, "sales", paid)}
+      />
+
+      <PayrollTable
+        title="Technician Payroll"
+        rows={data.tech}
+        showTips
+        onRateChange={(id, rate) => updateRate(id, "tech", rate)}
+        onPaidToggle={(id, paid) => togglePaid(id, "tech", paid)}
+      />
+
+      <PayrollSummary summary={data.summary} />
+    </div>
+  );
+}
+
+function PayrollTable({
+  title,
+  rows,
+  showTips,
+  onRateChange,
+  onPaidToggle,
+}: {
+  title: string;
+  rows: PayrollRow[];
+  showTips: boolean;
+  onRateChange: (staffId: number, rate: number) => void;
+  onPaidToggle: (staffId: number, paid: boolean) => void;
+}) {
+  return (
+    <Section title={title}>
+      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        {rows.length === 0 ? (
+          <p className="p-8 text-sm text-slate-400 text-center">
+            No employees yet.
+          </p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="text-xs uppercase tracking-wider text-slate-400 bg-slate-50">
+                <th className="text-left px-5 py-3 font-medium">Employee</th>
+                <th className="text-left px-5 py-3 font-medium">Email</th>
+                <th className="text-left px-5 py-3 font-medium">Role</th>
+                <th className="text-right px-5 py-3 font-medium">Rate</th>
+                <th className="text-right px-5 py-3 font-medium">Total</th>
+                {showTips && (
+                  <th className="text-right px-5 py-3 font-medium">Tips</th>
+                )}
+                <th className="text-right px-5 py-3 font-medium">Payout</th>
+                <th className="text-center px-5 py-3 font-medium">Paid</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r) => (
+                <PayrollRowView
+                  key={r.id}
+                  row={r}
+                  showTips={showTips}
+                  onRateChange={(rate) => onRateChange(r.id, rate)}
+                  onPaidToggle={(paid) => onPaidToggle(r.id, paid)}
+                />
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </Section>
+  );
+}
+
+function PayrollRowView({
+  row,
+  showTips,
+  onRateChange,
+  onPaidToggle,
+}: {
+  row: PayrollRow;
+  showTips: boolean;
+  onRateChange: (rate: number) => void;
+  onPaidToggle: (paid: boolean) => void;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState((row.rate * 100).toFixed(1));
+
+  useEffect(() => {
+    setDraft((row.rate * 100).toFixed(1));
+  }, [row.rate]);
+
+  function commit() {
+    setEditing(false);
+    const pct = parseFloat(draft);
+    if (!Number.isFinite(pct)) return;
+    const rate = Math.max(0, Math.min(1, pct / 100));
+    if (Math.abs(rate - row.rate) > 1e-6) onRateChange(rate);
+  }
+
+  return (
+    <tr className="border-t border-slate-100">
+      <td className="px-5 py-3 font-medium text-slate-900">{row.name}</td>
+      <td className="px-5 py-3 text-slate-600">{row.email || "—"}</td>
+      <td className="px-5 py-3">
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 text-xs font-medium capitalize">
+          {row.role.replace(/_/g, " ")}
+        </span>
+      </td>
+      <td className="px-5 py-3 text-right tabular-nums">
+        {editing ? (
+          <input
+            autoFocus
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={commit}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commit();
+              if (e.key === "Escape") {
+                setDraft((row.rate * 100).toFixed(1));
+                setEditing(false);
+              }
+            }}
+            className="w-20 text-right border border-slate-300 rounded px-2 py-1"
+          />
+        ) : (
+          <button
+            onClick={() => setEditing(true)}
+            className="text-slate-700 hover:text-slate-900 hover:underline"
+          >
+            {(row.rate * 100).toFixed(1)}%
+          </button>
+        )}
+      </td>
+      <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+        {money(row.total_cents)}
+      </td>
+      {showTips && (
+        <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+          {money(row.tips_cents)}
+        </td>
+      )}
+      <td className="px-5 py-3 text-right font-semibold text-slate-900 tabular-nums">
+        {money(row.payout_cents)}
+      </td>
+      <td className="px-5 py-3 text-center">
+        <input
+          type="checkbox"
+          checked={row.paid}
+          onChange={(e) => onPaidToggle(e.target.checked)}
+          className="w-4 h-4 cursor-pointer"
+        />
+      </td>
+    </tr>
+  );
+}
+
+function PayrollSummary({
+  summary,
+}: {
+  summary: PayrollData["summary"];
+}) {
+  const items: { label: string; value: string; emphasis?: boolean }[] = [
+    { label: "Total Revenue", value: money(summary.total_revenue_cents) },
+    { label: "Sales Commission", value: money(summary.sales_commission_cents) },
+    {
+      label: "Technician Commission",
+      value: money(summary.tech_commission_cents),
+    },
+    { label: "Tips", value: money(summary.tips_cents) },
+    {
+      label: "Total Payout (Commissions + Tips)",
+      value: money(summary.total_payout_cents),
+    },
+    {
+      label: "Net Profit",
+      value: money(summary.net_profit_cents),
+      emphasis: true,
+    },
+  ];
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm divide-y divide-slate-100">
+      {items.map((it) => (
+        <div
+          key={it.label}
+          className="flex items-center justify-between px-5 py-3"
+        >
+          <span
+            className={
+              "text-sm " +
+              (it.emphasis
+                ? "font-semibold text-slate-900"
+                : "text-slate-600")
+            }
+          >
+            {it.label}
+          </span>
+          <span
+            className={
+              "tabular-nums " +
+              (it.emphasis
+                ? "text-lg font-bold text-slate-900"
+                : "font-semibold text-slate-900")
+            }
+          >
+            {it.value}
+          </span>
         </div>
       ))}
     </div>
