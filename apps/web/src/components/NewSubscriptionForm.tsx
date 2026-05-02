@@ -23,6 +23,8 @@ type SubscriptionInterval =
   | "biweekly"
   | "monthly"
   | "quarterly"
+  | "triannually"
+  | "semiannually"
   | "yearly";
 
 type SubscriptionTerms = {
@@ -35,8 +37,6 @@ type SubscriptionTemplate = {
   id: number;
   name: string;
   description: string | null;
-  price_cents: number;
-  interval: SubscriptionInterval;
   active: number;
   terms_id: number | null;
   require_signature: number;
@@ -46,7 +46,9 @@ const INTERVAL_LABELS: Record<SubscriptionInterval, string> = {
   weekly: "Weekly",
   biweekly: "Every 2 weeks",
   monthly: "Monthly",
-  quarterly: "Quarterly",
+  quarterly: "Quarterly (every 3 months)",
+  triannually: "Tri-annually (every 4 months)",
+  semiannually: "Bi-annually (every 6 months)",
   yearly: "Yearly",
 };
 
@@ -82,6 +84,10 @@ function intervalDays(i: SubscriptionInterval): number {
       return 7;
     case "biweekly":
       return 14;
+    case "triannually":
+      return 122;
+    case "semiannually":
+      return 182;
     case "monthly":
       return 30;
     case "quarterly":
@@ -118,6 +124,9 @@ export default function NewSubscriptionForm() {
 
   const [templateId, setTemplateId] = useState<number | "">("");
   const [showNewTemplate, setShowNewTemplate] = useState(false);
+
+  const [price, setPrice] = useState("");
+  const [interval, setInterval] = useState<SubscriptionInterval>("monthly");
 
   const [acceptMode, setAcceptMode] = useState<AcceptMode>("send");
 
@@ -163,16 +172,21 @@ export default function NewSubscriptionForm() {
 
   const includedVisits = useMemo(() => {
     if (!selectedTemplate || !startDate) return [] as { date: string }[];
-    const days = intervalDays(selectedTemplate.interval);
+    const days = intervalDays(interval);
     const out: { date: string }[] = [];
     for (let i = 0; i < 4; i++) {
       out.push({ date: addDays(startDate, days * i) });
     }
     return out;
-  }, [selectedTemplate, startDate]);
+  }, [selectedTemplate, startDate, interval]);
 
+  const priceCents = Math.max(0, Math.round((parseFloat(price) || 0) * 100));
   const canSubmit =
-    !!customerId && !!templateId && !!startDate && !submitting;
+    !!customerId &&
+    !!templateId &&
+    !!startDate &&
+    priceCents > 0 &&
+    !submitting;
 
   async function submit() {
     if (!canSubmit) return;
@@ -184,6 +198,8 @@ export default function NewSubscriptionForm() {
       body: JSON.stringify({
         customer_id: customerId,
         template_id: templateId,
+        price_cents: priceCents,
+        interval,
         action: acceptMode,
         start_date: startDate,
         sold_by_id: soldById || null,
@@ -350,8 +366,7 @@ export default function NewSubscriptionForm() {
                   .filter((t) => t.active === 1)
                   .map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.name} — {formatPrice(t.price_cents)} /{" "}
-                      {INTERVAL_LABELS[t.interval]}
+                      {t.name}
                     </option>
                   ))}
               </select>
@@ -368,10 +383,6 @@ export default function NewSubscriptionForm() {
                 <div className="font-medium text-slate-900">
                   {selectedTemplate.name}
                 </div>
-                <div>
-                  {formatPrice(selectedTemplate.price_cents)} ·{" "}
-                  {INTERVAL_LABELS[selectedTemplate.interval]}
-                </div>
                 {selectedTemplate.description && (
                   <div className="whitespace-pre-wrap">
                     {selectedTemplate.description}
@@ -387,6 +398,39 @@ export default function NewSubscriptionForm() {
                 )}
               </div>
             )}
+            <div className="grid grid-cols-2 gap-3 mt-4">
+              <Field label="Price (USD)">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={price}
+                  onChange={(e) => setPrice(e.target.value)}
+                  placeholder="49.00"
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white"
+                />
+              </Field>
+              <Field label="Billing & service frequency">
+                <select
+                  value={interval}
+                  onChange={(e) =>
+                    setInterval(e.target.value as SubscriptionInterval)
+                  }
+                  className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white"
+                >
+                  {(
+                    Object.entries(INTERVAL_LABELS) as [
+                      SubscriptionInterval,
+                      string,
+                    ][]
+                  ).map(([v, l]) => (
+                    <option key={v} value={v}>
+                      {l}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
           </Card>
 
           <Card>
@@ -418,9 +462,7 @@ export default function NewSubscriptionForm() {
             )}
             {selectedTemplate && (
               <p className="text-[11px] text-slate-400 mt-2">
-                Projected based on {INTERVAL_LABELS[
-                  selectedTemplate.interval
-                ].toLowerCase()}{" "}
+                Projected based on {INTERVAL_LABELS[interval].toLowerCase()}{" "}
                 cadence from the start date.
               </p>
             )}
@@ -747,8 +789,6 @@ function NewTemplateModal({
 }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [price, setPrice] = useState("");
-  const [interval, setInterval] = useState<SubscriptionInterval>("monthly");
   const [termsId, setTermsId] = useState<number | "">("");
   const [requireSignature, setRequireSignature] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -768,8 +808,6 @@ function NewTemplateModal({
       body: JSON.stringify({
         name: name.trim(),
         description: description.trim() || null,
-        price_cents: Math.round((parseFloat(price) || 0) * 100),
-        interval,
         active: true,
         terms_id: termsId || null,
         require_signature: requireSignature,
@@ -820,37 +858,10 @@ function NewTemplateModal({
             className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
           />
         </Field>
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Price (USD)">
-            <input
-              type="number"
-              step="0.01"
-              min="0"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
-              placeholder="49.00"
-            />
-          </Field>
-          <Field label="Billing interval">
-            <select
-              value={interval}
-              onChange={(e) =>
-                setInterval(e.target.value as SubscriptionInterval)
-              }
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
-            >
-              {(Object.entries(INTERVAL_LABELS) as [
-                SubscriptionInterval,
-                string,
-              ][]).map(([v, l]) => (
-                <option key={v} value={v}>
-                  {l}
-                </option>
-              ))}
-            </select>
-          </Field>
-        </div>
+        <p className="text-xs text-slate-500 -mt-1">
+          Price and billing interval are set per customer when you create a
+          subscription from this template.
+        </p>
         <Field label="Terms (optional)">
           <select
             value={termsId}
