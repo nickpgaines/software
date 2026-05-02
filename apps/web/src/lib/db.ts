@@ -267,6 +267,8 @@ async function init(): Promise<void> {
     ["permission_level", "TEXT NOT NULL DEFAULT 'manager'"],
     ["photo_url", "TEXT"],
     ["updated_at", "TEXT"],
+    ["sales_commission_rate", "REAL NOT NULL DEFAULT 0.30"],
+    ["tech_commission_rate", "REAL NOT NULL DEFAULT 0.20"],
   ];
   for (const [col, def] of staffAdds) {
     await alterAddColumn("staff", col, def, staffCols);
@@ -932,6 +934,18 @@ async function init(): Promise<void> {
       title      TEXT    NOT NULL DEFAULT ''
     );
     CREATE INDEX IF NOT EXISTS idx_sprint_prizes_sprint ON sprint_prizes(sprint_id);
+
+    CREATE TABLE IF NOT EXISTS payroll_payouts (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      staff_id     INTEGER NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      role         TEXT    NOT NULL CHECK (role IN ('sales','tech')),
+      period_start TEXT    NOT NULL,
+      period_end   TEXT    NOT NULL,
+      paid_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (staff_id, role, period_start, period_end)
+    );
+    CREATE INDEX IF NOT EXISTS idx_payroll_payouts_period
+      ON payroll_payouts(period_start, period_end);
   `);
 
   const tplCols = await _db
@@ -1058,6 +1072,8 @@ export type Staff = {
   color: string;
   permission_level: PermissionLevel;
   photo_url: string | null;
+  sales_commission_rate: number;
+  tech_commission_rate: number;
   created_at: string;
   updated_at: string | null;
 };
