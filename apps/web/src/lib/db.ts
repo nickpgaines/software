@@ -970,6 +970,31 @@ async function init(): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS idx_sprint_prizes_sprint ON sprint_prizes(sprint_id);
 
+    CREATE TABLE IF NOT EXISTS staff_shifts (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      staff_id        INTEGER NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      work_date       TEXT    NOT NULL,
+      start_minutes   INTEGER NOT NULL,
+      end_minutes     INTEGER NOT NULL,
+      created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (staff_id, work_date)
+    );
+    CREATE INDEX IF NOT EXISTS idx_staff_shifts_date ON staff_shifts(work_date);
+    CREATE INDEX IF NOT EXISTS idx_staff_shifts_staff ON staff_shifts(staff_id);
+
+    CREATE TABLE IF NOT EXISTS staff_default_shifts (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      staff_id        INTEGER NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      weekday         INTEGER NOT NULL CHECK (weekday BETWEEN 0 AND 6),
+      start_minutes   INTEGER NOT NULL,
+      end_minutes     INTEGER NOT NULL,
+      updated_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (staff_id, weekday)
+    );
+    CREATE INDEX IF NOT EXISTS idx_staff_default_shifts_staff
+      ON staff_default_shifts(staff_id);
+
     CREATE TABLE IF NOT EXISTS payroll_payouts (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
       staff_id     INTEGER NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
@@ -1852,6 +1877,25 @@ export type SprintPrize = {
   sprint_id: number;
   place: number;
   title: string;
+};
+
+export type StaffShift = {
+  id: number;
+  staff_id: number;
+  work_date: string;
+  start_minutes: number;
+  end_minutes: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type StaffDefaultShift = {
+  id: number;
+  staff_id: number;
+  weekday: number;
+  start_minutes: number;
+  end_minutes: number;
+  updated_at: string;
 };
 
 export type Payment = {
