@@ -51,7 +51,7 @@ export async function middleware(req: NextRequest) {
   const token = req.cookies.get(COOKIE_NAME)?.value;
   const authed = await isValid(token);
 
-  if (pathname === "/login") {
+  if (pathname === "/login" || pathname === "/signup") {
     if (authed) return NextResponse.redirect(new URL("/", req.url));
     return NextResponse.next();
   }
@@ -65,6 +65,6 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/|favicon.ico|api/login|api/messages/webhook|api/voice/outbound|api/voice/status|api/voice/recording|api/email/unsubscribe|api/stripe/webhook|invoices/pay/|api/invoices/pay/).*)",
+    "/((?!_next/|favicon.ico|api/login|api/signup|api/messages/webhook|api/voice/outbound|api/voice/status|api/voice/recording|api/email/unsubscribe|api/stripe/webhook|invoices/pay/|api/invoices/pay/).*)",
   ],
 };

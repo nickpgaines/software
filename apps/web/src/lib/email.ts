@@ -22,6 +22,7 @@ export async function getEmailSettings(): Promise<EmailSettings> {
     return (
       row ?? {
         id: 1,
+        company_id: 1,
         provider: "resend",
         api_key: null,
         from_address: null,

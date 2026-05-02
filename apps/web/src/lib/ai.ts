@@ -14,6 +14,7 @@ export async function getAiSettings(): Promise<AiSettings> {
     return (
       row ?? {
         id: 1,
+        company_id: 1,
         provider: "anthropic",
         api_key: null,
         model: DEFAULT_MODEL,

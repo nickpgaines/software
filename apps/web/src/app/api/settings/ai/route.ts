@@ -47,6 +47,7 @@ async function readSettings(): Promise<AiSettings> {
     return (
       row ?? {
         id: 1,
+        company_id: 1,
         provider: "anthropic",
         api_key: null,
         model: "claude-sonnet-4-6",
@@ -118,6 +119,7 @@ export async function PUT(req: Request) {
 
   const updated: AiSettings = {
     id: 1,
+    company_id: 1,
     provider: "anthropic",
     api_key: nextKey,
     model: nextModel,

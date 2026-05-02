@@ -193,6 +193,41 @@ async function alterAddColumn(
   }
 }
 
+// Rebuilds a table to drop the legacy `CHECK (id = 1)` single-row constraint
+// without touching its data. SQLite cannot drop a CHECK constraint in place,
+// so we copy into a new table and rename. No-op if the constraint isn't
+// present (fresh DBs already use AUTOINCREMENT).
+async function rebuildDropIdCheck(table: string): Promise<void> {
+  const row = await _db
+    .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name=?")
+    .get<{ sql: string }>(table);
+  if (!row?.sql) return;
+  if (!/CHECK\s*\(\s*id\s*=\s*1\s*\)/i.test(row.sql)) return;
+
+  const tmp = `__rebuild_${table}`;
+  const newSql = row.sql
+    .replace(
+      new RegExp(
+        `^CREATE\\s+TABLE\\s+(?:IF\\s+NOT\\s+EXISTS\\s+)?["'\`]?${table}["'\`]?`,
+        "i"
+      ),
+      `CREATE TABLE ${tmp}`
+    )
+    .replace(/CHECK\s*\(\s*id\s*=\s*1\s*\)\s*/gi, "");
+
+  const cols = await _db
+    .prepare(`PRAGMA table_info(${table})`)
+    .all<{ name: string }>();
+  const colNames = cols.map((c) => c.name).join(", ");
+
+  await _db.exec(newSql);
+  await _db.exec(
+    `INSERT INTO ${tmp} (${colNames}) SELECT ${colNames} FROM ${table}`
+  );
+  await _db.exec(`DROP TABLE ${table}`);
+  await _db.exec(`ALTER TABLE ${tmp} RENAME TO ${table}`);
+}
+
 async function init(): Promise<void> {
   // Pragmas. Best-effort — Turso ignores some, local file accepts both.
   try {
@@ -500,7 +535,7 @@ async function init(): Promise<void> {
     );
 
     CREATE TABLE IF NOT EXISTS company (
-      id INTEGER PRIMARY KEY CHECK (id = 1),
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT,
       address TEXT,
       phone TEXT,
@@ -520,7 +555,7 @@ async function init(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
 
     CREATE TABLE IF NOT EXISTS messaging_settings (
-      id INTEGER PRIMARY KEY CHECK (id = 1),
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       provider TEXT NOT NULL DEFAULT 'twilio',
       account_sid TEXT,
       auth_token TEXT,
@@ -552,7 +587,7 @@ async function init(): Promise<void> {
     CREATE UNIQUE INDEX IF NOT EXISTS idx_calls_twilio_call_sid ON calls(twilio_call_sid) WHERE twilio_call_sid IS NOT NULL;
 
     CREATE TABLE IF NOT EXISTS email_settings (
-      id INTEGER PRIMARY KEY CHECK (id = 1),
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       provider TEXT NOT NULL DEFAULT 'resend',
       api_key TEXT,
       from_address TEXT,
@@ -563,7 +598,7 @@ async function init(): Promise<void> {
     INSERT OR IGNORE INTO email_settings (id) VALUES (1);
 
     CREATE TABLE IF NOT EXISTS ai_settings (
-      id INTEGER PRIMARY KEY CHECK (id = 1),
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
       provider TEXT NOT NULL DEFAULT 'anthropic',
       api_key TEXT,
       model TEXT NOT NULL DEFAULT 'claude-sonnet-4-6',
@@ -889,7 +924,7 @@ async function init(): Promise<void> {
     );
 
     CREATE TABLE IF NOT EXISTS meta_integration (
-      id              INTEGER PRIMARY KEY CHECK (id = 1),
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id         TEXT,
       user_name       TEXT,
       access_token    TEXT,
@@ -1043,6 +1078,70 @@ async function init(): Promise<void> {
         .run(end.toISOString(), j.id);
     }
   }
+
+  // Multi-tenancy migration. Drops the legacy single-row CHECK on the
+  // company + settings tables, then adds a company_id FK to every
+  // tenant-owned table and backfills all existing rows to the legacy
+  // tenant (company.id = 1). Child tables (line_items, invoice_items,
+  // estimate_items, sprint_prizes, etc.) inherit scope through their
+  // parent FK, so they don't need a column of their own.
+  for (const t of [
+    "company",
+    "messaging_settings",
+    "email_settings",
+    "ai_settings",
+    "meta_integration",
+  ]) {
+    await rebuildDropIdCheck(t);
+  }
+
+  const companyScopedTables = [
+    "customers",
+    "jobs",
+    "staff",
+    "messages",
+    "messaging_settings",
+    "email_settings",
+    "ai_settings",
+    "meta_integration",
+    "meta_pages",
+    "calls",
+    "payments",
+    "subscription_terms",
+    "subscription_templates",
+    "customer_subscriptions",
+    "estimates",
+    "invoices",
+    "map_pins",
+    "territories",
+    "email_blasts",
+    "email_unsubscribes",
+    "email_automations",
+    "leads",
+    "lead_workflows",
+    "lead_forms",
+    "sprints",
+    "payroll_payouts",
+  ];
+
+  for (const table of companyScopedTables) {
+    const cols = await _db
+      .prepare(`PRAGMA table_info(${table})`)
+      .all<{ name: string }>();
+    if (cols.length === 0) continue;
+    await alterAddColumn(
+      table,
+      "company_id",
+      "INTEGER REFERENCES company(id) ON DELETE CASCADE",
+      cols
+    );
+    await _db.exec(
+      `UPDATE ${table} SET company_id = 1 WHERE company_id IS NULL`
+    );
+    await _db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_${table}_company_id ON ${table}(company_id)`
+    );
+  }
 }
 
 export async function getDb(): Promise<Db> {
@@ -1061,6 +1160,7 @@ export async function getDb(): Promise<Db> {
 
 export type Customer = {
   id: number;
+  company_id: number;
   name: string;
   first_name: string | null;
   last_name: string | null;
@@ -1092,6 +1192,7 @@ export type PermissionLevel =
 
 export type Staff = {
   id: number;
+  company_id: number;
   name: string;
   role: string | null;
   first_name: string | null;
@@ -1110,6 +1211,7 @@ export type Staff = {
 
 export type Job = {
   id: number;
+  company_id: number;
   customer_id: number;
   scheduled_at: string;
   duration_minutes: number;
@@ -1168,6 +1270,7 @@ export type JobWithCustomer = Job & {
 
 export type MapPin = {
   id: number;
+  company_id: number;
   lat: number;
   lng: number;
   address: string | null;
@@ -1184,6 +1287,7 @@ export type MapPin = {
 
 export type Territory = {
   id: number;
+  company_id: number;
   name: string;
   color: string;
   polygon: string;
@@ -1215,6 +1319,7 @@ export type MessageStatus =
 
 export type Message = {
   id: number;
+  company_id: number;
   customer_id: number;
   body: string;
   direction: "outbound" | "inbound";
@@ -1229,6 +1334,7 @@ export type Message = {
 
 export type MessagingSettings = {
   id: number;
+  company_id: number;
   provider: string;
   account_sid: string | null;
   auth_token: string | null;
@@ -1244,6 +1350,7 @@ export type CallDirection = "outbound" | "inbound";
 
 export type Call = {
   id: number;
+  company_id: number;
   customer_id: number | null;
   twilio_call_sid: string | null;
   direction: CallDirection;
@@ -1263,6 +1370,7 @@ export type Call = {
 
 export type EmailSettings = {
   id: number;
+  company_id: number;
   provider: string;
   api_key: string | null;
   from_address: string | null;
@@ -1273,6 +1381,7 @@ export type EmailSettings = {
 
 export type AiSettings = {
   id: number;
+  company_id: number;
   provider: string;
   api_key: string | null;
   model: string;
@@ -1288,6 +1397,7 @@ export type EmailAudience =
 
 export type EmailBlast = {
   id: number;
+  company_id: number;
   audience: EmailAudience | string;
   subject: string;
   body_html: string;
@@ -1318,6 +1428,7 @@ export type EmailRecipient = {
 
 export type EmailUnsubscribe = {
   id: number;
+  company_id: number;
   email: string;
   reason: string | null;
   source: string | null;
@@ -1329,6 +1440,7 @@ export type EmailSeason = "spring" | "summer" | "fall" | "winter";
 
 export type EmailAutomation = {
   id: number;
+  company_id: number;
   key: string;
   kind: EmailAutomationKind;
   season: EmailSeason | null;
@@ -1355,6 +1467,7 @@ export type SubscriptionInterval =
 
 export type SubscriptionTerms = {
   id: number;
+  company_id: number;
   name: string;
   body: string;
   created_at: string;
@@ -1363,6 +1476,7 @@ export type SubscriptionTerms = {
 
 export type SubscriptionTemplate = {
   id: number;
+  company_id: number;
   name: string;
   description: string | null;
   price_cents: number;
@@ -1382,6 +1496,7 @@ export type CustomerSubscriptionStatus =
 
 export type CustomerSubscription = {
   id: number;
+  company_id: number;
   customer_id: number;
   template_id: number | null;
   name: string;
@@ -1413,6 +1528,7 @@ export type EstimateStatus =
 
 export type Estimate = {
   id: number;
+  company_id: number;
   customer_id: number;
   title: string | null;
   notes: string | null;
@@ -1453,6 +1569,7 @@ export type InvoiceStatus =
 
 export type Invoice = {
   id: number;
+  company_id: number;
   customer_id: number;
   job_id: number | null;
   title: string | null;
@@ -1489,6 +1606,7 @@ export type LeadStage = "new" | "contacted" | "responded" | "estimate_sent";
 
 export type Lead = {
   id: number;
+  company_id: number;
   first_name: string | null;
   last_name: string | null;
   email: string | null;
@@ -1514,6 +1632,7 @@ export type Lead = {
 
 export type LeadWorkflow = {
   id: number;
+  company_id: number;
   name: string;
   trigger: string;
   max_per_day: number;
@@ -1536,6 +1655,7 @@ export type LeadWorkflowRun = {
 
 export type LeadForm = {
   id: number;
+  company_id: number;
   name: string;
   slug: string;
   fields: string;
@@ -1547,6 +1667,7 @@ export type LeadForm = {
 
 export type MetaIntegration = {
   id: number;
+  company_id: number;
   user_id: string | null;
   user_name: string | null;
   access_token: string | null;
@@ -1557,6 +1678,7 @@ export type MetaIntegration = {
 
 export type MetaPage = {
   id: number;
+  company_id: number;
   page_id: string;
   page_name: string;
   page_access_token: string | null;
@@ -1574,6 +1696,7 @@ export type PaymentMethod =
 
 export type Sprint = {
   id: number;
+  company_id: number;
   name: string;
   description: string | null;
   view: "sales" | "tech";
@@ -1592,6 +1715,7 @@ export type SprintPrize = {
 
 export type Payment = {
   id: number;
+  company_id: number;
   job_id: number;
   amount_cents: number;
   tip_cents: number;

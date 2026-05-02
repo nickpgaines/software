@@ -43,6 +43,7 @@ async function readSettings(): Promise<EmailSettings> {
     return (
       row ?? {
         id: 1,
+        company_id: 1,
         provider: "resend",
         api_key: null,
         from_address: null,
@@ -123,6 +124,7 @@ export async function PUT(req: Request) {
 
   const updated: EmailSettings = {
     id: 1,
+    company_id: 1,
     provider: current.provider || "resend",
     api_key: nextKey,
     from_address: nextFromAddress,
