@@ -37,25 +37,24 @@ function toPublic(s: AiSettings): PublicAiSettings {
 
 async function readSettings(): Promise<AiSettings> {
   const db = await getDb();
-  let row = (await db
-    .prepare("SELECT * FROM ai_settings WHERE id = 1")
-    .get()) as AiSettings | undefined;
-  if (row && !row.api_key) {
-    const retry = (await db
+  // Wrap in a write transaction to force a primary read. Plain reads can hit
+  // a Turso edge replica that lags behind the primary, which made the page
+  // flip back to "Not connected" right after a successful save.
+  return await db.transaction(async (tx) => {
+    const row = (await tx
       .prepare("SELECT * FROM ai_settings WHERE id = 1")
       .get()) as AiSettings | undefined;
-    if (retry) row = retry;
-  }
-  return (
-    row ?? {
-      id: 1,
-      provider: "anthropic",
-      api_key: null,
-      model: "claude-sonnet-4-6",
-      company_voice: null,
-      updated_at: "",
-    }
-  );
+    return (
+      row ?? {
+        id: 1,
+        provider: "anthropic",
+        api_key: null,
+        model: "claude-sonnet-4-6",
+        company_voice: null,
+        updated_at: "",
+      }
+    );
+  });
 }
 
 export async function GET() {
