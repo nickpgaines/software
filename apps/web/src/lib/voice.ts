@@ -10,6 +10,7 @@ export async function getVoiceSettings(): Promise<MessagingSettings> {
     return (
       row ?? {
         id: 1,
+        company_id: 1,
         provider: "twilio",
         account_sid: null,
         auth_token: null,
