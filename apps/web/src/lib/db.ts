@@ -1044,6 +1044,66 @@ async function init(): Promise<void> {
     await alterAddColumn("customer_subscriptions", col, def, subCols);
   }
 
+  // Widen the customer_subscriptions.interval CHECK to allow new intervals
+  // (triannually, semiannually). SQLite can't ALTER a CHECK in place, so
+  // detect the old constraint and rebuild the table preserving all data.
+  const subTableSql = await _db
+    .prepare(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='customer_subscriptions'"
+    )
+    .get<{ sql: string }>();
+  if (
+    subTableSql?.sql &&
+    subTableSql.sql.includes(
+      "interval IN ('weekly','biweekly','monthly','quarterly','yearly')"
+    )
+  ) {
+    await _db.exec(`
+      CREATE TABLE customer_subscriptions__new (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id  INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+        template_id  INTEGER REFERENCES subscription_templates(id) ON DELETE SET NULL,
+        name         TEXT    NOT NULL,
+        description  TEXT,
+        price_cents  INTEGER NOT NULL DEFAULT 0,
+        interval     TEXT    NOT NULL DEFAULT 'monthly'
+                      CHECK (interval IN ('weekly','biweekly','monthly','quarterly','triannually','semiannually','yearly')),
+        status       TEXT    NOT NULL DEFAULT 'pending'
+                      CHECK (status IN ('pending','active','declined','canceled')),
+        sent_at      TEXT,
+        accepted_at  TEXT,
+        canceled_at  TEXT,
+        created_by   TEXT,
+        terms_snapshot TEXT,
+        require_signature INTEGER NOT NULL DEFAULT 0,
+        signature_data TEXT,
+        signature_name TEXT,
+        signed_at    TEXT,
+        start_date   TEXT,
+        sold_by_id   INTEGER REFERENCES staff(id) ON DELETE SET NULL,
+        created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+      );
+      INSERT INTO customer_subscriptions__new
+        (id, customer_id, template_id, name, description, price_cents, interval,
+         status, sent_at, accepted_at, canceled_at, created_by, terms_snapshot,
+         require_signature, signature_data, signature_name, signed_at,
+         start_date, sold_by_id, created_at)
+      SELECT id, customer_id, template_id, name, description, price_cents, interval,
+             status, sent_at, accepted_at, canceled_at, created_by, terms_snapshot,
+             require_signature, signature_data, signature_name, signed_at,
+             start_date, sold_by_id, created_at
+      FROM customer_subscriptions;
+      DROP TABLE customer_subscriptions;
+      ALTER TABLE customer_subscriptions__new RENAME TO customer_subscriptions;
+      CREATE INDEX IF NOT EXISTS idx_customer_subscriptions_customer
+        ON customer_subscriptions(customer_id);
+      CREATE INDEX IF NOT EXISTS idx_customer_subscriptions_template
+        ON customer_subscriptions(template_id);
+      CREATE INDEX IF NOT EXISTS idx_customer_subscriptions_status
+        ON customer_subscriptions(status);
+    `);
+  }
+
   const legacy = await _db
     .prepare(
       `SELECT j.id, j.salesperson_id, j.technician_id, j.scheduled_at, j.duration_minutes, j.end_time
@@ -1546,6 +1606,8 @@ export type SubscriptionInterval =
   | "biweekly"
   | "monthly"
   | "quarterly"
+  | "triannually"
+  | "semiannually"
   | "yearly";
 
 export type SubscriptionTerms = {

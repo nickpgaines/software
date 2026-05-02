@@ -1,26 +1,8 @@
 import { NextResponse } from "next/server";
-import {
-  getDb,
-  type SubscriptionInterval,
-  type SubscriptionTemplate,
-} from "@/lib/db";
+import { getDb, type SubscriptionTemplate } from "@/lib/db";
 import { getSessionUser } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
-
-const VALID_INTERVALS: SubscriptionInterval[] = [
-  "weekly",
-  "biweekly",
-  "monthly",
-  "quarterly",
-  "yearly",
-];
-
-function toCents(v: unknown): number {
-  if (typeof v === "number" && Number.isFinite(v)) return Math.round(v);
-  const n = Number(v);
-  return Number.isFinite(n) ? Math.round(n) : 0;
-}
 
 export async function GET(
   _req: Request,
@@ -55,8 +37,6 @@ export async function PUT(
   const body = (await req.json().catch(() => ({}))) as Partial<{
     name: string;
     description: string | null;
-    price_cents: number;
-    interval: SubscriptionInterval;
     active: boolean | number;
     terms_id: number | null;
     require_signature: boolean | number;
@@ -73,14 +53,6 @@ export async function PUT(
       : body.description === null
         ? null
         : String(body.description).trim() || null;
-  const price_cents =
-    body.price_cents === undefined
-      ? existing.price_cents
-      : Math.max(0, toCents(body.price_cents));
-  const interval =
-    body.interval && VALID_INTERVALS.includes(body.interval)
-      ? body.interval
-      : existing.interval;
   const active =
     body.active === undefined
       ? existing.active
@@ -107,7 +79,7 @@ export async function PUT(
   await db
     .prepare(
       `UPDATE subscription_templates
-         SET name = ?, description = ?, price_cents = ?, interval = ?, active = ?,
+         SET name = ?, description = ?, active = ?,
              terms_id = ?, require_signature = ?, tax_rate_bps = ?,
              updated_at = datetime('now')
        WHERE id = ?`
@@ -115,8 +87,6 @@ export async function PUT(
     .run(
       name,
       description,
-      price_cents,
-      interval,
       active,
       termsId,
       requireSignature,

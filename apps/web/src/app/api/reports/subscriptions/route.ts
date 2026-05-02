@@ -14,6 +14,8 @@ const INTERVALS_PER_YEAR: Record<SubscriptionInterval, number> = {
   biweekly: 26,
   monthly: 12,
   quarterly: 4,
+  triannually: 3,
+  semiannually: 2,
   yearly: 1,
 };
 
@@ -45,6 +47,8 @@ function intervalsToList(raw: string | null): SubscriptionInterval[] | null {
     "biweekly",
     "monthly",
     "quarterly",
+    "triannually",
+    "semiannually",
     "yearly",
   ];
   const set = new Set(

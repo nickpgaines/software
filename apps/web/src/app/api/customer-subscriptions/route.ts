@@ -15,6 +15,8 @@ const VALID_INTERVALS: SubscriptionInterval[] = [
   "biweekly",
   "monthly",
   "quarterly",
+  "triannually",
+  "semiannually",
   "yearly",
 ];
 
@@ -28,6 +30,10 @@ function intervalLabel(i: SubscriptionInterval): string {
       return "month";
     case "quarterly":
       return "quarter";
+    case "triannually":
+      return "4 months";
+    case "semiannually":
+      return "6 months";
     case "yearly":
       return "year";
   }
@@ -97,12 +103,23 @@ export async function POST(req: Request) {
 
   let name = (body.name || "").trim();
   let description = body.description?.toString().trim() || null;
-  let price_cents =
-    body.price_cents === undefined ? 0 : Math.max(0, Number(body.price_cents) || 0);
-  let interval: SubscriptionInterval =
-    body.interval && VALID_INTERVALS.includes(body.interval)
-      ? body.interval
-      : "monthly";
+  const priceProvided = body.price_cents !== undefined;
+  let price_cents = priceProvided
+    ? Math.max(0, Number(body.price_cents) || 0)
+    : 0;
+  if (priceProvided && price_cents <= 0) {
+    return NextResponse.json(
+      { error: "price must be greater than zero" },
+      { status: 400 }
+    );
+  }
+  if (!body.interval || !VALID_INTERVALS.includes(body.interval)) {
+    return NextResponse.json(
+      { error: "interval is required" },
+      { status: 400 }
+    );
+  }
+  const interval: SubscriptionInterval = body.interval;
   let templateId: number | null = null;
   let termsSnapshot: string | null = null;
   let requireSignature = 0;
@@ -124,8 +141,6 @@ export async function POST(req: Request) {
     templateId = tpl.id;
     if (!name) name = tpl.name;
     if (!description) description = tpl.description;
-    if (body.price_cents === undefined) price_cents = tpl.price_cents;
-    if (!body.interval) interval = tpl.interval;
     requireSignature = tpl.require_signature ? 1 : 0;
     if (body.tax_rate_bps === undefined) taxRateBps = tpl.tax_rate_bps || 0;
     if (tpl.terms_id) {
@@ -136,6 +151,13 @@ export async function POST(req: Request) {
         termsSnapshot = `${terms.name}\n\n${terms.body}`;
       }
     }
+  }
+
+  if (!priceProvided || price_cents <= 0) {
+    return NextResponse.json(
+      { error: "price is required" },
+      { status: 400 }
+    );
   }
 
   const signatureData =
