@@ -5,25 +5,23 @@ const DEFAULT_MODEL = "claude-sonnet-4-6";
 
 export async function getAiSettings(): Promise<AiSettings> {
   const db = await getDb();
-  let row = (await db
-    .prepare("SELECT * FROM ai_settings WHERE id = 1")
-    .get()) as AiSettings | undefined;
-  if (row && !row.api_key) {
-    const retry = (await db
+  // Wrap in a write transaction to force a primary read. Plain reads can hit
+  // a Turso edge replica that lags behind the primary right after a save.
+  return await db.transaction(async (tx) => {
+    const row = (await tx
       .prepare("SELECT * FROM ai_settings WHERE id = 1")
       .get()) as AiSettings | undefined;
-    if (retry) row = retry;
-  }
-  return (
-    row ?? {
-      id: 1,
-      provider: "anthropic",
-      api_key: null,
-      model: DEFAULT_MODEL,
-      company_voice: null,
-      updated_at: "",
-    }
-  );
+    return (
+      row ?? {
+        id: 1,
+        provider: "anthropic",
+        api_key: null,
+        model: DEFAULT_MODEL,
+        company_voice: null,
+        updated_at: "",
+      }
+    );
+  });
 }
 
 export function isAiConfigured(s: AiSettings): boolean {
