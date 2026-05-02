@@ -16,12 +16,14 @@ import {
   Users,
   Settings,
   LogOut,
+  Inbox,
 } from "lucide-react";
 import NewMenu from "@/components/NewMenu";
 
 const links = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
   { href: "/schedule", label: "Schedule", icon: Calendar },
+  { href: "/leads", label: "Leads", icon: Inbox },
   { href: "/messages", label: "Messages", icon: MessageSquare },
   { href: "/calls", label: "Calls", icon: Phone },
   { href: "/email", label: "Email", icon: Mail },

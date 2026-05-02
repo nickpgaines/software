@@ -1,0 +1,174 @@
+"use client";
+
+import { useState } from "react";
+import { Plus, FileText } from "lucide-react";
+import type { LeadForm } from "@/lib/db";
+
+export default function LeadsFormsClient({
+  initialForms,
+}: {
+  initialForms: LeadForm[];
+}) {
+  const [forms, setForms] = useState<LeadForm[]>(initialForms);
+  const [showNew, setShowNew] = useState(false);
+  const [name, setName] = useState("");
+
+  async function createForm() {
+    if (!name.trim()) return;
+    const res = await fetch("/api/lead-forms", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ name: name.trim() }),
+    });
+    if (res.ok) {
+      const created = (await res.json()) as LeadForm;
+      setForms((cur) => [created, ...cur]);
+      setName("");
+      setShowNew(false);
+    }
+  }
+
+  async function toggle(id: number, enabled: boolean) {
+    const prev = forms;
+    setForms((cur) =>
+      cur.map((f) => (f.id === id ? { ...f, enabled: enabled ? 1 : 0 } : f))
+    );
+    try {
+      await fetch(`/api/lead-forms/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+    } catch {
+      setForms(prev);
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-semibold text-slate-900">Forms</h2>
+        <p className="text-sm text-slate-500">
+          Create web forms that drop new leads into your pipeline
+        </p>
+      </div>
+
+      <div className="flex justify-end">
+        <button
+          type="button"
+          onClick={() => setShowNew(true)}
+          className="inline-flex items-center gap-1.5 bg-sky-400 hover:bg-sky-500 text-white text-sm font-medium px-4 py-2 rounded-full"
+        >
+          <Plus className="w-4 h-4" />
+          Add Form
+        </button>
+      </div>
+
+      {forms.length === 0 ? (
+        <div className="border border-dashed border-slate-200 rounded-2xl p-12 text-center">
+          <div className="mx-auto w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+            <FileText className="w-5 h-5" />
+          </div>
+          <p className="mt-3 font-medium text-slate-900">No forms yet</p>
+          <p className="text-sm text-slate-500 mt-1">
+            Build a form, share its link, and new leads land in your pipeline.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {forms.map((f) => {
+            const enabled = !!f.enabled;
+            return (
+              <div
+                key={f.id}
+                className="border border-slate-200 rounded-2xl p-4 flex items-center justify-between gap-4"
+              >
+                <div>
+                  <div className="font-semibold text-slate-900">{f.name}</div>
+                  <div className="text-xs text-slate-500 mt-0.5 break-all">
+                    /forms/{f.slug}
+                  </div>
+                  <div className="text-xs text-slate-500 mt-0.5">
+                    {f.submit_count} submissions
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <span
+                    className={
+                      "text-xs px-3 py-1 rounded-full " +
+                      (enabled
+                        ? "bg-emerald-50 text-emerald-700"
+                        : "bg-slate-100 text-slate-600")
+                    }
+                  >
+                    {enabled ? "Live" : "Disabled"}
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={enabled}
+                    onClick={() => toggle(f.id, !enabled)}
+                    className={
+                      "relative w-10 h-6 rounded-full transition-colors " +
+                      (enabled ? "bg-emerald-500" : "bg-slate-300")
+                    }
+                  >
+                    <span
+                      className={
+                        "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform " +
+                        (enabled ? "translate-x-4" : "")
+                      }
+                    />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {showNew && (
+        <div
+          className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowNew(false)}
+        >
+          <div
+            className="bg-white rounded-2xl p-6 w-full max-w-md"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-slate-900 mb-4">
+              New form
+            </h3>
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Form name"
+              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+            />
+            <p className="text-xs text-slate-500 mt-2">
+              Default fields: first name, last name, email, phone. You can
+              customize them later.
+            </p>
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                type="button"
+                onClick={() => setShowNew(false)}
+                className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={createForm}
+                className="px-4 py-2 text-sm bg-sky-400 hover:bg-sky-500 text-white rounded-full"
+              >
+                Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
