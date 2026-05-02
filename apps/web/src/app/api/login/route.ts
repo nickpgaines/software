@@ -13,11 +13,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
   }
 
-  const expectedUser = process.env.ADMIN_USERNAME || "admin";
-  const expectedPass = process.env.ADMIN_PASSWORD || "admin";
+  const envUser = process.env.ADMIN_USERNAME?.trim();
+  const envPass = process.env.ADMIN_PASSWORD?.trim();
+  const isProd = process.env.NODE_ENV === "production";
+  // In production we refuse to honor the built-in admin login unless BOTH
+  // env vars are explicitly set — no insecure "admin/admin" defaults.
+  const adminEnabled = isProd ? !!(envUser && envPass) : true;
+  const expectedUser = envUser || (isProd ? "" : "admin");
+  const expectedPass = envPass || (isProd ? "" : "admin");
 
   // Built-in admin login (env-vars).
-  if (username === expectedUser && password === expectedPass) {
+  if (
+    adminEnabled &&
+    expectedUser &&
+    expectedPass &&
+    username === expectedUser &&
+    password === expectedPass
+  ) {
     return issueSession(username);
   }
 
@@ -42,6 +54,7 @@ function issueSession(identity: string) {
   res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
     path: "/",
     maxAge: 60 * 60 * 24 * 30,
   });

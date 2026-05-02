@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, type Payment, type PaymentMethod } from "@/lib/db";
 import { autoCompleteSteps } from "@/lib/jobs";
+import { sendPaymentReceipt } from "@/lib/payment-receipts";
 
 export const dynamic = "force-dynamic";
 
@@ -118,24 +119,17 @@ export async function POST(
     .prepare("SELECT * FROM payments WHERE id = ?")
     .get(insertedId)) as Payment;
 
-  // TODO(post-vercel): wire real email/SMS sending via Resend + Twilio.
-  // The toggle values are persisted on the payment record so we can
-  // reconcile later when the senders go live.
-  if (send_email) {
-    console.log(
-      "TODO: Send email receipt for payment",
-      created.id,
-      "on job",
-      jobId
-    );
-  }
-  if (send_sms) {
-    console.log(
-      "TODO: Send SMS receipt for payment",
-      created.id,
-      "on job",
-      jobId
-    );
+  if (send_email || send_sms) {
+    await sendPaymentReceipt({
+      jobId,
+      paymentId: created.id,
+      amountCents: created.amount_cents,
+      tipCents: created.tip_cents ?? 0,
+      method,
+      paymentDate: created.payment_date || payment_date,
+      sendEmail: !!send_email,
+      sendSms: !!send_sms,
+    });
   }
 
   return NextResponse.json(created, { status: 201 });

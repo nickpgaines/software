@@ -6,6 +6,7 @@ import {
   isStripeConfigured,
   getCompany,
 } from "@/lib/stripe";
+import { sendPaymentReceipt } from "@/lib/payment-receipts";
 
 export const dynamic = "force-dynamic";
 
@@ -128,21 +129,17 @@ export async function POST(
     .prepare("SELECT * FROM payments WHERE id = ?")
     .get(insertedId)) as Payment;
 
-  if (send_email) {
-    console.log(
-      "TODO: Send email receipt for payment",
-      created.id,
-      "on job",
-      jobId
-    );
-  }
-  if (send_sms) {
-    console.log(
-      "TODO: Send SMS receipt for payment",
-      created.id,
-      "on job",
-      jobId
-    );
+  if (send_email || send_sms) {
+    await sendPaymentReceipt({
+      jobId,
+      paymentId: created.id,
+      amountCents: created.amount_cents,
+      tipCents: created.tip_cents ?? 0,
+      method: "card",
+      paymentDate: created.payment_date || payment_date,
+      sendEmail: !!send_email,
+      sendSms: !!send_sms,
+    });
   }
 
   return NextResponse.json(created, { status: 201 });
