@@ -820,6 +820,98 @@ async function init(): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS idx_invoice_items_invoice
       ON invoice_items(invoice_id);
+
+    CREATE TABLE IF NOT EXISTS leads (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      first_name      TEXT,
+      last_name       TEXT,
+      email           TEXT,
+      phone           TEXT,
+      address         TEXT,
+      source          TEXT NOT NULL DEFAULT 'manual',
+      source_page_id  TEXT,
+      source_page_name TEXT,
+      source_form_id  TEXT,
+      source_form_name TEXT,
+      meta_lead_id    TEXT,
+      raw_payload     TEXT,
+      stage           TEXT NOT NULL DEFAULT 'new'
+                        CHECK (stage IN ('new','contacted','responded','estimate_sent')),
+      position        INTEGER NOT NULL DEFAULT 0,
+      notes           TEXT,
+      customer_id     INTEGER REFERENCES customers(id) ON DELETE SET NULL,
+      contacted_at    TEXT,
+      responded_at    TEXT,
+      estimate_sent_at TEXT,
+      created_at      TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_leads_stage ON leads(stage);
+    CREATE INDEX IF NOT EXISTS idx_leads_created_at ON leads(created_at);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_leads_meta_lead_id
+      ON leads(meta_lead_id) WHERE meta_lead_id IS NOT NULL;
+
+    CREATE TABLE IF NOT EXISTS lead_workflows (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      name         TEXT NOT NULL,
+      trigger      TEXT NOT NULL DEFAULT 'lead_created',
+      max_per_day  INTEGER NOT NULL DEFAULT 3,
+      enabled      INTEGER NOT NULL DEFAULT 0,
+      steps        TEXT NOT NULL DEFAULT '[]',
+      created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS lead_workflow_runs (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      workflow_id  INTEGER NOT NULL REFERENCES lead_workflows(id) ON DELETE CASCADE,
+      lead_id      INTEGER NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+      status       TEXT NOT NULL DEFAULT 'pending',
+      step_index   INTEGER NOT NULL DEFAULT 0,
+      last_step_at TEXT,
+      error        TEXT,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_lwr_workflow ON lead_workflow_runs(workflow_id);
+    CREATE INDEX IF NOT EXISTS idx_lwr_lead ON lead_workflow_runs(lead_id);
+
+    CREATE TABLE IF NOT EXISTS lead_forms (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      name         TEXT NOT NULL,
+      slug         TEXT NOT NULL UNIQUE,
+      fields       TEXT NOT NULL DEFAULT '[]',
+      enabled      INTEGER NOT NULL DEFAULT 1,
+      submit_count INTEGER NOT NULL DEFAULT 0,
+      created_at   TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS meta_integration (
+      id              INTEGER PRIMARY KEY CHECK (id = 1),
+      user_id         TEXT,
+      user_name       TEXT,
+      access_token    TEXT,
+      token_expires_at TEXT,
+      connected_at    TEXT,
+      updated_at      TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    INSERT OR IGNORE INTO meta_integration (id) VALUES (1);
+
+    CREATE TABLE IF NOT EXISTS meta_pages (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      page_id           TEXT NOT NULL UNIQUE,
+      page_name         TEXT NOT NULL,
+      page_access_token TEXT,
+      enabled           INTEGER NOT NULL DEFAULT 1,
+      created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at        TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    INSERT OR IGNORE INTO lead_workflows (id, name, trigger, max_per_day, enabled, steps)
+    VALUES
+      (1, 'Missed Call Text-Back', 'lead_created', 3, 0, '[]'),
+      (2, 'CRACKED lead follow-up sequence', 'lead_created', 3, 0, '[]'),
+      (3, 'Contact fresh leads', 'lead_created', 3, 0, '[]');
   `);
 
   const tplCols = await _db
@@ -1325,6 +1417,86 @@ export type InvoiceItem = {
   price_cents: number;
   taxable: number;
   position: number;
+};
+
+export type LeadStage = "new" | "contacted" | "responded" | "estimate_sent";
+
+export type Lead = {
+  id: number;
+  first_name: string | null;
+  last_name: string | null;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  source: string;
+  source_page_id: string | null;
+  source_page_name: string | null;
+  source_form_id: string | null;
+  source_form_name: string | null;
+  meta_lead_id: string | null;
+  raw_payload: string | null;
+  stage: LeadStage;
+  position: number;
+  notes: string | null;
+  customer_id: number | null;
+  contacted_at: string | null;
+  responded_at: string | null;
+  estimate_sent_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type LeadWorkflow = {
+  id: number;
+  name: string;
+  trigger: string;
+  max_per_day: number;
+  enabled: number;
+  steps: string;
+  created_at: string;
+  updated_at: string;
+};
+
+export type LeadWorkflowRun = {
+  id: number;
+  workflow_id: number;
+  lead_id: number;
+  status: string;
+  step_index: number;
+  last_step_at: string | null;
+  error: string | null;
+  created_at: string;
+};
+
+export type LeadForm = {
+  id: number;
+  name: string;
+  slug: string;
+  fields: string;
+  enabled: number;
+  submit_count: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type MetaIntegration = {
+  id: number;
+  user_id: string | null;
+  user_name: string | null;
+  access_token: string | null;
+  token_expires_at: string | null;
+  connected_at: string | null;
+  updated_at: string;
+};
+
+export type MetaPage = {
+  id: number;
+  page_id: string;
+  page_name: string;
+  page_access_token: string | null;
+  enabled: number;
+  created_at: string;
+  updated_at: string;
 };
 
 export type PaymentMethod =
