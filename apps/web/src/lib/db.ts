@@ -1015,6 +1015,17 @@ async function init(): Promise<void> {
       received_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS oauth_accounts (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      provider          TEXT NOT NULL,
+      provider_user_id  TEXT NOT NULL,
+      staff_id          INTEGER NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      email             TEXT,
+      created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (provider, provider_user_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_oauth_accounts_staff_id ON oauth_accounts(staff_id);
+
     CREATE TABLE IF NOT EXISTS payroll_settings (
       id                              INTEGER PRIMARY KEY CHECK (id = 1),
       pay_period_frequency            TEXT NOT NULL DEFAULT 'monthly',
