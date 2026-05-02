@@ -89,6 +89,7 @@ export async function POST(req: Request) {
     signature_name: string;
     start_date: string;
     sold_by_id: number | null;
+    tax_rate_bps: number;
   }>;
 
   const customerId = Number(body.customer_id);
@@ -122,6 +123,10 @@ export async function POST(req: Request) {
   let templateId: number | null = null;
   let termsSnapshot: string | null = null;
   let requireSignature = 0;
+  let taxRateBps =
+    body.tax_rate_bps === undefined
+      ? 0
+      : Math.max(0, Math.round(Number(body.tax_rate_bps) || 0));
 
   if (body.template_id) {
     const tpl = (await db
@@ -137,6 +142,7 @@ export async function POST(req: Request) {
     if (!name) name = tpl.name;
     if (!description) description = tpl.description;
     requireSignature = tpl.require_signature ? 1 : 0;
+    if (body.tax_rate_bps === undefined) taxRateBps = tpl.tax_rate_bps || 0;
     if (tpl.terms_id) {
       const terms = (await db
         .prepare("SELECT * FROM subscription_terms WHERE id = ?")
@@ -205,8 +211,8 @@ export async function POST(req: Request) {
           status, sent_at, accepted_at, created_by,
           terms_snapshot, require_signature,
           signature_data, signature_name, signed_at,
-          start_date, sold_by_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          start_date, sold_by_id, tax_rate_bps)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       customerId,
@@ -225,7 +231,8 @@ export async function POST(req: Request) {
       signatureName,
       signedAt,
       startDate,
-      soldById
+      soldById,
+      taxRateBps
     );
 
   if (action === "send") {

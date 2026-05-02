@@ -741,6 +741,7 @@ async function init(): Promise<void> {
       active       INTEGER NOT NULL DEFAULT 1,
       terms_id     INTEGER REFERENCES subscription_terms(id) ON DELETE SET NULL,
       require_signature INTEGER NOT NULL DEFAULT 0,
+      tax_rate_bps INTEGER NOT NULL DEFAULT 0,
       created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
       updated_at   TEXT    NOT NULL DEFAULT (datetime('now'))
     );
@@ -769,6 +770,7 @@ async function init(): Promise<void> {
       signed_at    TEXT,
       start_date   TEXT,
       sold_by_id   INTEGER REFERENCES staff(id) ON DELETE SET NULL,
+      tax_rate_bps INTEGER NOT NULL DEFAULT 0,
       created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_customer_subscriptions_customer
@@ -1019,6 +1021,7 @@ async function init(): Promise<void> {
   const tplAdds: [string, string][] = [
     ["terms_id", "INTEGER REFERENCES subscription_terms(id) ON DELETE SET NULL"],
     ["require_signature", "INTEGER NOT NULL DEFAULT 0"],
+    ["tax_rate_bps", "INTEGER NOT NULL DEFAULT 0"],
   ];
   for (const [col, def] of tplAdds) {
     await alterAddColumn("subscription_templates", col, def, tplCols);
@@ -1035,6 +1038,7 @@ async function init(): Promise<void> {
     ["signed_at", "TEXT"],
     ["start_date", "TEXT"],
     ["sold_by_id", "INTEGER REFERENCES staff(id) ON DELETE SET NULL"],
+    ["tax_rate_bps", "INTEGER NOT NULL DEFAULT 0"],
   ];
   for (const [col, def] of subAdds) {
     await alterAddColumn("customer_subscriptions", col, def, subCols);
@@ -1625,6 +1629,7 @@ export type SubscriptionTemplate = {
   active: number;
   terms_id: number | null;
   require_signature: number;
+  tax_rate_bps: number;
   created_at: string;
   updated_at: string;
 };
@@ -1656,6 +1661,7 @@ export type CustomerSubscription = {
   signed_at: string | null;
   start_date: string | null;
   sold_by_id: number | null;
+  tax_rate_bps: number;
   created_at: string;
 };
 
