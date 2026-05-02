@@ -35,7 +35,11 @@ async function isValid(token: string | undefined) {
   if (dot < 1) return false;
   const b64 = token.slice(0, dot);
   const sig = token.slice(dot + 1);
-  const secret = process.env.SESSION_SECRET || "dev-secret-change-me";
+  const secret = process.env.SESSION_SECRET?.trim() ||
+    (process.env.NODE_ENV === "production"
+      ? null
+      : "dev-secret-change-me");
+  if (!secret) return false;
   let payload: string;
   try {
     payload = atob(b64.replace(/-/g, "+").replace(/_/g, "/"));
@@ -44,6 +48,34 @@ async function isValid(token: string | undefined) {
   }
   const expected = await hmacSha256(secret, payload);
   return timingSafeEqual(sig, expected);
+}
+
+// Origin/Referer check for state-changing requests. Blocks classic CSRF where
+// a third-party site tricks a logged-in user's browser into firing a POST at
+// our API: such requests carry an Origin header pointing somewhere else.
+// Webhooks and other cross-origin POSTs are excluded via the matcher below.
+const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
+function sameOrigin(req: NextRequest): boolean {
+  const origin = req.headers.get("origin");
+  const referer = req.headers.get("referer");
+  // Use the same host the request actually arrived at (respects proxies via
+  // x-forwarded-host since NextRequest.nextUrl already accounts for it).
+  const expectedHost = req.headers.get("host");
+  if (!expectedHost) return false;
+  const candidate = origin || referer;
+  if (!candidate) {
+    // Browsers send Origin on all cross-origin POSTs from <form> and fetch.
+    // A missing Origin AND missing Referer on a state-changing request is
+    // suspicious — treat as a fail-closed.
+    return false;
+  }
+  try {
+    const url = new URL(candidate);
+    return url.host === expectedHost;
+  } catch {
+    return false;
+  }
 }
 
 export async function middleware(req: NextRequest) {
@@ -58,6 +90,13 @@ export async function middleware(req: NextRequest) {
 
   if (!authed) {
     return NextResponse.redirect(new URL("/login", req.url));
+  }
+
+  if (UNSAFE_METHODS.has(req.method) && !sameOrigin(req)) {
+    return NextResponse.json(
+      { error: "Cross-origin request blocked" },
+      { status: 403 }
+    );
   }
 
   return NextResponse.next();

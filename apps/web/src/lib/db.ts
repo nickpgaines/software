@@ -946,6 +946,12 @@ async function init(): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS idx_payroll_payouts_period
       ON payroll_payouts(period_start, period_end);
+
+    CREATE TABLE IF NOT EXISTS stripe_webhook_events (
+      event_id    TEXT PRIMARY KEY,
+      type        TEXT NOT NULL,
+      received_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
   `);
 
   const tplCols = await _db

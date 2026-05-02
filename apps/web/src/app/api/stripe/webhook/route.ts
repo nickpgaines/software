@@ -48,6 +48,24 @@ export async function POST(req: Request) {
     );
   }
 
+  // Idempotency: Stripe sometimes redelivers the same event (network retries,
+  // resends from the dashboard). Try to claim this event_id atomically; if the
+  // INSERT was a no-op (already present), we've handled it before — ack and skip.
+  const db = await getDb();
+  try {
+    const claim = await db
+      .prepare(
+        "INSERT OR IGNORE INTO stripe_webhook_events (event_id, type) VALUES (?, ?)"
+      )
+      .run(event.id, event.type);
+    if (Number(claim.changes ?? 0) === 0) {
+      return NextResponse.json({ received: true, duplicate: true });
+    }
+  } catch (e) {
+    console.error("Webhook idempotency check failed:", e);
+    // Fall through — better to risk a duplicate than to drop the event silently.
+  }
+
   try {
     if (event.type === "account.updated") {
       const account = event.data.object as Stripe.Account;
@@ -57,6 +75,12 @@ export async function POST(req: Request) {
     }
   } catch (e) {
     console.error("Webhook handler failed:", e);
+    // Roll back the idempotency claim so Stripe's retry can re-attempt.
+    try {
+      await db
+        .prepare("DELETE FROM stripe_webhook_events WHERE event_id = ?")
+        .run(event.id);
+    } catch {}
     return NextResponse.json(
       { error: "Handler error" },
       { status: 500 }

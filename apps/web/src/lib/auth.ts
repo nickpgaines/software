@@ -4,7 +4,14 @@ import { cookies } from "next/headers";
 const COOKIE_NAME = "crm_session";
 
 function secret() {
-  return process.env.SESSION_SECRET || "dev-secret-change-me";
+  const s = process.env.SESSION_SECRET?.trim();
+  if (s) return s;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "SESSION_SECRET is required in production. Set it to a long random string."
+    );
+  }
+  return "dev-secret-change-me";
 }
 
 function sign(value: string) {

@@ -37,10 +37,15 @@ export function isEmailConfigured(s: EmailSettings): boolean {
   return !!(s.api_key && s.from_address);
 }
 
-const TOKEN_SECRET_FALLBACK = "dev-secret-change-me";
-
 function tokenSecret(): string {
-  return process.env.SESSION_SECRET?.trim() || TOKEN_SECRET_FALLBACK;
+  const s = process.env.SESSION_SECRET?.trim();
+  if (s) return s;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(
+      "SESSION_SECRET is required in production for unsubscribe token signing."
+    );
+  }
+  return "dev-secret-change-me";
 }
 
 function base64url(input: Buffer | string): string {
