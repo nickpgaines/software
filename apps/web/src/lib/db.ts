@@ -962,6 +962,17 @@ async function init(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_login_attempts_ip_time
       ON login_attempts(ip, attempted_at);
 
+    CREATE TABLE IF NOT EXISTS password_reset_attempts (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      ip           TEXT NOT NULL,
+      email        TEXT,
+      attempted_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_pwreset_attempts_ip_time
+      ON password_reset_attempts(ip, attempted_at);
+    CREATE INDEX IF NOT EXISTS idx_pwreset_attempts_email_time
+      ON password_reset_attempts(email, attempted_at);
+
     CREATE TABLE IF NOT EXISTS payroll_settings (
       id                              INTEGER PRIMARY KEY CHECK (id = 1),
       pay_period_frequency            TEXT NOT NULL DEFAULT 'monthly'
