@@ -1220,6 +1220,7 @@ type MapReport = {
     not_home: number;
     answered: number;
     conversion_rate: number;
+    close_rate: number;
     quote_rate: number;
     answer_rate: number;
     avg_per_day: number;
@@ -1264,6 +1265,7 @@ function MapPanel({ range }: { range: Range }) {
             { label: "Pins Added", value: String(data.pins.total) },
             { label: "Sales Won", value: String(data.pins.sales) },
             { label: "Conversion Rate", value: pct(data.pins.conversion_rate) },
+            { label: "Close Rate", value: pct(data.pins.close_rate) },
             {
               label: "Avg Pins / Day",
               value: data.pins.avg_per_day.toFixed(1),
