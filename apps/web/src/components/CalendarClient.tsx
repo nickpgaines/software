@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import EmployeeSchedulingModal from "./EmployeeSchedulingModal";
 
 type Job = {
   id: number;
@@ -109,6 +110,7 @@ export default function CalendarClient() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [search, setSearch] = useState("");
   const [now, setNow] = useState<Date>(new Date());
+  const [schedulingOpen, setSchedulingOpen] = useState(false);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 60_000);
@@ -229,8 +231,8 @@ export default function CalendarClient() {
         <div className="flex items-center gap-2 flex-wrap">
           <button
             type="button"
+            onClick={() => setSchedulingOpen(true)}
             className="inline-flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-full px-4 py-2 text-sm text-slate-700"
-            title="Coming soon"
           >
             <svg
               className="w-4 h-4"
@@ -324,6 +326,12 @@ export default function CalendarClient() {
           </button>
         </div>
       </div>
+
+      <EmployeeSchedulingModal
+        open={schedulingOpen}
+        onClose={() => setSchedulingOpen(false)}
+        initialDate={cursor}
+      />
     </div>
   );
 }

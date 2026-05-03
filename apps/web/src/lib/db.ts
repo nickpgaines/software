@@ -743,6 +743,7 @@ async function init(): Promise<void> {
       active       INTEGER NOT NULL DEFAULT 1,
       terms_id     INTEGER REFERENCES subscription_terms(id) ON DELETE SET NULL,
       require_signature INTEGER NOT NULL DEFAULT 0,
+      tax_rate_bps INTEGER NOT NULL DEFAULT 0,
       created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
       updated_at   TEXT    NOT NULL DEFAULT (datetime('now'))
     );
@@ -771,6 +772,7 @@ async function init(): Promise<void> {
       signed_at    TEXT,
       start_date   TEXT,
       sold_by_id   INTEGER REFERENCES staff(id) ON DELETE SET NULL,
+      tax_rate_bps INTEGER NOT NULL DEFAULT 0,
       created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_customer_subscriptions_customer
@@ -972,6 +974,31 @@ async function init(): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS idx_sprint_prizes_sprint ON sprint_prizes(sprint_id);
 
+    CREATE TABLE IF NOT EXISTS staff_shifts (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      staff_id        INTEGER NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      work_date       TEXT    NOT NULL,
+      start_minutes   INTEGER NOT NULL,
+      end_minutes     INTEGER NOT NULL,
+      created_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+      updated_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (staff_id, work_date)
+    );
+    CREATE INDEX IF NOT EXISTS idx_staff_shifts_date ON staff_shifts(work_date);
+    CREATE INDEX IF NOT EXISTS idx_staff_shifts_staff ON staff_shifts(staff_id);
+
+    CREATE TABLE IF NOT EXISTS staff_default_shifts (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      staff_id        INTEGER NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      weekday         INTEGER NOT NULL CHECK (weekday BETWEEN 0 AND 6),
+      start_minutes   INTEGER NOT NULL,
+      end_minutes     INTEGER NOT NULL,
+      updated_at      TEXT    NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (staff_id, weekday)
+    );
+    CREATE INDEX IF NOT EXISTS idx_staff_default_shifts_staff
+      ON staff_default_shifts(staff_id);
+
     CREATE TABLE IF NOT EXISTS payroll_payouts (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
       staff_id     INTEGER NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
@@ -990,23 +1017,28 @@ async function init(): Promise<void> {
       received_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS oauth_accounts (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      provider          TEXT NOT NULL,
+      provider_user_id  TEXT NOT NULL,
+      staff_id          INTEGER NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      email             TEXT,
+      created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (provider, provider_user_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_oauth_accounts_staff_id ON oauth_accounts(staff_id);
+
     CREATE TABLE IF NOT EXISTS payroll_settings (
       id                              INTEGER PRIMARY KEY CHECK (id = 1),
-      pay_period_frequency            TEXT NOT NULL DEFAULT 'monthly'
-                                        CHECK (pay_period_frequency IN
-                                          ('weekly','biweekly','semimonthly','monthly')),
-      hourly_time_calculation         TEXT NOT NULL DEFAULT 'scheduled'
-                                        CHECK (hourly_time_calculation IN
-                                          ('scheduled','en_route_to_complete','start_to_complete')),
+      pay_period_frequency            TEXT NOT NULL DEFAULT 'monthly',
+      hourly_time_calculation         TEXT NOT NULL DEFAULT 'scheduled',
+      day_rate_cents                  INTEGER NOT NULL DEFAULT 20000,
       hourly_bonus_enabled            INTEGER NOT NULL DEFAULT 0,
-      hourly_bonus_threshold_cents    INTEGER NOT NULL DEFAULT 0,
-      hourly_bonus_amount_cents       INTEGER NOT NULL DEFAULT 0,
-      sales_commission_mode           TEXT NOT NULL DEFAULT 'flat'
-                                        CHECK (sales_commission_mode IN ('flat','tiers')),
+      hourly_bonus_tiers              TEXT NOT NULL DEFAULT '[]',
+      sales_commission_mode           TEXT NOT NULL DEFAULT 'flat',
       sales_commission_flat_rate      REAL NOT NULL DEFAULT 0.30,
       sales_commission_tiers          TEXT NOT NULL DEFAULT '[]',
-      tech_commission_mode            TEXT NOT NULL DEFAULT 'flat'
-                                        CHECK (tech_commission_mode IN ('flat','tiers')),
+      tech_commission_mode            TEXT NOT NULL DEFAULT 'flat',
       tech_commission_flat_rate       REAL NOT NULL DEFAULT 0.20,
       tech_commission_tiers           TEXT NOT NULL DEFAULT '[]',
       sales_overrides_enabled         INTEGER NOT NULL DEFAULT 0,
@@ -1027,6 +1059,7 @@ async function init(): Promise<void> {
   const tplAdds: [string, string][] = [
     ["terms_id", "INTEGER REFERENCES subscription_terms(id) ON DELETE SET NULL"],
     ["require_signature", "INTEGER NOT NULL DEFAULT 0"],
+    ["tax_rate_bps", "INTEGER NOT NULL DEFAULT 0"],
   ];
   for (const [col, def] of tplAdds) {
     await alterAddColumn("subscription_templates", col, def, tplCols);
@@ -1043,9 +1076,70 @@ async function init(): Promise<void> {
     ["signed_at", "TEXT"],
     ["start_date", "TEXT"],
     ["sold_by_id", "INTEGER REFERENCES staff(id) ON DELETE SET NULL"],
+    ["tax_rate_bps", "INTEGER NOT NULL DEFAULT 0"],
   ];
   for (const [col, def] of subAdds) {
     await alterAddColumn("customer_subscriptions", col, def, subCols);
+  }
+
+  // Widen the customer_subscriptions.interval CHECK to allow new intervals
+  // (triannually, semiannually). SQLite can't ALTER a CHECK in place, so
+  // detect the old constraint and rebuild the table preserving all data.
+  const subTableSql = await _db
+    .prepare(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='customer_subscriptions'"
+    )
+    .get<{ sql: string }>();
+  if (
+    subTableSql?.sql &&
+    subTableSql.sql.includes(
+      "interval IN ('weekly','biweekly','monthly','quarterly','yearly')"
+    )
+  ) {
+    await _db.exec(`
+      CREATE TABLE customer_subscriptions__new (
+        id           INTEGER PRIMARY KEY AUTOINCREMENT,
+        customer_id  INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+        template_id  INTEGER REFERENCES subscription_templates(id) ON DELETE SET NULL,
+        name         TEXT    NOT NULL,
+        description  TEXT,
+        price_cents  INTEGER NOT NULL DEFAULT 0,
+        interval     TEXT    NOT NULL DEFAULT 'monthly'
+                      CHECK (interval IN ('weekly','biweekly','monthly','quarterly','triannually','semiannually','yearly')),
+        status       TEXT    NOT NULL DEFAULT 'pending'
+                      CHECK (status IN ('pending','active','declined','canceled')),
+        sent_at      TEXT,
+        accepted_at  TEXT,
+        canceled_at  TEXT,
+        created_by   TEXT,
+        terms_snapshot TEXT,
+        require_signature INTEGER NOT NULL DEFAULT 0,
+        signature_data TEXT,
+        signature_name TEXT,
+        signed_at    TEXT,
+        start_date   TEXT,
+        sold_by_id   INTEGER REFERENCES staff(id) ON DELETE SET NULL,
+        created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
+      );
+      INSERT INTO customer_subscriptions__new
+        (id, customer_id, template_id, name, description, price_cents, interval,
+         status, sent_at, accepted_at, canceled_at, created_by, terms_snapshot,
+         require_signature, signature_data, signature_name, signed_at,
+         start_date, sold_by_id, created_at)
+      SELECT id, customer_id, template_id, name, description, price_cents, interval,
+             status, sent_at, accepted_at, canceled_at, created_by, terms_snapshot,
+             require_signature, signature_data, signature_name, signed_at,
+             start_date, sold_by_id, created_at
+      FROM customer_subscriptions;
+      DROP TABLE customer_subscriptions;
+      ALTER TABLE customer_subscriptions__new RENAME TO customer_subscriptions;
+      CREATE INDEX IF NOT EXISTS idx_customer_subscriptions_customer
+        ON customer_subscriptions(customer_id);
+      CREATE INDEX IF NOT EXISTS idx_customer_subscriptions_template
+        ON customer_subscriptions(template_id);
+      CREATE INDEX IF NOT EXISTS idx_customer_subscriptions_status
+        ON customer_subscriptions(status);
+    `);
   }
 
   const legacy = await _db
@@ -1151,6 +1245,85 @@ async function init(): Promise<void> {
     await _db.exec(
       `CREATE INDEX IF NOT EXISTS idx_${table}_company_id ON ${table}(company_id)`
     );
+  }
+
+  // payroll_settings: add day_rate_cents and convert single-bonus columns
+  // into a JSON tier list. Drops the legacy CHECK constraints so new values
+  // (e.g. 'day_rate' for hourly_time_calculation) can be stored.
+  const psCols = await _db
+    .prepare("PRAGMA table_info(payroll_settings)")
+    .all<{ name: string }>();
+  if (psCols.length > 0 && !psCols.some((c) => c.name === "day_rate_cents")) {
+    const hasOldBonusCols = psCols.some(
+      (c) => c.name === "hourly_bonus_threshold_cents"
+    );
+    await _db.exec(`
+      CREATE TABLE __rebuild_payroll_settings (
+        id                              INTEGER PRIMARY KEY CHECK (id = 1),
+        pay_period_frequency            TEXT NOT NULL DEFAULT 'monthly',
+        hourly_time_calculation         TEXT NOT NULL DEFAULT 'scheduled',
+        day_rate_cents                  INTEGER NOT NULL DEFAULT 20000,
+        hourly_bonus_enabled            INTEGER NOT NULL DEFAULT 0,
+        hourly_bonus_tiers              TEXT NOT NULL DEFAULT '[]',
+        sales_commission_mode           TEXT NOT NULL DEFAULT 'flat',
+        sales_commission_flat_rate      REAL NOT NULL DEFAULT 0.30,
+        sales_commission_tiers          TEXT NOT NULL DEFAULT '[]',
+        tech_commission_mode            TEXT NOT NULL DEFAULT 'flat',
+        tech_commission_flat_rate       REAL NOT NULL DEFAULT 0.20,
+        tech_commission_tiers           TEXT NOT NULL DEFAULT '[]',
+        sales_overrides_enabled         INTEGER NOT NULL DEFAULT 0,
+        sales_overrides_rate            REAL NOT NULL DEFAULT 0.05,
+        tech_overrides_enabled          INTEGER NOT NULL DEFAULT 0,
+        tech_overrides_rate             REAL NOT NULL DEFAULT 0.05,
+        plan_sale_bonuses_enabled       INTEGER NOT NULL DEFAULT 0,
+        plan_sale_bonus_cents           INTEGER NOT NULL DEFAULT 0,
+        exclude_one_time_services       INTEGER NOT NULL DEFAULT 0,
+        updated_at                      TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `);
+    if (hasOldBonusCols) {
+      await _db.exec(`
+        INSERT INTO __rebuild_payroll_settings (
+          id, pay_period_frequency, hourly_time_calculation, day_rate_cents,
+          hourly_bonus_enabled, hourly_bonus_tiers,
+          sales_commission_mode, sales_commission_flat_rate, sales_commission_tiers,
+          tech_commission_mode, tech_commission_flat_rate, tech_commission_tiers,
+          sales_overrides_enabled, sales_overrides_rate,
+          tech_overrides_enabled, tech_overrides_rate,
+          plan_sale_bonuses_enabled, plan_sale_bonus_cents,
+          exclude_one_time_services, updated_at
+        )
+        SELECT
+          id, pay_period_frequency, hourly_time_calculation, 20000,
+          hourly_bonus_enabled,
+          CASE
+            WHEN hourly_bonus_threshold_cents > 0
+              OR hourly_bonus_amount_cents > 0
+            THEN '[{"threshold_cents":' || hourly_bonus_threshold_cents
+                 || ',"amount_cents":' || hourly_bonus_amount_cents || '}]'
+            ELSE '[]'
+          END,
+          sales_commission_mode, sales_commission_flat_rate, sales_commission_tiers,
+          tech_commission_mode, tech_commission_flat_rate, tech_commission_tiers,
+          sales_overrides_enabled, sales_overrides_rate,
+          tech_overrides_enabled, tech_overrides_rate,
+          plan_sale_bonuses_enabled, plan_sale_bonus_cents,
+          exclude_one_time_services, updated_at
+        FROM payroll_settings;
+      `);
+    } else {
+      const carry = psCols.map((c) => c.name).join(", ");
+      await _db.exec(
+        `INSERT INTO __rebuild_payroll_settings (${carry}) SELECT ${carry} FROM payroll_settings`
+      );
+    }
+    await _db.exec(`DROP TABLE payroll_settings`);
+    await _db.exec(
+      `ALTER TABLE __rebuild_payroll_settings RENAME TO payroll_settings`
+    );
+    await _db
+      .prepare(`INSERT OR IGNORE INTO payroll_settings (id) VALUES (1)`)
+      .run();
   }
 }
 
@@ -1473,6 +1646,8 @@ export type SubscriptionInterval =
   | "biweekly"
   | "monthly"
   | "quarterly"
+  | "triannually"
+  | "semiannually"
   | "yearly";
 
 export type SubscriptionTerms = {
@@ -1494,6 +1669,7 @@ export type SubscriptionTemplate = {
   active: number;
   terms_id: number | null;
   require_signature: number;
+  tax_rate_bps: number;
   created_at: string;
   updated_at: string;
 };
@@ -1525,6 +1701,7 @@ export type CustomerSubscription = {
   signed_at: string | null;
   start_date: string | null;
   sold_by_id: number | null;
+  tax_rate_bps: number;
   created_at: string;
 };
 
@@ -1723,6 +1900,25 @@ export type SprintPrize = {
   title: string;
 };
 
+export type StaffShift = {
+  id: number;
+  staff_id: number;
+  work_date: string;
+  start_minutes: number;
+  end_minutes: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type StaffDefaultShift = {
+  id: number;
+  staff_id: number;
+  weekday: number;
+  start_minutes: number;
+  end_minutes: number;
+  updated_at: string;
+};
+
 export type Payment = {
   id: number;
   company_id: number;
@@ -1747,7 +1943,8 @@ export type PayPeriodFrequency =
 export type HourlyTimeCalculation =
   | "scheduled"
   | "en_route_to_complete"
-  | "start_to_complete";
+  | "start_to_complete"
+  | "day_rate";
 
 export type CommissionMode = "flat" | "tiers";
 
@@ -1756,13 +1953,18 @@ export type CommissionTier = {
   rate: number;
 };
 
+export type HourlyBonusTier = {
+  threshold_cents: number;
+  amount_cents: number;
+};
+
 export type PayrollSettings = {
   id: number;
   pay_period_frequency: PayPeriodFrequency;
   hourly_time_calculation: HourlyTimeCalculation;
+  day_rate_cents: number;
   hourly_bonus_enabled: number;
-  hourly_bonus_threshold_cents: number;
-  hourly_bonus_amount_cents: number;
+  hourly_bonus_tiers: string;
   sales_commission_mode: CommissionMode;
   sales_commission_flat_rate: number;
   sales_commission_tiers: string;

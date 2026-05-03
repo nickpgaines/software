@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type PayrollSettings } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -13,10 +14,12 @@ const HOURLY_TIME_CALCULATIONS = [
   "scheduled",
   "en_route_to_complete",
   "start_to_complete",
+  "day_rate",
 ] as const;
 const COMMISSION_MODES = ["flat", "tiers"] as const;
 
 type Tier = { threshold_cents: number; rate: number };
+type BonusTier = { threshold_cents: number; amount_cents: number };
 
 function normalizeTiers(input: unknown): Tier[] {
   if (!Array.isArray(input)) return [];
@@ -33,22 +36,45 @@ function normalizeTiers(input: unknown): Tier[] {
   return out;
 }
 
+function normalizeBonusTiers(input: unknown): BonusTier[] {
+  if (!Array.isArray(input)) return [];
+  const out: BonusTier[] = [];
+  for (const t of input) {
+    if (!t || typeof t !== "object") continue;
+    const threshold = Number((t as { threshold_cents?: unknown }).threshold_cents);
+    const amount = Number((t as { amount_cents?: unknown }).amount_cents);
+    if (!Number.isFinite(threshold) || threshold < 0) continue;
+    if (!Number.isFinite(amount) || amount < 0) continue;
+    out.push({
+      threshold_cents: Math.round(threshold),
+      amount_cents: Math.round(amount),
+    });
+  }
+  out.sort((a, b) => a.threshold_cents - b.threshold_cents);
+  return out;
+}
+
 export async function GET() {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const row = await db
-    .prepare(`SELECT * FROM payroll_settings WHERE id = 1`)
-    .get<PayrollSettings>();
+    .prepare(`SELECT * FROM payroll_settings WHERE company_id = ? LIMIT 1`)
+    .get<PayrollSettings>(companyId);
   if (!row) {
-    await db.prepare(`INSERT OR IGNORE INTO payroll_settings (id) VALUES (1)`).run();
+    // Auto-seed an empty settings row for this tenant on first read.
+    await db
+      .prepare(`INSERT INTO payroll_settings (company_id) VALUES (?)`)
+      .run(companyId);
     const fresh = await db
-      .prepare(`SELECT * FROM payroll_settings WHERE id = 1`)
-      .get<PayrollSettings>();
+      .prepare(`SELECT * FROM payroll_settings WHERE company_id = ? LIMIT 1`)
+      .get<PayrollSettings>(companyId);
     return NextResponse.json(fresh);
   }
   return NextResponse.json(row);
 }
 
 export async function PATCH(req: Request) {
+  const companyId = await requireCompanyId();
   let body: Record<string, unknown>;
   try {
     body = (await req.json()) as Record<string, unknown>;
@@ -72,20 +98,19 @@ export async function PATCH(req: Request) {
     updates.hourly_time_calculation = body.hourly_time_calculation;
   }
 
+  if (body.day_rate_cents != null) {
+    const v = Number(body.day_rate_cents);
+    if (!Number.isFinite(v) || v < 0)
+      return NextResponse.json({ error: "Invalid day_rate_cents" }, { status: 400 });
+    updates.day_rate_cents = Math.round(v);
+  }
   if (body.hourly_bonus_enabled != null) {
     updates.hourly_bonus_enabled = body.hourly_bonus_enabled ? 1 : 0;
   }
-  if (body.hourly_bonus_threshold_cents != null) {
-    const v = Number(body.hourly_bonus_threshold_cents);
-    if (!Number.isFinite(v) || v < 0)
-      return NextResponse.json({ error: "Invalid hourly_bonus_threshold_cents" }, { status: 400 });
-    updates.hourly_bonus_threshold_cents = Math.round(v);
-  }
-  if (body.hourly_bonus_amount_cents != null) {
-    const v = Number(body.hourly_bonus_amount_cents);
-    if (!Number.isFinite(v) || v < 0)
-      return NextResponse.json({ error: "Invalid hourly_bonus_amount_cents" }, { status: 400 });
-    updates.hourly_bonus_amount_cents = Math.round(v);
+  if (body.hourly_bonus_tiers != null) {
+    updates.hourly_bonus_tiers = JSON.stringify(
+      normalizeBonusTiers(body.hourly_bonus_tiers)
+    );
   }
 
   for (const role of ["sales", "tech"] as const) {
@@ -138,20 +163,33 @@ export async function PATCH(req: Request) {
   const keys = Object.keys(updates);
   if (keys.length === 0) {
     const row = await (await getDb())
-      .prepare(`SELECT * FROM payroll_settings WHERE id = 1`)
-      .get<PayrollSettings>();
+      .prepare(`SELECT * FROM payroll_settings WHERE company_id = ? LIMIT 1`)
+      .get<PayrollSettings>(companyId);
     return NextResponse.json(row);
+  }
+
+  const db = await getDb();
+  // Make sure a row exists for this tenant before updating.
+  const existing = await db
+    .prepare(`SELECT id FROM payroll_settings WHERE company_id = ? LIMIT 1`)
+    .get<{ id: number }>(companyId);
+  if (!existing) {
+    await db
+      .prepare(`INSERT INTO payroll_settings (company_id) VALUES (?)`)
+      .run(companyId);
   }
 
   const sets = keys.map((k) => `${k} = ?`).join(", ");
   const args = keys.map((k) => updates[k]);
   args.push(new Date().toISOString());
-  const db = await getDb();
+  args.push(companyId);
   await db
-    .prepare(`UPDATE payroll_settings SET ${sets}, updated_at = ? WHERE id = 1`)
+    .prepare(
+      `UPDATE payroll_settings SET ${sets}, updated_at = ? WHERE company_id = ?`
+    )
     .run(...args);
   const row = await db
-    .prepare(`SELECT * FROM payroll_settings WHERE id = 1`)
-    .get<PayrollSettings>();
+    .prepare(`SELECT * FROM payroll_settings WHERE company_id = ? LIMIT 1`)
+    .get<PayrollSettings>(companyId);
   return NextResponse.json(row);
 }

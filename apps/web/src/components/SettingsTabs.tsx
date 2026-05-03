@@ -729,6 +729,8 @@ type SubscriptionInterval =
   | "biweekly"
   | "monthly"
   | "quarterly"
+  | "triannually"
+  | "semiannually"
   | "yearly";
 
 type SubscriptionTemplate = {
@@ -778,7 +780,9 @@ const INTERVAL_LABELS: Record<SubscriptionInterval, string> = {
   weekly: "Weekly",
   biweekly: "Every 2 weeks",
   monthly: "Monthly",
-  quarterly: "Quarterly",
+  quarterly: "Quarterly (every 3 months)",
+  triannually: "Tri-annually (every 4 months)",
+  semiannually: "Bi-annually (every 6 months)",
   yearly: "Yearly",
 };
 
@@ -789,8 +793,6 @@ function formatPrice(cents: number) {
 type TemplateForm = {
   name: string;
   description: string;
-  price: string;
-  interval: SubscriptionInterval;
   active: boolean;
   terms_id: number | null;
   require_signature: boolean;
@@ -800,8 +802,6 @@ function emptyForm(): TemplateForm {
   return {
     name: "",
     description: "",
-    price: "",
-    interval: "monthly",
     active: true,
     terms_id: null,
     require_signature: false,
@@ -856,8 +856,6 @@ function SubscriptionsPanel() {
     setForm({
       name: t.name,
       description: t.description || "",
-      price: (t.price_cents / 100).toFixed(2),
-      interval: t.interval,
       active: t.active === 1,
       terms_id: t.terms_id,
       require_signature: t.require_signature === 1,
@@ -878,15 +876,9 @@ function SubscriptionsPanel() {
     }
     setSaving(true);
     setError(null);
-    const priceCents = Math.max(
-      0,
-      Math.round((parseFloat(form.price) || 0) * 100)
-    );
     const payload = {
       name: form.name.trim(),
       description: form.description.trim() || null,
-      price_cents: priceCents,
-      interval: form.interval,
       active: form.active,
       terms_id: form.terms_id,
       require_signature: form.require_signature,
@@ -979,42 +971,11 @@ function SubscriptionsPanel() {
               placeholder="Includes interior + exterior windows…"
             />
           </Field>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <Field label="Price (USD)">
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={form.price}
-                onChange={(e) => setForm({ ...form, price: e.target.value })}
-                className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
-                placeholder="49.00"
-              />
-            </Field>
-            <Field label="Billing interval">
-              <select
-                value={form.interval}
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    interval: e.target.value as SubscriptionInterval,
-                  })
-                }
-                className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
-              >
-                {(
-                  Object.entries(INTERVAL_LABELS) as [
-                    SubscriptionInterval,
-                    string,
-                  ][]
-                ).map(([v, l]) => (
-                  <option key={v} value={v}>
-                    {l}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
+          <p className="text-xs text-slate-500 -mt-1">
+            Price and billing interval are set per customer when you create a
+            subscription from this template — no need to make a separate
+            template per price point.
+          </p>
           <div className="space-y-3 pt-2 border-t border-slate-200">
             <div>
               <label className="block text-sm font-medium text-slate-900 mb-1">
@@ -1131,8 +1092,7 @@ function SubscriptionsPanel() {
                     )}
                   </div>
                   <div className="text-xs text-slate-500 mt-0.5">
-                    {formatPrice(t.price_cents)} ·{" "}
-                    {INTERVAL_LABELS[t.interval]}
+                    Price &amp; cadence set per customer
                   </div>
                   {t.description && (
                     <p className="text-xs text-slate-500 mt-1 line-clamp-2">
@@ -1321,6 +1281,8 @@ function SendOrAcceptModal({
   const [customerId, setCustomerId] = useState<number | "">(
     customers[0]?.id ?? ""
   );
+  const [price, setPrice] = useState("");
+  const [interval, setInterval] = useState<SubscriptionInterval>("monthly");
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [signatureData, setSignatureData] = useState<string | null>(null);
@@ -1337,6 +1299,11 @@ function SendOrAcceptModal({
       setErr("Pick a customer");
       return;
     }
+    const priceCents = Math.round((parseFloat(price) || 0) * 100);
+    if (priceCents <= 0) {
+      setErr("Enter a price");
+      return;
+    }
     if (action === "accept" && requireSignature && !signatureData) {
       setErr("Customer signature is required");
       return;
@@ -1349,6 +1316,8 @@ function SendOrAcceptModal({
       body: JSON.stringify({
         customer_id: customerId,
         template_id: template.id,
+        price_cents: priceCents,
+        interval,
         action,
         signature_data: action === "accept" ? signatureData : undefined,
         signature_name:
@@ -1371,10 +1340,6 @@ function SendOrAcceptModal({
             <h3 className="text-base font-semibold text-slate-900">
               {template.name}
             </h3>
-            <p className="text-xs text-slate-500">
-              {formatPrice(template.price_cents)} ·{" "}
-              {INTERVAL_LABELS[template.interval]}
-            </p>
           </div>
           <button
             onClick={onClose}
@@ -1406,6 +1371,40 @@ function SendOrAcceptModal({
             ))}
           </select>
         </Field>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Price (USD)">
+            <input
+              type="number"
+              step="0.01"
+              min="0"
+              value={price}
+              onChange={(e) => setPrice(e.target.value)}
+              placeholder="49.00"
+              className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+            />
+          </Field>
+          <Field label="Billing interval">
+            <select
+              value={interval}
+              onChange={(e) =>
+                setInterval(e.target.value as SubscriptionInterval)
+              }
+              className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+            >
+              {(
+                Object.entries(INTERVAL_LABELS) as [
+                  SubscriptionInterval,
+                  string,
+                ][]
+              ).map(([v, l]) => (
+                <option key={v} value={v}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </Field>
+        </div>
 
         {linkedTerms && (
           <div>
