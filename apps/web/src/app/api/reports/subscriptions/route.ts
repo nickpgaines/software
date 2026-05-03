@@ -155,6 +155,39 @@ export async function GET(req: Request) {
     });
   }
 
+  const arrAdded: {
+    label: string;
+    iso: string;
+    arr_cents: number;
+    count: number;
+  }[] = [];
+  for (let i = 11; i >= 0; i--) {
+    const ref = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const mStart = startOfMonth(ref);
+    const mEnd = endOfMonth(ref);
+    const mStartIso = mStart.toISOString();
+    const mEndIso = mEnd.toISOString();
+
+    let arr = 0;
+    let count = 0;
+    for (const r of filtered) {
+      if (r.status === "pending" || r.status === "declined") continue;
+      const start = activeStartIso(r);
+      if (!start) continue;
+      if (start < mStartIso || start >= mEndIso) continue;
+      const annualizedCents =
+        monthlyCents(r.price_cents, r.interval) * 12;
+      arr += withTax(annualizedCents, r.tax_rate_bps, includeTax);
+      count += 1;
+    }
+    arrAdded.push({
+      label: ref.toLocaleString("en-US", { month: "short" }),
+      iso: ref.toISOString().slice(0, 7),
+      arr_cents: Math.round(arr),
+      count,
+    });
+  }
+
   const byTemplate = new Map<
     string,
     { template_id: number | null; name: string; count: number; mrr_cents: number }
@@ -259,6 +292,7 @@ export async function GET(req: Request) {
       arr_cents: currentMrrCents * 12,
     },
     monthly: months,
+    arr_added: arrAdded,
     breakdowns: {
       by_template: templatesBreakdown,
       by_sold_by: soldByBreakdown,
