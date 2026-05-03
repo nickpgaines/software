@@ -1,5 +1,48 @@
 import Link from "next/link";
 
+const realFeatures = [
+  {
+    slug: "concept-q",
+    name: "Concept Q — Crisp",
+    tagline: "Base · light/dark toggle · real features.",
+    description:
+      "The current dashboard layout (greeting + search, revenue chart, today's schedule, inbox + tasks) with a working light/dark toggle. Light grey canvas stays the same in both modes — only the sidebar and widgets flip.",
+    swatches: ["#f4f4f5", "#ffffff", "#379CFB", "#27272a", "#09090b"],
+  },
+  {
+    slug: "concept-r",
+    name: "Concept R — Floating",
+    tagline: "Sidebar floats. Cards have shadow, no border.",
+    description:
+      "Sidebar pulls away from the edge with margins and rounds on all sides. Cards drop the border for a softer, floatier look.",
+    swatches: ["#f4f4f5", "#ffffff", "#379CFB", "#27272a", "#09090b"],
+  },
+  {
+    slug: "concept-s",
+    name: "Concept S — Sharp",
+    tagline: "Tighter rounded-lg corners. Strong borders.",
+    description:
+      "Architectural and tool-like. Smaller radius, heavier 1px borders, no shadows. Reads as a precise instrument.",
+    swatches: ["#f4f4f5", "#ffffff", "#379CFB", "#27272a", "#09090b"],
+  },
+  {
+    slug: "concept-t",
+    name: "Concept T — Spacious",
+    tagline: "Rounded-3xl. More padding. Borderless.",
+    description:
+      "Bigger corners, more whitespace inside cards. Calmer, more deliberate pace.",
+    swatches: ["#f4f4f5", "#ffffff", "#379CFB", "#27272a", "#09090b"],
+  },
+  {
+    slug: "concept-u",
+    name: "Concept U — Accented",
+    tagline: "Active nav uses a blue left-bar tint instead of solid fill.",
+    description:
+      "Subtler active state — left-bar accent with light blue background tint. More color presence overall, less heavy.",
+    swatches: ["#f4f4f5", "#ffffff", "#379CFB", "#27272a", "#09090b"],
+  },
+];
+
 const blueSet = [
   {
     slug: "concept-m",
@@ -143,20 +186,31 @@ export default function DesignIndexPage() {
             Pick a direction.
           </h1>
           <p className="text-neutral-500 mt-3 max-w-xl text-base font-medium">
-            Concepts M–P share the same #379CFB blue accent and only differ
-            in background grey: light, mid, dark, cool dark. Older concepts
-            below for reference.
+            Concepts Q–U use your real dashboard features (greeting + search,
+            revenue chart, today's schedule, inbox + tasks) with a working
+            light/dark toggle. Try the toggle inside each concept.
           </p>
         </div>
 
         <div className="mb-3">
           <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
-            Latest — start here · #379CFB accent
+            Latest — start here · light/dark toggle · real features
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
+          {realFeatures.map((c) => (
+            <ConceptCard key={c.slug} {...c} highlighted />
+          ))}
+        </div>
+
+        <div className="mb-3">
+          <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
+            Background-only blue (M–P)
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
           {blueSet.map((c) => (
-            <ConceptCard key={c.slug} {...c} highlighted />
+            <ConceptCard key={c.slug} {...c} />
           ))}
         </div>
 
@@ -264,6 +318,46 @@ function ConceptCard({
 }
 
 function ConceptThumbnail({ slug }: { slug: string }) {
+  if (["concept-q", "concept-r", "concept-s", "concept-t", "concept-u"].includes(slug)) {
+    const styles: Record<string, { float: boolean; radius: string; sidebarShadow: boolean; cardBorder: boolean; activeStyle: "fill" | "leftbar" }> = {
+      "concept-q": { float: false, radius: "rounded-xl", sidebarShadow: false, cardBorder: true, activeStyle: "fill" },
+      "concept-r": { float: true, radius: "rounded-xl", sidebarShadow: true, cardBorder: false, activeStyle: "fill" },
+      "concept-s": { float: false, radius: "rounded-md", sidebarShadow: false, cardBorder: true, activeStyle: "fill" },
+      "concept-t": { float: false, radius: "rounded-2xl", sidebarShadow: false, cardBorder: false, activeStyle: "fill" },
+      "concept-u": { float: false, radius: "rounded-xl", sidebarShadow: false, cardBorder: true, activeStyle: "leftbar" },
+    };
+    const s = styles[slug];
+    const sidebarBg = s.sidebarShadow ? "bg-white shadow-md" : "bg-white";
+    const cardCls = `bg-white ${s.radius} ${s.cardBorder ? "border border-zinc-200" : "shadow-sm"}`;
+    const activeNav =
+      s.activeStyle === "fill" ? (
+        <div className="h-2.5 rounded-md" style={{ background: "#379CFB" }} />
+      ) : (
+        <div className="h-2.5 rounded-md flex items-center" style={{ background: "#379CFB1A" }}>
+          <div className="w-0.5 h-2.5 rounded-r" style={{ background: "#379CFB" }} />
+        </div>
+      );
+    return (
+      <div className={`absolute inset-0 bg-zinc-100 ${s.float ? "p-2 grid grid-cols-[60px_1fr] gap-2" : "grid grid-cols-[60px_1fr]"}`}>
+        <div className={`${sidebarBg} ${s.float ? s.radius : "border-r border-zinc-200"} p-2 space-y-1.5`}>
+          <div className="h-3 rounded-sm" style={{ background: "#379CFB" }} />
+          {activeNav}
+          <div className="h-1.5 bg-zinc-200 rounded-sm" />
+          <div className="h-1.5 bg-zinc-200 rounded-sm" />
+          <div className="h-1.5 bg-zinc-200 rounded-sm" />
+          <div className="h-1.5 bg-zinc-200 rounded-sm" />
+        </div>
+        <div className={`p-2 space-y-1.5 ${s.float ? "" : ""}`}>
+          <div className={`${cardCls} h-10`} />
+          <div className={`${cardCls} h-12`} />
+          <div className="grid grid-cols-2 gap-1.5">
+            <div className={`${cardCls} h-10`} />
+            <div className={`${cardCls} h-10`} />
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (slug === "concept-m" || slug === "concept-n" || slug === "concept-o" || slug === "concept-p") {
     const palettes: Record<string, { bg: string; side: string; card: string; isDark: boolean }> = {
       "concept-m": { bg: "bg-zinc-100", side: "bg-white border-r border-zinc-200", card: "bg-white border border-zinc-200", isDark: false },
