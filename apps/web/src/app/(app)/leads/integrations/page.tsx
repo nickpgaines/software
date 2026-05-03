@@ -1,17 +1,21 @@
 import LeadsIntegrationsClient from "@/components/LeadsIntegrationsClient";
 import { getDb, type MetaIntegration, type MetaPage } from "@/lib/db";
 import { getMetaConfig } from "@/lib/meta";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export default async function LeadsIntegrationsPage() {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const integration = (await db
-    .prepare("SELECT * FROM meta_integration WHERE id = 1")
-    .get()) as MetaIntegration | undefined;
+    .prepare("SELECT * FROM meta_integration WHERE company_id = ? LIMIT 1")
+    .get(companyId)) as MetaIntegration | undefined;
   const pages = (await db
-    .prepare("SELECT * FROM meta_pages ORDER BY page_name COLLATE NOCASE ASC")
-    .all()) as MetaPage[];
+    .prepare(
+      "SELECT * FROM meta_pages WHERE company_id = ? ORDER BY page_name COLLATE NOCASE ASC"
+    )
+    .all(companyId)) as MetaPage[];
   const configured = !!getMetaConfig();
   return (
     <LeadsIntegrationsClient

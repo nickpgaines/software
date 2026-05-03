@@ -228,6 +228,74 @@ async function rebuildDropIdCheck(table: string): Promise<void> {
   await _db.exec(`ALTER TABLE ${tmp} RENAME TO ${table}`);
 }
 
+// Rebuild email_automations to drop the legacy global UNIQUE on `key` and
+// replace it with a per-tenant UNIQUE(company_id, key). No-op once the
+// rebuild has run (detected by inspecting sqlite_master for the inline
+// constraint).
+async function rebuildEmailAutomationsUnique(): Promise<void> {
+  const row = await _db
+    .prepare(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='email_automations'"
+    )
+    .get<{ sql: string }>();
+  if (!row?.sql) return;
+  // The legacy DDL contains `key TEXT NOT NULL UNIQUE`. The post-migration DDL
+  // drops the inline UNIQUE.
+  if (!/key\s+TEXT\s+NOT\s+NULL\s+UNIQUE/i.test(row.sql)) {
+    // Already migrated; just ensure the per-tenant index exists.
+    await _db.exec(
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_email_automations_company_key
+         ON email_automations(company_id, key)`
+    );
+    return;
+  }
+
+  const cols = await _db
+    .prepare("PRAGMA table_info(email_automations)")
+    .all<{ name: string }>();
+  const colNames = cols.map((c) => c.name).join(", ");
+
+  // Build the new table without the inline UNIQUE.
+  await _db.exec(`
+    CREATE TABLE email_automations__rebuild (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key TEXT NOT NULL,
+      kind TEXT NOT NULL CHECK (kind IN ('welcome','seasonal')),
+      season TEXT,
+      name TEXT NOT NULL,
+      description TEXT,
+      audience TEXT NOT NULL DEFAULT 'all_customers',
+      subject TEXT NOT NULL DEFAULT '',
+      body_html TEXT NOT NULL DEFAULT '',
+      send_month INTEGER,
+      send_day INTEGER,
+      enabled INTEGER NOT NULL DEFAULT 0,
+      last_sent_at TEXT,
+      last_sent_year INTEGER,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      company_id INTEGER REFERENCES company(id) ON DELETE CASCADE
+    )
+  `);
+  await _db.exec(
+    `INSERT INTO email_automations__rebuild (${colNames}) SELECT ${colNames} FROM email_automations`
+  );
+  await _db.exec("DROP TABLE email_automations");
+  await _db.exec(
+    "ALTER TABLE email_automations__rebuild RENAME TO email_automations"
+  );
+  await _db.exec(
+    `CREATE INDEX IF NOT EXISTS idx_email_automations_kind ON email_automations(kind)`
+  );
+  await _db.exec(
+    `CREATE INDEX IF NOT EXISTS idx_email_automations_company_id ON email_automations(company_id)`
+  );
+  await _db.exec(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_email_automations_company_key
+       ON email_automations(company_id, key)`
+  );
+}
+
 async function init(): Promise<void> {
   // Pragmas. Best-effort — Turso ignores some, local file accepts both.
   try {
@@ -653,7 +721,9 @@ async function init(): Promise<void> {
 
     CREATE TABLE IF NOT EXISTS email_automations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      key TEXT NOT NULL UNIQUE,
+      -- key is per-tenant; a UNIQUE(company_id, key) index is created in the
+      -- multi-tenancy migration block below.
+      key TEXT NOT NULL,
       kind TEXT NOT NULL CHECK (kind IN ('welcome','seasonal')),
       season TEXT,
       name TEXT NOT NULL,
@@ -1246,6 +1316,31 @@ async function init(): Promise<void> {
       `CREATE INDEX IF NOT EXISTS idx_${table}_company_id ON ${table}(company_id)`
     );
   }
+
+  // email_unsubscribes: the legacy schema had a single global UNIQUE(email)
+  // index, which prevented two tenants from each tracking an opt-out for the
+  // same address. Replace it with a per-tenant UNIQUE(company_id, email) so
+  // an unsubscribe applies only to the tenant whose blast triggered it.
+  try {
+    await _db.exec(`DROP INDEX IF EXISTS idx_email_unsubscribes_email`);
+    await _db.exec(
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_email_unsubscribes_company_email
+         ON email_unsubscribes(company_id, email)`
+    );
+  } catch (e) {
+    // If duplicate (company_id, email) rows exist from before the per-tenant
+    // split, the unique index creation will fail. Surface the error rather
+    // than silently leaving the schema in a half-migrated state.
+    throw new Error(
+      `email_unsubscribes index migration failed: ${(e as Error).message}`
+    );
+  }
+
+  // email_automations: legacy schema had `key TEXT NOT NULL UNIQUE` inline,
+  // which is a global unique index. Each new tenant needs its own seed of
+  // 'welcome', 'spring_blast', etc. so the constraint must be per-tenant.
+  // Rebuild the table without the inline UNIQUE, then add UNIQUE(company_id, key).
+  await rebuildEmailAutomationsUnique();
 
   // payroll_settings: add day_rate_cents and convert single-bonus columns
   // into a JSON tier list. Drops the legacy CHECK constraints so new values

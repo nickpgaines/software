@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ export async function GET() {
     // ignore
   }
 
+  const companyId = await requireCompanyId();
   const db = await getDb();
 
   let messagingSettingsExists = false;
@@ -49,8 +51,8 @@ export async function GET() {
         .all<{ name: string }>();
       columns = cols.map((c) => c.name);
       const all = (await db
-        .prepare("SELECT * FROM messaging_settings")
-        .all()) as Array<{
+        .prepare("SELECT * FROM messaging_settings WHERE company_id = ?")
+        .all(companyId)) as Array<{
         id: number | null;
         account_sid: string | null;
         auth_token: string | null;

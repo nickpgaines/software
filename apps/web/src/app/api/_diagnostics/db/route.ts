@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -17,21 +18,22 @@ export async function GET() {
     // ignore
   }
 
+  const companyId = await requireCompanyId();
   const db = await getDb();
 
   const total = (await db
-    .prepare("SELECT COUNT(*) AS n FROM customers")
-    .get<{ n: number }>())!;
+    .prepare("SELECT COUNT(*) AS n FROM customers WHERE company_id = ?")
+    .get<{ n: number }>(companyId))!;
   const withCoords = (await db
     .prepare(
-      "SELECT COUNT(*) AS n FROM customers WHERE latitude IS NOT NULL AND longitude IS NOT NULL"
+      "SELECT COUNT(*) AS n FROM customers WHERE company_id = ? AND latitude IS NOT NULL AND longitude IS NOT NULL"
     )
-    .get<{ n: number }>())!;
+    .get<{ n: number }>(companyId))!;
   const sample = await db
     .prepare(
-      "SELECT id, first_name, last_name, address_line1, latitude, longitude, is_recurring FROM customers ORDER BY id LIMIT 20"
+      "SELECT id, first_name, last_name, address_line1, latitude, longitude, is_recurring FROM customers WHERE company_id = ? ORDER BY id LIMIT 20"
     )
-    .all();
+    .all(companyId);
   const cols = await db
     .prepare("PRAGMA table_info(customers)")
     .all<{ name: string; type: string; notnull: number }>();
@@ -57,7 +59,7 @@ export async function GET() {
     if (tbl) {
       const rows = await db
         .prepare(
-          "SELECT id, account_sid, auth_token, from_number, updated_at FROM messaging_settings"
+          "SELECT id, account_sid, auth_token, from_number, updated_at FROM messaging_settings WHERE company_id = ?"
         )
         .all<{
           id: number | null;
@@ -65,7 +67,7 @@ export async function GET() {
           auth_token: string | null;
           from_number: string | null;
           updated_at: string | null;
-        }>();
+        }>(companyId);
       messagingRows = rows.map((r) => ({
         id: r.id,
         has_account_sid: !!r.account_sid,

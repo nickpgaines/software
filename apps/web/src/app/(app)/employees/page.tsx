@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Plus, User } from "lucide-react";
 import { getDb, type Staff } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -39,10 +40,13 @@ function formatDate(iso: string): string {
 }
 
 export default async function EmployeesPage() {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const employees = (await db
-    .prepare("SELECT * FROM staff ORDER BY name COLLATE NOCASE ASC")
-    .all()) as Staff[];
+    .prepare(
+      "SELECT * FROM staff WHERE company_id = ? ORDER BY name COLLATE NOCASE ASC"
+    )
+    .all(companyId)) as Staff[];
 
   return (
     <div className="space-y-6">

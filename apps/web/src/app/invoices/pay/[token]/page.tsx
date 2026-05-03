@@ -15,13 +15,17 @@ export default async function InvoicePayPage({
   searchParams: { status?: string };
 }) {
   const db = await getDb();
+  // Public route: tenant identification comes from the invoice's pay token,
+  // and the company is whatever owns that invoice. No session needed.
   const invoice = (await db
     .prepare("SELECT * FROM invoices WHERE stripe_pay_token = ? LIMIT 1")
     .get(params.token)) as Invoice | undefined;
 
-  const company = (await db
-    .prepare("SELECT name FROM company WHERE id = 1")
-    .get()) as { name: string | null } | undefined;
+  const company = invoice
+    ? ((await db
+        .prepare("SELECT name FROM company WHERE id = ? LIMIT 1")
+        .get(invoice.company_id)) as { name: string | null } | undefined)
+    : undefined;
   const companyName = company?.name?.trim() || "the merchant";
 
   if (!invoice) {
