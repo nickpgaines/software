@@ -1,5 +1,5 @@
 import { getDb, type JobWithCustomer } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionContext } from "@/lib/auth";
 import RevenueChart from "@/components/RevenueChart";
 import TodaySchedule from "@/components/TodaySchedule";
 
@@ -12,6 +12,8 @@ function greeting(h: number) {
 }
 
 export default async function DashboardPage() {
+  const ctx = await getSessionContext();
+  const companyId = ctx?.companyId ?? 0;
   const db = await getDb();
   const now = new Date();
   const today = new Date(now);
@@ -31,24 +33,24 @@ export default async function DashboardPage() {
        JOIN customers c ON c.id = j.customer_id
        LEFT JOIN staff sp ON sp.id = j.salesperson_id
        LEFT JOIN staff tc ON tc.id = j.technician_id
-       WHERE j.scheduled_at >= ? AND j.scheduled_at < ?
+       WHERE j.company_id = ?
+         AND j.scheduled_at >= ? AND j.scheduled_at < ?
        ORDER BY j.scheduled_at ASC`
     )
-    .all(today.toISOString(), tomorrow.toISOString())) as JobWithCustomer[];
+    .all(companyId, today.toISOString(), tomorrow.toISOString())) as JobWithCustomer[];
 
-  const user = getSessionUser() || "";
-  const adminUsername = process.env.ADMIN_USERNAME || "admin";
+  const user = ctx?.identity || "";
   let name: string;
   if (!user) {
     name = "there";
-  } else if (user === adminUsername) {
+  } else if (ctx?.isPlatformAdmin) {
     name = "Admin";
-  } else {
+  } else if (ctx?.staffId) {
     const row = (await db
       .prepare(
-        "SELECT first_name, name FROM staff WHERE LOWER(email) = ? LIMIT 1"
+        "SELECT first_name, name FROM staff WHERE id = ? AND company_id = ? LIMIT 1"
       )
-      .get(user.toLowerCase())) as
+      .get(ctx.staffId, ctx.companyId)) as
       | { first_name: string | null; name: string }
       | undefined;
     if (row) {
@@ -57,6 +59,8 @@ export default async function DashboardPage() {
     } else {
       name = user;
     }
+  } else {
+    name = user;
   }
 
   return (
