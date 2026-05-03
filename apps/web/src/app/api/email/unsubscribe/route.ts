@@ -29,14 +29,18 @@ async function unsubscribe(req: Request): Promise<NextResponse> {
     );
   }
   const email = verified.email;
+  const companyId = verified.companyId;
   const db = await getDb();
+  // Per-tenant unsubscribe: a customer can opt out of one tenant's blasts
+  // without affecting another's. The schema (post-migration) carries a
+  // (company_id, email) UNIQUE index so the upsert is per-tenant.
   await db
     .prepare(
-      `INSERT INTO email_unsubscribes (email, source)
-       VALUES (?, 'one-click')
-       ON CONFLICT(email) DO UPDATE SET unsubscribed_at = datetime('now')`
+      `INSERT INTO email_unsubscribes (company_id, email, source)
+       VALUES (?, ?, 'one-click')
+       ON CONFLICT(company_id, email) DO UPDATE SET unsubscribed_at = datetime('now')`
     )
-    .run(email);
+    .run(companyId, email);
   return new NextResponse(
     page(
       "Unsubscribed",

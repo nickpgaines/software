@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 import { computeJobStatus, createJob, type JobInput } from "@/lib/jobs";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +16,7 @@ type JobRow = {
 };
 
 export async function GET(req: Request) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const url = new URL(req.url);
   const from = url.searchParams.get("from");
@@ -36,8 +38,8 @@ export async function GET(req: Request) {
     LEFT JOIN staff sp ON sp.id = j.salesperson_id
     LEFT JOIN staff tc ON tc.id = j.technician_id
   `;
-  const where: string[] = [];
-  const args: unknown[] = [];
+  const where: string[] = ["j.company_id = ?"];
+  const args: unknown[] = [companyId];
   if (from) {
     where.push("j.scheduled_at >= ?");
     args.push(from);
@@ -46,7 +48,7 @@ export async function GET(req: Request) {
     where.push("j.scheduled_at < ?");
     args.push(to);
   }
-  if (where.length) sql += ` WHERE ${where.join(" AND ")}`;
+  sql += ` WHERE ${where.join(" AND ")}`;
   sql += " ORDER BY j.scheduled_at ASC";
 
   const rows = (await db
@@ -68,6 +70,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const body = (await req.json().catch(() => ({}))) as Partial<JobInput>;
   if (!body.customer_id || !body.start_time) {
@@ -76,6 +79,13 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  const id = await createJob(db, body as JobInput);
-  return NextResponse.json({ id }, { status: 201 });
+  try {
+    const id = await createJob(db, body as JobInput, companyId);
+    return NextResponse.json({ id }, { status: 201 });
+  } catch (e) {
+    if ((e as Error).message === "Customer not found") {
+      return NextResponse.json({ error: "Customer not found" }, { status: 404 });
+    }
+    throw e;
+  }
 }

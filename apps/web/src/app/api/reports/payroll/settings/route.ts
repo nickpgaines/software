@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type PayrollSettings } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -54,21 +55,26 @@ function normalizeBonusTiers(input: unknown): BonusTier[] {
 }
 
 export async function GET() {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const row = await db
-    .prepare(`SELECT * FROM payroll_settings WHERE id = 1`)
-    .get<PayrollSettings>();
+    .prepare(`SELECT * FROM payroll_settings WHERE company_id = ? LIMIT 1`)
+    .get<PayrollSettings>(companyId);
   if (!row) {
-    await db.prepare(`INSERT OR IGNORE INTO payroll_settings (id) VALUES (1)`).run();
+    // Auto-seed an empty settings row for this tenant on first read.
+    await db
+      .prepare(`INSERT INTO payroll_settings (company_id) VALUES (?)`)
+      .run(companyId);
     const fresh = await db
-      .prepare(`SELECT * FROM payroll_settings WHERE id = 1`)
-      .get<PayrollSettings>();
+      .prepare(`SELECT * FROM payroll_settings WHERE company_id = ? LIMIT 1`)
+      .get<PayrollSettings>(companyId);
     return NextResponse.json(fresh);
   }
   return NextResponse.json(row);
 }
 
 export async function PATCH(req: Request) {
+  const companyId = await requireCompanyId();
   let body: Record<string, unknown>;
   try {
     body = (await req.json()) as Record<string, unknown>;
@@ -157,20 +163,33 @@ export async function PATCH(req: Request) {
   const keys = Object.keys(updates);
   if (keys.length === 0) {
     const row = await (await getDb())
-      .prepare(`SELECT * FROM payroll_settings WHERE id = 1`)
-      .get<PayrollSettings>();
+      .prepare(`SELECT * FROM payroll_settings WHERE company_id = ? LIMIT 1`)
+      .get<PayrollSettings>(companyId);
     return NextResponse.json(row);
+  }
+
+  const db = await getDb();
+  // Make sure a row exists for this tenant before updating.
+  const existing = await db
+    .prepare(`SELECT id FROM payroll_settings WHERE company_id = ? LIMIT 1`)
+    .get<{ id: number }>(companyId);
+  if (!existing) {
+    await db
+      .prepare(`INSERT INTO payroll_settings (company_id) VALUES (?)`)
+      .run(companyId);
   }
 
   const sets = keys.map((k) => `${k} = ?`).join(", ");
   const args = keys.map((k) => updates[k]);
   args.push(new Date().toISOString());
-  const db = await getDb();
+  args.push(companyId);
   await db
-    .prepare(`UPDATE payroll_settings SET ${sets}, updated_at = ? WHERE id = 1`)
+    .prepare(
+      `UPDATE payroll_settings SET ${sets}, updated_at = ? WHERE company_id = ?`
+    )
     .run(...args);
   const row = await db
-    .prepare(`SELECT * FROM payroll_settings WHERE id = 1`)
-    .get<PayrollSettings>();
+    .prepare(`SELECT * FROM payroll_settings WHERE company_id = ? LIMIT 1`)
+    .get<PayrollSettings>(companyId);
   return NextResponse.json(row);
 }

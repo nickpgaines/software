@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type MapPin } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionContext } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +19,11 @@ type Input = {
 };
 
 export async function GET(req: Request) {
+  const ctx = await getSessionContext();
+  if (!ctx) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const companyId = ctx.companyId;
   const db = await getDb();
   const url = new URL(req.url);
   const from = url.searchParams.get("from");
@@ -26,9 +31,8 @@ export async function GET(req: Request) {
   const status = url.searchParams.get("status");
   const createdBy = url.searchParams.get("created_by");
 
-  let sql = "SELECT * FROM map_pins";
-  const where: string[] = [];
-  const args: unknown[] = [];
+  const where: string[] = ["company_id = ?"];
+  const args: unknown[] = [companyId];
   if (from) {
     where.push("created_at >= ?");
     args.push(from);
@@ -48,8 +52,7 @@ export async function GET(req: Request) {
     where.push("created_by = ?");
     args.push(createdBy);
   }
-  if (where.length) sql += ` WHERE ${where.join(" AND ")}`;
-  sql += " ORDER BY created_at DESC";
+  const sql = `SELECT * FROM map_pins WHERE ${where.join(" AND ")} ORDER BY created_at DESC`;
   const rows = (await db
     .prepare(sql)
     .all(...(args as (string | number | null)[]))) as MapPin[];
@@ -57,6 +60,11 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const ctx = await getSessionContext();
+  if (!ctx) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const companyId = ctx.companyId;
   const db = await getDb();
   const body = (await req.json().catch(() => ({}))) as Input;
   if (typeof body.lat !== "number" || typeof body.lng !== "number") {
@@ -65,14 +73,23 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
+  // Validate customer_id belongs to this tenant if provided.
+  let safeCustomerId: number | null = null;
+  if (body.customer_id) {
+    const cust = await db
+      .prepare("SELECT id FROM customers WHERE id = ? AND company_id = ?")
+      .get<{ id: number }>(body.customer_id, companyId);
+    if (cust) safeCustomerId = body.customer_id;
+  }
   const result = await db
     .prepare(
       `INSERT INTO map_pins
-        (lat, lng, address, first_name, last_name, phone, status, objections,
+        (company_id, lat, lng, address, first_name, last_name, phone, status, objections,
          notes, customer_id, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
+      companyId,
       body.lat,
       body.lng,
       body.address || null,
@@ -82,11 +99,11 @@ export async function POST(req: Request) {
       body.status || "not_home",
       body.objections ? JSON.stringify(body.objections) : null,
       (body.note ?? body.notes) || null,
-      body.customer_id || null,
-      getSessionUser() || null
+      safeCustomerId,
+      ctx.identity
     );
   const created = (await db
-    .prepare("SELECT * FROM map_pins WHERE id = ?")
-    .get(result.lastInsertRowid)) as MapPin;
+    .prepare("SELECT * FROM map_pins WHERE id = ? AND company_id = ?")
+    .get(result.lastInsertRowid, companyId)) as MapPin;
   return NextResponse.json(created, { status: 201 });
 }

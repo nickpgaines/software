@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, type Company } from "@/lib/db";
 import { getStripe, isStripeConfigured } from "@/lib/stripe";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -13,10 +14,11 @@ export const dynamic = "force-dynamic";
  *   delete merchant accounts — the user can rejoin later.
  */
 export async function POST() {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const company = (await db
-    .prepare("SELECT * FROM company WHERE id = 1")
-    .get()) as Company | undefined;
+    .prepare("SELECT * FROM company WHERE id = ?")
+    .get(companyId)) as Company | undefined;
 
   if (
     company?.stripe_account_id &&
@@ -45,8 +47,8 @@ export async function POST() {
              stripe_payouts_enabled = 0,
              stripe_details_submitted = 0,
              updated_at = datetime('now')
-       WHERE id = 1`
+       WHERE id = ?`
     )
-    .run();
+    .run(companyId);
   return NextResponse.json({ ok: true });
 }

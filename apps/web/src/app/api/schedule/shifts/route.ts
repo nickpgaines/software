@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -49,32 +50,38 @@ export async function GET(req: Request) {
       { status: 400 }
     );
   }
+  const companyId = await requireCompanyId();
   const db = await getDb();
 
   const staff = await db
     .prepare(
       `SELECT id, name, first_name, last_name, email, color, photo_url
          FROM staff
+        WHERE company_id = ?
         ORDER BY COALESCE(first_name, name), last_name`
     )
-    .all<StaffRow>();
+    .all<StaffRow>(companyId);
 
+  // Shifts and default_shifts are scoped via staff_id, so filter them by
+  // joining to the tenant's staff list.
   const shifts = await db
     .prepare(
-      `SELECT id, staff_id, work_date, start_minutes, end_minutes
-         FROM staff_shifts
-        WHERE work_date >= ? AND work_date <= ?
-        ORDER BY work_date`
+      `SELECT s.id, s.staff_id, s.work_date, s.start_minutes, s.end_minutes
+         FROM staff_shifts s
+         JOIN staff st ON st.id = s.staff_id AND st.company_id = ?
+        WHERE s.work_date >= ? AND s.work_date <= ?
+        ORDER BY s.work_date`
     )
-    .all<ShiftRow>(start, end);
+    .all<ShiftRow>(companyId, start, end);
 
   const defaults = await db
     .prepare(
-      `SELECT id, staff_id, weekday, start_minutes, end_minutes
-         FROM staff_default_shifts
-        ORDER BY staff_id, weekday`
+      `SELECT d.id, d.staff_id, d.weekday, d.start_minutes, d.end_minutes
+         FROM staff_default_shifts d
+         JOIN staff st ON st.id = d.staff_id AND st.company_id = ?
+        ORDER BY d.staff_id, d.weekday`
     )
-    .all<DefaultShiftRow>();
+    .all<DefaultShiftRow>(companyId);
 
   return NextResponse.json({ staff, shifts, defaults });
 }
@@ -137,6 +144,8 @@ function validateRemoval(s: unknown): RemoveInput | null {
 }
 
 export async function POST(req: Request) {
+  const companyId = await requireCompanyId();
+
   let body: PostBody;
   try {
     body = (await req.json()) as PostBody;
@@ -153,6 +162,29 @@ export async function POST(req: Request) {
   const asDefault = body.as_default === true;
 
   const db = await getDb();
+
+  // Verify all referenced staff_ids belong to this tenant up front so we
+  // don't write rows for staff in another company.
+  const allStaffIds = Array.from(
+    new Set([...upserts.map((u) => u.staff_id), ...removals.map((r) => r.staff_id)])
+  );
+  if (allStaffIds.length > 0) {
+    const placeholders = allStaffIds.map(() => "?").join(",");
+    const validStaff = (await db
+      .prepare(
+        `SELECT id FROM staff WHERE company_id = ? AND id IN (${placeholders})`
+      )
+      .all(companyId, ...allStaffIds)) as { id: number }[];
+    const validSet = new Set(validStaff.map((s) => s.id));
+    for (const id of allStaffIds) {
+      if (!validSet.has(id)) {
+        return NextResponse.json(
+          { error: `Staff ${id} not found` },
+          { status: 404 }
+        );
+      }
+    }
+  }
 
   for (const u of upserts) {
     await db

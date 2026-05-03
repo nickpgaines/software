@@ -7,6 +7,7 @@ import {
   syncAccountStatus,
 } from "@/lib/stripe";
 import { getDb } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -25,8 +26,9 @@ export async function POST(req: Request) {
   }
 
   try {
+    const companyId = await requireCompanyId();
     const stripe = getStripe();
-    const company = await getCompany();
+    const company = await getCompany(companyId);
     const origin = getAppOrigin(req);
 
     let accountId = company.stripe_account_id;
@@ -46,9 +48,9 @@ export async function POST(req: Request) {
       const db = await getDb();
       await db
         .prepare(
-          "UPDATE company SET stripe_account_id = ?, stripe_account_type = 'express', updated_at = datetime('now') WHERE id = 1"
+          "UPDATE company SET stripe_account_id = ?, stripe_account_type = 'express', updated_at = datetime('now') WHERE id = ?"
         )
-        .run(accountId);
+        .run(accountId, companyId);
     }
 
     const link = await stripe.accountLinks.create({
@@ -61,7 +63,7 @@ export async function POST(req: Request) {
     // Best-effort status sync now in case the account already existed.
     try {
       const account = await stripe.accounts.retrieve(accountId);
-      await syncAccountStatus(accountId, account);
+      await syncAccountStatus(companyId, accountId, account);
     } catch {
       // ignore
     }

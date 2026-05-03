@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, type PayrollSettings, type CommissionTier } from "@/lib/db";
 import { resolveReportRange } from "@/lib/report-range";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +65,7 @@ function tieredPayout(revenueCents: number, tiers: CommissionTier[]): number {
 }
 
 export async function GET(req: Request) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const url = new URL(req.url);
   const { range, start, end } = resolveReportRange(url.searchParams.get("range"));
@@ -71,8 +73,8 @@ export async function GET(req: Request) {
   const endIso = end.toISOString();
 
   const settings = (await db
-    .prepare(`SELECT * FROM payroll_settings WHERE id = 1`)
-    .get<PayrollSettings>()) || null;
+    .prepare(`SELECT * FROM payroll_settings WHERE company_id = ? LIMIT 1`)
+    .get<PayrollSettings>(companyId)) || null;
 
   const excludeOneTime = settings?.exclude_one_time_services === 1;
   const jobFilter = excludeOneTime ? `AND j.recurring = 1` : ``;
@@ -83,9 +85,10 @@ export async function GET(req: Request) {
       `SELECT id, name, first_name, last_name, email, permission_level,
               sales_commission_rate, tech_commission_rate
          FROM staff
+        WHERE company_id = ?
         ORDER BY COALESCE(first_name, name), last_name`
     )
-    .all<StaffRow>();
+    .all<StaffRow>(companyId);
 
   const salesRevenue = await db
     .prepare(
@@ -94,11 +97,12 @@ export async function GET(req: Request) {
          FROM job_assignments ja
          JOIN jobs j ON j.id = ja.job_id
         WHERE ja.role = 'sales'
+          AND j.company_id = ?
           AND j.scheduled_at >= ? AND j.scheduled_at < ?
           ${jobFilter}
         GROUP BY ja.staff_id`
     )
-    .all<RevenueRow>(startIso, endIso);
+    .all<RevenueRow>(companyId, startIso, endIso);
 
   const techRevenue = await db
     .prepare(
@@ -107,11 +111,12 @@ export async function GET(req: Request) {
          FROM job_assignments ja
          JOIN jobs j ON j.id = ja.job_id
         WHERE ja.role = 'tech'
+          AND j.company_id = ?
           AND j.scheduled_at >= ? AND j.scheduled_at < ?
           ${jobFilter}
         GROUP BY ja.staff_id`
     )
-    .all<RevenueRow>(startIso, endIso);
+    .all<RevenueRow>(companyId, startIso, endIso);
 
   const techTips = await db
     .prepare(
@@ -120,49 +125,54 @@ export async function GET(req: Request) {
          FROM payments p
          JOIN job_assignments ja ON ja.job_id = p.job_id
         WHERE ja.role = 'tech'
+          AND p.company_id = ?
           AND p.payment_date >= ? AND p.payment_date < ?
         GROUP BY ja.staff_id`
     )
-    .all<TipsRow>(startIso, endIso);
+    .all<TipsRow>(companyId, startIso, endIso);
 
   const paidRows = await db
     .prepare(
       `SELECT staff_id, role
          FROM payroll_payouts
-        WHERE period_start = ? AND period_end = ?`
+        WHERE company_id = ?
+          AND period_start = ? AND period_end = ?`
     )
-    .all<PaidRow>(startIso, endIso);
+    .all<PaidRow>(companyId, startIso, endIso);
 
   const planSaleRows = settings?.plan_sale_bonuses_enabled
     ? await db
         .prepare(
           `SELECT sold_by_id AS staff_id, COUNT(*) AS sales
              FROM customer_subscriptions
-            WHERE sold_by_id IS NOT NULL
+            WHERE company_id = ?
+              AND sold_by_id IS NOT NULL
               AND status = 'active'
               AND accepted_at IS NOT NULL
               AND accepted_at >= ? AND accepted_at < ?
             GROUP BY sold_by_id`
         )
-        .all<PlanSaleRow>(startIso, endIso)
+        .all<PlanSaleRow>(companyId, startIso, endIso)
     : [];
 
   const totalRevenueRow = (await db
     .prepare(
       `SELECT COALESCE(SUM(price_cents), 0) AS total
          FROM jobs
-        WHERE scheduled_at >= ? AND scheduled_at < ?
+        WHERE company_id = ?
+          AND scheduled_at >= ? AND scheduled_at < ?
           ${totalsJobFilter}`
     )
-    .get<{ total: number }>(startIso, endIso)) || { total: 0 };
+    .get<{ total: number }>(companyId, startIso, endIso)) || { total: 0 };
 
   const totalTipsRow = (await db
     .prepare(
       `SELECT COALESCE(SUM(tip_cents), 0) AS total
          FROM payments
-        WHERE payment_date >= ? AND payment_date < ?`
+        WHERE company_id = ?
+          AND payment_date >= ? AND payment_date < ?`
     )
-    .get<{ total: number }>(startIso, endIso)) || { total: 0 };
+    .get<{ total: number }>(companyId, startIso, endIso)) || { total: 0 };
 
   const salesRevById = new Map(salesRevenue.map((r) => [r.staff_id, r.revenue]));
   const techRevById = new Map(techRevenue.map((r) => [r.staff_id, r.revenue]));

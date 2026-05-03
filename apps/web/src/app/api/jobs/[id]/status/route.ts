@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 import { getJobDetail, setStatusStep } from "@/lib/jobs";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,7 @@ export async function POST(
   req: Request,
   { params }: { params: { id: string } }
 ) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const id = Number(params.id);
   const { step, clear } = (await req.json().catch(() => ({}))) as {
@@ -20,6 +22,6 @@ export async function POST(
   if (!step || !STEPS.includes(step)) {
     return NextResponse.json({ error: "Invalid step" }, { status: 400 });
   }
-  await setStatusStep(db, id, step, !!clear);
-  return NextResponse.json(await getJobDetail(db, id));
+  await setStatusStep(db, id, step, companyId, !!clear);
+  return NextResponse.json(await getJobDetail(db, id, companyId));
 }

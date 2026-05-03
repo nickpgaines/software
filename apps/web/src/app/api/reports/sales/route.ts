@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { resolveReportRange } from "@/lib/report-range";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ type RepRow = {
 };
 
 export async function GET(req: Request) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const url = new URL(req.url);
   const { range, start, end } = resolveReportRange(url.searchParams.get("range"));
@@ -25,9 +27,10 @@ export async function GET(req: Request) {
          COUNT(*) AS total,
          COALESCE(SUM(CASE WHEN status = 'sale' THEN 1 ELSE 0 END), 0) AS sales
        FROM map_pins
-       WHERE created_at >= ? AND created_at < ?`
+       WHERE company_id = ?
+         AND created_at >= ? AND created_at < ?`
     )
-    .get(startIso, endIso)) as { total: number; sales: number };
+    .get(companyId, startIso, endIso)) as { total: number; sales: number };
 
   const conversionRate = doors.total > 0 ? doors.sales / doors.total : 0;
 
@@ -37,20 +40,29 @@ export async function GET(req: Request) {
          s.id,
          s.name,
          (SELECT COUNT(*) FROM map_pins p
-            WHERE LOWER(p.created_by) = LOWER(s.name)
+            WHERE p.company_id = ?
+              AND LOWER(p.created_by) = LOWER(s.name)
               AND p.created_at >= ? AND p.created_at < ?) AS doors,
          (SELECT COUNT(*) FROM map_pins p
-            WHERE LOWER(p.created_by) = LOWER(s.name)
+            WHERE p.company_id = ?
+              AND LOWER(p.created_by) = LOWER(s.name)
               AND p.created_at >= ? AND p.created_at < ?
               AND p.status = 'sale') AS sales,
          (SELECT COALESCE(SUM(j.price_cents), 0)
             FROM jobs j
             JOIN job_assignments ja ON ja.job_id = j.id
-            WHERE ja.staff_id = s.id AND ja.role = 'sales'
+            WHERE j.company_id = ?
+              AND ja.staff_id = s.id AND ja.role = 'sales'
               AND j.scheduled_at >= ? AND j.scheduled_at < ?) AS revenue
-       FROM staff s`
+       FROM staff s
+       WHERE s.company_id = ?`
     )
-    .all(startIso, endIso, startIso, endIso, startIso, endIso)) as RepRow[];
+    .all(
+      companyId, startIso, endIso,
+      companyId, startIso, endIso,
+      companyId, startIso, endIso,
+      companyId
+    )) as RepRow[];
 
   const enriched = reps
     .map((r) => ({

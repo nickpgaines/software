@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type Payment, type PaymentMethod } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 import { autoCompleteSteps } from "@/lib/jobs";
 import { sendPaymentReceipt } from "@/lib/payment-receipts";
 
@@ -11,13 +12,17 @@ export async function GET(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const jobId = Number(params.id);
   const rows = (await db
     .prepare(
-      "SELECT * FROM payments WHERE job_id = ? ORDER BY created_at DESC, id DESC"
+      `SELECT p.* FROM payments p
+         JOIN jobs j ON j.id = p.job_id
+        WHERE p.job_id = ? AND j.company_id = ?
+        ORDER BY p.created_at DESC, p.id DESC`
     )
-    .all(jobId)) as Payment[];
+    .all(jobId, companyId)) as Payment[];
   return NextResponse.json(rows);
 }
 
@@ -25,10 +30,13 @@ export async function POST(
   req: Request,
   { params }: { params: { id: string } }
 ) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const jobId = Number(params.id);
 
-  const job = await db.prepare("SELECT id FROM jobs WHERE id = ?").get(jobId);
+  const job = await db
+    .prepare("SELECT id FROM jobs WHERE id = ? AND company_id = ?")
+    .get(jobId, companyId);
   if (!job) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
@@ -98,10 +106,11 @@ export async function POST(
     const result = await tx
       .prepare(
         `INSERT INTO payments
-           (job_id, amount_cents, tip_cents, method, payment_date, notes, send_email, send_sms)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+           (company_id, job_id, amount_cents, tip_cents, method, payment_date, notes, send_email, send_sms)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
+        companyId,
         jobId,
         amountCents,
         tipCents,
@@ -111,18 +120,19 @@ export async function POST(
         send_email,
         send_sms
       );
-    await autoCompleteSteps(tx, jobId);
+    await autoCompleteSteps(tx, jobId, companyId);
     return Number(result.lastInsertRowid);
   });
 
   const created = (await db
-    .prepare("SELECT * FROM payments WHERE id = ?")
-    .get(insertedId)) as Payment;
+    .prepare("SELECT * FROM payments WHERE id = ? AND company_id = ?")
+    .get(insertedId, companyId)) as Payment;
 
   if (send_email || send_sms) {
     await sendPaymentReceipt({
       jobId,
       paymentId: created.id,
+      companyId,
       amountCents: created.amount_cents,
       tipCents: created.tip_cents ?? 0,
       method,

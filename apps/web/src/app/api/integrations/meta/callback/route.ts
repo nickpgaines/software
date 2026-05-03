@@ -8,6 +8,7 @@ import {
   fetchMetaUser,
   getMetaConfig,
 } from "@/lib/meta";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -42,28 +43,59 @@ export async function GET(req: Request) {
       ? new Date(Date.now() + long.expires_in * 1000).toISOString()
       : null;
 
+    const companyId = await requireCompanyId();
     const db = await getDb();
-    await db
-      .prepare(
-        `UPDATE meta_integration
-            SET user_id = ?, user_name = ?, access_token = ?,
-                token_expires_at = ?, connected_at = datetime('now'),
-                updated_at = datetime('now')
-          WHERE id = 1`
-      )
-      .run(me.id, me.name, long.access_token, expiresAt);
-
-    for (const p of pages) {
+    // Upsert the integration row for this tenant.
+    const integ = await db
+      .prepare("SELECT id FROM meta_integration WHERE company_id = ? LIMIT 1")
+      .get<{ id: number }>(companyId);
+    if (integ) {
       await db
         .prepare(
-          `INSERT INTO meta_pages (page_id, page_name, page_access_token, enabled)
-             VALUES (?, ?, ?, 0)
-             ON CONFLICT(page_id) DO UPDATE SET
-               page_name = excluded.page_name,
-               page_access_token = excluded.page_access_token,
-               updated_at = datetime('now')`
+          `UPDATE meta_integration
+              SET user_id = ?, user_name = ?, access_token = ?,
+                  token_expires_at = ?, connected_at = datetime('now'),
+                  updated_at = datetime('now')
+            WHERE id = ? AND company_id = ?`
         )
-        .run(p.id, p.name, p.access_token);
+        .run(me.id, me.name, long.access_token, expiresAt, integ.id, companyId);
+    } else {
+      await db
+        .prepare(
+          `INSERT INTO meta_integration
+             (company_id, user_id, user_name, access_token, token_expires_at,
+              connected_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, datetime('now'), datetime('now'))`
+        )
+        .run(companyId, me.id, me.name, long.access_token, expiresAt);
+    }
+
+    for (const p of pages) {
+      // page_id has a global UNIQUE index in the schema (predates multi-tenancy),
+      // so two tenants can't both hold the same Meta page id. Within a single
+      // tenant, upsert by (company_id, page_id).
+      const existing = await db
+        .prepare(
+          "SELECT id FROM meta_pages WHERE company_id = ? AND page_id = ? LIMIT 1"
+        )
+        .get<{ id: number }>(companyId, p.id);
+      if (existing) {
+        await db
+          .prepare(
+            `UPDATE meta_pages
+                SET page_name = ?, page_access_token = ?,
+                    updated_at = datetime('now')
+              WHERE id = ? AND company_id = ?`
+          )
+          .run(p.name, p.access_token, existing.id, companyId);
+      } else {
+        await db
+          .prepare(
+            `INSERT INTO meta_pages (company_id, page_id, page_name, page_access_token, enabled)
+               VALUES (?, ?, ?, ?, 0)`
+          )
+          .run(companyId, p.id, p.name, p.access_token);
+      }
     }
 
     const res = NextResponse.redirect(`${integrationsUrl}?meta_connected=1`);

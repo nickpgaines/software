@@ -5,7 +5,7 @@ import {
   type InvoiceItem,
   type InvoiceStatus,
 } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionContext } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -22,14 +22,15 @@ export async function GET(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  if (!getSessionUser()) {
+  const ctx = await getSessionContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const db = await getDb();
   const id = Number(params.id);
   const invoice = (await db
-    .prepare("SELECT * FROM invoices WHERE id = ?")
-    .get(id)) as Invoice | undefined;
+    .prepare("SELECT * FROM invoices WHERE id = ? AND company_id = ?")
+    .get(id, ctx.companyId)) as Invoice | undefined;
   if (!invoice) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -45,14 +46,15 @@ export async function PUT(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  if (!getSessionUser()) {
+  const ctx = await getSessionContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const db = await getDb();
   const id = Number(params.id);
   const existing = (await db
-    .prepare("SELECT * FROM invoices WHERE id = ?")
-    .get(id)) as Invoice | undefined;
+    .prepare("SELECT * FROM invoices WHERE id = ? AND company_id = ?")
+    .get(id, ctx.companyId)) as Invoice | undefined;
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -81,12 +83,12 @@ export async function PUT(
       `UPDATE invoices
          SET status = ?, paid_cents = ?, paid_at = ?, voided_at = ?,
              updated_at = datetime('now')
-       WHERE id = ?`
+       WHERE id = ? AND company_id = ?`
     )
-    .run(body.status, paidCents, paidAt, voidedAt, id);
+    .run(body.status, paidCents, paidAt, voidedAt, id, ctx.companyId);
   const row = (await db
-    .prepare("SELECT * FROM invoices WHERE id = ?")
-    .get(id)) as Invoice;
+    .prepare("SELECT * FROM invoices WHERE id = ? AND company_id = ?")
+    .get(id, ctx.companyId)) as Invoice;
   return NextResponse.json(row);
 }
 
@@ -94,13 +96,14 @@ export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  if (!getSessionUser()) {
+  const ctx = await getSessionContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const db = await getDb();
   const result = await db
-    .prepare("DELETE FROM invoices WHERE id = ?")
-    .run(Number(params.id));
+    .prepare("DELETE FROM invoices WHERE id = ? AND company_id = ?")
+    .run(Number(params.id), ctx.companyId);
   if (result.changes === 0) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

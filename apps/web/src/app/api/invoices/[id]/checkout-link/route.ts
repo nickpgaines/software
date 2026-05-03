@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
 import { getDb, type Invoice } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionContext } from "@/lib/auth";
 import { getCompany, isStripeConfigured, getAppOrigin } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
@@ -23,7 +23,8 @@ export async function POST(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  if (!getSessionUser()) {
+  const ctx = await getSessionContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   if (!isStripeConfigured()) {
@@ -33,7 +34,7 @@ export async function POST(
     );
   }
 
-  const company = await getCompany();
+  const company = await getCompany(ctx.companyId);
   if (!company.stripe_account_id) {
     return NextResponse.json(
       {
@@ -56,8 +57,8 @@ export async function POST(
   const db = await getDb();
   const id = Number(params.id);
   const invoice = (await db
-    .prepare("SELECT * FROM invoices WHERE id = ?")
-    .get(id)) as Invoice | undefined;
+    .prepare("SELECT * FROM invoices WHERE id = ? AND company_id = ?")
+    .get(id, ctx.companyId)) as Invoice | undefined;
   if (!invoice) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -85,9 +86,9 @@ export async function POST(
     token = makeToken();
     await db
       .prepare(
-        "UPDATE invoices SET stripe_pay_token = ?, updated_at = datetime('now') WHERE id = ?"
+        "UPDATE invoices SET stripe_pay_token = ?, updated_at = datetime('now') WHERE id = ? AND company_id = ?"
       )
-      .run(token, id);
+      .run(token, id, ctx.companyId);
   }
 
   const origin = getAppOrigin(req);

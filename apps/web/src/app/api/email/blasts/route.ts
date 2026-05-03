@@ -10,7 +10,7 @@ import {
   sendEmailViaResend,
 } from "@/lib/email";
 import { getDb, type EmailAudience, type EmailBlast } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionContext } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -31,17 +31,26 @@ function buildOrigin(req: Request): string {
 }
 
 export async function GET() {
+  const ctx = await getSessionContext();
+  if (!ctx) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
   const db = await getDb();
   const rows = (await db
     .prepare(
-      `SELECT * FROM email_blasts ORDER BY created_at DESC, id DESC LIMIT 200`
+      `SELECT * FROM email_blasts WHERE company_id = ? ORDER BY created_at DESC, id DESC LIMIT 200`
     )
-    .all()) as EmailBlast[];
+    .all(ctx.companyId)) as EmailBlast[];
   return NextResponse.json(rows);
 }
 
 export async function POST(req: Request) {
-  const settings = await getEmailSettings();
+  const ctx = await getSessionContext();
+  if (!ctx) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const companyId = ctx.companyId;
+  const settings = await getEmailSettings(companyId);
   if (!isEmailConfigured(settings)) {
     return NextResponse.json(
       { error: "Email is not configured. Connect Resend in Settings → Email." },
@@ -83,9 +92,9 @@ export async function POST(req: Request) {
   // a blast row. Useful for previewing rendering.
   const testEmail = (body.test_email || "").trim();
   if (testEmail) {
-    const company = await getCompanyForFooter();
+    const company = await getCompanyForFooter(companyId);
     const origin = buildOrigin(req);
-    const unsubToken = buildUnsubscribeToken(testEmail);
+    const unsubToken = buildUnsubscribeToken(testEmail, companyId);
     const unsubscribeUrl = `${origin}/api/email/unsubscribe?token=${encodeURIComponent(
       unsubToken
     )}`;
@@ -108,7 +117,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, test: true, id: result.id });
   }
 
-  const recipients = await fetchAudience(audience);
+  const recipients = await fetchAudience(audience, companyId);
   if (recipients.length === 0) {
     return NextResponse.json(
       { error: "No recipients in that audience." },
@@ -120,11 +129,12 @@ export async function POST(req: Request) {
   const insert = await db
     .prepare(
       `INSERT INTO email_blasts
-         (audience, subject, body_html, body_text, from_address, from_name,
+         (company_id, audience, subject, body_html, body_text, from_address, from_name,
           status, recipient_count, sent_count, failed_count, created_by, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'sending', ?, 0, 0, ?, datetime('now'))`
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'sending', ?, 0, 0, ?, datetime('now'))`
     )
     .run(
+      companyId,
       audience,
       subject,
       html,
@@ -132,7 +142,7 @@ export async function POST(req: Request) {
       settings.from_address,
       settings.from_name,
       recipients.length,
-      getSessionUser() || null
+      ctx.identity
     );
   const blastId = Number(insert.lastInsertRowid);
 
@@ -147,13 +157,13 @@ export async function POST(req: Request) {
       .run(blastId, r.customer_id, r.email, r.name);
   }
 
-  const company = await getCompanyForFooter();
+  const company = await getCompanyForFooter(companyId);
   const origin = buildOrigin(req);
 
   let sent = 0;
   let failed = 0;
   for (const r of recipients) {
-    const unsubToken = buildUnsubscribeToken(r.email);
+    const unsubToken = buildUnsubscribeToken(r.email, companyId);
     const unsubscribeUrl = `${origin}/api/email/unsubscribe?token=${encodeURIComponent(
       unsubToken
     )}`;
@@ -209,7 +219,7 @@ export async function POST(req: Request) {
     );
 
   const blast = (await db
-    .prepare("SELECT * FROM email_blasts WHERE id = ?")
-    .get(blastId)) as EmailBlast;
+    .prepare("SELECT * FROM email_blasts WHERE id = ? AND company_id = ?")
+    .get(blastId, companyId)) as EmailBlast;
   return NextResponse.json(blast, { status: 201 });
 }

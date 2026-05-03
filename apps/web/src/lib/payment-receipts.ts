@@ -85,6 +85,7 @@ function buildReceiptSms(args: {
 export type SendReceiptInput = {
   jobId: number;
   paymentId: number;
+  companyId: number;
   amountCents: number;
   tipCents: number;
   method: string;
@@ -102,21 +103,21 @@ export async function sendPaymentReceipt(input: SendReceiptInput): Promise<void>
       `SELECT c.id, c.name, c.email, c.phone
          FROM jobs j
          JOIN customers c ON c.id = j.customer_id
-        WHERE j.id = ?`
+        WHERE j.id = ? AND j.company_id = ?`
     )
-    .get(input.jobId)) as ReceiptCustomer | undefined;
+    .get(input.jobId, input.companyId)) as ReceiptCustomer | undefined;
   if (!customer) return;
 
   let company: ReceiptCompany;
   try {
-    company = await getCompanyForFooter();
+    company = await getCompanyForFooter(input.companyId);
   } catch {
     company = { name: null, address: null };
   }
 
   if (input.sendEmail && customer.email && customer.email.trim()) {
     try {
-      const settings = await getEmailSettings();
+      const settings = await getEmailSettings(input.companyId);
       if (isEmailConfigured(settings)) {
         const html = buildReceiptHtml({
           customerName: customer.name,
@@ -144,7 +145,7 @@ export async function sendPaymentReceipt(input: SendReceiptInput): Promise<void>
 
   if (input.sendSms && customer.phone) {
     try {
-      const settings = await getMessagingSettings();
+      const settings = await getMessagingSettings(input.companyId);
       if (isMessagingConfigured(settings)) {
         const to = normalizeUSPhone(customer.phone);
         if (to) {

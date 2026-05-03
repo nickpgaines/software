@@ -3,18 +3,18 @@ import { getDb, type AiSettings, type Customer, type Message } from "@/lib/db";
 
 const DEFAULT_MODEL = "claude-sonnet-4-6";
 
-export async function getAiSettings(): Promise<AiSettings> {
+export async function getAiSettings(companyId: number): Promise<AiSettings> {
   const db = await getDb();
   // Wrap in a write transaction to force a primary read. Plain reads can hit
   // a Turso edge replica that lags behind the primary right after a save.
   return await db.transaction(async (tx) => {
     const row = (await tx
-      .prepare("SELECT * FROM ai_settings WHERE id = 1")
-      .get()) as AiSettings | undefined;
+      .prepare("SELECT * FROM ai_settings WHERE company_id = ? LIMIT 1")
+      .get(companyId)) as AiSettings | undefined;
     return (
       row ?? {
-        id: 1,
-        company_id: 1,
+        id: 0,
+        company_id: companyId,
         provider: "anthropic",
         api_key: null,
         model: DEFAULT_MODEL,
@@ -35,11 +35,11 @@ type Company = {
   phone: string | null;
 };
 
-async function getCompany(): Promise<Company> {
+async function getCompany(companyId: number): Promise<Company> {
   const db = await getDb();
   const row = (await db
-    .prepare("SELECT name, address, phone FROM company WHERE id = 1")
-    .get()) as Company | undefined;
+    .prepare("SELECT name, address, phone FROM company WHERE id = ? LIMIT 1")
+    .get(companyId)) as Company | undefined;
   return row ?? { name: null, address: null, phone: null };
 }
 
@@ -119,11 +119,12 @@ export async function draftSmsReply(args: {
   settings: AiSettings;
   customer: Customer;
   messages: Message[];
+  companyId: number;
 }): Promise<DraftReplyResult> {
   if (!isAiConfigured(args.settings)) {
     return { ok: false, error: "AI is not configured" };
   }
-  const business = await getCompany();
+  const business = await getCompany(args.companyId);
   const businessName = business.name?.trim() || "Business";
   const system = buildSystemPrompt({
     business,

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,12 @@ export async function PATCH(req: Request) {
   }
   const col =
     role === "sales" ? "sales_commission_rate" : "tech_commission_rate";
+  const companyId = await requireCompanyId();
   const db = await getDb();
-  await db.prepare(`UPDATE staff SET ${col} = ? WHERE id = ?`).run(rate, staff_id);
+  await db
+    .prepare(
+      `UPDATE staff SET ${col} = ? WHERE id = ? AND company_id = ?`
+    )
+    .run(rate, staff_id, companyId);
   return NextResponse.json({ ok: true });
 }

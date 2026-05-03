@@ -70,6 +70,9 @@ export async function POST(req: Request) {
     for (const change of entry.changes ?? []) {
       if (change.field !== "leadgen") continue;
       const { leadgen_id, page_id, form_id } = change.value;
+      // Resolve the tenant: page_id is globally UNIQUE in the schema so this
+      // finds the single (or no) page row, and its company_id tells us which
+      // tenant the lead should be filed under.
       const page = (await db
         .prepare("SELECT * FROM meta_pages WHERE page_id = ?")
         .get(page_id)) as MetaPage | undefined;
@@ -97,13 +100,14 @@ export async function POST(req: Request) {
         await db
           .prepare(
             `INSERT INTO leads
-               (first_name, last_name, email, phone, address, source,
+               (company_id, first_name, last_name, email, phone, address, source,
                 source_page_id, source_page_name, source_form_id,
                 meta_lead_id, raw_payload, stage)
-             VALUES (?, ?, ?, ?, ?, 'meta', ?, ?, ?, ?, ?, 'new')
+             VALUES (?, ?, ?, ?, ?, ?, 'meta', ?, ?, ?, ?, ?, 'new')
              ON CONFLICT(meta_lead_id) DO NOTHING`
           )
           .run(
+            page.company_id,
             firstName,
             lastName,
             email,

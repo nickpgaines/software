@@ -4,6 +4,7 @@ import {
   type CustomerSubscription,
   type SubscriptionInterval,
 } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +71,7 @@ function numbersFromCsv(raw: string | null): number[] | null {
 }
 
 export async function GET(req: Request) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const url = new URL(req.url);
   const includeTax = url.searchParams.get("include_tax") !== "0";
@@ -83,9 +85,9 @@ export async function GET(req: Request) {
 
   const rows = (await db
     .prepare(
-      `SELECT * FROM customer_subscriptions ORDER BY created_at ASC, id ASC`
+      `SELECT * FROM customer_subscriptions WHERE company_id = ? ORDER BY created_at ASC, id ASC`
     )
-    .all()) as SubRow[];
+    .all(companyId)) as SubRow[];
 
   const filtered = rows.filter((r) => {
     if (customerIds && !customerIds.includes(r.customer_id)) return false;
@@ -184,8 +186,8 @@ export async function GET(req: Request) {
     { sold_by_id: number; name: string; count: number; mrr_cents: number }
   >();
   const staffRows = (await db
-    .prepare(`SELECT id, name FROM staff`)
-    .all()) as { id: number; name: string }[];
+    .prepare(`SELECT id, name FROM staff WHERE company_id = ?`)
+    .all(companyId)) as { id: number; name: string }[];
   const staffById = new Map(staffRows.map((s) => [s.id, s.name]));
   for (const r of filtered) {
     if (r.sold_by_id == null) continue;
@@ -211,14 +213,14 @@ export async function GET(req: Request) {
 
   const customerRows = (await db
     .prepare(
-      `SELECT id, name, first_name, last_name FROM customers ORDER BY name COLLATE NOCASE ASC`
+      `SELECT id, name, first_name, last_name FROM customers WHERE company_id = ? ORDER BY name COLLATE NOCASE ASC`
     )
-    .all()) as { id: number; name: string; first_name: string | null; last_name: string | null }[];
+    .all(companyId)) as { id: number; name: string; first_name: string | null; last_name: string | null }[];
   const templateRows = (await db
     .prepare(
-      `SELECT id, name, active FROM subscription_templates ORDER BY active DESC, name COLLATE NOCASE ASC`
+      `SELECT id, name, active FROM subscription_templates WHERE company_id = ? ORDER BY active DESC, name COLLATE NOCASE ASC`
     )
-    .all()) as { id: number; name: string; active: number }[];
+    .all(companyId)) as { id: number; name: string; active: number }[];
   const staffOptions = staffRows
     .slice()
     .sort((a, b) => a.name.localeCompare(b.name));

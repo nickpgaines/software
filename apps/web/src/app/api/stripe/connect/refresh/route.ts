@@ -5,6 +5,7 @@ import {
   getCompany,
   getAppOrigin,
 } from "@/lib/stripe";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +21,8 @@ export async function GET(req: Request) {
   if (!isStripeConfigured()) return NextResponse.redirect(settings);
 
   try {
-    const company = await getCompany();
+    const companyId = await requireCompanyId();
+    const company = await getCompany(companyId);
     if (!company.stripe_account_id) return NextResponse.redirect(settings);
 
     const stripe = getStripe();

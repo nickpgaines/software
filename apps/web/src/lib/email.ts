@@ -11,18 +11,20 @@ export type SendEmailResult =
   | { ok: true; id: string }
   | { ok: false; error: string };
 
-export async function getEmailSettings(): Promise<EmailSettings> {
+export async function getEmailSettings(
+  companyId: number
+): Promise<EmailSettings> {
   const db = await getDb();
   // Wrap in a write transaction to force a primary read. Plain reads can hit
   // a Turso edge replica that lags behind the primary right after a save.
   return await db.transaction(async (tx) => {
     const row = (await tx
-      .prepare("SELECT * FROM email_settings WHERE id = 1")
-      .get()) as EmailSettings | undefined;
+      .prepare("SELECT * FROM email_settings WHERE company_id = ? LIMIT 1")
+      .get(companyId)) as EmailSettings | undefined;
     return (
       row ?? {
-        id: 1,
-        company_id: 1,
+        id: 0,
+        company_id: companyId,
         provider: "resend",
         api_key: null,
         from_address: null,
@@ -63,39 +65,79 @@ function fromBase64url(input: string): Buffer {
   return Buffer.from(input.replace(/-/g, "+").replace(/_/g, "/") + pad, "base64");
 }
 
-export function buildUnsubscribeToken(email: string): string {
+// Token format: `${b64url(email)}.${b64url(companyId)}.${b64url(hmac)}`. The
+// HMAC binds both fields together so neither can be tampered with. Older
+// 2-segment tokens (email + sig) from before multi-tenancy are still accepted
+// as belonging to the legacy tenant (company_id = 1).
+export function buildUnsubscribeToken(
+  email: string,
+  companyId: number
+): string {
   const normalized = email.trim().toLowerCase();
+  const payload = `${normalized}|${companyId}`;
   const sig = crypto
     .createHmac("sha256", tokenSecret())
-    .update(normalized)
+    .update(payload)
     .digest();
-  return `${base64url(normalized)}.${base64url(sig)}`;
+  return `${base64url(normalized)}.${base64url(String(companyId))}.${base64url(sig)}`;
 }
 
 export function verifyUnsubscribeToken(
   token: string
-): { ok: true; email: string } | { ok: false } {
-  const dot = token.indexOf(".");
-  if (dot < 1) return { ok: false };
-  let email: string;
-  let sig: Buffer;
-  try {
-    email = fromBase64url(token.slice(0, dot)).toString("utf8");
-    sig = fromBase64url(token.slice(dot + 1));
-  } catch {
-    return { ok: false };
+): { ok: true; email: string; companyId: number } | { ok: false } {
+  const parts = token.split(".");
+
+  if (parts.length === 3) {
+    // Multi-tenant token.
+    let email: string;
+    let companyIdStr: string;
+    let sig: Buffer;
+    try {
+      email = fromBase64url(parts[0]).toString("utf8");
+      companyIdStr = fromBase64url(parts[1]).toString("utf8");
+      sig = fromBase64url(parts[2]);
+    } catch {
+      return { ok: false };
+    }
+    const companyId = Number(companyIdStr);
+    if (!Number.isFinite(companyId)) return { ok: false };
+    const expected = crypto
+      .createHmac("sha256", tokenSecret())
+      .update(`${email}|${companyId}`)
+      .digest();
+    if (
+      sig.length !== expected.length ||
+      !crypto.timingSafeEqual(sig, expected)
+    ) {
+      return { ok: false };
+    }
+    return { ok: true, email, companyId };
   }
-  const expected = crypto
-    .createHmac("sha256", tokenSecret())
-    .update(email)
-    .digest();
-  if (
-    sig.length !== expected.length ||
-    !crypto.timingSafeEqual(sig, expected)
-  ) {
-    return { ok: false };
+
+  if (parts.length === 2) {
+    // Legacy single-tenant token. Bind to the legacy tenant.
+    let email: string;
+    let sig: Buffer;
+    try {
+      email = fromBase64url(parts[0]).toString("utf8");
+      sig = fromBase64url(parts[1]);
+    } catch {
+      return { ok: false };
+    }
+    const expected = crypto
+      .createHmac("sha256", tokenSecret())
+      .update(email)
+      .digest();
+    if (
+      sig.length !== expected.length ||
+      !crypto.timingSafeEqual(sig, expected)
+    ) {
+      return { ok: false };
+    }
+    return { ok: true, email, companyId: 1 };
   }
-  return { ok: true, email };
+
+  return { ok: false };
 }
 
 export type AudienceRecipient = {
@@ -105,15 +147,20 @@ export type AudienceRecipient = {
 };
 
 export async function fetchAudience(
-  audience: EmailAudience
+  audience: EmailAudience,
+  companyId: number
 ): Promise<AudienceRecipient[]> {
   const db = await getDb();
   // All audiences exclude unsubscribed addresses + require a non-empty email.
-  const baseFilter = `c.email IS NOT NULL
+  // Unsubscribes are scoped per-company so the same email can opt out of one
+  // tenant's blasts without affecting another.
+  const baseFilter = `c.company_id = ?
+    AND c.email IS NOT NULL
     AND TRIM(c.email) != ''
     AND NOT EXISTS (
       SELECT 1 FROM email_unsubscribes u
-       WHERE LOWER(TRIM(u.email)) = LOWER(TRIM(c.email))
+       WHERE u.company_id = c.company_id
+         AND LOWER(TRIM(u.email)) = LOWER(TRIM(c.email))
     )`;
 
   let sql: string;
@@ -156,7 +203,7 @@ export async function fetchAudience(
   } else {
     return [];
   }
-  const rows = (await db.prepare(sql).all()) as Array<
+  const rows = (await db.prepare(sql).all(companyId)) as Array<
     Pick<Customer, "name"> & { customer_id: number; email: string }
   >;
   return rows.map((r) => ({
@@ -166,8 +213,11 @@ export async function fetchAudience(
   }));
 }
 
-export async function countAudience(audience: EmailAudience): Promise<number> {
-  const recipients = await fetchAudience(audience);
+export async function countAudience(
+  audience: EmailAudience,
+  companyId: number
+): Promise<number> {
+  const recipients = await fetchAudience(audience, companyId);
   return recipients.length;
 }
 
@@ -237,11 +287,13 @@ export type CompanyContact = {
   address: string | null;
 };
 
-export async function getCompanyForFooter(): Promise<CompanyContact> {
+export async function getCompanyForFooter(
+  companyId: number
+): Promise<CompanyContact> {
   const db = await getDb();
   const row = (await db
-    .prepare("SELECT name, address FROM company WHERE id = 1")
-    .get()) as { name: string | null; address: string | null } | undefined;
+    .prepare("SELECT name, address FROM company WHERE id = ? LIMIT 1")
+    .get(companyId)) as { name: string | null; address: string | null } | undefined;
   return row ?? { name: null, address: null };
 }
 
@@ -311,7 +363,8 @@ export async function sendAutomationToAudience(
   automation: EmailAutomation,
   origin: string
 ): Promise<AutomationSendSummary> {
-  const settings = await getEmailSettings();
+  const companyId = automation.company_id;
+  const settings = await getEmailSettings(companyId);
   if (!isEmailConfigured(settings)) {
     return { attempted: 0, sent: 0, failed: 0, blastId: null, skipped: "not_configured" };
   }
@@ -321,7 +374,10 @@ export async function sendAutomationToAudience(
     return { attempted: 0, sent: 0, failed: 0, blastId: null, skipped: "empty" };
   }
 
-  const recipients = await fetchAudience(automation.audience as EmailAudience);
+  const recipients = await fetchAudience(
+    automation.audience as EmailAudience,
+    companyId
+  );
   if (recipients.length === 0) {
     return { attempted: 0, sent: 0, failed: 0, blastId: null, skipped: "no_recipients" };
   }
@@ -330,11 +386,12 @@ export async function sendAutomationToAudience(
   const insert = await db
     .prepare(
       `INSERT INTO email_blasts
-         (audience, subject, body_html, body_text, from_address, from_name,
+         (company_id, audience, subject, body_html, body_text, from_address, from_name,
           status, recipient_count, sent_count, failed_count, created_by, created_at)
-       VALUES (?, ?, ?, NULL, ?, ?, 'sending', ?, 0, 0, ?, datetime('now'))`
+       VALUES (?, ?, ?, ?, NULL, ?, ?, 'sending', ?, 0, 0, ?, datetime('now'))`
     )
     .run(
+      companyId,
       automation.audience,
       subject,
       html,
@@ -355,11 +412,11 @@ export async function sendAutomationToAudience(
       .run(blastId, r.customer_id, r.email, r.name);
   }
 
-  const company = await getCompanyForFooter();
+  const company = await getCompanyForFooter(companyId);
   let sent = 0;
   let failed = 0;
   for (const r of recipients) {
-    const unsubToken = buildUnsubscribeToken(r.email);
+    const unsubToken = buildUnsubscribeToken(r.email, companyId);
     const unsubscribeUrl = `${origin}/api/email/unsubscribe?token=${encodeURIComponent(
       unsubToken
     )}`;
@@ -413,9 +470,9 @@ export async function sendAutomationToAudience(
          SET last_sent_at = datetime('now'),
              last_sent_year = ?,
              updated_at = datetime('now')
-       WHERE id = ?`
+       WHERE id = ? AND company_id = ?`
     )
-    .run(now.getUTCFullYear(), automation.id);
+    .run(now.getUTCFullYear(), automation.id, companyId);
 
   return { attempted: recipients.length, sent, failed, blastId };
 }
@@ -425,12 +482,16 @@ export async function sendAutomationToAudience(
 // not marketing blasts).
 export async function sendWelcomeToCustomer(
   customerId: number,
+  companyId: number,
   origin: string
 ): Promise<AutomationSendSummary> {
   const db = await getDb();
   const automation = (await db
-    .prepare(`SELECT * FROM email_automations WHERE key = 'welcome' LIMIT 1`)
-    .get()) as EmailAutomation | undefined;
+    .prepare(
+      `SELECT * FROM email_automations
+        WHERE key = 'welcome' AND company_id = ? LIMIT 1`
+    )
+    .get(companyId)) as EmailAutomation | undefined;
   if (!automation || !automation.enabled) {
     return { attempted: 0, sent: 0, failed: 0, blastId: null, skipped: "disabled" };
   }
@@ -439,29 +500,32 @@ export async function sendWelcomeToCustomer(
   if (!subject || !html) {
     return { attempted: 0, sent: 0, failed: 0, blastId: null, skipped: "empty" };
   }
-  const settings = await getEmailSettings();
+  const settings = await getEmailSettings(companyId);
   if (!isEmailConfigured(settings)) {
     return { attempted: 0, sent: 0, failed: 0, blastId: null, skipped: "not_configured" };
   }
   const customer = (await db
-    .prepare("SELECT id, email FROM customers WHERE id = ?")
-    .get(customerId)) as { id: number; email: string | null } | undefined;
+    .prepare(
+      "SELECT id, email FROM customers WHERE id = ? AND company_id = ?"
+    )
+    .get(customerId, companyId)) as { id: number; email: string | null } | undefined;
   if (!customer || !customer.email || !customer.email.trim()) {
     return { attempted: 0, sent: 0, failed: 0, blastId: null, skipped: "no_email" };
   }
-  // Skip if customer is unsubscribed.
+  // Skip if customer is unsubscribed (per-company).
   const unsub = (await db
     .prepare(
       `SELECT 1 AS found FROM email_unsubscribes
-        WHERE LOWER(TRIM(email)) = LOWER(TRIM(?))`
+        WHERE company_id = ?
+          AND LOWER(TRIM(email)) = LOWER(TRIM(?))`
     )
-    .get(customer.email)) as { found: number } | undefined;
+    .get(companyId, customer.email)) as { found: number } | undefined;
   if (unsub) {
     return { attempted: 0, sent: 0, failed: 0, blastId: null, skipped: "unsubscribed" };
   }
 
-  const company = await getCompanyForFooter();
-  const unsubToken = buildUnsubscribeToken(customer.email);
+  const company = await getCompanyForFooter(companyId);
+  const unsubToken = buildUnsubscribeToken(customer.email, companyId);
   const unsubscribeUrl = `${origin}/api/email/unsubscribe?token=${encodeURIComponent(
     unsubToken
   )}`;
@@ -484,9 +548,9 @@ export async function sendWelcomeToCustomer(
            SET last_sent_at = datetime('now'),
                last_sent_year = ?,
                updated_at = datetime('now')
-         WHERE id = ?`
+         WHERE id = ? AND company_id = ?`
       )
-      .run(now.getUTCFullYear(), automation.id);
+      .run(now.getUTCFullYear(), automation.id, companyId);
     return { attempted: 1, sent: 1, failed: 0, blastId: null };
   }
   return { attempted: 1, sent: 0, failed: 1, blastId: null };

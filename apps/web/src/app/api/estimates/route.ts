@@ -5,7 +5,7 @@ import {
   type EstimateItem,
   type EstimateStatus,
 } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionContext } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -55,9 +55,11 @@ function formatPrice(cents: number) {
 }
 
 export async function GET(req: Request) {
-  if (!getSessionUser()) {
+  const ctx = await getSessionContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const companyId = ctx.companyId;
   const db = await getDb();
   const url = new URL(req.url);
   const customerId = url.searchParams.get("customer_id");
@@ -66,24 +68,26 @@ export async function GET(req: Request) {
   if (customerId) {
     rows = (await db
       .prepare(
-        `SELECT * FROM estimates WHERE customer_id = ? ORDER BY created_at DESC, id DESC`
+        `SELECT * FROM estimates WHERE customer_id = ? AND company_id = ? ORDER BY created_at DESC, id DESC`
       )
-      .all(Number(customerId))) as Estimate[];
+      .all(Number(customerId), companyId)) as Estimate[];
   } else {
     rows = (await db
       .prepare(
-        `SELECT * FROM estimates ORDER BY created_at DESC, id DESC`
+        `SELECT * FROM estimates WHERE company_id = ? ORDER BY created_at DESC, id DESC`
       )
-      .all()) as Estimate[];
+      .all(companyId)) as Estimate[];
   }
   return NextResponse.json(rows);
 }
 
 export async function POST(req: Request) {
-  const user = getSessionUser();
-  if (!user) {
+  const ctx = await getSessionContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const user = ctx.identity;
+  const companyId = ctx.companyId;
   const db = await getDb();
   const body = (await req.json().catch(() => ({}))) as Partial<{
     customer_id: number;
@@ -107,8 +111,8 @@ export async function POST(req: Request) {
   }
 
   const customer = await db
-    .prepare("SELECT id, name FROM customers WHERE id = ?")
-    .get<{ id: number; name: string }>(customerId);
+    .prepare("SELECT id, name FROM customers WHERE id = ? AND company_id = ?")
+    .get<{ id: number; name: string }>(customerId, companyId);
   if (!customer) {
     return NextResponse.json({ error: "customer not found" }, { status: 404 });
   }
@@ -167,13 +171,14 @@ export async function POST(req: Request) {
   const result = await db
     .prepare(
       `INSERT INTO estimates
-         (customer_id, title, notes, status, total_cents, tax_rate_bps,
+         (company_id, customer_id, title, notes, status, total_cents, tax_rate_bps,
           valid_until, sent_at, accepted_at,
           signature_data, signature_name, signed_at,
           sold_by_id, created_by)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
+      companyId,
       customerId,
       title,
       notes,
@@ -219,15 +224,15 @@ export async function POST(req: Request) {
       `\nReply YES to accept.`;
     await db
       .prepare(
-        `INSERT INTO messages (customer_id, body, direction)
-         VALUES (?, ?, 'outbound')`
+        `INSERT INTO messages (company_id, customer_id, body, direction)
+         VALUES (?, ?, ?, 'outbound')`
       )
-      .run(customerId, messageBody);
+      .run(companyId, customerId, messageBody);
   }
 
   const estimate = (await db
-    .prepare("SELECT * FROM estimates WHERE id = ?")
-    .get(estimateId)) as Estimate;
+    .prepare("SELECT * FROM estimates WHERE id = ? AND company_id = ?")
+    .get(estimateId, companyId)) as Estimate;
   const lineItems = (await db
     .prepare(
       "SELECT * FROM estimate_items WHERE estimate_id = ? ORDER BY position ASC, id ASC"

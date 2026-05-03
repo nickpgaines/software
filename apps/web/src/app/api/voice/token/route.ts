@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionContext } from "@/lib/auth";
 import { createVoiceAccessToken, getVoiceSettings, isVoiceConfigured } from "@/lib/voice";
 
 export const dynamic = "force-dynamic";
@@ -10,11 +10,11 @@ const NO_CACHE_HEADERS = {
 } as const;
 
 export async function GET() {
-  const user = getSessionUser();
-  if (!user) {
+  const ctx = await getSessionContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
-  const settings = await getVoiceSettings();
+  const settings = await getVoiceSettings(ctx.companyId);
   if (!isVoiceConfigured(settings)) {
     return NextResponse.json(
       { error: "Voice is not configured. Connect Twilio Voice in Settings → Calling." },
@@ -22,7 +22,7 @@ export async function GET() {
     );
   }
   // Identity must be a stable, URL-safe string. Sanitize the session user.
-  const identity = user.replace(/[^a-zA-Z0-9_.-]/g, "_") || "user";
+  const identity = ctx.identity.replace(/[^a-zA-Z0-9_.-]/g, "_") || "user";
   try {
     const token = createVoiceAccessToken({ settings, identity });
     return NextResponse.json(

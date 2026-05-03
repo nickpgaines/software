@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type Payment } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 import { autoCompleteSteps } from "@/lib/jobs";
 import {
   getStripe,
@@ -21,7 +22,8 @@ export async function POST(
     );
   }
 
-  const company = await getCompany();
+  const companyId = await requireCompanyId();
+  const company = await getCompany(companyId);
   if (!company.stripe_account_id) {
     return NextResponse.json(
       { error: "No connected Stripe account" },
@@ -32,7 +34,9 @@ export async function POST(
   const db = await getDb();
   const jobId = Number(params.id);
 
-  const job = await db.prepare("SELECT id FROM jobs WHERE id = ?").get(jobId);
+  const job = await db
+    .prepare("SELECT id FROM jobs WHERE id = ? AND company_id = ?")
+    .get(jobId, companyId);
   if (!job) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
@@ -78,9 +82,9 @@ export async function POST(
   // Idempotency: if we already recorded this intent, return the existing row.
   const existing = (await db
     .prepare(
-      "SELECT * FROM payments WHERE stripe_payment_intent_id = ? LIMIT 1"
+      "SELECT * FROM payments WHERE stripe_payment_intent_id = ? AND company_id = ? LIMIT 1"
     )
-    .get(intentId)) as Payment | undefined;
+    .get(intentId, companyId)) as Payment | undefined;
   if (existing) {
     return NextResponse.json(existing, { status: 200 });
   }
@@ -107,11 +111,12 @@ export async function POST(
     const result = await tx
       .prepare(
         `INSERT INTO payments
-           (job_id, amount_cents, tip_cents, method, payment_date, notes,
+           (company_id, job_id, amount_cents, tip_cents, method, payment_date, notes,
             send_email, send_sms, stripe_payment_intent_id)
-         VALUES (?, ?, ?, 'card', ?, ?, ?, ?, ?)`
+         VALUES (?, ?, ?, ?, 'card', ?, ?, ?, ?, ?)`
       )
       .run(
+        companyId,
         jobId,
         finalAmount,
         finalTip,
@@ -121,18 +126,19 @@ export async function POST(
         send_sms,
         intentId
       );
-    await autoCompleteSteps(tx, jobId);
+    await autoCompleteSteps(tx, jobId, companyId);
     return Number(result.lastInsertRowid);
   });
 
   const created = (await db
-    .prepare("SELECT * FROM payments WHERE id = ?")
-    .get(insertedId)) as Payment;
+    .prepare("SELECT * FROM payments WHERE id = ? AND company_id = ?")
+    .get(insertedId, companyId)) as Payment;
 
   if (send_email || send_sms) {
     await sendPaymentReceipt({
       jobId,
       paymentId: created.id,
+      companyId,
       amountCents: created.amount_cents,
       tipCents: created.tip_cents ?? 0,
       method: "card",

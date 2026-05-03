@@ -6,10 +6,12 @@ import {
   normalizeUSPhone,
   sendSms,
 } from "@/lib/sms";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const url = new URL(req.url);
   const customerId = Number(url.searchParams.get("customer_id"));
@@ -21,17 +23,19 @@ export async function GET(req: Request) {
   }
   const rows = (await db
     .prepare(
-      "SELECT * FROM messages WHERE customer_id = ? ORDER BY created_at ASC, id ASC"
+      "SELECT * FROM messages WHERE customer_id = ? AND company_id = ? ORDER BY created_at ASC, id ASC"
     )
-    .all(customerId)) as Message[];
+    .all(customerId, companyId)) as Message[];
   await db.prepare(
     `UPDATE messages SET read_at = datetime('now')
-     WHERE customer_id = ? AND direction = 'inbound' AND read_at IS NULL`
-  ).run(customerId);
+     WHERE customer_id = ? AND company_id = ?
+       AND direction = 'inbound' AND read_at IS NULL`
+  ).run(customerId, companyId);
   return NextResponse.json(rows);
 }
 
 export async function POST(req: Request) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const body = (await req.json().catch(() => ({}))) as Partial<{
     customer_id: number;
@@ -47,13 +51,13 @@ export async function POST(req: Request) {
   }
 
   const customer = (await db
-    .prepare("SELECT * FROM customers WHERE id = ?")
-    .get(customerId)) as Customer | undefined;
+    .prepare("SELECT * FROM customers WHERE id = ? AND company_id = ?")
+    .get(customerId, companyId)) as Customer | undefined;
   if (!customer) {
     return NextResponse.json({ error: "Customer not found" }, { status: 404 });
   }
 
-  const settings = await getMessagingSettings();
+  const settings = await getMessagingSettings(companyId);
   const toPhone = normalizeUSPhone(customer.phone);
   const fromPhone = settings.from_number;
 
@@ -81,10 +85,11 @@ export async function POST(req: Request) {
   const insert = await db
     .prepare(
       `INSERT INTO messages
-         (customer_id, body, direction, status, error, provider_sid, to_phone, from_phone)
-       VALUES (?, ?, 'outbound', ?, ?, ?, ?, ?)`
+         (company_id, customer_id, body, direction, status, error, provider_sid, to_phone, from_phone)
+       VALUES (?, ?, ?, 'outbound', ?, ?, ?, ?, ?)`
     )
     .run(
+      companyId,
       customerId,
       text,
       status,
@@ -94,8 +99,8 @@ export async function POST(req: Request) {
       fromPhone
     );
   const created = (await db
-    .prepare("SELECT * FROM messages WHERE id = ?")
-    .get(insert.lastInsertRowid)) as Message;
+    .prepare("SELECT * FROM messages WHERE id = ? AND company_id = ?")
+    .get(insert.lastInsertRowid, companyId)) as Message;
 
   return NextResponse.json(created, { status: 201 });
 }

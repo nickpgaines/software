@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -44,6 +45,7 @@ function resolveRange(
 }
 
 export async function GET(req: Request) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const url = new URL(req.url);
   const range = (url.searchParams.get("range") || "month") as Range;
@@ -65,11 +67,13 @@ export async function GET(req: Request) {
        FROM staff s
        LEFT JOIN job_assignments ja ON ja.staff_id = s.id AND ja.role = ?
        LEFT JOIN jobs j ON j.id = ja.job_id
+         AND j.company_id = ?
          AND j.scheduled_at >= ? AND j.scheduled_at < ?
+       WHERE s.company_id = ?
        GROUP BY s.id
        ORDER BY revenue_cents DESC, s.name COLLATE NOCASE ASC`
     )
-    .all(role, start, end)) as {
+    .all(role, companyId, start, end, companyId)) as {
     id: number;
     name: string;
     role: string | null;

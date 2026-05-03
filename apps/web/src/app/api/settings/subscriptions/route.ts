@@ -1,24 +1,26 @@
 import { NextResponse } from "next/server";
 import { getDb, type SubscriptionTemplate } from "@/lib/db";
-import { getSessionUser } from "@/lib/auth";
+import { getSessionContext } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  if (!getSessionUser()) {
+  const ctx = await getSessionContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const db = await getDb();
   const rows = (await db
     .prepare(
-      "SELECT * FROM subscription_templates ORDER BY active DESC, name ASC, id ASC"
+      "SELECT * FROM subscription_templates WHERE company_id = ? ORDER BY active DESC, name ASC, id ASC"
     )
-    .all()) as SubscriptionTemplate[];
+    .all(ctx.companyId)) as SubscriptionTemplate[];
   return NextResponse.json(rows);
 }
 
 export async function POST(req: Request) {
-  if (!getSessionUser()) {
+  const ctx = await getSessionContext();
+  if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const db = await getDb();
@@ -52,12 +54,22 @@ export async function POST(req: Request) {
   const result = await db
     .prepare(
       `INSERT INTO subscription_templates
-         (name, description, price_cents, interval, active, terms_id, require_signature, tax_rate_bps)
-       VALUES (?, ?, 0, 'monthly', ?, ?, ?, ?)`
+         (company_id, name, description, price_cents, interval, active, terms_id, require_signature, tax_rate_bps)
+       VALUES (?, ?, ?, 0, 'monthly', ?, ?, ?, ?)`
     )
-    .run(name, description, active, termsId, requireSignature, taxRateBps);
+    .run(
+      ctx.companyId,
+      name,
+      description,
+      active,
+      termsId,
+      requireSignature,
+      taxRateBps
+    );
   const row = (await db
-    .prepare("SELECT * FROM subscription_templates WHERE id = ?")
-    .get(result.lastInsertRowid)) as SubscriptionTemplate;
+    .prepare(
+      "SELECT * FROM subscription_templates WHERE id = ? AND company_id = ?"
+    )
+    .get(result.lastInsertRowid, ctx.companyId)) as SubscriptionTemplate;
   return NextResponse.json(row, { status: 201 });
 }

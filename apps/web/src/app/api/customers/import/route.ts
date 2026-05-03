@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +30,7 @@ function autoSplitFirst(first: string, last: string) {
 }
 
 export async function POST(req: Request) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const body = (await req.json().catch(() => ({}))) as { rows?: ImportRow[] };
   const rows = body.rows;
@@ -40,8 +42,8 @@ export async function POST(req: Request) {
   }
 
   const existing = (await db
-    .prepare("SELECT phone, email FROM customers")
-    .all()) as { phone: string | null; email: string | null }[];
+    .prepare("SELECT phone, email FROM customers WHERE company_id = ?")
+    .all(companyId)) as { phone: string | null; email: string | null }[];
   const phoneSet = new Set<string>();
   const emailSet = new Set<string>();
   for (const c of existing) {
@@ -57,9 +59,9 @@ export async function POST(req: Request) {
     await db.transaction(async (tx) => {
       const insert = tx.prepare(
         `INSERT INTO customers
-           (name, first_name, last_name, phone, email,
+           (company_id, name, first_name, last_name, phone, email,
             address, address_line1, formatted_address)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       );
 
       for (let i = 0; i < rows.length; i++) {
@@ -97,6 +99,7 @@ export async function POST(req: Request) {
 
         const name = `${first} ${last}`.trim();
         await insert.run(
+          companyId,
           name,
           first,
           last,

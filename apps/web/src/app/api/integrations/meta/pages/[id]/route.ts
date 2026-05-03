@@ -4,6 +4,7 @@ import {
   subscribePageToLeadgen,
   unsubscribePageFromLeadgen,
 } from "@/lib/meta";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -11,11 +12,12 @@ export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const id = Number(params.id);
   const existing = (await db
-    .prepare("SELECT * FROM meta_pages WHERE id = ?")
-    .get(id)) as MetaPage | undefined;
+    .prepare("SELECT * FROM meta_pages WHERE id = ? AND company_id = ?")
+    .get(id, companyId)) as MetaPage | undefined;
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -44,12 +46,12 @@ export async function PATCH(
   }
   await db
     .prepare(
-      "UPDATE meta_pages SET enabled = ?, updated_at = datetime('now') WHERE id = ?"
+      "UPDATE meta_pages SET enabled = ?, updated_at = datetime('now') WHERE id = ? AND company_id = ?"
     )
-    .run(enabled, id);
+    .run(enabled, id, companyId);
   const updated = (await db
-    .prepare("SELECT * FROM meta_pages WHERE id = ?")
-    .get(id)) as MetaPage;
+    .prepare("SELECT * FROM meta_pages WHERE id = ? AND company_id = ?")
+    .get(id, companyId)) as MetaPage;
   return NextResponse.json({
     id: updated.id,
     page_id: updated.page_id,

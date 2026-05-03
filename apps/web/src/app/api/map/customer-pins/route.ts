@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,7 @@ function parseIdCsv(csv: string | null): number[] {
 }
 
 export async function GET() {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const rows = (await db
     .prepare(
@@ -68,9 +70,10 @@ export async function GET() {
               AND j.salesperson_id IS NOT NULL
          ) AS customer_salesperson_csv
        FROM customers c
-      WHERE c.latitude IS NOT NULL AND c.longitude IS NOT NULL`
+      WHERE c.company_id = ?
+        AND c.latitude IS NOT NULL AND c.longitude IS NOT NULL`
     )
-    .all()) as Row[];
+    .all(companyId)) as Row[];
 
   const out: CustomerPin[] = rows.map((r) => ({
     id: r.id,

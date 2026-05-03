@@ -647,6 +647,8 @@ async function init(): Promise<void> {
       source TEXT,
       unsubscribed_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
+    -- Multi-tenant: unsubscribes are per (company_id, email). The legacy
+    -- single-column unique index is dropped post-migration below.
     CREATE UNIQUE INDEX IF NOT EXISTS idx_email_unsubscribes_email ON email_unsubscribes(email);
 
     CREATE TABLE IF NOT EXISTS email_automations (
@@ -1191,6 +1193,7 @@ async function init(): Promise<void> {
     "email_settings",
     "ai_settings",
     "meta_integration",
+    "payroll_settings",
   ]) {
     await rebuildDropIdCheck(t);
   }
@@ -1222,6 +1225,7 @@ async function init(): Promise<void> {
     "lead_forms",
     "sprints",
     "payroll_payouts",
+    "payroll_settings",
   ];
 
   for (const table of companyScopedTables) {

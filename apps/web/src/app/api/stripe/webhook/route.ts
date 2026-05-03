@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
 import type Stripe from "stripe";
-import { getStripe, syncAccountStatus } from "@/lib/stripe";
+import {
+  getStripe,
+  syncAccountStatus,
+  getCompanyByStripeAccount,
+} from "@/lib/stripe";
 import { getDb, type Invoice } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -69,7 +73,11 @@ export async function POST(req: Request) {
   try {
     if (event.type === "account.updated") {
       const account = event.data.object as Stripe.Account;
-      await syncAccountStatus(account.id, account);
+      // Resolve which tenant owns this connected account before writing.
+      const company = await getCompanyByStripeAccount(account.id);
+      if (company) {
+        await syncAccountStatus(company.id, account.id, account);
+      }
     } else if (event.type === "checkout.session.completed") {
       await handleCheckoutCompleted(event);
     }
@@ -104,9 +112,17 @@ async function handleCheckoutCompleted(event: Stripe.Event) {
   if (session.payment_status !== "paid") return;
 
   const db = await getDb();
+  // Identify the tenant via the connected account this Connect-relayed
+  // event arrived from. event.account is set on Connect events.
+  const connectedAccountId =
+    typeof event.account === "string" ? event.account : null;
+  if (!connectedAccountId) return;
+  const company = await getCompanyByStripeAccount(connectedAccountId);
+  if (!company) return;
+
   const invoice = (await db
-    .prepare("SELECT * FROM invoices WHERE id = ?")
-    .get(invoiceId)) as Invoice | undefined;
+    .prepare("SELECT * FROM invoices WHERE id = ? AND company_id = ?")
+    .get(invoiceId, company.id)) as Invoice | undefined;
   if (!invoice) return;
   if (invoice.status === "paid") return; // idempotent
 
@@ -123,7 +139,7 @@ async function handleCheckoutCompleted(event: Stripe.Event) {
              paid_at = datetime('now'),
              stripe_payment_intent_id = ?,
              updated_at = datetime('now')
-       WHERE id = ?`
+       WHERE id = ? AND company_id = ?`
     )
-    .run(paymentIntentId, invoiceId);
+    .run(paymentIntentId, invoiceId, company.id);
 }

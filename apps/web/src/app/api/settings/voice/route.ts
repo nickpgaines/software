@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type MessagingSettings } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -44,14 +45,14 @@ function toPublic(s: MessagingSettings): PublicVoiceSettings {
   };
 }
 
-async function readSettings(): Promise<MessagingSettings> {
+async function readSettings(companyId: number): Promise<MessagingSettings> {
   const db = await getDb();
   // Run the read twice if the first response looks empty -- libsql HTTP clients
   // can briefly land on a stale Turso replica after a write, but a second
   // request typically re-routes and sees the just-written row.
   let row = (await db
-    .prepare("SELECT * FROM messaging_settings WHERE id = 1")
-    .get()) as MessagingSettings | undefined;
+    .prepare("SELECT * FROM messaging_settings WHERE company_id = ? LIMIT 1")
+    .get(companyId)) as MessagingSettings | undefined;
   if (
     row &&
     !row.voice_api_key_sid &&
@@ -59,14 +60,14 @@ async function readSettings(): Promise<MessagingSettings> {
     !row.voice_twiml_app_sid
   ) {
     const retry = (await db
-      .prepare("SELECT * FROM messaging_settings WHERE id = 1")
-      .get()) as MessagingSettings | undefined;
+      .prepare("SELECT * FROM messaging_settings WHERE company_id = ? LIMIT 1")
+      .get(companyId)) as MessagingSettings | undefined;
     if (retry) row = retry;
   }
   return (
     row ?? {
-      id: 1,
-      company_id: 1,
+      id: 0,
+      company_id: companyId,
       provider: "twilio",
       account_sid: null,
       auth_token: null,
@@ -81,11 +82,13 @@ async function readSettings(): Promise<MessagingSettings> {
 }
 
 export async function GET() {
-  const s = await readSettings();
+  const companyId = await requireCompanyId();
+  const s = await readSettings(companyId);
   return NextResponse.json(toPublic(s), { headers: NO_CACHE_HEADERS });
 }
 
 export async function PUT(req: Request) {
+  const companyId = await requireCompanyId();
   const body = (await req.json().catch(() => ({}))) as Partial<{
     api_key_sid: string;
     api_key_secret: string;
@@ -111,7 +114,7 @@ export async function PUT(req: Request) {
   }
 
   const db = await getDb();
-  const current = await readSettings();
+  const current = await readSettings(companyId);
 
   const nextSid = sid || current.voice_api_key_sid;
   const nextSecret = secret || current.voice_api_key_secret;
@@ -134,20 +137,26 @@ export async function PUT(req: Request) {
     );
   }
 
-  await db
-    .prepare(
-      `INSERT INTO messaging_settings
-         (id, provider, voice_api_key_sid, voice_api_key_secret,
-          voice_twiml_app_sid, voice_record_calls, updated_at)
-       VALUES (1, 'twilio', ?, ?, ?, ?, datetime('now'))
-       ON CONFLICT(id) DO UPDATE SET
-         voice_api_key_sid    = excluded.voice_api_key_sid,
-         voice_api_key_secret = excluded.voice_api_key_secret,
-         voice_twiml_app_sid  = excluded.voice_twiml_app_sid,
-         voice_record_calls   = excluded.voice_record_calls,
-         updated_at           = excluded.updated_at`
-    )
-    .run(nextSid, nextSecret, nextApp, nextRecord);
+  if (current.id) {
+    await db
+      .prepare(
+        `UPDATE messaging_settings
+            SET voice_api_key_sid = ?, voice_api_key_secret = ?,
+                voice_twiml_app_sid = ?, voice_record_calls = ?,
+                updated_at = datetime('now')
+          WHERE id = ? AND company_id = ?`
+      )
+      .run(nextSid, nextSecret, nextApp, nextRecord, current.id, companyId);
+  } else {
+    await db
+      .prepare(
+        `INSERT INTO messaging_settings
+           (company_id, provider, voice_api_key_sid, voice_api_key_secret,
+            voice_twiml_app_sid, voice_record_calls, updated_at)
+         VALUES (?, 'twilio', ?, ?, ?, ?, datetime('now'))`
+      )
+      .run(companyId, nextSid, nextSecret, nextApp, nextRecord);
+  }
 
   const updated: MessagingSettings = {
     ...current,

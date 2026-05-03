@@ -71,7 +71,11 @@ export function computeJobStatus(job: {
   return anyStep ? "in_progress" : "scheduled";
 }
 
-export async function autoCompleteSteps(db: Db, jobId: number) {
+export async function autoCompleteSteps(
+  db: Db,
+  jobId: number,
+  companyId: number
+) {
   const now = new Date().toISOString();
   await db
     .prepare(
@@ -81,9 +85,9 @@ export async function autoCompleteSteps(db: Db, jobId: number) {
              started_at   = COALESCE(started_at,   ?),
              completed_at = COALESCE(completed_at, ?),
              status = CASE WHEN status = 'cancelled' THEN status ELSE 'completed' END
-       WHERE id = ?`
+       WHERE id = ? AND company_id = ?`
     )
-    .run(now, now, now, now, jobId);
+    .run(now, now, now, now, jobId, companyId);
 }
 
 export type JobDetail = Job & {
@@ -172,7 +176,11 @@ async function syncChecklist(db: Db, jobId: number, items: ChecklistInput[]) {
   }
 }
 
-export async function createJob(db: Db, input: JobInput): Promise<number> {
+export async function createJob(
+  db: Db,
+  input: JobInput,
+  companyId: number
+): Promise<number> {
   return db.transaction(async (tx) => {
     const lineItems = input.line_items || [];
     const total = totalCents(lineItems);
@@ -180,15 +188,22 @@ export async function createJob(db: Db, input: JobInput): Promise<number> {
     const sales = input.sales_ids || [];
     const techs = input.tech_ids || [];
 
+    // Verify the referenced customer belongs to the same company.
+    const customer = await tx
+      .prepare("SELECT id FROM customers WHERE id = ? AND company_id = ?")
+      .get<{ id: number }>(input.customer_id, companyId);
+    if (!customer) throw new Error("Customer not found");
+
     const result = await tx
       .prepare(
         `INSERT INTO jobs
-           (customer_id, scheduled_at, duration_minutes, price_cents, status, notes,
+           (company_id, customer_id, scheduled_at, duration_minutes, price_cents, status, notes,
             salesperson_id, technician_id, end_time, anytime, schedule_later,
             lead_source, recurring)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
+        companyId,
         input.customer_id,
         input.start_time,
         dur,
@@ -217,13 +232,23 @@ export async function createJob(db: Db, input: JobInput): Promise<number> {
 export async function updateJob(
   db: Db,
   id: number,
-  input: Partial<JobInput>
+  input: Partial<JobInput>,
+  companyId: number
 ): Promise<void> {
   await db.transaction(async (tx) => {
     const existing = await tx
-      .prepare("SELECT * FROM jobs WHERE id = ?")
-      .get<Job>(id);
+      .prepare("SELECT * FROM jobs WHERE id = ? AND company_id = ?")
+      .get<Job>(id, companyId);
     if (!existing) throw new Error("Not found");
+    if (
+      input.customer_id !== undefined &&
+      input.customer_id !== existing.customer_id
+    ) {
+      const cust = await tx
+        .prepare("SELECT id FROM customers WHERE id = ? AND company_id = ?")
+        .get<{ id: number }>(input.customer_id, companyId);
+      if (!cust) throw new Error("Customer not found");
+    }
 
     const start = input.start_time ?? existing.scheduled_at;
     const end = input.end_time === undefined ? existing.end_time : input.end_time;
@@ -264,7 +289,7 @@ export async function updateJob(
                status = ?, notes = ?, salesperson_id = ?, technician_id = ?,
                end_time = ?, anytime = ?, schedule_later = ?, lead_source = ?,
                recurring = ?
-         WHERE id = ?`
+         WHERE id = ? AND company_id = ?`
       )
       .run(
         input.customer_id ?? existing.customer_id,
@@ -286,7 +311,8 @@ export async function updateJob(
         input.recurring !== undefined
           ? toBit(input.recurring)
           : existing.recurring,
-        id
+        id,
+        companyId
       );
 
     if (input.sales_ids !== undefined)
@@ -301,7 +327,8 @@ export async function updateJob(
 
 export async function getJobDetail(
   db: Db,
-  id: number
+  id: number,
+  companyId: number
 ): Promise<JobDetail | null> {
   const job = await db
     .prepare(
@@ -312,7 +339,7 @@ export async function getJobDetail(
               c.address AS customer_address
        FROM jobs j
        JOIN customers c ON c.id = j.customer_id
-       WHERE j.id = ?`
+       WHERE j.id = ? AND j.company_id = ?`
     )
     .get<
       Job & {
@@ -321,7 +348,7 @@ export async function getJobDetail(
         customer_email: string | null;
         customer_address: string | null;
       }
-    >(id);
+    >(id, companyId);
   if (!job) return null;
 
   const lineItems = await db
@@ -405,6 +432,7 @@ export async function setStatusStep(
   db: Db,
   id: number,
   step: "en_route" | "arrived" | "started" | "completed",
+  companyId: number,
   clear = false
 ): Promise<void> {
   const col =
@@ -418,8 +446,10 @@ export async function setStatusStep(
   const newStatus = clear ? "scheduled" : step;
   const ts = clear ? null : new Date().toISOString();
   await db
-    .prepare(`UPDATE jobs SET ${col} = ?, status = ? WHERE id = ?`)
-    .run(ts, newStatus, id);
+    .prepare(
+      `UPDATE jobs SET ${col} = ?, status = ? WHERE id = ? AND company_id = ?`
+    )
+    .run(ts, newStatus, id, companyId);
 }
 
 // JobAssignment is re-exported for callers

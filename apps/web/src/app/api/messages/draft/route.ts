@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, type Customer, type Message } from "@/lib/db";
 import { draftSmsReply, getAiSettings, isAiConfigured } from "@/lib/ai";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,7 @@ const NO_CACHE_HEADERS = {
 } as const;
 
 export async function POST(req: Request) {
+  const companyId = await requireCompanyId();
   const body = (await req.json().catch(() => ({}))) as Partial<{
     customer_id: number;
   }>;
@@ -20,7 +22,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const settings = await getAiSettings();
+  const settings = await getAiSettings(companyId);
   if (!isAiConfigured(settings)) {
     return NextResponse.json(
       {
@@ -33,8 +35,8 @@ export async function POST(req: Request) {
 
   const db = await getDb();
   const customer = (await db
-    .prepare("SELECT * FROM customers WHERE id = ?")
-    .get(customerId)) as Customer | undefined;
+    .prepare("SELECT * FROM customers WHERE id = ? AND company_id = ?")
+    .get(customerId, companyId)) as Customer | undefined;
   if (!customer) {
     return NextResponse.json({ error: "Customer not found" }, { status: 404 });
   }
@@ -42,12 +44,12 @@ export async function POST(req: Request) {
   const messages = (await db
     .prepare(
       `SELECT * FROM messages
-        WHERE customer_id = ?
+        WHERE customer_id = ? AND company_id = ?
         ORDER BY created_at ASC, id ASC`
     )
-    .all(customerId)) as Message[];
+    .all(customerId, companyId)) as Message[];
 
-  const result = await draftSmsReply({ settings, customer, messages });
+  const result = await draftSmsReply({ settings, customer, messages, companyId });
   if (!result.ok) {
     return NextResponse.json(
       { error: result.error },

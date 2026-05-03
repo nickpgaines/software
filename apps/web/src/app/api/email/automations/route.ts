@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type EmailAutomation } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -12,10 +13,11 @@ const SEASON_ORDER: Record<string, number> = {
 };
 
 export async function GET() {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const rows = (await db
-    .prepare(`SELECT * FROM email_automations`)
-    .all()) as EmailAutomation[];
+    .prepare(`SELECT * FROM email_automations WHERE company_id = ?`)
+    .all(companyId)) as EmailAutomation[];
   rows.sort((a, b) => {
     const k = (KIND_ORDER[a.kind] ?? 99) - (KIND_ORDER[b.kind] ?? 99);
     if (k !== 0) return k;

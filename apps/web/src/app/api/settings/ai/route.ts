@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type AiSettings } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -35,19 +36,19 @@ function toPublic(s: AiSettings): PublicAiSettings {
   };
 }
 
-async function readSettings(): Promise<AiSettings> {
+async function readSettings(companyId: number): Promise<AiSettings> {
   const db = await getDb();
   // Wrap in a write transaction to force a primary read. Plain reads can hit
   // a Turso edge replica that lags behind the primary, which made the page
   // flip back to "Not connected" right after a successful save.
   return await db.transaction(async (tx) => {
     const row = (await tx
-      .prepare("SELECT * FROM ai_settings WHERE id = 1")
-      .get()) as AiSettings | undefined;
+      .prepare("SELECT * FROM ai_settings WHERE company_id = ? LIMIT 1")
+      .get(companyId)) as AiSettings | undefined;
     return (
       row ?? {
-        id: 1,
-        company_id: 1,
+        id: 0,
+        company_id: companyId,
         provider: "anthropic",
         api_key: null,
         model: "claude-sonnet-4-6",
@@ -59,11 +60,13 @@ async function readSettings(): Promise<AiSettings> {
 }
 
 export async function GET() {
-  const s = await readSettings();
+  const companyId = await requireCompanyId();
+  const s = await readSettings(companyId);
   return NextResponse.json(toPublic(s), { headers: NO_CACHE_HEADERS });
 }
 
 export async function PUT(req: Request) {
+  const companyId = await requireCompanyId();
   const body = (await req.json().catch(() => ({}))) as Partial<{
     api_key: string;
     model: string;
@@ -88,7 +91,7 @@ export async function PUT(req: Request) {
   }
 
   const db = await getDb();
-  const current = await readSettings();
+  const current = await readSettings(companyId);
 
   const nextKey = apiKey || current.api_key;
   const nextModel = model || current.model || "claude-sonnet-4-6";
@@ -104,22 +107,28 @@ export async function PUT(req: Request) {
     );
   }
 
-  await db
-    .prepare(
-      `INSERT INTO ai_settings
-         (id, provider, api_key, model, company_voice, updated_at)
-       VALUES (1, 'anthropic', ?, ?, ?, datetime('now'))
-       ON CONFLICT(id) DO UPDATE SET
-         api_key       = excluded.api_key,
-         model         = excluded.model,
-         company_voice = excluded.company_voice,
-         updated_at    = excluded.updated_at`
-    )
-    .run(nextKey, nextModel, nextVoice);
+  if (current.id) {
+    await db
+      .prepare(
+        `UPDATE ai_settings
+            SET api_key = ?, model = ?, company_voice = ?,
+                updated_at = datetime('now')
+          WHERE id = ? AND company_id = ?`
+      )
+      .run(nextKey, nextModel, nextVoice, current.id, companyId);
+  } else {
+    await db
+      .prepare(
+        `INSERT INTO ai_settings
+           (company_id, provider, api_key, model, company_voice, updated_at)
+         VALUES (?, 'anthropic', ?, ?, ?, datetime('now'))`
+      )
+      .run(companyId, nextKey, nextModel, nextVoice);
+  }
 
   const updated: AiSettings = {
-    id: 1,
-    company_id: 1,
+    id: current.id || 0,
+    company_id: companyId,
     provider: "anthropic",
     api_key: nextKey,
     model: nextModel,

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -21,23 +22,26 @@ type JobRow = {
 };
 
 export async function GET() {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const customers = (await db
     .prepare(
       `SELECT id, name, phone, email, address FROM customers
-       WHERE address IS NOT NULL AND TRIM(address) != ''
+       WHERE company_id = ?
+         AND address IS NOT NULL AND TRIM(address) != ''
        ORDER BY name COLLATE NOCASE`
     )
-    .all()) as CustomerRow[];
+    .all(companyId)) as CustomerRow[];
   const jobs = (await db
     .prepare(
       `SELECT j.id, j.customer_id, j.scheduled_at, j.price_cents, j.status,
               (SELECT li.title FROM line_items li WHERE li.job_id = j.id
                ORDER BY li.position ASC, li.id ASC LIMIT 1) AS title
        FROM jobs j
+       WHERE j.company_id = ?
        ORDER BY j.scheduled_at DESC`
     )
-    .all()) as JobRow[];
+    .all(companyId)) as JobRow[];
 
   const byCustomer = new Map<number, JobRow[]>();
   for (const job of jobs) {

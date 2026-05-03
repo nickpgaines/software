@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type LeadWorkflow } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -7,11 +8,12 @@ export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   const id = Number(params.id);
   const existing = (await db
-    .prepare("SELECT * FROM lead_workflows WHERE id = ?")
-    .get(id)) as LeadWorkflow | undefined;
+    .prepare("SELECT * FROM lead_workflows WHERE id = ? AND company_id = ?")
+    .get(id, companyId)) as LeadWorkflow | undefined;
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -41,12 +43,15 @@ export async function PATCH(
   if (fields.length === 0) return NextResponse.json(existing);
   fields.push("updated_at = datetime('now')");
   args.push(id);
+  args.push(companyId);
   await db
-    .prepare(`UPDATE lead_workflows SET ${fields.join(", ")} WHERE id = ?`)
+    .prepare(
+      `UPDATE lead_workflows SET ${fields.join(", ")} WHERE id = ? AND company_id = ?`
+    )
     .run(...args);
   const updated = (await db
-    .prepare("SELECT * FROM lead_workflows WHERE id = ?")
-    .get(id)) as LeadWorkflow;
+    .prepare("SELECT * FROM lead_workflows WHERE id = ? AND company_id = ?")
+    .get(id, companyId)) as LeadWorkflow;
   return NextResponse.json(updated);
 }
 
@@ -54,9 +59,10 @@ export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
+  const companyId = await requireCompanyId();
   const db = await getDb();
   await db
-    .prepare("DELETE FROM lead_workflows WHERE id = ?")
-    .run(Number(params.id));
+    .prepare("DELETE FROM lead_workflows WHERE id = ? AND company_id = ?")
+    .run(Number(params.id), companyId);
   return NextResponse.json({ ok: true });
 }
