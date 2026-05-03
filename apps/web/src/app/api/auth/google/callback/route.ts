@@ -49,7 +49,8 @@ export async function GET(req: Request) {
     return loginError(req, "oauth_state_invalid");
   }
 
-  const redirectUri = new URL("/api/auth/google/callback", req.url).toString();
+  const baseUrl = process.env.PUBLIC_BASE_URL?.trim() || req.url;
+  const redirectUri = new URL("/api/auth/google/callback", baseUrl).toString();
 
   const tokenRes = await fetch("https://oauth2.googleapis.com/token", {
     method: "POST",
