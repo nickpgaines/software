@@ -147,6 +147,7 @@ export async function GET(req: Request) {
   let activeSubs = 0;
   let newSubs = 0;
   let canceledSubs = 0;
+  let arrAddedCents = 0;
   for (const r of subRows) {
     if (r.status === "active") {
       activeSubs += 1;
@@ -156,14 +157,18 @@ export async function GET(req: Request) {
       );
     }
     const start = r.start_date || r.accepted_at || r.created_at;
-    if (
-      start &&
+    const startedInRange =
+      !!start &&
       start >= startIso &&
       start < endIso &&
       r.status !== "declined" &&
-      r.status !== "pending"
-    ) {
+      r.status !== "pending";
+    if (startedInRange) {
       newSubs += 1;
+      arrAddedCents += withTax(
+        monthlyCents(r.price_cents, r.interval) * 12,
+        r.tax_rate_bps
+      );
     }
     if (
       r.canceled_at &&
@@ -205,6 +210,7 @@ export async function GET(req: Request) {
       canceled: canceledSubs,
       mrr_cents: mrrCentsRounded,
       arr_cents: mrrCentsRounded * 12,
+      arr_added_cents: Math.round(arrAddedCents),
     },
   });
 }
