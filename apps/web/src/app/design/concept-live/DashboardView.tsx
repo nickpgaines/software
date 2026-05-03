@@ -2,6 +2,7 @@
 
 import { ACCENT, useTokens } from "./_theme";
 import { Card, CardTitle, EmptyState, PageHeader } from "./_ui";
+import { SmoothRevenueChart } from "./_chart";
 import type { LiveJob, RevenueSummary } from "./_data";
 
 function formatTime(iso: string) {
@@ -50,50 +51,11 @@ export default function DashboardView({
   );
 }
 
-function RevenueCard({ revenue }: { revenue: RevenueSummary }) {
-  const t = useTokens();
-  const points = revenue.daily.map((d) => d.cents / 100);
-  const max = Math.max(1, ...points);
-  const w = 800;
-  const h = 200;
-  const step = points.length > 1 ? w / (points.length - 1) : w;
-  const path = points
-    .map((p, i) => `${i === 0 ? "M" : "L"} ${i * step} ${h - (p / max) * h}`)
-    .join(" ");
-  const fill = path + ` L ${w} ${h} L 0 ${h} Z`;
-  const id = `rev-live-${t.isDark ? "d" : "l"}`;
-  const monthLabel = new Date().toLocaleString(undefined, { month: "long", year: "numeric" });
-
+function RevenueCard({ revenue: _revenue }: { revenue: RevenueSummary }) {
   return (
     <Card>
-      <CardTitle
-        title={`${monthLabel} revenue`}
-        subtitle={
-          revenue.totalCents === 0
-            ? "Total this month"
-            : `${formatCents(revenue.totalCents)} total · ${revenue.jobsCompleted} job${
-                revenue.jobsCompleted === 1 ? "" : "s"
-              } completed`
-        }
-      />
-      <div className="px-5 pb-5">
-        {revenue.totalCents === 0 ? (
-          <EmptyState
-            title="No revenue yet this month"
-            subtitle="Once jobs are scheduled and priced, revenue will appear here automatically."
-          />
-        ) : (
-          <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-44" preserveAspectRatio="none">
-            <defs>
-              <linearGradient id={id} x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor={ACCENT} stopOpacity="0.28" />
-                <stop offset="100%" stopColor={ACCENT} stopOpacity="0" />
-              </linearGradient>
-            </defs>
-            <path d={fill} fill={`url(#${id})`} />
-            <path d={path} stroke={ACCENT} strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        )}
+      <div className="p-6 sm:p-8">
+        <SmoothRevenueChart initialRange="1m" />
       </div>
     </Card>
   );

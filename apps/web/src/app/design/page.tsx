@@ -1,5 +1,40 @@
 import Link from "next/link";
 
+const bold = [
+  {
+    slug: "concept-bold-1",
+    name: "Bold 1 — Hero KPIs",
+    tagline: "Heavy KPI strip, extrabold typography, leftbar active nav.",
+    description:
+      "Real Revenue MTD, Jobs done, Today's revenue, Customers in a four-up KPI strip with text-[40px] extrabold values. Same smooth interactive chart, schedule, inbox, tasks below.",
+    swatches: ["#f4f4f5", "#ffffff", "#379CFB", "#27272a", "#09090b"],
+  },
+  {
+    slug: "concept-bold-2",
+    name: "Bold 2 — Display Headlines",
+    tagline: "text-6xl black greeting, no KPI strip, the chart leads.",
+    description:
+      "Display-size headline takes the lead. The interactive chart card is the hero. Cleaner, more editorial.",
+    swatches: ["#f4f4f5", "#ffffff", "#379CFB", "#27272a", "#09090b"],
+  },
+  {
+    slug: "concept-bold-3",
+    name: "Bold 3 — Black & Bold",
+    tagline: "Defaults to dark. Section-grouped sidebar with uppercase labels.",
+    description:
+      "WORKSPACE / PIPELINE / INBOX / INSIGHTS / TEAM section headers in the sidebar (Bold-E inspiration). Solid blue active fill. Loads in dark mode by default.",
+    swatches: ["#0a0a0a", "#18181b", "#379CFB", "#a1a1aa", "#ffffff"],
+  },
+  {
+    slug: "concept-bold-4",
+    name: "Bold 4 — Numeric Maximalism",
+    tagline: "text-[44px] black KPI numbers, larger schedule rows.",
+    description:
+      "Biggest type in the set. Schedule rows scale up — bigger times, customer names, and prices. Numbers do the heavy lifting.",
+    swatches: ["#f4f4f5", "#ffffff", "#379CFB", "#27272a", "#09090b"],
+  },
+];
+
 const live = [
   {
     slug: "concept-live",
@@ -240,20 +275,31 @@ export default function DesignIndexPage() {
             Pick a direction.
           </h1>
           <p className="text-neutral-500 mt-3 max-w-xl text-base font-medium">
-            Concept Live wires the Z visual treatment to your actual CRM data
-            with a floating sidebar (Flyra pattern) and click-through navigation
-            across Dashboard, Schedule, Leaderboard, Reports, and Customers.
+            Bold-1 through Bold-4 take the Live concept, swap the rigid SVG for
+            a smooth interactive revenue chart, and apply progressively heavier
+            typography. All real CRM data, all using the floating sidebar.
           </p>
         </div>
 
         <div className="mb-3">
           <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
-            Live — start here
+            Latest — bold variations · real data · interactive chart
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
+          {bold.map((c) => (
+            <ConceptCard key={c.slug} {...c} highlighted />
+          ))}
+        </div>
+
+        <div className="mb-3">
+          <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
+            Live — base (Z visual treatment)
           </h2>
         </div>
         <div className="grid grid-cols-1 gap-5 mb-16">
           {live.map((c) => (
-            <ConceptCard key={c.slug} {...c} highlighted />
+            <ConceptCard key={c.slug} {...c} />
           ))}
         </div>
 
@@ -394,6 +440,57 @@ function ConceptCard({
 }
 
 function ConceptThumbnail({ slug }: { slug: string }) {
+  if (slug.startsWith("concept-bold-")) {
+    const variant = slug.split("-")[2];
+    const isDark = variant === "3";
+    const bg = isDark ? "bg-zinc-900" : "bg-zinc-100";
+    const sideBg = isDark ? "bg-zinc-900 border-zinc-800" : "bg-white border-zinc-200";
+    const cardBg = isDark ? "bg-zinc-800 border-zinc-700/60" : "bg-white border-zinc-200";
+    const headlineCls = variant === "2" ? "h-5 w-32" : "h-3 w-24";
+    const showKpi = variant !== "2";
+    return (
+      <div className={`absolute inset-0 ${bg} p-3`}>
+        <div className={`absolute left-3 top-3 bottom-3 w-9 ${sideBg} rounded-xl border shadow-md p-1.5 space-y-1`}>
+          <div className="h-3 rounded-md" style={{ background: "#379CFB" }} />
+          <div className="h-2 rounded-md" style={{ background: "#379CFB" }} />
+          <div className={`h-1.5 ${isDark ? "bg-zinc-700" : "bg-zinc-200"} rounded`} />
+          <div className={`h-1.5 ${isDark ? "bg-zinc-700" : "bg-zinc-200"} rounded`} />
+          <div className={`h-1.5 ${isDark ? "bg-zinc-700" : "bg-zinc-200"} rounded`} />
+          <div className={`h-1.5 ${isDark ? "bg-zinc-700" : "bg-zinc-200"} rounded`} />
+        </div>
+        <div className="ml-14 mr-1 space-y-1.5">
+          <div className="flex items-end gap-1.5">
+            <div className={`${headlineCls} ${isDark ? "bg-white" : "bg-zinc-900"} rounded-sm`} />
+            <div className={`${variant === "2" ? "h-5 w-12" : "h-3 w-10"} rounded-sm`} style={{ background: "#379CFB" }} />
+          </div>
+          {showKpi && (
+            <div className="grid grid-cols-4 gap-1">
+              <div className={`${cardBg} rounded-md border h-7`} />
+              <div className={`${cardBg} rounded-md border h-7`} />
+              <div className={`${cardBg} rounded-md border h-7`} />
+              <div className={`${cardBg} rounded-md border h-7`} />
+            </div>
+          )}
+          <div className={`${cardBg} rounded-lg border h-12 p-1.5 space-y-1`}>
+            <div className="h-1 w-12 bg-zinc-400/40 rounded-full mt-1" />
+            <div className="h-1 w-full rounded-full" style={{ background: "#379CFB" }} />
+          </div>
+          <div className={`${cardBg} rounded-lg border ${variant === "4" ? "h-12" : "h-10"} p-1.5 space-y-1`}>
+            <div className="flex items-center gap-1.5">
+              <div className="h-1 w-2 bg-zinc-400/40 rounded-full" />
+              <div className="h-1 flex-1 bg-zinc-400/30 rounded-full" />
+              <div className="h-1.5 w-3 rounded-full" style={{ background: "#379CFB" }} />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="h-1 w-2 bg-zinc-400/40 rounded-full" />
+              <div className="h-1 flex-1 bg-zinc-400/30 rounded-full" />
+              <div className="h-1.5 w-3 rounded-full bg-zinc-400/40" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (slug === "concept-live") {
     return (
       <div className="absolute inset-0 bg-zinc-100 p-3">
