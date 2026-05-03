@@ -115,6 +115,13 @@ type Overview = {
     avg_value_cents: number;
   };
   customers: { total: number; new: number; repeat: number };
+  subscriptions: {
+    active: number;
+    new: number;
+    canceled: number;
+    mrr_cents: number;
+    arr_cents: number;
+  };
 };
 
 function OverviewPanel({ range }: { range: Range }) {
@@ -174,6 +181,27 @@ function OverviewPanel({ range }: { range: Range }) {
             { label: "Total Customers", value: String(data.customers.total) },
             { label: "New Customers", value: String(data.customers.new) },
             { label: "Repeat Customers", value: String(data.customers.repeat) },
+          ]}
+        />
+      </Section>
+
+      <Section title="Subscriptions">
+        <Stats
+          items={[
+            {
+              label: "Active Subscriptions",
+              value: String(data.subscriptions.active),
+            },
+            {
+              label: "New Subscriptions",
+              value: String(data.subscriptions.new),
+            },
+            {
+              label: "Canceled",
+              value: String(data.subscriptions.canceled),
+            },
+            { label: "MRR", value: money(data.subscriptions.mrr_cents) },
+            { label: "ARR", value: money(data.subscriptions.arr_cents) },
           ]}
         />
       </Section>
@@ -296,6 +324,12 @@ type SubscriptionsReport = {
   };
   revenue: { mrr_cents: number; arr_cents: number };
   monthly: { label: string; iso: string; mrr_cents: number }[];
+  arr_added: {
+    label: string;
+    iso: string;
+    arr_cents: number;
+    count: number;
+  }[];
   breakdowns: {
     by_template: {
       template_id: number | null;
@@ -449,6 +483,10 @@ function SubscriptionsPanel() {
         <StatCard label="Canceled" value={String(data.totals.canceled)} compact />
         <StatCard label="Declined" value={String(data.totals.declined)} compact />
       </div>
+
+      <Section title="ARR added over time">
+        <ArrAddedChart points={data.arr_added} includeTax={includeTax} />
+      </Section>
 
       <Section title="By template">
         <BreakdownTable
@@ -609,6 +647,70 @@ function BreakdownTable({
             ))}
           </tbody>
         </table>
+      )}
+    </div>
+  );
+}
+
+function ArrAddedChart({
+  points,
+  includeTax,
+}: {
+  points: SubscriptionsReport["arr_added"];
+  includeTax: boolean;
+}) {
+  const max = Math.max(1, ...points.map((p) => p.arr_cents));
+  const total = points.reduce((sum, p) => sum + p.arr_cents, 0);
+  const totalCount = points.reduce((sum, p) => sum + p.count, 0);
+
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <div className="text-sm font-semibold text-slate-900">
+            New ARR per month{includeTax ? " (w/ tax)" : ""}
+          </div>
+          <div className="text-xs text-slate-400 mt-0.5">
+            {points[0]?.iso} – {points[points.length - 1]?.iso}
+          </div>
+        </div>
+        <div className="text-right">
+          <div className="text-xs text-slate-400">
+            Total added ({totalCount} subs)
+          </div>
+          <div className="text-xl font-bold text-slate-900 tabular-nums">
+            {money(total)}
+          </div>
+        </div>
+      </div>
+      {points.length === 0 ? (
+        <p className="text-sm text-slate-400 text-center py-10">
+          No subscription activity yet.
+        </p>
+      ) : (
+        <div className="mt-4 flex items-end gap-2 h-48">
+          {points.map((p) => {
+            const h = Math.max(2, Math.round((p.arr_cents / max) * 100));
+            return (
+              <div
+                key={p.iso}
+                className="flex-1 flex flex-col items-center justify-end gap-1"
+                title={`${p.iso}: ${money(p.arr_cents)} from ${p.count} sub${
+                  p.count === 1 ? "" : "s"
+                }`}
+              >
+                <div className="text-[10px] text-slate-500 tabular-nums">
+                  {p.arr_cents > 0 ? money(p.arr_cents) : "—"}
+                </div>
+                <div
+                  className="w-full bg-emerald-500 rounded-sm"
+                  style={{ height: `${h}%` }}
+                />
+                <div className="text-[10px] text-slate-500">{p.label}</div>
+              </div>
+            );
+          })}
+        </div>
       )}
     </div>
   );
