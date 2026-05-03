@@ -134,6 +134,7 @@ type Overview = {
     canceled: number;
     mrr_cents: number;
     arr_cents: number;
+    arr_added_cents: number;
   };
 };
 
@@ -180,24 +181,12 @@ function OverviewPanel({ range }: { range: Range }) {
         <Stats
           items={[
             { label: "Total Jobs", value: String(data.jobs.total) },
-            { label: "Completed", value: String(data.jobs.completed) },
             { label: "Scheduled", value: String(data.jobs.scheduled) },
+            { label: "Completed", value: String(data.jobs.completed) },
             { label: "Canceled", value: String(data.jobs.cancelled) },
             { label: "Avg Job Value", value: money(data.jobs.avg_value_cents) },
           ]}
         />
-        <div className="grid gap-4 lg:grid-cols-2 mt-4">
-          <JobBucketCard
-            title="Service Plan Visits"
-            accent="emerald"
-            bucket={data.jobs.service_plan}
-          />
-          <JobBucketCard
-            title="One-Off Jobs"
-            accent="sky"
-            bucket={data.jobs.one_off}
-          />
-        </div>
       </Section>
 
       <Section title="Customers">
@@ -225,10 +214,18 @@ function OverviewPanel({ range }: { range: Range }) {
               label: "Canceled",
               value: String(data.subscriptions.canceled),
             },
-            { label: "MRR", value: money(data.subscriptions.mrr_cents) },
-            { label: "ARR", value: money(data.subscriptions.arr_cents) },
+            { label: "Total MRR", value: money(data.subscriptions.mrr_cents) },
+            { label: "Total ARR", value: money(data.subscriptions.arr_cents) },
           ]}
         />
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+            <div className="text-xs text-slate-400">ARR Added</div>
+            <div className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">
+              {money(data.subscriptions.arr_added_cents)}
+            </div>
+          </div>
+        </div>
       </Section>
     </div>
   );
@@ -1207,75 +1204,6 @@ function JobsPanel({ range }: { range: Range }) {
           ]}
         />
       </Section>
-
-      <div className="grid gap-4 lg:grid-cols-2">
-        <JobBucketCard
-          title="Service Plan Visits"
-          accent="emerald"
-          bucket={data.service_plan}
-        />
-        <JobBucketCard
-          title="One-Off Jobs"
-          accent="sky"
-          bucket={data.one_off}
-        />
-      </div>
-    </div>
-  );
-}
-
-const ACCENT_CLASSES: Record<string, string> = {
-  emerald: "bg-emerald-50 text-emerald-700",
-  sky: "bg-sky-50 text-sky-700",
-};
-
-function JobBucketCard({
-  title,
-  accent,
-  bucket,
-}: {
-  title: string;
-  accent: "emerald" | "sky";
-  bucket: JobBucket;
-}) {
-  return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
-      <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
-        <span
-          className={
-            "text-xs font-medium px-2 py-0.5 rounded-full " +
-            (ACCENT_CLASSES[accent] || ACCENT_CLASSES.emerald)
-          }
-        >
-          {bucket.count} job{bucket.count === 1 ? "" : "s"}
-        </span>
-      </div>
-      <div className="mt-4 grid grid-cols-3 gap-4">
-        <BucketStat
-          label="Expected Revenue"
-          value={money(bucket.expected_cents)}
-        />
-        <BucketStat
-          label="Collected Revenue"
-          value={money(bucket.collected_cents)}
-        />
-        <BucketStat
-          label="Avg Job Value"
-          value={money(bucket.avg_value_cents)}
-        />
-      </div>
-    </div>
-  );
-}
-
-function BucketStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-xs text-slate-400">{label}</div>
-      <div className="text-lg font-bold text-slate-900 mt-1 tabular-nums">
-        {value}
-      </div>
     </div>
   );
 }
