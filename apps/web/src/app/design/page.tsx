@@ -1,5 +1,40 @@
 import Link from "next/link";
 
+const toggle = [
+  {
+    slug: "concept-bold-9",
+    name: "B9 — Toggle · 5xl",
+    tagline: "B5↔B7 toggle · headline text-4xl → text-5xl (B6 baseline).",
+    description:
+      "Light mode = B5 (zinc-50 canvas, white cards). Dark mode = B7 (zinc-900 canvas, dark cards). Toggle in preview bar. Smallest of the four headlines.",
+    swatches: ["#fafafa", "#18181b", "#379CFB", "#71717a", "#ffffff"],
+  },
+  {
+    slug: "concept-bold-10",
+    name: "B10 — Toggle · 56px",
+    tagline: "Same toggle · headline text-5xl → text-[56px].",
+    description:
+      "Headline sits between B6 and B7 — chunkier than B6, less imposing than B7.",
+    swatches: ["#fafafa", "#18181b", "#379CFB", "#71717a", "#ffffff"],
+  },
+  {
+    slug: "concept-bold-11",
+    name: "B11 — Toggle · 6xl",
+    tagline: "Same toggle · headline text-5xl → text-6xl (B7 baseline).",
+    description:
+      "B7-size headline (60px) but with the toggleable B5/B7 palette so you can switch modes.",
+    swatches: ["#fafafa", "#18181b", "#379CFB", "#71717a", "#ffffff"],
+  },
+  {
+    slug: "concept-bold-12",
+    name: "B12 — Toggle · 7xl",
+    tagline: "Same toggle · headline text-6xl → text-7xl, font-black.",
+    description:
+      "Biggest of the four. Display-size headline, drops to font-black weight.",
+    swatches: ["#fafafa", "#18181b", "#379CFB", "#71717a", "#ffffff"],
+  },
+];
+
 const palette = [
   {
     slug: "concept-bold-5",
@@ -310,21 +345,30 @@ export default function DesignIndexPage() {
             Pick a direction.
           </h1>
           <p className="text-neutral-500 mt-3 max-w-xl text-base font-medium">
-            B5–B8 are four palette variations on the B2 layout (no KPI strip,
-            chart on top). Same #379CFB blue accent, different mixes of black /
-            light grey / white in the background, and different headline
-            sizes. Each is a fixed palette — no light/dark toggle.
+            B9–B12 use B5's color scheme for light mode and B7's for dark
+            mode, with a toggle. Only the headline size differs between them.
           </p>
         </div>
 
         <div className="mb-3">
           <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
-            Latest — palette variations · no KPI strip · fixed colors
+            Latest — B5↔B7 toggle · varied headline sizes
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
+          {toggle.map((c) => (
+            <ConceptCard key={c.slug} {...c} highlighted />
+          ))}
+        </div>
+
+        <div className="mb-3">
+          <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
+            Palette variations B5–B8 (fixed colors)
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
           {palette.map((c) => (
-            <ConceptCard key={c.slug} {...c} highlighted />
+            <ConceptCard key={c.slug} {...c} />
           ))}
         </div>
 

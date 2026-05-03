@@ -28,10 +28,12 @@ export type BoldConfig = {
   // Schedule rows
   scheduleScale: "default" | "large";
   // Optional palette overrides
-  canvasBg?: string; // e.g. "bg-zinc-100" (default)
+  canvasBg?: string; // single canvas (no toggle)
+  canvasBgLight?: string; // canvas in light mode (when toggle is enabled)
+  canvasBgDark?: string; // canvas in dark mode (when toggle is enabled)
   forceMode?: "light" | "dark"; // forces the theme; hides toggle in preview bar
-  pageHeadingColor?: string; // e.g. "text-zinc-950" (default) or "text-white"
-  pageSubtitleColor?: string; // e.g. "text-zinc-500" (default)
+  pageHeadingColor?: string; // override; otherwise auto-flips with mode
+  pageSubtitleColor?: string; // override; otherwise auto-flips with mode
   // Preview-bar nav letters and slug prefix
   navLetters?: string[]; // default ["1","2","3","4"]
   navSlugPrefix?: string; // default "concept-bold-"
@@ -94,7 +96,7 @@ function ShellInner({
   homeSlug: string;
   children: React.ReactNode;
 }) {
-  const { setDark } = useTheme();
+  const { dark, setDark } = useTheme();
   // Apply default/forced mode on mount
   useEffect(() => {
     if (config.forceMode === "dark") setDark(true);
@@ -103,7 +105,9 @@ function ShellInner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const canvas = config.canvasBg ?? "bg-zinc-100";
+  const canvas = dark
+    ? config.canvasBgDark ?? config.canvasBg ?? "bg-zinc-100"
+    : config.canvasBgLight ?? config.canvasBg ?? "bg-zinc-100";
 
   return (
     <div className={`min-h-screen ${canvas}`}>
@@ -354,8 +358,9 @@ export function BoldDashboard({
   jobs: LiveJob[];
   revenue: RevenueSummary;
 }) {
-  const headingColor = config.pageHeadingColor ?? "text-zinc-950";
-  const subtitleColor = config.pageSubtitleColor ?? "text-zinc-500";
+  const t = useTokens();
+  const headingColor = config.pageHeadingColor ?? t.text;
+  const subtitleColor = config.pageSubtitleColor ?? t.muted;
   return (
     <>
       <div className="mb-6">
