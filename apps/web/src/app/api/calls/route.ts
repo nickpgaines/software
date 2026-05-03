@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type Call } from "@/lib/db";
+import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -14,6 +15,7 @@ type CallWithCustomer = Call & {
 };
 
 export async function GET(req: Request) {
+  const companyId = await requireCompanyId();
   const url = new URL(req.url);
   const customerIdRaw = url.searchParams.get("customer_id");
   const limit = Math.min(Number(url.searchParams.get("limit")) || 100, 500);
@@ -26,21 +28,23 @@ export async function GET(req: Request) {
            cu.name AS customer_name,
            cu.phone AS customer_phone
       FROM calls c
-      LEFT JOIN customers cu ON cu.id = c.customer_id
+      LEFT JOIN customers cu
+        ON cu.id = c.customer_id AND cu.company_id = c.company_id
+     WHERE c.company_id = ?
   `;
 
   const rows = customerId
     ? ((await db
         .prepare(
           sqlBase +
-            ` WHERE c.customer_id = ? ORDER BY c.created_at DESC, c.id DESC LIMIT ?`
+            ` AND c.customer_id = ? ORDER BY c.created_at DESC, c.id DESC LIMIT ?`
         )
-        .all(customerId, limit)) as CallWithCustomer[])
+        .all(companyId, customerId, limit)) as CallWithCustomer[])
     : ((await db
         .prepare(
           sqlBase + ` ORDER BY c.created_at DESC, c.id DESC LIMIT ?`
         )
-        .all(limit)) as CallWithCustomer[]);
+        .all(companyId, limit)) as CallWithCustomer[]);
 
   return NextResponse.json(rows, { headers: NO_CACHE_HEADERS });
 }
