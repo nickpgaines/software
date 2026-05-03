@@ -6,13 +6,14 @@ import PayrollSettingsModal, {
   type PayrollSettingsValue,
 } from "./PayrollSettingsModal";
 
-type Tab = "overview" | "sales" | "subscriptions" | "payroll";
+type Tab = "overview" | "sales" | "subscriptions" | "map" | "payroll";
 type Range = "1w" | "1m" | "3m" | "1y";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "sales", label: "Sales" },
   { key: "subscriptions", label: "Subscriptions" },
+  { key: "map", label: "Map" },
   { key: "payroll", label: "Payroll" },
 ];
 
@@ -68,6 +69,7 @@ export default function ReportsClient() {
       {tab === "overview" && <OverviewPanel range={range} />}
       {tab === "sales" && <SalesPanel range={range} />}
       {tab === "subscriptions" && <SubscriptionsPanel />}
+      {tab === "map" && <MapPanel range={range} />}
       {tab === "payroll" && <PayrollPanel range={range} />}
     </div>
   );
@@ -1122,6 +1124,124 @@ function PayrollSummary({
           </span>
         </div>
       ))}
+    </div>
+  );
+}
+
+type MapReport = {
+  range: Range;
+  start: string;
+  end: string;
+  days: number;
+  pins: {
+    total: number;
+    sales: number;
+    quotes: number;
+    not_home: number;
+    answered: number;
+    conversion_rate: number;
+    quote_rate: number;
+    answer_rate: number;
+    avg_per_day: number;
+  };
+  objections: {
+    pins_with_objections: number;
+    breakdown: { name: string; count: number; pct: number }[];
+  };
+};
+
+function MapPanel({ range }: { range: Range }) {
+  const [data, setData] = useState<MapReport | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/reports/map?range=${range}`)
+      .then((r) => r.json())
+      .then((d: MapReport) => {
+        if (!cancelled) setData(d);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [range]);
+
+  if (loading && !data)
+    return (
+      <p className="text-sm text-slate-400 py-10 text-center">Loading…</p>
+    );
+  if (!data) return null;
+
+  return (
+    <div className="space-y-6">
+      <Section title="Pins added">
+        <Stats
+          items={[
+            { label: "Pins Added", value: String(data.pins.total) },
+            { label: "Sales Won", value: String(data.pins.sales) },
+            { label: "Conversion Rate", value: pct(data.pins.conversion_rate) },
+            {
+              label: "Avg Pins / Day",
+              value: data.pins.avg_per_day.toFixed(1),
+            },
+            { label: "Pins with Quotes", value: String(data.pins.quotes) },
+            { label: "Quote Rate", value: pct(data.pins.quote_rate) },
+            { label: "Answer Rate", value: pct(data.pins.answer_rate) },
+          ]}
+        />
+      </Section>
+
+      <Section title="Objections breakdown">
+        <ObjectionsBreakdown objections={data.objections} />
+      </Section>
+    </div>
+  );
+}
+
+function ObjectionsBreakdown({
+  objections,
+}: {
+  objections: MapReport["objections"];
+}) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      {objections.breakdown.length === 0 ? (
+        <p className="p-8 text-sm text-slate-400 text-center">
+          No objections recorded in this window.
+        </p>
+      ) : (
+        <div className="divide-y divide-slate-100">
+          <div className="px-5 py-3 text-xs uppercase tracking-wider text-slate-400 bg-slate-50 flex items-center justify-between">
+            <span>
+              Objection ({objections.pins_with_objections} pin
+              {objections.pins_with_objections === 1 ? "" : "s"} with objections)
+            </span>
+            <span>Share</span>
+          </div>
+          {objections.breakdown.map((o) => (
+            <div key={o.name} className="px-5 py-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium text-slate-900">{o.name}</span>
+                <span className="text-slate-700 tabular-nums">
+                  {o.count} · {pct(o.pct)}
+                </span>
+              </div>
+              <div className="mt-2 h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+                <div
+                  className="h-full bg-rose-500"
+                  style={{
+                    width: `${Math.max(2, Math.round(o.pct * 100))}%`,
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
