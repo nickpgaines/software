@@ -1,5 +1,40 @@
 import Link from "next/link";
 
+const palette = [
+  {
+    slug: "concept-bold-5",
+    name: "B5 — Airy Light",
+    tagline: "Off-white canvas (zinc-50). White cards. Smaller heading (text-3xl).",
+    description:
+      "The least black option. Soft off-white background with white cards. text-3xl extrabold heading. Calmest of the four.",
+    swatches: ["#fafafa", "#ffffff", "#379CFB", "#71717a", "#09090b"],
+  },
+  {
+    slug: "concept-bold-6",
+    name: "B6 — Layered Grey",
+    tagline: "Mid-grey canvas (zinc-200). White cards pop. Heading text-5xl.",
+    description:
+      "More visible grey base — the white cards lift harder off the canvas. Bigger headline so the layered tones have room to breathe.",
+    swatches: ["#e4e4e7", "#ffffff", "#379CFB", "#52525b", "#09090b"],
+  },
+  {
+    slug: "concept-bold-7",
+    name: "B7 — All Black",
+    tagline: "Dark canvas + dark cards + huge headline (text-6xl).",
+    description:
+      "The most black. zinc-900 canvas, zinc-800 cards, white text. Sidebar in section groups. Heading takes the full screen presence.",
+    swatches: ["#18181b", "#27272a", "#379CFB", "#a1a1aa", "#ffffff"],
+  },
+  {
+    slug: "concept-bold-8",
+    name: "B8 — Inverted Mix",
+    tagline: "Light grey canvas + dark cards. Heading text-4xl.",
+    description:
+      "Flipped contrast. Page heading stays dark on the light grey canvas, but cards drop in as solid black with white text. Mid-size headline.",
+    swatches: ["#f4f4f5", "#18181b", "#379CFB", "#52525b", "#ffffff"],
+  },
+];
+
 const bold = [
   {
     slug: "concept-bold-1",
@@ -275,20 +310,32 @@ export default function DesignIndexPage() {
             Pick a direction.
           </h1>
           <p className="text-neutral-500 mt-3 max-w-xl text-base font-medium">
-            Bold-1 through Bold-4 take the Live concept, swap the rigid SVG for
-            a smooth interactive revenue chart, and apply progressively heavier
-            typography. All real CRM data, all using the floating sidebar.
+            B5–B8 are four palette variations on the B2 layout (no KPI strip,
+            chart on top). Same #379CFB blue accent, different mixes of black /
+            light grey / white in the background, and different headline
+            sizes. Each is a fixed palette — no light/dark toggle.
           </p>
         </div>
 
         <div className="mb-3">
           <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
-            Latest — bold variations · real data · interactive chart
+            Latest — palette variations · no KPI strip · fixed colors
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
+          {palette.map((c) => (
+            <ConceptCard key={c.slug} {...c} highlighted />
+          ))}
+        </div>
+
+        <div className="mb-3">
+          <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
+            Bold variations B1–B4 (with KPI strip / display headline)
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
           {bold.map((c) => (
-            <ConceptCard key={c.slug} {...c} highlighted />
+            <ConceptCard key={c.slug} {...c} />
           ))}
         </div>
 

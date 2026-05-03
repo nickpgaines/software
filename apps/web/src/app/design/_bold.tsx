@@ -27,6 +27,14 @@ export type BoldConfig = {
   kpiValueWeight: "font-bold" | "font-extrabold" | "font-black";
   // Schedule rows
   scheduleScale: "default" | "large";
+  // Optional palette overrides
+  canvasBg?: string; // e.g. "bg-zinc-100" (default)
+  forceMode?: "light" | "dark"; // forces the theme; hides toggle in preview bar
+  pageHeadingColor?: string; // e.g. "text-zinc-950" (default) or "text-white"
+  pageSubtitleColor?: string; // e.g. "text-zinc-500" (default)
+  // Preview-bar nav letters and slug prefix
+  navLetters?: string[]; // default ["1","2","3","4"]
+  navSlugPrefix?: string; // default "concept-bold-"
 };
 
 // ---------- Nav ------------------------------------------------------------
@@ -87,14 +95,18 @@ function ShellInner({
   children: React.ReactNode;
 }) {
   const { setDark } = useTheme();
-  // Apply default dark mode on mount once
+  // Apply default/forced mode on mount
   useEffect(() => {
-    if (config.defaultDark) setDark(true);
+    if (config.forceMode === "dark") setDark(true);
+    else if (config.forceMode === "light") setDark(false);
+    else if (config.defaultDark) setDark(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const canvas = config.canvasBg ?? "bg-zinc-100";
+
   return (
-    <div className="min-h-screen bg-zinc-100">
+    <div className={`min-h-screen ${canvas}`}>
       <PreviewBar config={config} />
       <FloatingSidebar config={config} initials={initials} homeSlug={homeSlug} />
       <main className="ml-20 pr-3 pb-3">
@@ -278,6 +290,9 @@ function NavRow({
 
 function PreviewBar({ config }: { config: BoldConfig }) {
   const { dark, setDark } = useTheme();
+  const showToggle = !config.forceMode;
+  const letters = config.navLetters ?? ["1", "2", "3", "4"];
+  const prefix = config.navSlugPrefix ?? "concept-bold-";
   return (
     <div className="h-11 bg-white border-b border-zinc-200 flex items-center justify-between px-4 text-[12px] sticky top-0 z-50">
       <Link href="/design" className="text-zinc-500 hover:text-zinc-950 font-bold">
@@ -287,34 +302,36 @@ function PreviewBar({ config }: { config: BoldConfig }) {
         <div className="font-bold tracking-tight text-zinc-950">
           Concept {config.letter} · <span style={{ color: ACCENT }}>{config.name}</span>
         </div>
-        <div className="flex items-center gap-0.5 bg-zinc-100 rounded-full p-0.5">
-          <button
-            onClick={() => setDark(false)}
-            className={
-              "px-2.5 py-1 rounded-full text-[11px] font-bold transition-colors " +
-              (!dark ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-500")
-            }
-          >
-            Light
-          </button>
-          <button
-            onClick={() => setDark(true)}
-            className={
-              "px-2.5 py-1 rounded-full text-[11px] font-bold transition-colors " +
-              (dark ? "bg-zinc-950 text-white shadow-sm" : "text-zinc-500")
-            }
-          >
-            Dark
-          </button>
-        </div>
+        {showToggle && (
+          <div className="flex items-center gap-0.5 bg-zinc-100 rounded-full p-0.5">
+            <button
+              onClick={() => setDark(false)}
+              className={
+                "px-2.5 py-1 rounded-full text-[11px] font-bold transition-colors " +
+                (!dark ? "bg-white text-zinc-950 shadow-sm" : "text-zinc-500")
+              }
+            >
+              Light
+            </button>
+            <button
+              onClick={() => setDark(true)}
+              className={
+                "px-2.5 py-1 rounded-full text-[11px] font-bold transition-colors " +
+                (dark ? "bg-zinc-950 text-white shadow-sm" : "text-zinc-500")
+              }
+            >
+              Dark
+            </button>
+          </div>
+        )}
       </div>
       <div className="flex items-center gap-1.5 text-zinc-400 font-bold">
-        {["1", "2", "3", "4"].map((n, i) => (
+        {letters.map((n, i) => (
           <span key={n} className="flex items-center gap-1.5">
-            <Link href={`/design/concept-bold-${n}`} className="hover:text-zinc-950">
+            <Link href={`/design/${prefix}${n}`} className="hover:text-zinc-950">
               B{n}
             </Link>
-            {i < 3 && <span>·</span>}
+            {i < letters.length - 1 && <span>·</span>}
           </span>
         ))}
       </div>
@@ -337,14 +354,15 @@ export function BoldDashboard({
   jobs: LiveJob[];
   revenue: RevenueSummary;
 }) {
+  const headingColor = config.pageHeadingColor ?? "text-zinc-950";
+  const subtitleColor = config.pageSubtitleColor ?? "text-zinc-500";
   return (
     <>
-      {/* Headline — always dark on the light grey canvas */}
       <div className="mb-6">
-        <h1 className={`${config.headlineSize} ${config.headlineWeight} text-zinc-950 tracking-tight`}>
+        <h1 className={`${config.headlineSize} ${config.headlineWeight} ${headingColor} tracking-tight`}>
           {greeting}, <span style={{ color: ACCENT }}>{firstName}</span>
         </h1>
-        <p className="text-sm text-zinc-500 mt-1 font-bold">Welcome to your dashboard</p>
+        <p className={`text-sm ${subtitleColor} mt-1 font-bold`}>Welcome to your dashboard</p>
       </div>
 
       <div className="space-y-6">
