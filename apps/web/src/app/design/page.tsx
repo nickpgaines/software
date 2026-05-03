@@ -1,5 +1,40 @@
 import Link from "next/link";
 
+const colored = [
+  {
+    slug: "concept-i",
+    name: "Concept I — Cobalt",
+    tagline: "Light-mid grey · electric blue accent.",
+    description:
+      "Zinc-200 canvas, white cards, blue-600 active states. Familiar but vibrant. Sidebar uses your existing nav verbatim.",
+    swatches: ["#e4e4e7", "#ffffff", "#2563eb", "#1e40af", "#09090b"],
+  },
+  {
+    slug: "concept-j",
+    name: "Concept J — Ember",
+    tagline: "Dark-mid grey · warm amber accent.",
+    description:
+      "Zinc-800 canvas, zinc-700 cards, amber-400 pop. Cozy and premium — the warm contrast against cool grey adds life.",
+    swatches: ["#27272a", "#3f3f46", "#fbbf24", "#fcd34d", "#ffffff"],
+  },
+  {
+    slug: "concept-k",
+    name: "Concept K — Mint",
+    tagline: "Warm light-mid grey · emerald accent.",
+    description:
+      "Stone-200 canvas (warmer tone), white cards, emerald-600 accent. Fresh and clean — fits a window-cleaning brand naturally.",
+    swatches: ["#e7e5e4", "#ffffff", "#059669", "#047857", "#1c1917"],
+  },
+  {
+    slug: "concept-l",
+    name: "Concept L — Iris",
+    tagline: "Cool dark-mid grey · indigo accent.",
+    description:
+      "Slate-800 canvas (slight blue tint), slate-700 cards, indigo-400 accent. Tech-forward and refined.",
+    swatches: ["#1e293b", "#334155", "#818cf8", "#a5b4fc", "#ffffff"],
+  },
+];
+
 const refined = [
   {
     slug: "concept-g",
@@ -73,8 +108,9 @@ export default function DesignIndexPage() {
             Pick a direction.
           </h1>
           <p className="text-neutral-500 mt-3 max-w-xl text-base font-medium">
-            Two refined concepts (E + F) based on your feedback — bolder type,
-            more rounded, simpler. Original four (A–D) below for comparison.
+            Latest four concepts (I–L) keep your existing sidebar layout but
+            add color and mid-grey backgrounds. Older concepts below for
+            reference.
           </p>
         </div>
 
@@ -84,8 +120,19 @@ export default function DesignIndexPage() {
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
-          {refined.map((c) => (
+          {colored.map((c) => (
             <ConceptCard key={c.slug} {...c} highlighted />
+          ))}
+        </div>
+
+        <div className="mb-3">
+          <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
+            Balanced (G, H)
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
+          {refined.map((c) => (
+            <ConceptCard key={c.slug} {...c} />
           ))}
         </div>
 
@@ -171,6 +218,47 @@ function ConceptCard({
 }
 
 function ConceptThumbnail({ slug }: { slug: string }) {
+  if (slug === "concept-i" || slug === "concept-j" || slug === "concept-k" || slug === "concept-l") {
+    const palettes: Record<string, { bg: string; side: string; card: string; accent: string; cardBorder: string }> = {
+      "concept-i": { bg: "bg-zinc-200", side: "bg-white border-r border-zinc-300", card: "bg-white border border-zinc-300/60", accent: "bg-blue-600", cardBorder: "border-zinc-200" },
+      "concept-j": { bg: "bg-zinc-800", side: "bg-zinc-900 border-r border-zinc-800", card: "bg-zinc-700 border border-zinc-600/40", accent: "bg-amber-400", cardBorder: "border-zinc-600/40" },
+      "concept-k": { bg: "bg-stone-200", side: "bg-white border-r border-stone-300", card: "bg-white border border-stone-300/60", accent: "bg-emerald-600", cardBorder: "border-stone-200" },
+      "concept-l": { bg: "bg-slate-800", side: "bg-slate-900 border-r border-slate-800", card: "bg-slate-700 border border-slate-600/40", accent: "bg-indigo-500", cardBorder: "border-slate-600/40" },
+    };
+    const p = palettes[slug];
+    return (
+      <div className={`absolute inset-0 ${p.bg} grid grid-cols-[60px_1fr]`}>
+        <div className={`${p.side} p-2 space-y-1.5`}>
+          <div className={`h-4 rounded-md ${p.accent}`} />
+          <div className={`h-2 rounded-sm ${p.accent}`} />
+          <div className="h-1.5 bg-zinc-300/40 rounded-sm" />
+          <div className="h-1.5 bg-zinc-300/40 rounded-sm" />
+          <div className="h-1.5 bg-zinc-300/40 rounded-sm" />
+          <div className="h-1.5 bg-zinc-300/40 rounded-sm" />
+          <div className="h-1.5 bg-zinc-300/40 rounded-sm" />
+        </div>
+        <div className="p-2 space-y-1.5">
+          <div className="h-4" />
+          <div className="grid grid-cols-4 gap-1.5">
+            <div className={`h-9 ${p.card} rounded-lg`} />
+            <div className={`h-9 ${p.card} rounded-lg`} />
+            <div className={`h-9 ${p.card} rounded-lg`} />
+            <div className={`h-9 ${p.card} rounded-lg`} />
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            <div className={`col-span-2 h-12 ${p.card} rounded-lg relative overflow-hidden`}>
+              <div className={`absolute bottom-1 left-1 right-1 h-0.5 ${p.accent} rounded-full`} />
+            </div>
+            <div className={`h-12 ${p.card} rounded-lg p-1.5 space-y-1`}>
+              <div className={`h-1 w-2/3 ${p.accent} rounded-full`} />
+              <div className="h-1 w-1/2 bg-zinc-400/30 rounded-full" />
+              <div className="h-1 w-3/4 bg-zinc-400/30 rounded-full" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (slug === "concept-g") {
     return (
       <div className="absolute inset-0 bg-zinc-100 flex flex-col">
