@@ -456,6 +456,20 @@ async function init(): Promise<void> {
     await alterAddColumn("messaging_settings", col, def, messagingSettingsCols);
   }
 
+  const aiSettingsCols = await _db
+    .prepare("PRAGMA table_info(ai_settings)")
+    .all<{ name: string }>();
+  if (aiSettingsCols.length > 0) {
+    const aiSettingsAdds: [string, string][] = [
+      ["monthly_limit", "INTEGER NOT NULL DEFAULT 500"],
+      ["usage_period", "TEXT"],
+      ["usage_count", "INTEGER NOT NULL DEFAULT 0"],
+    ];
+    for (const [col, def] of aiSettingsAdds) {
+      await alterAddColumn("ai_settings", col, def, aiSettingsCols);
+    }
+  }
+
   const paymentCols = await _db
     .prepare("PRAGMA table_info(payments)")
     .all<{ name: string }>();
@@ -671,6 +685,9 @@ async function init(): Promise<void> {
       api_key TEXT,
       model TEXT NOT NULL DEFAULT 'claude-sonnet-4-6',
       company_voice TEXT,
+      monthly_limit INTEGER NOT NULL DEFAULT 500,
+      usage_period TEXT,
+      usage_count INTEGER NOT NULL DEFAULT 0,
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     INSERT OR IGNORE INTO ai_settings (id) VALUES (1);
@@ -1686,6 +1703,9 @@ export type AiSettings = {
   api_key: string | null;
   model: string;
   company_voice: string | null;
+  monthly_limit: number;
+  usage_period: string | null;
+  usage_count: number;
   updated_at: string;
 };
 
