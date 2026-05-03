@@ -8,7 +8,8 @@
     "start": "next start -p 3000 -H 0.0.0.0",
     "lint": "next lint",
     "seed:customers": "node scripts/seed-customers.mjs",
-    "db:doctor": "node scripts/db-doctor.mjs"
+    "db:doctor": "node scripts/db-doctor.mjs",
+    "tenants:migrate": "node scripts/migrate-tenant-data.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.92.0",
