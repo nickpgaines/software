@@ -134,8 +134,14 @@ function LoginPageInner() {
             {loading ? "Signing in…" : "Sign in"}
           </button>
           <p className="text-xs text-slate-500 text-center">
-            Admin default: <span className="font-mono">admin / admin</span>.
-            Employees sign in with their email + password.
+            {process.env.NODE_ENV === "production" ? (
+              <>Employees sign in with their email + password.</>
+            ) : (
+              <>
+                Admin default: <span className="font-mono">admin / admin</span>.
+                Employees sign in with their email + password.
+              </>
+            )}
           </p>
         </form>
         <p className="text-sm text-slate-500 text-center mt-6">

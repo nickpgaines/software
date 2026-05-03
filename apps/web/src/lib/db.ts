@@ -740,45 +740,11 @@ async function init(): Promise<void> {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_email_automations_kind ON email_automations(kind);
-
-    INSERT OR IGNORE INTO email_automations
-      (key, kind, season, name, description, audience, subject, body_html, send_month, send_day)
-    VALUES
-      ('welcome', 'welcome', NULL,
-       'Welcome email',
-       'Sent automatically the first time a customer with an email is added.',
-       'all_customers',
-       'Welcome — thanks for choosing us',
-       '<p>Hi there,</p><p>Thanks for choosing us. We''re glad to have you, and we''ll be in touch soon to confirm your service.</p><p>If you have any questions, just reply to this email.</p>',
-       NULL, NULL),
-      ('spring_blast', 'seasonal', 'spring',
-       'Spring blast',
-       'Goes out once each spring — a seasonal reminder, service kickoff, or discount.',
-       'all_customers',
-       'Spring is here — book your seasonal service',
-       '<p>Spring is here!</p><p>Now''s the perfect time to schedule your seasonal service. Reply to this email or give us a call to get on the schedule.</p>',
-       3, 21),
-      ('summer_blast', 'seasonal', 'summer',
-       'Summer blast',
-       'Goes out once each summer.',
-       'all_customers',
-       'Summer special — book now',
-       '<p>Summer''s in full swing.</p><p>We''re running a seasonal special this month — reach out to take advantage before it ends.</p>',
-       6, 21),
-      ('fall_blast', 'seasonal', 'fall',
-       'Fall blast',
-       'Goes out once each fall.',
-       'all_customers',
-       'Fall reminder — get ready for the season',
-       '<p>Fall is here.</p><p>Time to wrap up the year''s service and get ready for what''s next. Reply to schedule.</p>',
-       9, 21),
-      ('winter_blast', 'seasonal', 'winter',
-       'Winter blast',
-       'Goes out once each winter.',
-       'all_customers',
-       'Winter check-in',
-       '<p>Hi,</p><p>Just checking in for the winter season. Let us know if there''s anything we can help with.</p>',
-       12, 21);
+    -- Default rows for the legacy tenant (company_id=1) are seeded after the
+    -- multi-tenancy migration runs (see seedLegacyEmailAutomations below).
+    -- Seeding here would race the migration: rows inserted with NULL
+    -- company_id collide with the per-tenant UNIQUE(company_id, key) index
+    -- once the backfill tries to set them to 1.
 
     CREATE TABLE IF NOT EXISTS payments (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1309,6 +1275,18 @@ async function init(): Promise<void> {
       "INTEGER REFERENCES company(id) ON DELETE CASCADE",
       cols
     );
+    if (table === "email_automations") {
+      // A previous build seeded `email_automations` inside the big DDL block
+      // without setting company_id. Once the per-tenant UNIQUE(company_id, key)
+      // index existed, every restart would re-insert NULL-company_id duplicates,
+      // and this UPDATE would then collide with the existing (1, key) rows.
+      // Drop those NULL-company_id duplicates before backfilling.
+      await _db.exec(
+        `DELETE FROM email_automations
+           WHERE company_id IS NULL
+             AND key IN (SELECT key FROM email_automations WHERE company_id = 1)`
+      );
+    }
     await _db.exec(
       `UPDATE ${table} SET company_id = 1 WHERE company_id IS NULL`
     );
@@ -1341,6 +1319,50 @@ async function init(): Promise<void> {
   // 'welcome', 'spring_blast', etc. so the constraint must be per-tenant.
   // Rebuild the table without the inline UNIQUE, then add UNIQUE(company_id, key).
   await rebuildEmailAutomationsUnique();
+
+  // Seed the legacy tenant's default automations now that the per-tenant
+  // UNIQUE(company_id, key) is in place. INSERT OR IGNORE makes this a no-op
+  // on subsequent runs. New tenants get their own seed via /api/signup.
+  await _db.exec(`
+    INSERT OR IGNORE INTO email_automations
+      (company_id, key, kind, season, name, description, audience, subject, body_html, send_month, send_day)
+    VALUES
+      (1, 'welcome', 'welcome', NULL,
+       'Welcome email',
+       'Sent automatically the first time a customer with an email is added.',
+       'all_customers',
+       'Welcome — thanks for choosing us',
+       '<p>Hi there,</p><p>Thanks for choosing us. We''re glad to have you, and we''ll be in touch soon to confirm your service.</p><p>If you have any questions, just reply to this email.</p>',
+       NULL, NULL),
+      (1, 'spring_blast', 'seasonal', 'spring',
+       'Spring blast',
+       'Goes out once each spring — a seasonal reminder, service kickoff, or discount.',
+       'all_customers',
+       'Spring is here — book your seasonal service',
+       '<p>Spring is here!</p><p>Now''s the perfect time to schedule your seasonal service. Reply to this email or give us a call to get on the schedule.</p>',
+       3, 21),
+      (1, 'summer_blast', 'seasonal', 'summer',
+       'Summer blast',
+       'Goes out once each summer.',
+       'all_customers',
+       'Summer special — book now',
+       '<p>Summer''s in full swing.</p><p>We''re running a seasonal special this month — reach out to take advantage before it ends.</p>',
+       6, 21),
+      (1, 'fall_blast', 'seasonal', 'fall',
+       'Fall blast',
+       'Goes out once each fall.',
+       'all_customers',
+       'Fall reminder — get ready for the season',
+       '<p>Fall is here.</p><p>Time to wrap up the year''s service and get ready for what''s next. Reply to schedule.</p>',
+       9, 21),
+      (1, 'winter_blast', 'seasonal', 'winter',
+       'Winter blast',
+       'Goes out once each winter.',
+       'all_customers',
+       'Winter check-in',
+       '<p>Hi,</p><p>Just checking in for the winter season. Let us know if there''s anything we can help with.</p>',
+       12, 21);
+  `);
 
   // payroll_settings: add day_rate_cents and convert single-bonus columns
   // into a JSON tier list. Drops the legacy CHECK constraints so new values
