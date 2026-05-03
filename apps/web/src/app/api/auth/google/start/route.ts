@@ -12,7 +12,8 @@ export async function GET(req: Request) {
   }
 
   const state = createOAuthState("google");
-  const redirectUri = new URL("/api/auth/google/callback", req.url).toString();
+  const baseUrl = process.env.PUBLIC_BASE_URL?.trim() || req.url;
+  const redirectUri = new URL("/api/auth/google/callback", baseUrl).toString();
 
   const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
   authUrl.searchParams.set("client_id", clientId);
