@@ -41,6 +41,8 @@ export async function GET(req: Request) {
   const answered = totalPins - notHome;
 
   const conversionRate = totalPins > 0 ? sales / totalPins : 0;
+  // Close rate: sales out of answered (interactions) doors.
+  const closeRate = answered > 0 ? sales / answered : 0;
   // "Prospects" = answered doors. Quote rate is quotes / answered.
   const quoteRate = answered > 0 ? quotes / answered : 0;
   // Answer rate = pins flipped away from default not_home.
@@ -80,6 +82,7 @@ export async function GET(req: Request) {
       not_home: notHome,
       answered,
       conversion_rate: conversionRate,
+      close_rate: closeRate,
       quote_rate: quoteRate,
       answer_rate: answerRate,
       avg_per_day: avgPinsPerDay,
