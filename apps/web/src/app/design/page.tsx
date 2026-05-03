@@ -1,5 +1,40 @@
 import Link from "next/link";
 
+const blueSet = [
+  {
+    slug: "concept-m",
+    name: "Concept M — Light",
+    tagline: "Light grey canvas · #379CFB accent.",
+    description:
+      "Zinc-100 background (very light grey), white cards, sky-blue accent. Calm and clean.",
+    swatches: ["#f4f4f5", "#ffffff", "#379CFB", "#71717a", "#09090b"],
+  },
+  {
+    slug: "concept-n",
+    name: "Concept N — Mid",
+    tagline: "Mid grey canvas · #379CFB accent.",
+    description:
+      "Zinc-300 background — clearly grey, no ambiguity. White cards pop strongly.",
+    swatches: ["#d4d4d8", "#ffffff", "#379CFB", "#71717a", "#09090b"],
+  },
+  {
+    slug: "concept-o",
+    name: "Concept O — Dark",
+    tagline: "Neutral dark grey canvas · #379CFB accent.",
+    description:
+      "Zinc-800 background, zinc-700 cards. Dark but not pure black — keeps the layered feel.",
+    swatches: ["#27272a", "#3f3f46", "#379CFB", "#a1a1aa", "#fafafa"],
+  },
+  {
+    slug: "concept-p",
+    name: "Concept P — Cool Dark",
+    tagline: "Cool dark grey canvas · #379CFB accent.",
+    description:
+      "Slate-800 background (slight blue tint) — harmonizes with the blue accent. Slate-700 cards.",
+    swatches: ["#1e293b", "#334155", "#379CFB", "#94a3b8", "#ffffff"],
+  },
+];
+
 const colored = [
   {
     slug: "concept-i",
@@ -108,20 +143,31 @@ export default function DesignIndexPage() {
             Pick a direction.
           </h1>
           <p className="text-neutral-500 mt-3 max-w-xl text-base font-medium">
-            Latest four concepts (I–L) keep your existing sidebar layout but
-            add color and mid-grey backgrounds. Older concepts below for
-            reference.
+            Concepts M–P share the same #379CFB blue accent and only differ
+            in background grey: light, mid, dark, cool dark. Older concepts
+            below for reference.
           </p>
         </div>
 
         <div className="mb-3">
           <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
-            Latest — start here
+            Latest — start here · #379CFB accent
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
+          {blueSet.map((c) => (
+            <ConceptCard key={c.slug} {...c} highlighted />
+          ))}
+        </div>
+
+        <div className="mb-3">
+          <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
+            Color exploration (I–L)
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
           {colored.map((c) => (
-            <ConceptCard key={c.slug} {...c} highlighted />
+            <ConceptCard key={c.slug} {...c} />
           ))}
         </div>
 
@@ -218,6 +264,48 @@ function ConceptCard({
 }
 
 function ConceptThumbnail({ slug }: { slug: string }) {
+  if (slug === "concept-m" || slug === "concept-n" || slug === "concept-o" || slug === "concept-p") {
+    const palettes: Record<string, { bg: string; side: string; card: string; isDark: boolean }> = {
+      "concept-m": { bg: "bg-zinc-100", side: "bg-white border-r border-zinc-200", card: "bg-white border border-zinc-200", isDark: false },
+      "concept-n": { bg: "bg-zinc-300", side: "bg-white border-r border-zinc-300", card: "bg-white border border-zinc-300/70", isDark: false },
+      "concept-o": { bg: "bg-zinc-800", side: "bg-zinc-900 border-r border-zinc-800", card: "bg-zinc-700 border border-zinc-600/40", isDark: true },
+      "concept-p": { bg: "bg-slate-800", side: "bg-slate-900 border-r border-slate-800", card: "bg-slate-700 border border-slate-600/40", isDark: true },
+    };
+    const p = palettes[slug];
+    const trackColor = p.isDark ? "bg-zinc-500/30" : "bg-zinc-300/50";
+    return (
+      <div className={`absolute inset-0 ${p.bg} grid grid-cols-[60px_1fr]`}>
+        <div className={`${p.side} p-2 space-y-1.5`}>
+          <div className="h-4 rounded-md" style={{ background: "#379CFB" }} />
+          <div className="h-2 rounded-sm" style={{ background: "#379CFB" }} />
+          <div className={`h-1.5 ${trackColor} rounded-sm`} />
+          <div className={`h-1.5 ${trackColor} rounded-sm`} />
+          <div className={`h-1.5 ${trackColor} rounded-sm`} />
+          <div className={`h-1.5 ${trackColor} rounded-sm`} />
+          <div className={`h-1.5 ${trackColor} rounded-sm`} />
+        </div>
+        <div className="p-2 space-y-1.5">
+          <div className="h-4" />
+          <div className="grid grid-cols-4 gap-1.5">
+            <div className={`h-9 ${p.card} rounded-lg`} />
+            <div className={`h-9 ${p.card} rounded-lg`} />
+            <div className={`h-9 ${p.card} rounded-lg`} />
+            <div className={`h-9 ${p.card} rounded-lg`} />
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            <div className={`col-span-2 h-12 ${p.card} rounded-lg relative overflow-hidden`}>
+              <div className="absolute bottom-1 left-1 right-1 h-0.5 rounded-full" style={{ background: "#379CFB" }} />
+            </div>
+            <div className={`h-12 ${p.card} rounded-lg p-1.5 space-y-1`}>
+              <div className="h-1 w-2/3 rounded-full" style={{ background: "#379CFB" }} />
+              <div className={`h-1 w-1/2 ${trackColor} rounded-full`} />
+              <div className={`h-1 w-3/4 ${trackColor} rounded-full`} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (slug === "concept-i" || slug === "concept-j" || slug === "concept-k" || slug === "concept-l") {
     const palettes: Record<string, { bg: string; side: string; card: string; accent: string; cardBorder: string }> = {
       "concept-i": { bg: "bg-zinc-200", side: "bg-white border-r border-zinc-300", card: "bg-white border border-zinc-300/60", accent: "bg-blue-600", cardBorder: "border-zinc-200" },
