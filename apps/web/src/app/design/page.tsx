@@ -1,5 +1,16 @@
 import Link from "next/link";
 
+const live = [
+  {
+    slug: "concept-live",
+    name: "Concept Live — Real data",
+    tagline: "Z + floating sidebar + real DB · clickable Dashboard / Schedule / Leaderboard / Reports / Customers.",
+    description:
+      "The Z visual treatment (left-bar active nav, accent line under card titles, blue #379CFB) wired to your actual CRM. The sidebar floats off the wall (Flyra style) — collapsed icons, expands on hover, with margin from the viewport edges. Click any nav item to load that page with real data; everything else falls back to honest empty states.",
+    swatches: ["#f4f4f5", "#ffffff", "#379CFB", "#27272a", "#09090b"],
+  },
+];
+
 const fixed = [
   {
     slug: "concept-v",
@@ -229,21 +240,31 @@ export default function DesignIndexPage() {
             Pick a direction.
           </h1>
           <p className="text-neutral-500 mt-3 max-w-xl text-base font-medium">
-            Concepts V–Z use your real dashboard features with the
-            three fixes applied: dark-mode headline visibility,
-            constrained content width (max-w-6xl), and a Flyra-style
-            collapsible hover-to-expand sidebar.
+            Concept Live wires the Z visual treatment to your actual CRM data
+            with a floating sidebar (Flyra pattern) and click-through navigation
+            across Dashboard, Schedule, Leaderboard, Reports, and Customers.
           </p>
         </div>
 
         <div className="mb-3">
           <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
-            Latest — start here · fixes applied · slight visual variations
+            Live — start here
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 gap-5 mb-16">
+          {live.map((c) => (
+            <ConceptCard key={c.slug} {...c} highlighted />
+          ))}
+        </div>
+
+        <div className="mb-3">
+          <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
+            Real-features set V–Z
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
           {fixed.map((c) => (
-            <ConceptCard key={c.slug} {...c} highlighted />
+            <ConceptCard key={c.slug} {...c} />
           ))}
         </div>
 
@@ -373,6 +394,49 @@ function ConceptCard({
 }
 
 function ConceptThumbnail({ slug }: { slug: string }) {
+  if (slug === "concept-live") {
+    return (
+      <div className="absolute inset-0 bg-zinc-100 p-3">
+        {/* Floating sidebar */}
+        <div className="absolute left-3 top-3 bottom-3 w-9 bg-white rounded-xl border border-zinc-200 shadow-md p-1.5 space-y-1">
+          <div className="h-3 rounded-md" style={{ background: "#379CFB" }} />
+          <div className="h-2 rounded-md" style={{ background: "#379CFB" }} />
+          <div className="h-1.5 bg-zinc-200 rounded" />
+          <div className="h-1.5 bg-zinc-200 rounded" />
+          <div className="h-1.5 bg-zinc-200 rounded" />
+          <div className="h-1.5 bg-zinc-200 rounded" />
+        </div>
+        {/* Main */}
+        <div className="ml-14 mr-1 space-y-1.5">
+          <div className="flex items-end gap-1.5">
+            <div className="h-3 w-24 bg-zinc-900 rounded-sm" />
+            <div className="h-3 w-10 rounded-sm" style={{ background: "#379CFB" }} />
+          </div>
+          <div className="bg-white rounded-lg border border-zinc-200 h-12 p-1.5 space-y-1 relative">
+            <div className="absolute top-1.5 left-1.5 w-3 h-0.5 rounded-full" style={{ background: "#379CFB" }} />
+            <div className="h-1 w-12 bg-zinc-300 rounded-full mt-1" />
+            <div className="h-1 w-full rounded-full" style={{ background: "#379CFB" }} />
+          </div>
+          <div className="bg-white rounded-lg border border-zinc-200 h-10 p-1.5 space-y-1">
+            <div className="flex items-center gap-1.5">
+              <div className="h-1 w-2 bg-zinc-200 rounded-full" />
+              <div className="h-1 flex-1 bg-zinc-100 rounded-full" />
+              <div className="h-1.5 w-3 rounded-full" style={{ background: "#379CFB" }} />
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="h-1 w-2 bg-zinc-200 rounded-full" />
+              <div className="h-1 flex-1 bg-zinc-100 rounded-full" />
+              <div className="h-1.5 w-3 rounded-full bg-zinc-200" />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            <div className="bg-white rounded-lg border border-zinc-200 h-8" />
+            <div className="bg-white rounded-lg border border-zinc-200 h-8" />
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (["concept-v", "concept-w", "concept-x", "concept-y", "concept-z"].includes(slug)) {
     const styles: Record<string, { radius: string; cardBorder: boolean; shadow: boolean; activeStyle: "fill" | "leftbar"; bigHeading?: boolean; accentLine?: boolean }> = {
       "concept-v": { radius: "rounded-xl", cardBorder: true, shadow: false, activeStyle: "fill" },
