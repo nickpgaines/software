@@ -2,9 +2,15 @@ import { NextResponse } from "next/server";
 import { createSessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
+import {
+  getPlatformConfig,
+  isPlatformSmsEnabled,
+  provisionTwilioForCompany,
+} from "@/lib/twilio-platform";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LEN = 8;
+const AREA_CODE_RE = /^\d{3}$/;
 
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Partial<{
@@ -12,12 +18,14 @@ export async function POST(req: Request) {
     name: string;
     email: string;
     password: string;
+    areaCode: string;
   }>;
 
   const companyName = (body.companyName || "").trim();
   const fullName = (body.name || "").trim();
   const email = (body.email || "").trim().toLowerCase();
   const password = body.password || "";
+  const areaCode = (body.areaCode || "").trim();
 
   if (!companyName) {
     return NextResponse.json(
@@ -40,6 +48,12 @@ export async function POST(req: Request) {
   if (password.length < MIN_PASSWORD_LEN) {
     return NextResponse.json(
       { error: `Password must be at least ${MIN_PASSWORD_LEN} characters.` },
+      { status: 400 }
+    );
+  }
+  if (!AREA_CODE_RE.test(areaCode)) {
+    return NextResponse.json(
+      { error: "Enter a 3-digit area code for your business phone number." },
       { status: 400 }
     );
   }
@@ -200,6 +214,29 @@ export async function POST(req: Request) {
 
     return newCompanyId;
   });
+
+  // Auto-provision a Twilio subaccount + phone number for this company. Best-
+  // effort: a Twilio failure must not block account creation. The user can
+  // retry from the Messaging settings page if this fails.
+  if (isPlatformSmsEnabled() && getPlatformConfig()) {
+    try {
+      const result = await provisionTwilioForCompany({
+        companyId: companyId as number,
+        companyName,
+        areaCode,
+      });
+      if (!result.ok) {
+        console.error(
+          `[signup] Twilio provision failed for company ${companyId}: ${result.error}`
+        );
+      }
+    } catch (e) {
+      console.error(
+        `[signup] Twilio provision threw for company ${companyId}:`,
+        e
+      );
+    }
+  }
 
   const token = createSessionToken(email);
   const res = NextResponse.json({ ok: true, companyId });

@@ -483,6 +483,11 @@ async function init(): Promise<void> {
     ["stripe_payouts_enabled", "INTEGER NOT NULL DEFAULT 0"],
     ["stripe_details_submitted", "INTEGER NOT NULL DEFAULT 0"],
     ["stripe_account_type", "TEXT"],
+    ["twilio_subaccount_sid", "TEXT"],
+    ["twilio_subaccount_auth_token", "TEXT"],
+    ["platform_phone_number", "TEXT"],
+    ["platform_phone_sid", "TEXT"],
+    ["a2p_campaign_status", "TEXT"],
   ];
   for (const [col, def] of companyAdds) {
     await alterAddColumn("company", col, def, companyCols);
@@ -1607,6 +1612,11 @@ export type Company = {
   stripe_payouts_enabled: number;
   stripe_details_submitted: number;
   stripe_account_type: "express" | "standard" | null;
+  twilio_subaccount_sid: string | null;
+  twilio_subaccount_auth_token: string | null;
+  platform_phone_number: string | null;
+  platform_phone_sid: string | null;
+  a2p_campaign_status: "pending" | "active" | "failed" | null;
 };
 
 export type MessageStatus =

@@ -1,5 +1,6 @@
 import crypto from "node:crypto";
-import { getDb, type MessagingSettings } from "@/lib/db";
+import { getDb, type Company, type MessagingSettings } from "@/lib/db";
+import { hasPlatformSms, sendPlatformSms } from "@/lib/twilio-platform";
 
 export type SmsSendResult =
   | { ok: true; sid: string; status: string }
@@ -52,6 +53,57 @@ export function normalizeUSPhone(raw: string | null | undefined): string | null 
   if (digits.length === 10) return `+1${digits}`;
   if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
   return null;
+}
+
+// Returns the company's effective messaging configuration: prefers the
+// platform-managed phone number if provisioned, otherwise falls back to BYO
+// messaging_settings. `fromPhone` is null if neither is configured.
+export async function getCompanyMessagingStatus(companyId: number): Promise<{
+  configured: boolean;
+  fromPhone: string | null;
+  source: "platform" | "byo" | "none";
+}> {
+  const db = await getDb();
+  const company = await db
+    .prepare("SELECT * FROM company WHERE id = ? LIMIT 1")
+    .get<Company>(companyId);
+  if (company && hasPlatformSms(company)) {
+    return {
+      configured: true,
+      fromPhone: company.platform_phone_number,
+      source: "platform",
+    };
+  }
+  const settings = await getMessagingSettings(companyId);
+  if (isMessagingConfigured(settings)) {
+    return {
+      configured: true,
+      fromPhone: settings.from_number,
+      source: "byo",
+    };
+  }
+  return { configured: false, fromPhone: null, source: "none" };
+}
+
+// High-level send: prefer the platform-managed Twilio subaccount if the
+// company has been provisioned, otherwise fall back to the company's BYO
+// credentials. Callers should use this instead of sendSms() directly so the
+// BYO escape hatch keeps working for any tenant without a platform number.
+export async function sendCompanySms(args: {
+  companyId: number;
+  to: string;
+  body: string;
+}): Promise<SmsSendResult> {
+  const { companyId, to, body } = args;
+  const db = await getDb();
+  const company = await db
+    .prepare("SELECT * FROM company WHERE id = ? LIMIT 1")
+    .get<Company>(companyId);
+  if (company && hasPlatformSms(company)) {
+    return sendPlatformSms({ company, to, body });
+  }
+  const settings = await getMessagingSettings(companyId);
+  return sendSms({ settings, to, body });
 }
 
 export async function sendSms(args: {
