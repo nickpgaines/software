@@ -1,5 +1,48 @@
 import Link from "next/link";
 
+const fixed = [
+  {
+    slug: "concept-v",
+    name: "Concept V — Default",
+    tagline: "Base · fixes applied · light/dark toggle.",
+    description:
+      "Three fixes from the latest round: dark-mode headline stays visible (always dark on the light grey canvas), content constrained to max-w-6xl like your real dashboard, and the sidebar collapses to icons by default and expands on hover (Flyra pattern). Standard rounded-2xl + border + subtle shadow.",
+    swatches: ["#f4f4f5", "#ffffff", "#379CFB", "#27272a", "#09090b"],
+  },
+  {
+    slug: "concept-w",
+    name: "Concept W — Soft",
+    tagline: "Borderless cards. Layered shadow. More rounded.",
+    description:
+      "Same color scheme. Cards drop the border and lean on a softer shadow. rounded-3xl for a gentler feel.",
+    swatches: ["#f4f4f5", "#ffffff", "#379CFB", "#27272a", "#09090b"],
+  },
+  {
+    slug: "concept-x",
+    name: "Concept X — Crisp",
+    tagline: "Stronger borders. No shadow. Sharper corners.",
+    description:
+      "rounded-xl, heavier 1px borders, no shadow. Body text drops to font-medium so the headline does the lifting. Reads as a precise tool.",
+    swatches: ["#f4f4f5", "#ffffff", "#379CFB", "#27272a", "#09090b"],
+  },
+  {
+    slug: "concept-y",
+    name: "Concept Y — Editorial",
+    tagline: "Bigger headline. Outlined status pills.",
+    description:
+      "Display-size greeting (text-5xl), borderless cards, status pills become outlined (blue border + blue text instead of solid fill). More magazine, more presence.",
+    swatches: ["#f4f4f5", "#ffffff", "#379CFB", "#27272a", "#09090b"],
+  },
+  {
+    slug: "concept-z",
+    name: "Concept Z — Tinted",
+    tagline: "Active nav uses left-bar accent. Card titles get a thin blue underline.",
+    description:
+      "More color presence overall without changing the palette. Active sidebar item uses a tinted background + left bar; card section titles get a small blue accent line under them.",
+    swatches: ["#f4f4f5", "#ffffff", "#379CFB", "#27272a", "#09090b"],
+  },
+];
+
 const realFeatures = [
   {
     slug: "concept-q",
@@ -186,20 +229,32 @@ export default function DesignIndexPage() {
             Pick a direction.
           </h1>
           <p className="text-neutral-500 mt-3 max-w-xl text-base font-medium">
-            Concepts Q–U use your real dashboard features (greeting + search,
-            revenue chart, today's schedule, inbox + tasks) with a working
-            light/dark toggle. Try the toggle inside each concept.
+            Concepts V–Z use your real dashboard features with the
+            three fixes applied: dark-mode headline visibility,
+            constrained content width (max-w-6xl), and a Flyra-style
+            collapsible hover-to-expand sidebar.
           </p>
         </div>
 
         <div className="mb-3">
           <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
-            Latest — start here · light/dark toggle · real features
+            Latest — start here · fixes applied · slight visual variations
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
+          {fixed.map((c) => (
+            <ConceptCard key={c.slug} {...c} highlighted />
+          ))}
+        </div>
+
+        <div className="mb-3">
+          <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
+            Real features (Q–U)
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
           {realFeatures.map((c) => (
-            <ConceptCard key={c.slug} {...c} highlighted />
+            <ConceptCard key={c.slug} {...c} />
           ))}
         </div>
 
@@ -318,6 +373,73 @@ function ConceptCard({
 }
 
 function ConceptThumbnail({ slug }: { slug: string }) {
+  if (["concept-v", "concept-w", "concept-x", "concept-y", "concept-z"].includes(slug)) {
+    const styles: Record<string, { radius: string; cardBorder: boolean; shadow: boolean; activeStyle: "fill" | "leftbar"; bigHeading?: boolean; accentLine?: boolean }> = {
+      "concept-v": { radius: "rounded-xl", cardBorder: true, shadow: false, activeStyle: "fill" },
+      "concept-w": { radius: "rounded-2xl", cardBorder: false, shadow: true, activeStyle: "fill" },
+      "concept-x": { radius: "rounded-md", cardBorder: true, shadow: false, activeStyle: "fill" },
+      "concept-y": { radius: "rounded-xl", cardBorder: false, shadow: true, activeStyle: "fill", bigHeading: true },
+      "concept-z": { radius: "rounded-xl", cardBorder: true, shadow: false, activeStyle: "leftbar", accentLine: true },
+    };
+    const s = styles[slug];
+    const cardCls = `bg-white ${s.radius} ${s.cardBorder ? "border border-zinc-200" : ""} ${s.shadow ? "shadow-md" : ""}`;
+    const activeNav =
+      s.activeStyle === "fill" ? (
+        <div className="h-2.5 rounded-md" style={{ background: "#379CFB" }} />
+      ) : (
+        <div className="h-2.5 rounded-md flex items-center" style={{ background: "#379CFB1A" }}>
+          <div className="w-0.5 h-2.5 rounded-r" style={{ background: "#379CFB" }} />
+        </div>
+      );
+    return (
+      <div className="absolute inset-0 bg-zinc-100 grid grid-cols-[24px_1fr]">
+        <div className="bg-white border-r border-zinc-200 p-1 space-y-1">
+          <div className="h-3 rounded" style={{ background: "#379CFB" }} />
+          <div className="h-2 rounded" style={{ background: "#379CFB" }} />
+          <div className="h-1.5 bg-zinc-200 rounded" />
+          <div className="h-1.5 bg-zinc-200 rounded" />
+          <div className="h-1.5 bg-zinc-200 rounded" />
+          <div className="h-1.5 bg-zinc-200 rounded" />
+          <div className="h-1.5 bg-zinc-200 rounded" />
+        </div>
+        <div className="p-3">
+          <div className="max-w-[90%] mx-auto space-y-2">
+            <div className="flex items-end gap-1.5">
+              <div className={`${s.bigHeading ? "h-4 w-24" : "h-3 w-20"} bg-zinc-900 rounded-sm`} />
+              <div className={`${s.bigHeading ? "h-4 w-10" : "h-3 w-8"} rounded-sm`} style={{ background: "#379CFB" }} />
+            </div>
+            <div className="grid grid-cols-3 gap-1.5">
+              <div className={`col-span-2 h-3 ${cardCls}`} />
+              <div className={`h-3 ${cardCls}`} />
+            </div>
+            <div className={`${cardCls} h-12 px-2 py-1.5 space-y-1 relative`}>
+              {s.accentLine && (
+                <div className="absolute top-3 left-2 w-3 h-0.5 rounded-full" style={{ background: "#379CFB" }} />
+              )}
+              <div className="h-1 w-12 bg-zinc-300 rounded-full mt-1" />
+              <div className="h-1 w-full rounded-full" style={{ background: "#379CFB" }} />
+            </div>
+            <div className={`${cardCls} h-10 p-1.5 space-y-1`}>
+              <div className="flex items-center gap-1.5">
+                <div className="h-1 w-2 bg-zinc-200 rounded-full" />
+                <div className="h-1 flex-1 bg-zinc-100 rounded-full" />
+                <div className="h-1.5 w-3 rounded-full" style={{ background: "#379CFB" }} />
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="h-1 w-2 bg-zinc-200 rounded-full" />
+                <div className="h-1 flex-1 bg-zinc-100 rounded-full" />
+                <div className="h-1.5 w-3 rounded-full bg-zinc-200" />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-1.5">
+              <div className={`${cardCls} h-8`} />
+              <div className={`${cardCls} h-8`} />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (["concept-q", "concept-r", "concept-s", "concept-t", "concept-u"].includes(slug)) {
     const styles: Record<string, { float: boolean; radius: string; sidebarShadow: boolean; cardBorder: boolean; activeStyle: "fill" | "leftbar" }> = {
       "concept-q": { float: false, radius: "rounded-xl", sidebarShadow: false, cardBorder: true, activeStyle: "fill" },
