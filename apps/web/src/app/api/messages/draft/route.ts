@@ -27,7 +27,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         error:
-          "AI is not configured. Connect Claude in Settings → AI before drafting replies.",
+          "AI drafting is unavailable on this server. Contact the platform admin.",
       },
       { status: 503, headers: NO_CACHE_HEADERS }
     );
@@ -52,12 +52,15 @@ export async function POST(req: Request) {
   const result = await draftSmsReply({ settings, customer, messages, companyId });
   if (!result.ok) {
     return NextResponse.json(
-      { error: result.error },
-      { status: 502, headers: NO_CACHE_HEADERS }
+      { error: result.error, usage: result.usage },
+      {
+        status: result.rateLimited ? 429 : 502,
+        headers: NO_CACHE_HEADERS,
+      }
     );
   }
   return NextResponse.json(
-    { draft: result.text, model: settings.model },
+    { draft: result.text, model: settings.model, usage: result.usage },
     { headers: NO_CACHE_HEADERS }
   );
 }

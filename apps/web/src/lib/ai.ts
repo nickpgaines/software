@@ -2,6 +2,16 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getDb, type AiSettings, type Customer, type Message } from "@/lib/db";
 
 const DEFAULT_MODEL = "claude-sonnet-4-6";
+const DEFAULT_MONTHLY_LIMIT = 500;
+
+export function platformAiKey(): string | null {
+  const k = process.env.ANTHROPIC_API_KEY?.trim();
+  return k ? k : null;
+}
+
+export function isAiPlatformConfigured(): boolean {
+  return !!platformAiKey();
+}
 
 export async function getAiSettings(companyId: number): Promise<AiSettings> {
   const db = await getDb();
@@ -19,14 +29,37 @@ export async function getAiSettings(companyId: number): Promise<AiSettings> {
         api_key: null,
         model: DEFAULT_MODEL,
         company_voice: null,
+        monthly_limit: DEFAULT_MONTHLY_LIMIT,
+        usage_period: null,
+        usage_count: 0,
         updated_at: "",
       }
     );
   });
 }
 
-export function isAiConfigured(s: AiSettings): boolean {
-  return !!s.api_key;
+export function isAiConfigured(_s: AiSettings): boolean {
+  return isAiPlatformConfigured();
+}
+
+function currentPeriod(now = new Date()): string {
+  const y = now.getUTCFullYear();
+  const m = String(now.getUTCMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+
+export type AiUsage = {
+  period: string;
+  used: number;
+  limit: number;
+  remaining: number;
+};
+
+export function aiUsageFromSettings(s: AiSettings): AiUsage {
+  const period = currentPeriod();
+  const limit = s.monthly_limit > 0 ? s.monthly_limit : DEFAULT_MONTHLY_LIMIT;
+  const used = s.usage_period === period ? s.usage_count : 0;
+  return { period, used, limit, remaining: Math.max(0, limit - used) };
 }
 
 type Company = {
@@ -112,8 +145,71 @@ function buildConversationContext(args: {
 }
 
 export type DraftReplyResult =
-  | { ok: true; text: string }
-  | { ok: false; error: string };
+  | { ok: true; text: string; usage: AiUsage }
+  | { ok: false; error: string; usage?: AiUsage; rateLimited?: boolean };
+
+// Atomically increment usage for the current period, refusing if the tenant
+// is already at their cap. Returns the post-increment usage on success.
+async function reserveUsage(
+  companyId: number
+): Promise<{ ok: true; usage: AiUsage } | { ok: false; usage: AiUsage }> {
+  const db = await getDb();
+  const period = currentPeriod();
+  return await db.transaction(async (tx) => {
+    const row = (await tx
+      .prepare("SELECT * FROM ai_settings WHERE company_id = ? LIMIT 1")
+      .get(companyId)) as AiSettings | undefined;
+    const limit =
+      row && row.monthly_limit > 0 ? row.monthly_limit : DEFAULT_MONTHLY_LIMIT;
+    const sameMonth = row?.usage_period === period;
+    const currentCount = sameMonth ? row?.usage_count ?? 0 : 0;
+    if (currentCount >= limit) {
+      return {
+        ok: false as const,
+        usage: { period, used: currentCount, limit, remaining: 0 },
+      };
+    }
+    const nextCount = currentCount + 1;
+    if (row) {
+      await tx
+        .prepare(
+          `UPDATE ai_settings
+              SET usage_period = ?, usage_count = ?
+            WHERE id = ? AND company_id = ?`
+        )
+        .run(period, nextCount, row.id, companyId);
+    } else {
+      await tx
+        .prepare(
+          `INSERT INTO ai_settings
+             (company_id, provider, model, monthly_limit, usage_period, usage_count, updated_at)
+           VALUES (?, 'anthropic', ?, ?, ?, ?, datetime('now'))`
+        )
+        .run(companyId, DEFAULT_MODEL, DEFAULT_MONTHLY_LIMIT, period, nextCount);
+    }
+    return {
+      ok: true as const,
+      usage: {
+        period,
+        used: nextCount,
+        limit,
+        remaining: Math.max(0, limit - nextCount),
+      },
+    };
+  });
+}
+
+async function refundUsage(companyId: number): Promise<void> {
+  const db = await getDb();
+  const period = currentPeriod();
+  await db
+    .prepare(
+      `UPDATE ai_settings
+          SET usage_count = MAX(usage_count - 1, 0)
+        WHERE company_id = ? AND usage_period = ?`
+    )
+    .run(companyId, period);
+}
 
 export async function draftSmsReply(args: {
   settings: AiSettings;
@@ -121,9 +217,25 @@ export async function draftSmsReply(args: {
   messages: Message[];
   companyId: number;
 }): Promise<DraftReplyResult> {
-  if (!isAiConfigured(args.settings)) {
-    return { ok: false, error: "AI is not configured" };
+  const apiKey = platformAiKey();
+  if (!apiKey) {
+    return {
+      ok: false,
+      error:
+        "AI is not configured on this server. Ask the platform admin to set ANTHROPIC_API_KEY.",
+    };
   }
+
+  const reserved = await reserveUsage(args.companyId);
+  if (!reserved.ok) {
+    return {
+      ok: false,
+      error: `Monthly AI draft limit reached (${reserved.usage.used}/${reserved.usage.limit}). Resets on the 1st.`,
+      usage: reserved.usage,
+      rateLimited: true,
+    };
+  }
+
   const business = await getCompany(args.companyId);
   const businessName = business.name?.trim() || "Business";
   const system = buildSystemPrompt({
@@ -137,7 +249,7 @@ export async function draftSmsReply(args: {
     businessName,
   });
 
-  const client = new Anthropic({ apiKey: args.settings.api_key! });
+  const client = new Anthropic({ apiKey });
   try {
     const response = await client.messages.create({
       model: args.settings.model || DEFAULT_MODEL,
@@ -151,12 +263,18 @@ export async function draftSmsReply(args: {
       .join("")
       .trim();
     if (!text) {
+      await refundUsage(args.companyId);
       return { ok: false, error: "Empty response from Claude" };
     }
-    return { ok: true, text };
+    return { ok: true, text, usage: reserved.usage };
   } catch (e) {
+    await refundUsage(args.companyId);
     if (e instanceof Anthropic.AuthenticationError) {
-      return { ok: false, error: "Invalid Anthropic API key." };
+      return {
+        ok: false,
+        error:
+          "Server-side Anthropic credentials are invalid. Contact the platform admin.",
+      };
     }
     if (e instanceof Anthropic.RateLimitError) {
       return { ok: false, error: "Rate limited by Anthropic. Try again shortly." };

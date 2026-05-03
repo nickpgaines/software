@@ -2277,11 +2277,16 @@ function EmailPanel() {
 
 type AiStatus = {
   provider: string;
-  api_key_set: boolean;
-  api_key_prefix: string | null;
   model: string;
   company_voice: string | null;
   configured: boolean;
+  managed: true;
+  usage: {
+    period: string;
+    used: number;
+    limit: number;
+    remaining: number;
+  };
 };
 
 const AI_MODEL_LABELS: Record<string, string> = {
@@ -2297,7 +2302,6 @@ function AiPanel() {
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [apiKey, setApiKey] = useState("");
   const [model, setModel] = useState("claude-sonnet-4-6");
   const [voice, setVoice] = useState("");
 
@@ -2324,7 +2328,6 @@ function AiPanel() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        api_key: apiKey || undefined,
         model,
         company_voice: voice,
       }),
@@ -2337,18 +2340,29 @@ function AiPanel() {
     }
     const s = (await res.json()) as AiStatus;
     setStatus(s);
-    setApiKey("");
     setSavedAt(Date.now());
   }
+
+  const usage = status?.usage;
+  const usagePct =
+    usage && usage.limit > 0
+      ? Math.min(100, Math.round((usage.used / usage.limit) * 100))
+      : 0;
+  const usageBarColor =
+    usagePct >= 100
+      ? "bg-rose-500"
+      : usagePct >= 80
+        ? "bg-amber-500"
+        : "bg-emerald-500";
 
   return (
     <form onSubmit={save} className="space-y-5">
       <div>
         <h2 className="text-lg font-semibold text-slate-900">AI</h2>
         <p className="text-sm text-slate-500 mt-1">
-          Connect Claude to draft replies in the Messages tab. The AI reads the
-          recent conversation and writes a suggested reply you can edit before
-          sending.
+          Claude drafts replies in the Messages tab. The AI reads the recent
+          conversation and writes a suggested reply you can edit before sending.
+          Claude is included with your account — no API key required.
         </p>
       </div>
 
@@ -2366,50 +2380,35 @@ function AiPanel() {
             (status?.configured ? "bg-emerald-500" : "bg-slate-400")
           }
         />
-        {status?.configured ? "Connected" : "Not connected"}
+        {status?.configured ? "Active" : "Unavailable"}
         {status?.configured && status?.model && (
           <span className="text-slate-500 font-normal">· {status.model}</span>
         )}
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3 text-sm">
-        <div className="font-medium text-slate-900">Setup steps</div>
-        <ol className="list-decimal list-inside space-y-1 text-slate-600">
-          <li>
-            Sign up at{" "}
-            <a
-              href="https://console.anthropic.com"
-              target="_blank"
-              rel="noreferrer"
-              className="text-slate-900 underline"
-            >
-              console.anthropic.com
-            </a>
-            .
-          </li>
-          <li>
-            Create an API key under{" "}
-            <span className="font-mono">Settings → API Keys</span>. Add credit
-            to your account ($5–10 is plenty to start).
-          </li>
-          <li>Paste the key below and choose a model.</li>
-        </ol>
-      </div>
+      {usage && (
+        <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+          <div className="flex items-baseline justify-between">
+            <div className="text-sm font-medium text-slate-900">
+              Drafts this month
+            </div>
+            <div className="text-sm text-slate-600">
+              <span className="font-medium text-slate-900">{usage.used}</span>
+              <span className="text-slate-400"> / {usage.limit}</span>
+            </div>
+          </div>
+          <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+            <div
+              className={`h-full ${usageBarColor} transition-all`}
+              style={{ width: `${usagePct}%` }}
+            />
+          </div>
+          <p className="text-xs text-slate-400">
+            Resets on the 1st of every month. {usage.remaining} drafts left.
+          </p>
+        </div>
+      )}
 
-      <Field label="Anthropic API key">
-        <input
-          type="password"
-          value={apiKey}
-          disabled={loading}
-          onChange={(e) => setApiKey(e.target.value)}
-          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono"
-          placeholder={
-            status?.api_key_set
-              ? `${status.api_key_prefix || "sk-ant-"}…  (saved)`
-              : "sk-ant-api03-…"
-          }
-        />
-      </Field>
       <Field label="Model">
         <select
           value={model}
