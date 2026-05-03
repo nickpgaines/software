@@ -74,6 +74,45 @@ export async function GET(req: Request) {
     avg_value: number;
   };
 
+  const jobBreakdownRows = (await db
+    .prepare(
+      `SELECT recurring, status, price_cents
+         FROM jobs
+        WHERE company_id = ?
+          AND scheduled_at >= ? AND scheduled_at < ?`
+    )
+    .all(companyId, startIso, endIso)) as {
+    recurring: number | null;
+    status: string | null;
+    price_cents: number | null;
+  }[];
+
+  function jobBucket(rs: typeof jobBreakdownRows) {
+    let count = 0;
+    let expected = 0;
+    let collected = 0;
+    for (const r of rs) {
+      if (r.status === "cancelled") continue;
+      const price = r.price_cents || 0;
+      count += 1;
+      expected += price;
+      if (r.status === "completed") collected += price;
+    }
+    return {
+      count,
+      expected_cents: expected,
+      collected_cents: collected,
+      avg_value_cents: count > 0 ? Math.round(expected / count) : 0,
+    };
+  }
+
+  const servicePlanJobs = jobBucket(
+    jobBreakdownRows.filter((r) => r.recurring === 1)
+  );
+  const oneOffJobs = jobBucket(
+    jobBreakdownRows.filter((r) => r.recurring !== 1)
+  );
+
   const totalCustomers = (
     (await db
       .prepare("SELECT COUNT(*) AS n FROM customers WHERE company_id = ?")
@@ -152,6 +191,8 @@ export async function GET(req: Request) {
       scheduled: jobs.scheduled,
       cancelled: jobs.cancelled,
       avg_value_cents: Math.round(jobs.avg_value),
+      service_plan: servicePlanJobs,
+      one_off: oneOffJobs,
     },
     customers: {
       total: totalCustomers,

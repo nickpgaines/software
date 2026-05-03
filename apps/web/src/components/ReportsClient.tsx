@@ -6,12 +6,13 @@ import PayrollSettingsModal, {
   type PayrollSettingsValue,
 } from "./PayrollSettingsModal";
 
-type Tab = "overview" | "sales" | "subscriptions" | "map" | "payroll";
+type Tab = "overview" | "sales" | "jobs" | "subscriptions" | "map" | "payroll";
 type Range = "1w" | "1m" | "3m" | "1y";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "sales", label: "Sales" },
+  { key: "jobs", label: "Jobs" },
   { key: "subscriptions", label: "Subscriptions" },
   { key: "map", label: "Map" },
   { key: "payroll", label: "Payroll" },
@@ -68,6 +69,7 @@ export default function ReportsClient() {
 
       {tab === "overview" && <OverviewPanel range={range} />}
       {tab === "sales" && <SalesPanel range={range} />}
+      {tab === "jobs" && <JobsPanel range={range} />}
       {tab === "subscriptions" && <SubscriptionsPanel />}
       {tab === "map" && <MapPanel range={range} />}
       {tab === "payroll" && <PayrollPanel range={range} />}
@@ -102,6 +104,13 @@ function RangePills({
   );
 }
 
+type JobBucket = {
+  count: number;
+  expected_cents: number;
+  collected_cents: number;
+  avg_value_cents: number;
+};
+
 type Overview = {
   revenue: {
     total_cents: number;
@@ -115,6 +124,8 @@ type Overview = {
     scheduled: number;
     cancelled: number;
     avg_value_cents: number;
+    service_plan: JobBucket;
+    one_off: JobBucket;
   };
   customers: { total: number; new: number; repeat: number };
   subscriptions: {
@@ -175,6 +186,18 @@ function OverviewPanel({ range }: { range: Range }) {
             { label: "Avg Job Value", value: money(data.jobs.avg_value_cents) },
           ]}
         />
+        <div className="grid gap-4 lg:grid-cols-2 mt-4">
+          <JobBucketCard
+            title="Service Plan Visits"
+            accent="emerald"
+            bucket={data.jobs.service_plan}
+          />
+          <JobBucketCard
+            title="One-Off Jobs"
+            accent="sky"
+            bucket={data.jobs.one_off}
+          />
+        </div>
       </Section>
 
       <Section title="Customers">
@@ -1124,6 +1147,135 @@ function PayrollSummary({
           </span>
         </div>
       ))}
+    </div>
+  );
+}
+
+type JobsReport = {
+  range: Range;
+  start: string;
+  end: string;
+  service_plan: JobBucket;
+  one_off: JobBucket;
+  all: JobBucket;
+};
+
+function JobsPanel({ range }: { range: Range }) {
+  const [data, setData] = useState<JobsReport | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/reports/jobs?range=${range}`)
+      .then((r) => r.json())
+      .then((d: JobsReport) => {
+        if (!cancelled) setData(d);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [range]);
+
+  if (loading && !data)
+    return (
+      <p className="text-sm text-slate-400 py-10 text-center">Loading…</p>
+    );
+  if (!data) return null;
+
+  return (
+    <div className="space-y-6">
+      <Section title="All jobs">
+        <Stats
+          items={[
+            { label: "Jobs", value: String(data.all.count) },
+            {
+              label: "Expected Revenue",
+              value: money(data.all.expected_cents),
+            },
+            {
+              label: "Collected Revenue",
+              value: money(data.all.collected_cents),
+            },
+            {
+              label: "Average Job Value",
+              value: money(data.all.avg_value_cents),
+            },
+          ]}
+        />
+      </Section>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <JobBucketCard
+          title="Service Plan Visits"
+          accent="emerald"
+          bucket={data.service_plan}
+        />
+        <JobBucketCard
+          title="One-Off Jobs"
+          accent="sky"
+          bucket={data.one_off}
+        />
+      </div>
+    </div>
+  );
+}
+
+const ACCENT_CLASSES: Record<string, string> = {
+  emerald: "bg-emerald-50 text-emerald-700",
+  sky: "bg-sky-50 text-sky-700",
+};
+
+function JobBucketCard({
+  title,
+  accent,
+  bucket,
+}: {
+  title: string;
+  accent: "emerald" | "sky";
+  bucket: JobBucket;
+}) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-slate-900">{title}</h3>
+        <span
+          className={
+            "text-xs font-medium px-2 py-0.5 rounded-full " +
+            (ACCENT_CLASSES[accent] || ACCENT_CLASSES.emerald)
+          }
+        >
+          {bucket.count} job{bucket.count === 1 ? "" : "s"}
+        </span>
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-4">
+        <BucketStat
+          label="Expected Revenue"
+          value={money(bucket.expected_cents)}
+        />
+        <BucketStat
+          label="Collected Revenue"
+          value={money(bucket.collected_cents)}
+        />
+        <BucketStat
+          label="Avg Job Value"
+          value={money(bucket.avg_value_cents)}
+        />
+      </div>
+    </div>
+  );
+}
+
+function BucketStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <div className="text-xs text-slate-400">{label}</div>
+      <div className="text-lg font-bold text-slate-900 mt-1 tabular-nums">
+        {value}
+      </div>
     </div>
   );
 }
