@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { getDb, type Customer, type MessagingSettings } from "@/lib/db";
+import { getDb, type Customer } from "@/lib/db";
+import { normalizeUSPhone } from "@/lib/sms";
 import {
-  isMessagingConfigured,
-  normalizeUSPhone,
+  getPlatformTwilioCreds,
   verifyTwilioSignature,
-} from "@/lib/sms";
+} from "@/lib/twilio";
 
 export const dynamic = "force-dynamic";
 
@@ -23,29 +23,26 @@ export async function POST(req: Request) {
   const params: Record<string, string> = {};
   for (const [k, v] of new URLSearchParams(raw)) params[k] = v;
 
-  // Tenant identification: Twilio sends AccountSid on every webhook. Look up
-  // the messaging_settings row that holds it; that row's company_id is the
-  // tenant the inbound SMS belongs to.
-  const accountSid = params.AccountSid || "";
-  if (!accountSid) {
-    return new NextResponse("Missing AccountSid", { status: 400 });
+  // Tenant identification: with the platform-owned account, every webhook
+  // carries the same AccountSid. Identify the tenant by the To phone number,
+  // which we sold to a specific company at purchase time.
+  const toPhone = params.To || "";
+  if (!toPhone) {
+    return new NextResponse("Missing To", { status: 400 });
   }
-  const db = await getDb();
-  const settings = (await db
-    .prepare("SELECT * FROM messaging_settings WHERE account_sid = ? LIMIT 1")
-    .get(accountSid)) as MessagingSettings | undefined;
-  if (!settings || !isMessagingConfigured(settings)) {
-    console.warn(
-      `[messages/webhook] Webhook from unknown AccountSid ${accountSid}; dropping.`
-    );
-    return new NextResponse("Unknown account", { status: 404 });
+
+  let creds;
+  try {
+    creds = getPlatformTwilioCreds();
+  } catch (e) {
+    console.warn(`[messages/webhook] Platform Twilio not configured: ${(e as Error).message}`);
+    return new NextResponse("Service not configured", { status: 503 });
   }
-  const companyId = settings.company_id;
 
   const signature = req.headers.get("x-twilio-signature") || "";
   const url = buildPublicUrl(req);
   const valid = verifyTwilioSignature({
-    authToken: settings.auth_token!,
+    authToken: creds.authToken,
     url,
     params,
     signature,
@@ -54,11 +51,32 @@ export async function POST(req: Request) {
     return new NextResponse("Invalid signature", { status: 403 });
   }
 
+  // Sanity check: AccountSid should match the platform account.
+  if (params.AccountSid && params.AccountSid !== creds.accountSid) {
+    console.warn(
+      `[messages/webhook] AccountSid mismatch ${params.AccountSid} vs platform ${creds.accountSid}`
+    );
+    return new NextResponse("Unknown account", { status: 404 });
+  }
+
+  const db = await getDb();
+  const owner = (await db
+    .prepare(
+      `SELECT company_id FROM phone_numbers
+        WHERE phone_number = ? AND status = 'active' LIMIT 1`
+    )
+    .get(toPhone)) as { company_id: number } | undefined;
+  if (!owner) {
+    console.warn(
+      `[messages/webhook] Inbound SMS for ${toPhone} but no company owns it; dropping.`
+    );
+    return new NextResponse(TWIML_OK, { status: 200, headers: TWIML_HEADERS });
+  }
+  const companyId = owner.company_id;
+
   const fromPhone = params.From || "";
-  const toPhone = params.To || "";
   const body = params.Body || "";
   const providerSid = params.MessageSid || null;
-
   const normalizedFrom = normalizeUSPhone(fromPhone) || fromPhone;
 
   const customers = (await db

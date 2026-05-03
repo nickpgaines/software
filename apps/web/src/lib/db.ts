@@ -1295,6 +1295,32 @@ async function init(): Promise<void> {
     );
   }
 
+  // phone_numbers: in-house Twilio numbers owned by the platform Twilio
+  // account and allocated per tenant. Replaces the per-company BYO
+  // account_sid/auth_token/from_number model. Each row is one purchased
+  // Twilio incoming-phone-number resource (twilio_sid = PNxxxx).
+  await _db.exec(`
+    CREATE TABLE IF NOT EXISTS phone_numbers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      company_id INTEGER NOT NULL REFERENCES company(id) ON DELETE CASCADE,
+      phone_number TEXT NOT NULL,
+      twilio_sid TEXT NOT NULL,
+      friendly_name TEXT,
+      capabilities_voice INTEGER NOT NULL DEFAULT 1,
+      capabilities_sms INTEGER NOT NULL DEFAULT 1,
+      is_primary INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'active',
+      purchased_at TEXT NOT NULL DEFAULT (datetime('now')),
+      released_at TEXT
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_phone_numbers_twilio_sid
+      ON phone_numbers(twilio_sid);
+    CREATE INDEX IF NOT EXISTS idx_phone_numbers_company
+      ON phone_numbers(company_id);
+    CREATE INDEX IF NOT EXISTS idx_phone_numbers_phone
+      ON phone_numbers(phone_number);
+  `);
+
   // email_unsubscribes: the legacy schema had a single global UNIQUE(email)
   // index, which prevented two tenants from each tracking an opt-out for the
   // same address. Replace it with a per-tenant UNIQUE(company_id, email) so
@@ -1666,6 +1692,20 @@ export type Call = {
   ended_at: string | null;
   notes: string | null;
   created_at: string;
+};
+
+export type PhoneNumber = {
+  id: number;
+  company_id: number;
+  phone_number: string;
+  twilio_sid: string;
+  friendly_name: string | null;
+  capabilities_voice: number;
+  capabilities_sms: number;
+  is_primary: number;
+  status: "active" | "released";
+  purchased_at: string;
+  released_at: string | null;
 };
 
 export type EmailSettings = {

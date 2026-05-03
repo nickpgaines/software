@@ -6,8 +6,8 @@ import {
   sendEmailViaResend,
 } from "@/lib/email";
 import {
-  getMessagingSettings,
-  isMessagingConfigured,
+  getCompanyMessagingStatus,
+  isCompanyMessagingReady,
   normalizeUSPhone,
   sendSms,
 } from "@/lib/sms";
@@ -145,8 +145,8 @@ export async function sendPaymentReceipt(input: SendReceiptInput): Promise<void>
 
   if (input.sendSms && customer.phone) {
     try {
-      const settings = await getMessagingSettings(input.companyId);
-      if (isMessagingConfigured(settings)) {
+      const status = await getCompanyMessagingStatus(input.companyId);
+      if (isCompanyMessagingReady(status)) {
         const to = normalizeUSPhone(customer.phone);
         if (to) {
           const body = buildReceiptSms({
@@ -154,7 +154,7 @@ export async function sendPaymentReceipt(input: SendReceiptInput): Promise<void>
             amountCents: input.amountCents,
             tipCents: input.tipCents,
           });
-          await sendSms({ settings, to, body });
+          await sendSms({ companyId: input.companyId, to, body });
         }
       }
     } catch (e) {

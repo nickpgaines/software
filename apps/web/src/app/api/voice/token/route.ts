@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getSessionContext } from "@/lib/auth";
-import { createVoiceAccessToken, getVoiceSettings, isVoiceConfigured } from "@/lib/voice";
+import { createVoiceAccessToken, getCompanyVoiceStatus } from "@/lib/voice";
 
 export const dynamic = "force-dynamic";
 
@@ -14,17 +14,24 @@ export async function GET() {
   if (!ctx) {
     return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   }
-  const settings = await getVoiceSettings(ctx.companyId);
-  if (!isVoiceConfigured(settings)) {
+  const status = await getCompanyVoiceStatus(ctx.companyId);
+  if (!status.platform_configured) {
     return NextResponse.json(
-      { error: "Voice is not configured. Connect Twilio Voice in Settings → Calling." },
+      { error: "Voice is not configured. Platform Twilio is missing env vars." },
       { status: 503, headers: NO_CACHE_HEADERS }
     );
   }
-  // Identity must be a stable, URL-safe string. Sanitize the session user.
-  const identity = ctx.identity.replace(/[^a-zA-Z0-9_.-]/g, "_") || "user";
+  if (!status.has_number) {
+    return NextResponse.json(
+      { error: "No phone number assigned. Buy one in Settings → Messaging." },
+      { status: 503, headers: NO_CACHE_HEADERS }
+    );
+  }
   try {
-    const token = createVoiceAccessToken({ settings, identity });
+    const { token, identity } = createVoiceAccessToken({
+      companyId: ctx.companyId,
+      user: ctx.identity,
+    });
     return NextResponse.json(
       { token, identity, ttl: 3600 },
       { headers: NO_CACHE_HEADERS }

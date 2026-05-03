@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
-import { getDb, type MessagingSettings } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import { normalizeUSPhone } from "@/lib/sms";
+import { getCompanyVoiceStatus } from "@/lib/voice";
+import {
+  parseCompanyFromVoiceFrom,
+  publicBaseUrlFromRequest,
+} from "@/lib/twilio";
 
 export const dynamic = "force-dynamic";
-
-function buildPublicUrl(req: Request): string {
-  const url = new URL(req.url);
-  const proto = req.headers.get("x-forwarded-proto") || url.protocol.replace(":", "");
-  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || url.host;
-  return `${proto}://${host}`;
-}
 
 function escapeXml(value: string): string {
   return value
@@ -20,49 +18,50 @@ function escapeXml(value: string): string {
     .replace(/'/g, "&apos;");
 }
 
+function rejectCall(message: string): NextResponse {
+  const xml = `<?xml version="1.0" encoding="UTF-8"?><Response><Say>${escapeXml(
+    message
+  )}</Say><Hangup/></Response>`;
+  return new NextResponse(xml, {
+    status: 200,
+    headers: { "Content-Type": "text/xml" },
+  });
+}
+
 export async function POST(req: Request) {
   const raw = await req.text();
   const params = new URLSearchParams(raw);
 
-  // Tenant identification: Twilio sends AccountSid on every webhook. Look up
-  // the messaging_settings row that holds it; that row's company_id is the
-  // tenant whose Voice SDK app fired this request.
-  const accountSid = params.get("AccountSid") || "";
-  const db = await getDb();
-  const settings = (accountSid
-    ? ((await db
-        .prepare(
-          "SELECT * FROM messaging_settings WHERE account_sid = ? LIMIT 1"
-        )
-        .get(accountSid)) as MessagingSettings | undefined)
-    : undefined);
-  if (!settings) {
-    const xml = `<?xml version="1.0" encoding="UTF-8"?><Response><Say>Sorry, this call could not be placed.</Say><Hangup/></Response>`;
-    return new NextResponse(xml, {
-      status: 200,
-      headers: { "Content-Type": "text/xml" },
-    });
+  // Tenant identification: the caller's identity (issued by /api/voice/token)
+  // encodes the company ID as `c<id>_<user>`. Twilio sends this in the From
+  // parameter as `client:<identity>` for browser-originated outbound calls.
+  const fromParam = params.get("From") || "";
+  const companyId = parseCompanyFromVoiceFrom(fromParam);
+  if (!companyId) {
+    return rejectCall("Sorry, this call could not be placed.");
   }
-  const companyId = settings.company_id;
+
+  const status = await getCompanyVoiceStatus(companyId);
+  if (!status.platform_configured || !status.has_number || !status.primary_number) {
+    return rejectCall("Sorry, this call could not be placed.");
+  }
 
   const toRaw = params.get("To") || params.get("to") || "";
-  const customerIdRaw = params.get("customer_id") || params.get("customerId") || "";
+  const customerIdRaw =
+    params.get("customer_id") || params.get("customerId") || "";
   const callSid = params.get("CallSid") || "";
 
   const to = normalizeUSPhone(toRaw);
   const customerId = Number(customerIdRaw) || null;
-  const from = settings.from_number;
-  const record = settings.voice_record_calls === 1;
+  const from = status.primary_number;
+  const record = status.record_calls;
 
-  if (!to || !from) {
-    const xml = `<?xml version="1.0" encoding="UTF-8"?><Response><Say>Sorry, this call could not be placed.</Say><Hangup/></Response>`;
-    return new NextResponse(xml, {
-      status: 200,
-      headers: { "Content-Type": "text/xml" },
-    });
+  if (!to) {
+    return rejectCall("Sorry, this call could not be placed.");
   }
 
-  // If the caller passed a customer_id, double-check it belongs to this tenant.
+  const db = await getDb();
+
   let safeCustomerId: number | null = null;
   if (customerId) {
     const cust = await db
@@ -71,7 +70,6 @@ export async function POST(req: Request) {
     if (cust) safeCustomerId = customerId;
   }
 
-  // Log the call as it begins. The status webhook will keep this row updated.
   if (callSid) {
     await db
       .prepare(
@@ -86,7 +84,7 @@ export async function POST(req: Request) {
       .run(companyId, safeCustomerId, callSid, from, to);
   }
 
-  const base = buildPublicUrl(req);
+  const base = publicBaseUrlFromRequest(req);
   const statusUrl = `${base}/api/voice/status`;
   const recordingUrl = `${base}/api/voice/recording`;
 

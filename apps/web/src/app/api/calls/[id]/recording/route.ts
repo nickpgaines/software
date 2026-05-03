@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type Call } from "@/lib/db";
-import { fetchTwilioRecording, getVoiceSettings } from "@/lib/voice";
+import { fetchTwilioRecording } from "@/lib/voice";
 import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -21,9 +21,7 @@ export async function GET(
   if (!call || !call.recording_sid) {
     return NextResponse.json({ error: "Recording not found" }, { status: 404 });
   }
-  const settings = await getVoiceSettings(companyId);
   const result = await fetchTwilioRecording({
-    settings,
     recordingSid: call.recording_sid,
     format: "mp3",
   });

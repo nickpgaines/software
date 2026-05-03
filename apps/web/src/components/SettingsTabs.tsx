@@ -1663,34 +1663,59 @@ function SignaturePad({
   );
 }
 
+type CompanyPhoneNumber = {
+  id: number;
+  phone_number: string;
+  friendly_name: string | null;
+  is_primary: boolean;
+  capabilities_voice: boolean;
+  capabilities_sms: boolean;
+  purchased_at: string;
+};
+
 type MessagingStatus = {
   provider: string;
-  account_sid_masked: string | null;
-  auth_token_set: boolean;
-  from_number: string | null;
+  platform_configured: boolean;
   configured: boolean;
-  updated_at: string;
+  from_number: string | null;
+  numbers: CompanyPhoneNumber[];
 };
+
+type AvailableNumberRow = {
+  phone_number: string;
+  friendly_name: string;
+  locality: string | null;
+  region: string | null;
+  postal_code: string | null;
+  capabilities: { voice: boolean; sms: boolean; mms: boolean };
+};
+
+function formatPhone(p: string): string {
+  // Best-effort pretty format for US numbers; falls back to raw E.164.
+  const m = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(p);
+  if (m) return `(${m[1]}) ${m[2]}-${m[3]}`;
+  return p;
+}
 
 function MessagingPanel() {
   const [status, setStatus] = useState<MessagingStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [accountSid, setAccountSid] = useState("");
-  const [authToken, setAuthToken] = useState("");
-  const [fromNumber, setFromNumber] = useState("");
-  const [webhookUrl, setWebhookUrl] = useState("");
-  const [copied, setCopied] = useState(false);
+  const [areaCode, setAreaCode] = useState("");
+  const [contains, setContains] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchResults, setSearchResults] = useState<AvailableNumberRow[] | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [buyingPhone, setBuyingPhone] = useState<string | null>(null);
+  const [actioning, setActioning] = useState<number | null>(null);
 
   async function load() {
+    setLoading(true);
     const res = await fetch("/api/settings/messaging", { cache: "no-store" });
     if (res.ok) {
       const s = (await res.json()) as MessagingStatus;
       setStatus(s);
-      setFromNumber(s.from_number ?? "");
     }
     setLoading(false);
   }
@@ -1699,63 +1724,88 @@ function MessagingPanel() {
     load();
   }, []);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setWebhookUrl(`${window.location.origin}/api/messages/webhook`);
-    }
-  }, []);
-
-  async function save(e: React.FormEvent) {
+  async function search(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
-    setSaving(true);
-    const res = await fetch("/api/settings/messaging", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        account_sid: accountSid || undefined,
-        auth_token: authToken || undefined,
-        from_number: fromNumber || undefined,
-      }),
+    setSearchError(null);
+    setSearching(true);
+    setSearchResults(null);
+    const params = new URLSearchParams();
+    if (areaCode) params.set("area_code", areaCode);
+    if (contains) params.set("contains", contains);
+    const res = await fetch(`/api/phone-numbers/search?${params.toString()}`, {
+      cache: "no-store",
     });
-    setSaving(false);
+    setSearching(false);
     if (!res.ok) {
       const data = (await res.json().catch(() => ({}))) as { error?: string };
-      setError(data.error || "Could not save");
+      setSearchError(data.error || "Search failed");
       return;
     }
-    const s = (await res.json()) as MessagingStatus;
-    setStatus(s);
-    setAccountSid("");
-    setAuthToken("");
-    setFromNumber(s.from_number ?? "");
-    setSavedAt(Date.now());
+    setSearchResults((await res.json()) as AvailableNumberRow[]);
   }
 
-  async function copyWebhook() {
-    try {
-      await navigator.clipboard.writeText(webhookUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // ignore
+  async function buy(phoneNumber: string) {
+    setError(null);
+    setBuyingPhone(phoneNumber);
+    const res = await fetch("/api/phone-numbers", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ phone_number: phoneNumber }),
+    });
+    setBuyingPhone(null);
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(data.error || "Could not buy number");
+      return;
     }
+    setSearchResults(null);
+    setAreaCode("");
+    setContains("");
+    await load();
   }
+
+  async function makePrimary(id: number) {
+    setActioning(id);
+    await fetch(`/api/phone-numbers/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ is_primary: true }),
+    });
+    setActioning(null);
+    await load();
+  }
+
+  async function release(id: number) {
+    if (!confirm("Release this number? It cannot be recovered.")) return;
+    setActioning(id);
+    const res = await fetch(`/api/phone-numbers/${id}`, { method: "DELETE" });
+    setActioning(null);
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(data.error || "Could not release number");
+      return;
+    }
+    await load();
+  }
+
+  const platformOk = !!status?.platform_configured;
+  const numbers = status?.numbers ?? [];
+  const connected = !!status?.configured;
 
   return (
-    <form onSubmit={save} className="space-y-5">
+    <div className="space-y-5">
       <div>
         <h2 className="text-lg font-semibold text-slate-900">Messaging</h2>
         <p className="text-sm text-slate-500 mt-1">
-          Connect your Twilio account to send and receive SMS from the Messages
-          tab. Each business uses its own Twilio number.
+          Send and receive SMS from the Messages tab. Phone numbers are
+          provisioned and managed in-house — pick a number below to get started.
         </p>
       </div>
 
       <div
         className={
           "flex items-center gap-2 text-xs font-medium rounded-full px-3 py-1 w-fit " +
-          (status?.configured
+          (connected
             ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
             : "bg-slate-100 text-slate-600 border border-slate-200")
         }
@@ -1763,127 +1813,172 @@ function MessagingPanel() {
         <span
           className={
             "w-1.5 h-1.5 rounded-full " +
-            (status?.configured ? "bg-emerald-500" : "bg-slate-400")
+            (connected ? "bg-emerald-500" : "bg-slate-400")
           }
         />
-        {status?.configured ? "Connected" : "Not connected"}
+        {connected ? "Connected" : "Not connected"}
         {status?.from_number && (
           <span className="text-slate-500 font-normal">
-            · {status.from_number}
+            · {formatPhone(status.from_number)}
           </span>
         )}
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3 text-sm">
-        <div className="font-medium text-slate-900">Setup steps</div>
-        <ol className="list-decimal list-inside space-y-1 text-slate-600">
-          <li>
-            Sign up at{" "}
-            <a
-              href="https://www.twilio.com/try-twilio"
-              target="_blank"
-              rel="noreferrer"
-              className="text-slate-900 underline"
-            >
-              twilio.com
-            </a>{" "}
-            and buy a local number with SMS enabled.
-          </li>
-          <li>
-            Copy your <span className="font-mono">Account SID</span> and{" "}
-            <span className="font-mono">Auth Token</span> from the Twilio
-            Console dashboard.
-          </li>
-          <li>Paste them below along with the number you bought.</li>
-          <li>
-            In Twilio, open your number&apos;s settings and set{" "}
-            <span className="font-medium">A message comes in</span> to the
-            webhook URL below (HTTP POST).
-          </li>
-        </ol>
-        <div>
-          <div className="text-xs uppercase tracking-wide text-slate-400 mb-1.5">
-            Inbound webhook URL
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              readOnly
-              value={webhookUrl}
-              className="flex-1 border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono text-xs"
-            />
-            <button
-              type="button"
-              onClick={copyWebhook}
-              className="text-sm bg-white border border-slate-200 hover:bg-slate-100 rounded-full px-4 py-2 font-medium"
-            >
-              {copied ? "Copied" : "Copy"}
-            </button>
-          </div>
+      {!platformOk && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          Platform Twilio credentials are missing on the server. Set the
+          <span className="font-mono"> TWILIO_*</span> env vars in your hosting
+          environment, then redeploy.
         </div>
-      </div>
+      )}
 
-      <Field label="Account SID">
-        <input
-          type="text"
-          value={accountSid}
-          disabled={loading}
-          onChange={(e) => setAccountSid(e.target.value)}
-          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono"
-          placeholder={
-            status?.account_sid_masked || "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-          }
-        />
-      </Field>
-      <Field label="Auth Token">
-        <input
-          type="password"
-          value={authToken}
-          disabled={loading}
-          onChange={(e) => setAuthToken(e.target.value)}
-          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono"
-          placeholder={
-            status?.auth_token_set ? "•••••••••••••••• (saved)" : "Auth Token"
-          }
-        />
-      </Field>
-      <Field label="From number">
-        <input
-          type="tel"
-          value={fromNumber}
-          disabled={loading}
-          onChange={(e) => setFromNumber(e.target.value)}
-          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
-          placeholder="e.g. +18435551234 (your Twilio number)"
-        />
-      </Field>
-
-      {error && <p className="text-sm text-rose-600">{error}</p>}
-      <div className="flex items-center gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={saving || loading}
-          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
-        >
-          {saving ? "Saving…" : "Save changes"}
-        </button>
-        {savedAt && !saving && (
-          <span className="text-xs text-emerald-600">Saved</span>
+      <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+        <div className="text-sm font-medium text-slate-900">Your numbers</div>
+        {loading ? (
+          <p className="text-sm text-slate-500">Loading…</p>
+        ) : numbers.length === 0 ? (
+          <p className="text-sm text-slate-500">
+            No phone numbers yet. Search and buy one below.
+          </p>
+        ) : (
+          <ul className="divide-y divide-slate-100">
+            {numbers.map((n) => (
+              <li
+                key={n.id}
+                className="flex items-center justify-between py-2"
+              >
+                <div className="space-y-0.5">
+                  <div className="font-mono text-sm text-slate-900">
+                    {formatPhone(n.phone_number)}
+                    {n.is_primary && (
+                      <span className="ml-2 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5 align-middle">
+                        Primary
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-xs text-slate-500">
+                    {n.capabilities_sms ? "SMS" : ""}
+                    {n.capabilities_sms && n.capabilities_voice ? " · " : ""}
+                    {n.capabilities_voice ? "Voice" : ""}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {!n.is_primary && (
+                    <button
+                      type="button"
+                      onClick={() => makePrimary(n.id)}
+                      disabled={actioning === n.id}
+                      className="text-xs bg-white border border-slate-200 hover:bg-slate-100 rounded-full px-3 py-1 font-medium disabled:opacity-50"
+                    >
+                      Make primary
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => release(n.id)}
+                    disabled={actioning === n.id}
+                    className="text-xs bg-white border border-rose-200 text-rose-700 hover:bg-rose-50 rounded-full px-3 py-1 font-medium disabled:opacity-50"
+                  >
+                    Release
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
-    </form>
+
+      <form
+        onSubmit={search}
+        className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3"
+      >
+        <div className="text-sm font-medium text-slate-900">Buy a new number</div>
+        <p className="text-xs text-slate-500">
+          Search Twilio's catalog of available US local numbers. Numbers are
+          billed monthly to the platform account and automatically configured
+          for inbound SMS and voice.
+        </p>
+        <div className="flex flex-wrap gap-2 items-end">
+          <Field label="Area code">
+            <input
+              type="text"
+              value={areaCode}
+              onChange={(e) => setAreaCode(e.target.value.replace(/\D/g, "").slice(0, 3))}
+              placeholder="843"
+              className="w-28 border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono"
+            />
+          </Field>
+          <Field label="Contains">
+            <input
+              type="text"
+              value={contains}
+              onChange={(e) => setContains(e.target.value)}
+              placeholder="optional"
+              className="w-40 border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono"
+            />
+          </Field>
+          <button
+            type="submit"
+            disabled={searching || !platformOk}
+            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+          >
+            {searching ? "Searching…" : "Search"}
+          </button>
+        </div>
+
+        {searchError && (
+          <p className="text-sm text-rose-600">{searchError}</p>
+        )}
+
+        {searchResults && (
+          <div className="rounded-lg border border-slate-200 bg-white overflow-hidden">
+            {searchResults.length === 0 ? (
+              <p className="text-sm text-slate-500 p-3">
+                No numbers matched. Try a different area code.
+              </p>
+            ) : (
+              <ul className="divide-y divide-slate-100">
+                {searchResults.map((r) => (
+                  <li
+                    key={r.phone_number}
+                    className="flex items-center justify-between p-3"
+                  >
+                    <div className="space-y-0.5">
+                      <div className="font-mono text-sm text-slate-900">
+                        {formatPhone(r.phone_number)}
+                      </div>
+                      <div className="text-xs text-slate-500">
+                        {[r.locality, r.region].filter(Boolean).join(", ") ||
+                          "—"}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => buy(r.phone_number)}
+                      disabled={buyingPhone === r.phone_number}
+                      className="text-xs bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-3 py-1.5 font-medium"
+                    >
+                      {buyingPhone === r.phone_number ? "Buying…" : "Buy"}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+      </form>
+
+      {error && <p className="text-sm text-rose-600">{error}</p>}
+    </div>
   );
 }
 
 type CallingStatus = {
-  api_key_sid_masked: string | null;
-  api_key_secret_set: boolean;
-  twiml_app_sid_masked: string | null;
-  record_calls: boolean;
+  platform_configured: boolean;
   configured: boolean;
-  has_account_credentials: boolean;
   has_business_number: boolean;
   business_number: string | null;
+  record_calls: boolean;
 };
 
 function CallingPanel() {
@@ -1893,11 +1988,7 @@ function CallingPanel() {
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [apiKeySid, setApiKeySid] = useState("");
-  const [apiKeySecret, setApiKeySecret] = useState("");
-  const [twimlAppSid, setTwimlAppSid] = useState("");
   const [recordCalls, setRecordCalls] = useState(true);
-  const [twimlVoiceUrl, setTwimlVoiceUrl] = useState("");
 
   async function load() {
     const res = await fetch("/api/settings/voice", { cache: "no-store" });
@@ -1913,12 +2004,6 @@ function CallingPanel() {
     load();
   }, []);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setTwimlVoiceUrl(`${window.location.origin}/api/voice/outbound`);
-    }
-  }, []);
-
   async function save(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -1926,12 +2011,7 @@ function CallingPanel() {
     const res = await fetch("/api/settings/voice", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        api_key_sid: apiKeySid || undefined,
-        api_key_secret: apiKeySecret || undefined,
-        twiml_app_sid: twimlAppSid || undefined,
-        record_calls: recordCalls,
-      }),
+      body: JSON.stringify({ record_calls: recordCalls }),
     });
     setSaving(false);
     if (!res.ok) {
@@ -1941,9 +2021,6 @@ function CallingPanel() {
     }
     const s = (await res.json()) as CallingStatus;
     setStatus(s);
-    setApiKeySid("");
-    setApiKeySecret("");
-    setTwimlAppSid("");
     setSavedAt(Date.now());
   }
 
@@ -1979,87 +2056,19 @@ function CallingPanel() {
         )}
       </div>
 
-      {!status?.has_account_credentials && (
+      {!status?.platform_configured && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-          Connect your Twilio account in <strong>Settings → Messaging</strong>{" "}
-          first. Calling reuses the same Account SID, Auth Token, and number.
+          Voice is unavailable: platform Twilio credentials are missing on the
+          server. Set <span className="font-mono">TWILIO_*</span> env vars and
+          redeploy.
         </div>
       )}
-
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3 text-sm">
-        <div className="font-medium text-slate-900">Setup steps</div>
-        <ol className="list-decimal list-inside space-y-1 text-slate-600">
-          <li>
-            In the Twilio Console, go to{" "}
-            <span className="font-medium">Account → API keys & tokens</span>{" "}
-            and click <strong>Create API key</strong>. Type:{" "}
-            <span className="font-mono">Standard</span>. Copy the{" "}
-            <span className="font-mono">SID</span> (starts with{" "}
-            <span className="font-mono">SK</span>) and the{" "}
-            <span className="font-mono">Secret</span>. The Secret is only shown
-            once.
-          </li>
-          <li>
-            In Twilio, go to <span className="font-medium">Voice → Manage → TwiML Apps</span>{" "}
-            and click <strong>Create new TwiML App</strong>. Set the{" "}
-            <span className="font-medium">Voice → Request URL</span> to the
-            URL below (HTTP POST). Save and copy the App SID (starts with{" "}
-            <span className="font-mono">AP</span>).
-          </li>
-          <li>Paste all three values below.</li>
-        </ol>
-        <div>
-          <div className="text-xs uppercase tracking-wide text-slate-400 mb-1.5">
-            TwiML App Voice URL
-          </div>
-          <input
-            type="text"
-            readOnly
-            value={twimlVoiceUrl}
-            onFocus={(e) => e.currentTarget.select()}
-            className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono text-xs"
-          />
+      {status?.platform_configured && !status?.has_business_number && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+          Buy a phone number in <strong>Settings → Messaging</strong> first.
+          Outbound calls use your primary number as the caller ID.
         </div>
-      </div>
-
-      <Field label="API Key SID">
-        <input
-          type="text"
-          value={apiKeySid}
-          disabled={loading}
-          onChange={(e) => setApiKeySid(e.target.value)}
-          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono"
-          placeholder={
-            status?.api_key_sid_masked || "SKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-          }
-        />
-      </Field>
-      <Field label="API Key Secret">
-        <input
-          type="password"
-          value={apiKeySecret}
-          disabled={loading}
-          onChange={(e) => setApiKeySecret(e.target.value)}
-          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono"
-          placeholder={
-            status?.api_key_secret_set
-              ? "•••••••••••••••• (saved)"
-              : "API Key Secret"
-          }
-        />
-      </Field>
-      <Field label="TwiML App SID">
-        <input
-          type="text"
-          value={twimlAppSid}
-          disabled={loading}
-          onChange={(e) => setTwimlAppSid(e.target.value)}
-          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono"
-          placeholder={
-            status?.twiml_app_sid_masked || "APxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-          }
-        />
-      </Field>
+      )}
 
       <label className="flex items-center gap-2 text-sm text-slate-700">
         <input
