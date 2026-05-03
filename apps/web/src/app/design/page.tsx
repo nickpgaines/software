@@ -2,19 +2,34 @@ import Link from "next/link";
 
 const refined = [
   {
+    slug: "concept-g",
+    name: "Concept G — Balanced Light",
+    tagline: "Layered tones. Dark top bar. Bold but breathable.",
+    description:
+      "Grey canvas → white cards → black accents, with a full-width dark top bar (HomeBase pattern). Bold weights, rounded-2xl, structured. The current frontrunner.",
+    swatches: ["#09090b", "#f4f4f5", "#ffffff", "#e4e4e7", "#71717a"],
+  },
+  {
+    slug: "concept-h",
+    name: "Concept H — Balanced Dark",
+    tagline: "Layered tones. Black top bar. Cards lift off the canvas.",
+    description:
+      "Dark grey canvas → lighter zinc-800 cards → white accents. Avoids the all-black-on-black trap. Same system as G, inverted palette.",
+    swatches: ["#000000", "#18181b", "#27272a", "#3f3f46", "#ffffff"],
+  },
+];
+
+const earlierBold = [
+  {
     slug: "concept-e",
     name: "Concept E — Bold Dark",
-    tagline: "Refined: bolder, rounder, simpler.",
-    description:
-      "Black canvas with deep zinc cards, heavy weights everywhere, rounded-3xl panels, schedule rendered as cards (not a table). Built from your feedback on C+D.",
+    tagline: "All-black canvas. Rounded-3xl pillows.",
     swatches: ["#000000", "#0a0a0a", "#27272a", "#a1a1aa", "#ffffff"],
   },
   {
     slug: "concept-f",
     name: "Concept F — Bold Light",
-    tagline: "Refined: bolder, rounder, simpler.",
-    description:
-      "Warm neutral canvas, white cards, heavy weights, rounded-3xl panels, schedule as cards. The light counterpart to Concept E.",
+    tagline: "Warm neutral canvas. Rounded-3xl pillows.",
     swatches: ["#f5f5f5", "#ffffff", "#e5e5e5", "#737373", "#0a0a0a"],
   },
 ];
@@ -65,7 +80,7 @@ export default function DesignIndexPage() {
 
         <div className="mb-3">
           <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
-            Refined — start here
+            Latest — start here
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
@@ -76,7 +91,18 @@ export default function DesignIndexPage() {
 
         <div className="mb-3">
           <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
-            Earlier explorations
+            Bold round (E, F)
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
+          {earlierBold.map((c) => (
+            <ConceptCard key={c.slug} {...c} description="" />
+          ))}
+        </div>
+
+        <div className="mb-3">
+          <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
+            Earlier explorations (A–D)
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -145,6 +171,62 @@ function ConceptCard({
 }
 
 function ConceptThumbnail({ slug }: { slug: string }) {
+  if (slug === "concept-g") {
+    return (
+      <div className="absolute inset-0 bg-zinc-100 flex flex-col">
+        <div className="bg-zinc-950 h-7 flex items-center gap-1 px-3">
+          <div className="w-3 h-3 rounded bg-white" />
+          <div className="h-1.5 w-8 bg-white/20 rounded-sm ml-2" />
+          <div className="h-1.5 w-8 bg-white/10 rounded-sm" />
+          <div className="h-1.5 w-8 bg-white/10 rounded-sm" />
+          <div className="h-1.5 w-8 bg-white/10 rounded-sm" />
+          <div className="ml-auto h-3 w-12 rounded-full bg-white/10" />
+          <div className="h-3 w-8 rounded-full bg-white" />
+        </div>
+        <div className="flex-1 p-3 space-y-2">
+          <div className="h-3 w-32 bg-zinc-900 rounded-sm" />
+          <div className="grid grid-cols-4 gap-1.5">
+            <div className="h-9 bg-white border border-zinc-200 rounded-lg" />
+            <div className="h-9 bg-white border border-zinc-200 rounded-lg" />
+            <div className="h-9 bg-white border border-zinc-200 rounded-lg" />
+            <div className="h-9 bg-white border border-zinc-200 rounded-lg" />
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            <div className="col-span-2 h-16 bg-white border border-zinc-200 rounded-lg" />
+            <div className="h-16 bg-white border border-zinc-200 rounded-lg" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+  if (slug === "concept-h") {
+    return (
+      <div className="absolute inset-0 bg-zinc-900 flex flex-col">
+        <div className="bg-black h-7 flex items-center gap-1 px-3">
+          <div className="w-3 h-3 rounded bg-white" />
+          <div className="h-1.5 w-8 bg-white/20 rounded-sm ml-2" />
+          <div className="h-1.5 w-8 bg-white/10 rounded-sm" />
+          <div className="h-1.5 w-8 bg-white/10 rounded-sm" />
+          <div className="h-1.5 w-8 bg-white/10 rounded-sm" />
+          <div className="ml-auto h-3 w-12 rounded-full bg-white/10" />
+          <div className="h-3 w-8 rounded-full bg-white" />
+        </div>
+        <div className="flex-1 p-3 space-y-2">
+          <div className="h-3 w-32 bg-white rounded-sm" />
+          <div className="grid grid-cols-4 gap-1.5">
+            <div className="h-9 bg-zinc-800 border border-zinc-700/60 rounded-lg" />
+            <div className="h-9 bg-zinc-800 border border-zinc-700/60 rounded-lg" />
+            <div className="h-9 bg-zinc-800 border border-zinc-700/60 rounded-lg" />
+            <div className="h-9 bg-zinc-800 border border-zinc-700/60 rounded-lg" />
+          </div>
+          <div className="grid grid-cols-3 gap-1.5">
+            <div className="col-span-2 h-16 bg-zinc-800 border border-zinc-700/60 rounded-lg" />
+            <div className="h-16 bg-zinc-800 border border-zinc-700/60 rounded-lg" />
+          </div>
+        </div>
+      </div>
+    );
+  }
   if (slug === "concept-e") {
     return (
       <div className="absolute inset-0 bg-black p-3 grid grid-cols-[60px_1fr] gap-2">
