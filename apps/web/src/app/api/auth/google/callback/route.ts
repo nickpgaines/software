@@ -3,6 +3,8 @@ import { SESSION_COOKIE, createSessionToken } from "@/lib/auth";
 import { getDb, type Staff } from "@/lib/db";
 import { OAUTH_STATE_COOKIE, verifyOAuthState } from "@/lib/oauth";
 
+export const dynamic = "force-dynamic";
+
 type GoogleTokenResponse = {
   access_token?: string;
   id_token?: string;

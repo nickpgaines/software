@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { OAUTH_STATE_COOKIE, createOAuthState } from "@/lib/oauth";
 
+export const dynamic = "force-dynamic";
+
 export async function GET(req: Request) {
   const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID?.trim();
   if (!clientId) {
