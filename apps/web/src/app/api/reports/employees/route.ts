@@ -14,9 +14,16 @@ type StaffRow = {
   created_at: string;
 };
 
-type RevenueRow = { staff_id: number; revenue: number; minutes: number };
+type RevenueRow = { staff_id: number; revenue: number };
+type TechHoursRow = {
+  staff_id: number;
+  revenue: number;
+  started_at: string | null;
+  completed_at: string | null;
+};
 
 const MS_PER_DAY = 1000 * 60 * 60 * 24;
+const MS_PER_MINUTE = 1000 * 60;
 const DAYS_PER_MONTH = 30.4375;
 
 function displayName(s: StaffRow): string {
@@ -54,8 +61,7 @@ export async function GET() {
   const salesRevenue = (await db
     .prepare(
       `SELECT ja.staff_id AS staff_id,
-              COALESCE(SUM(j.price_cents), 0) AS revenue,
-              COALESCE(SUM(j.duration_minutes), 0) AS minutes
+              COALESCE(SUM(j.price_cents), 0) AS revenue
          FROM job_assignments ja
          JOIN jobs j ON j.id = ja.job_id
         WHERE ja.role = 'sales'
@@ -68,8 +74,7 @@ export async function GET() {
   const techRevenue = (await db
     .prepare(
       `SELECT ja.staff_id AS staff_id,
-              COALESCE(SUM(j.price_cents), 0) AS revenue,
-              COALESCE(SUM(j.duration_minutes), 0) AS minutes
+              COALESCE(SUM(j.price_cents), 0) AS revenue
          FROM job_assignments ja
          JOIN jobs j ON j.id = ja.job_id
         WHERE ja.role = 'tech'
@@ -78,6 +83,42 @@ export async function GET() {
         GROUP BY ja.staff_id`
     )
     .all(companyId)) as RevenueRow[];
+
+  // Per-job rows for techs that have actual on-site time (both started_at
+  // and completed_at). We compute $/hour from these rows only so revenue
+  // and minutes come from the same set of jobs.
+  const techHoursRows = (await db
+    .prepare(
+      `SELECT ja.staff_id AS staff_id,
+              j.price_cents AS revenue,
+              j.started_at AS started_at,
+              j.completed_at AS completed_at
+         FROM job_assignments ja
+         JOIN jobs j ON j.id = ja.job_id
+        WHERE ja.role = 'tech'
+          AND j.company_id = ?
+          AND j.status != 'cancelled'
+          AND j.started_at IS NOT NULL
+          AND j.completed_at IS NOT NULL`
+    )
+    .all(companyId)) as TechHoursRow[];
+
+  const techHoursById = new Map<
+    number,
+    { revenue: number; minutes: number }
+  >();
+  for (const r of techHoursRows) {
+    if (!r.started_at || !r.completed_at) continue;
+    const startedMs = new Date(r.started_at).getTime();
+    const completedMs = new Date(r.completed_at).getTime();
+    if (!Number.isFinite(startedMs) || !Number.isFinite(completedMs)) continue;
+    const minutes = (completedMs - startedMs) / MS_PER_MINUTE;
+    if (!Number.isFinite(minutes) || minutes <= 0) continue;
+    const cur = techHoursById.get(r.staff_id) || { revenue: 0, minutes: 0 };
+    cur.revenue += r.revenue || 0;
+    cur.minutes += minutes;
+    techHoursById.set(r.staff_id, cur);
+  }
 
   const salesById = new Map(salesRevenue.map((r) => [r.staff_id, r]));
   const techById = new Map(techRevenue.map((r) => [r.staff_id, r]));
@@ -116,13 +157,10 @@ export async function GET() {
     }
   }
 
-  function buildRow(staffId: number, source: "sales" | "tech"): SalesOut & {
-    minutes_worked: number;
-  } {
+  function buildRow(staffId: number, source: "sales" | "tech"): SalesOut {
     const s = staffById.get(staffId);
     const data = source === "sales" ? salesById.get(staffId) : techById.get(staffId);
     const lifetime = data?.revenue || 0;
-    const minutes = data?.minutes || 0;
     const days = s ? tenureDays(s.created_at, now) : 1;
     const months = days / DAYS_PER_MONTH;
     return {
@@ -134,7 +172,6 @@ export async function GET() {
       lifetime_revenue_cents: lifetime,
       avg_monthly_revenue_cents: months > 0 ? Math.round(lifetime / months) : 0,
       avg_daily_revenue_cents: days > 0 ? Math.round(lifetime / days) : 0,
-      minutes_worked: minutes,
     };
   }
 
@@ -144,13 +181,19 @@ export async function GET() {
 
   const tech: TechOut[] = Array.from(techIds)
     .map((id) => buildRow(id, "tech"))
-    .map((r) => ({
-      ...r,
-      avg_dollar_per_hour_cents:
-        r.minutes_worked > 0
-          ? Math.round((r.lifetime_revenue_cents * 60) / r.minutes_worked)
-          : 0,
-    }))
+    .map((r) => {
+      const hours = techHoursById.get(r.id);
+      const minutes = hours?.minutes || 0;
+      const revenueOnTimedJobs = hours?.revenue || 0;
+      return {
+        ...r,
+        minutes_worked: minutes,
+        avg_dollar_per_hour_cents:
+          minutes > 0
+            ? Math.round((revenueOnTimedJobs * 60) / minutes)
+            : 0,
+      };
+    })
     .sort((a, b) => b.lifetime_revenue_cents - a.lifetime_revenue_cents);
 
   const aggregates = {
