@@ -1,5 +1,40 @@
 import Link from "next/link";
 
+const sidebars = [
+  {
+    slug: "concept-bold-13",
+    name: "B13 — Pop-up · leftbar",
+    tagline: "Floating sidebar · larger nav items · leftbar accent active state.",
+    description:
+      "B9 size + B5↔B7 toggle + larger nav items (text-[15px], 20px icons, py-3 padding). Sidebar floats with margin and expands on hover. Active items get a tinted blue background with a left bar.",
+    swatches: ["#fafafa", "#18181b", "#379CFB", "#71717a", "#ffffff"],
+  },
+  {
+    slug: "concept-bold-14",
+    name: "B14 — Pop-up · fill",
+    tagline: "Floating sidebar · larger nav items · solid blue active fill.",
+    description:
+      "Same floating sidebar and larger items as B13, but the active item is a solid blue pill with white text and a soft glow.",
+    swatches: ["#fafafa", "#18181b", "#379CFB", "#71717a", "#ffffff"],
+  },
+  {
+    slug: "concept-bold-15",
+    name: "B15 — Static · leftbar",
+    tagline: "Always-open sidebar (Nick360 pattern) · leftbar accent active state.",
+    description:
+      "Sidebar is fixed at 240px wide and stays put — no hover expand. Active item gets the tinted blue + leftbar accent.",
+    swatches: ["#fafafa", "#18181b", "#379CFB", "#71717a", "#ffffff"],
+  },
+  {
+    slug: "concept-bold-16",
+    name: "B16 — Static · fill",
+    tagline: "Always-open sidebar · solid blue active fill.",
+    description:
+      "Same static sidebar as B15, but active items are solid blue pills.",
+    swatches: ["#fafafa", "#18181b", "#379CFB", "#71717a", "#ffffff"],
+  },
+];
+
 const toggle = [
   {
     slug: "concept-bold-9",
@@ -345,19 +380,32 @@ export default function DesignIndexPage() {
             Pick a direction.
           </h1>
           <p className="text-neutral-500 mt-3 max-w-xl text-base font-medium">
-            B9–B12 use B5's color scheme for light mode and B7's for dark
-            mode, with a toggle. Only the headline size differs between them.
+            B13–B16 take B9's font size and B5↔B7 toggle and add four
+            sidebar treatments — two pop-out (floating) and two static —
+            with all click-throughs wired to real CRM data (Schedule,
+            Leaderboard, Reports, Customers).
           </p>
         </div>
 
         <div className="mb-3">
           <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
-            Latest — B5↔B7 toggle · varied headline sizes
+            Latest — sidebar variations · larger nav · real data sub-pages
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
+          {sidebars.map((c) => (
+            <ConceptCard key={c.slug} {...c} highlighted />
+          ))}
+        </div>
+
+        <div className="mb-3">
+          <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
+            B5↔B7 palette · varied headline sizes (B9–B12)
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
           {toggle.map((c) => (
-            <ConceptCard key={c.slug} {...c} highlighted />
+            <ConceptCard key={c.slug} {...c} />
           ))}
         </div>
 

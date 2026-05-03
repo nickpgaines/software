@@ -1,8 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
+import { useEffect } from "react";
 import { ThemeProvider, useTheme, useTokens, ACCENT } from "./concept-live/_theme";
+import { PageHeaderToneProvider } from "./concept-live/_ui";
 import { SmoothRevenueChart } from "./concept-live/_chart";
 import type { LiveJob, RevenueSummary } from "./concept-live/_data";
 
@@ -37,6 +39,9 @@ export type BoldConfig = {
   // Preview-bar nav letters and slug prefix
   navLetters?: string[]; // default ["1","2","3","4"]
   navSlugPrefix?: string; // default "concept-bold-"
+  // Sidebar layout
+  sidebarMode?: "floating" | "static"; // default "floating"
+  navSize?: "default" | "large"; // default "default"
 };
 
 // ---------- Nav ------------------------------------------------------------
@@ -50,15 +55,15 @@ type NavItem = {
 
 const NAV: NavItem[] = [
   { name: "Dashboard", icon: "home", href: "/design/__SLUG__", section: "Workspace" },
-  { name: "Schedule", icon: "calendar", href: "/design/concept-live/schedule", section: "Workspace" },
+  { name: "Schedule", icon: "calendar", href: "/design/__SLUG__/schedule", section: "Workspace" },
   { name: "Map", icon: "map", href: null, section: "Workspace" },
   { name: "Leads", icon: "inbox", href: null, section: "Pipeline" },
   { name: "Messages", icon: "message", href: null, section: "Inbox" },
   { name: "Calls", icon: "phone", href: null, section: "Inbox" },
   { name: "Email", icon: "mail", href: null, section: "Inbox" },
-  { name: "Leaderboard", icon: "trophy", href: "/design/concept-live/leaderboard", section: "Insights" },
-  { name: "Reports", icon: "chart", href: "/design/concept-live/reports", section: "Insights" },
-  { name: "Customers", icon: "user", href: "/design/concept-live/customers", section: "Team" },
+  { name: "Leaderboard", icon: "trophy", href: "/design/__SLUG__/leaderboard", section: "Insights" },
+  { name: "Reports", icon: "chart", href: "/design/__SLUG__/reports", section: "Insights" },
+  { name: "Customers", icon: "user", href: "/design/__SLUG__/customers", section: "Team" },
   { name: "Employees", icon: "users", href: null, section: "Team" },
   { name: "Settings", icon: "settings", href: null, section: "Team" },
 ];
@@ -109,18 +114,26 @@ function ShellInner({
     ? config.canvasBgDark ?? config.canvasBg ?? "bg-zinc-100"
     : config.canvasBgLight ?? config.canvasBg ?? "bg-zinc-100";
 
+  // Bold shells flip the page heading with the canvas, since the canvas
+  // itself changes between modes (unlike concept-live which keeps it light).
+  const tone = config.canvasBgLight && config.canvasBgDark ? "flip" : "static";
+  const isStatic = config.sidebarMode === "static";
+  const mainCls = isStatic ? "ml-60" : "ml-20 pr-3 pb-3";
+
   return (
-    <div className={`min-h-screen ${canvas}`}>
-      <PreviewBar config={config} />
-      <FloatingSidebar config={config} initials={initials} homeSlug={homeSlug} />
-      <main className="ml-20 pr-3 pb-3">
-        <div className="max-w-6xl mx-auto px-4 py-8">{children}</div>
-      </main>
-    </div>
+    <PageHeaderToneProvider tone={tone}>
+      <div className={`min-h-screen ${canvas}`}>
+        <PreviewBar config={config} />
+        <Sidebar config={config} initials={initials} homeSlug={homeSlug} />
+        <main className={mainCls}>
+          <div className="max-w-6xl mx-auto px-4 py-8">{children}</div>
+        </main>
+      </div>
+    </PageHeaderToneProvider>
   );
 }
 
-function FloatingSidebar({
+function Sidebar({
   config,
   initials,
   homeSlug,
@@ -130,13 +143,16 @@ function FloatingSidebar({
   homeSlug: string;
 }) {
   const t = useTokens();
+  const pathname = usePathname();
   const items = NAV.map((it) => ({
     ...it,
     href: it.href?.replace("__SLUG__", homeSlug) ?? null,
   }));
 
+  const isStatic = config.sidebarMode === "static";
+
   const sidebarBg = t.isDark ? "bg-zinc-900" : "bg-white";
-  const sidebarBorder = t.isDark ? "border border-zinc-800" : "border border-zinc-200";
+  const sidebarBorder = t.isDark ? "border-zinc-800" : "border-zinc-200";
 
   // group by section if enabled
   const grouped: { section: string | null; items: typeof items }[] = [];
@@ -153,10 +169,21 @@ function FloatingSidebar({
     grouped.push({ section: null, items });
   }
 
+  // Floating: collapsed icon strip that expands on hover.
+  // Static:   always-visible 240px column flush against the viewport.
+  const asideCls = isStatic
+    ? `fixed left-0 top-11 bottom-0 w-60 z-40 ${sidebarBg} border-r ${sidebarBorder} flex flex-col`
+    : `group fixed left-3 top-14 bottom-3 w-14 hover:w-60 transition-[width] duration-200 z-40 ${sidebarBg} border ${sidebarBorder} rounded-2xl shadow-[0_10px_30px_-12px_rgba(0,0,0,0.18),0_2px_6px_rgba(0,0,0,0.06)] overflow-hidden whitespace-nowrap flex flex-col`;
+
+  // Labels & counts: in floating mode they fade in on group-hover; in
+  // static mode they're always visible.
+  const labelClsBase = "flex-1 truncate";
+  const labelHoverCls = isStatic
+    ? labelClsBase
+    : `${labelClsBase} opacity-0 group-hover:opacity-100 transition-opacity duration-150 group-hover:delay-100`;
+
   return (
-    <aside
-      className={`group fixed left-3 top-14 bottom-3 w-14 hover:w-60 transition-[width] duration-200 z-40 ${sidebarBg} ${sidebarBorder} rounded-2xl shadow-[0_10px_30px_-12px_rgba(0,0,0,0.18),0_2px_6px_rgba(0,0,0,0.06)] overflow-hidden whitespace-nowrap flex flex-col`}
-    >
+    <aside className={asideCls}>
       {/* Brand */}
       <div className="flex items-center gap-2.5 px-2.5 h-14 flex-shrink-0">
         <div
@@ -165,7 +192,7 @@ function FloatingSidebar({
         >
           N
         </div>
-        <div className="flex-1 min-w-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150 group-hover:delay-100">
+        <div className={`flex-1 min-w-0 ${isStatic ? "" : "opacity-0 group-hover:opacity-100 transition-opacity duration-150 group-hover:delay-100"}`}>
           <div className={`tracking-tight ${config.brandFontSize} font-extrabold ${t.text}`}>Nick360</div>
           <div className={`text-[11px] ${t.subtle} font-bold truncate`}>Window cleaning</div>
         </div>
@@ -173,11 +200,11 @@ function FloatingSidebar({
 
       {/* New */}
       <button
-        className={`mx-2 mb-3 h-10 rounded-xl text-white ${config.navWeight === "font-extrabold" ? "font-extrabold" : "font-bold"} flex items-center gap-2 px-3`}
+        className={`mx-2 mb-3 ${config.navSize === "large" ? "h-11" : "h-10"} rounded-xl text-white ${config.navWeight === "font-extrabold" ? "font-extrabold" : "font-bold"} flex items-center gap-2 px-3`}
         style={{ background: ACCENT, boxShadow: `0 2px 12px ${ACCENT}40` }}
       >
         <NavIcon name="plus" />
-        <span className="text-[13px] opacity-0 group-hover:opacity-100 transition-opacity duration-150 group-hover:delay-100">
+        <span className={`${config.navSize === "large" ? "text-[14px]" : "text-[13px]"} ${isStatic ? "" : "opacity-0 group-hover:opacity-100 transition-opacity duration-150 group-hover:delay-100"}`}>
           New
         </span>
       </button>
@@ -188,14 +215,22 @@ function FloatingSidebar({
           <li key={gi}>
             {g.section && (
               <div
-                className={`px-3 pt-2 pb-1 text-[10px] uppercase tracking-[0.16em] font-extrabold ${t.subtle} opacity-0 group-hover:opacity-100 transition-opacity duration-150 group-hover:delay-100`}
+                className={`px-3 pt-2 pb-1 text-[10px] uppercase tracking-[0.16em] font-extrabold ${t.subtle} ${isStatic ? "" : "opacity-0 group-hover:opacity-100 transition-opacity duration-150 group-hover:delay-100"}`}
               >
                 {g.section}
               </div>
             )}
             <ul className="space-y-0.5">
               {g.items.map((it) => (
-                <NavRow key={it.name} it={it} config={config} t={t} />
+                <NavRow
+                  key={it.name}
+                  it={it}
+                  config={config}
+                  t={t}
+                  pathname={pathname}
+                  labelHoverCls={labelHoverCls}
+                  isStatic={isStatic}
+                />
               ))}
             </ul>
           </li>
@@ -207,7 +242,7 @@ function FloatingSidebar({
         <div className={`w-9 h-9 rounded-full ${t.iconChip} text-[12px] font-extrabold flex items-center justify-center flex-shrink-0`}>
           {initials || "?"}
         </div>
-        <div className="flex-1 min-w-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150 group-hover:delay-100">
+        <div className={`flex-1 min-w-0 ${isStatic ? "" : "opacity-0 group-hover:opacity-100 transition-opacity duration-150 group-hover:delay-100"}`}>
           <div className={`text-[13px] font-extrabold truncate ${t.text}`}>Account</div>
           <div className={`text-[11px] ${t.subtle} truncate font-bold`}>Owner</div>
         </div>
@@ -220,19 +255,43 @@ function NavRow({
   it,
   config,
   t,
+  pathname,
+  labelHoverCls,
+  isStatic,
 }: {
   it: NavItem & { href: string | null };
   config: BoldConfig;
   t: ReturnType<typeof useTokens>;
+  pathname: string | null;
+  labelHoverCls: string;
+  isStatic: boolean;
 }) {
-  // Active state from pathname could be wired via usePathname; for the bold
-  // dashboard preview we mark Dashboard as active by default.
-  const active = it.name === "Dashboard";
-  const baseRow = `flex items-center gap-3 px-3 py-2.5 rounded-xl text-[13.5px] ${config.navWeight} transition-colors`;
-  const labelCls =
-    "flex-1 truncate opacity-0 group-hover:opacity-100 transition-opacity duration-150 group-hover:delay-100";
+  // Active = exact match on pathname, or sub-route under it (for nested
+  // pages that share the parent nav entry).
+  const active =
+    !!it.href &&
+    (pathname === it.href ||
+      (it.href !== `/design/${(config.navSlugPrefix ?? "concept-bold-")}${it.name}` &&
+        pathname?.startsWith(it.href + "/")));
 
-  if (active && config.navActive === "leftbar") {
+  // Dashboard is special: only active on exact match (not when on schedule etc.)
+  // Other items: active if pathname starts with their href.
+  const isDashboard = it.name === "Dashboard";
+  const isActive =
+    !!it.href &&
+    (isDashboard
+      ? pathname === it.href
+      : pathname === it.href || pathname?.startsWith(it.href + "/"));
+
+  const large = config.navSize === "large";
+  const padding = large ? "px-3 py-3" : "px-3 py-2.5";
+  const textSize = large ? "text-[15px]" : "text-[13.5px]";
+  const iconSize = large ? "w-5 h-5" : "w-4 h-4";
+  const gap = large ? "gap-3.5" : "gap-3";
+  const baseRow = `flex items-center ${gap} ${padding} rounded-xl ${textSize} ${config.navWeight} transition-colors`;
+  void active;
+
+  if (isActive && config.navActive === "leftbar") {
     return (
       <li>
         <Link
@@ -241,10 +300,10 @@ function NavRow({
           style={{ background: `${ACCENT}1A` }}
         >
           <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r" style={{ background: ACCENT }} />
-          <span className="flex-shrink-0" style={{ color: ACCENT }}>
-            <NavIcon name={it.icon} />
+          <span className={`flex-shrink-0 ${iconSize}`} style={{ color: ACCENT }}>
+            <NavIcon name={it.icon} className={iconSize} />
           </span>
-          <span className={labelCls} style={{ color: ACCENT }}>
+          <span className={labelHoverCls} style={{ color: ACCENT }}>
             {it.name}
           </span>
         </Link>
@@ -252,7 +311,7 @@ function NavRow({
     );
   }
 
-  if (active) {
+  if (isActive) {
     return (
       <li>
         <Link
@@ -260,8 +319,8 @@ function NavRow({
           className={`${baseRow} text-white`}
           style={{ background: ACCENT, boxShadow: `0 2px 8px ${ACCENT}33` }}
         >
-          <NavIcon name={it.icon} />
-          <span className={labelCls}>{it.name}</span>
+          <NavIcon name={it.icon} className={iconSize} />
+          <span className={labelHoverCls}>{it.name}</span>
         </Link>
       </li>
     );
@@ -272,9 +331,9 @@ function NavRow({
       <li>
         <Link href={it.href} className={`${baseRow} ${t.muted} ${t.hoverBg}`}>
           <span className={`flex-shrink-0 ${t.subtle}`}>
-            <NavIcon name={it.icon} />
+            <NavIcon name={it.icon} className={iconSize} />
           </span>
-          <span className={labelCls}>{it.name}</span>
+          <span className={labelHoverCls}>{it.name}</span>
         </Link>
       </li>
     );
@@ -284,9 +343,9 @@ function NavRow({
     <li>
       <div className={`${baseRow} ${t.subtle} cursor-default`}>
         <span className={`flex-shrink-0 ${t.subtle}`}>
-          <NavIcon name={it.icon} />
+          <NavIcon name={it.icon} className={iconSize} />
         </span>
-        <span className={labelCls}>{it.name}</span>
+        <span className={labelHoverCls}>{it.name}</span>
       </div>
     </li>
   );
@@ -606,8 +665,8 @@ function formatCents(c: number) {
   return `$${(c / 100).toFixed(c % 100 === 0 ? 0 : 2)}`;
 }
 
-function NavIcon({ name }: { name: string }) {
-  const common = { className: "w-4 h-4", viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2 } as const;
+function NavIcon({ name, className = "w-4 h-4" }: { name: string; className?: string }) {
+  const common = { className, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor", strokeWidth: 2 } as const;
   switch (name) {
     case "home": return <svg {...common}><path d="M3 12 12 4l9 8" /><path d="M5 10v10h14V10" /></svg>;
     case "calendar": return <svg {...common}><rect x="3" y="5" width="18" height="16" rx="3" /><path d="M3 10h18M8 3v4M16 3v4" /></svg>;

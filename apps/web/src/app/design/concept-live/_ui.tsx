@@ -1,13 +1,36 @@
 "use client";
 
+import { createContext, useContext } from "react";
 import { useTokens, ACCENT } from "./_theme";
 
+// Tone of the page-level heading (sits on the canvas, not inside a card).
+// "static": always dark zinc text (concept-live: canvas is light grey in
+// both modes). "flip": follows dark/light tokens (bold variants where the
+// canvas itself flips).
+export type PageHeaderTone = "static" | "flip";
+const PageHeaderToneContext = createContext<PageHeaderTone>("static");
+
+export function PageHeaderToneProvider({
+  tone,
+  children,
+}: {
+  tone: PageHeaderTone;
+  children: React.ReactNode;
+}) {
+  return (
+    <PageHeaderToneContext.Provider value={tone}>{children}</PageHeaderToneContext.Provider>
+  );
+}
+
 export function PageHeader({ title, subtitle }: { title: React.ReactNode; subtitle?: string }) {
-  // Page-level text always dark — sits on the light grey canvas, not on a flipping widget
+  const tone = useContext(PageHeaderToneContext);
+  const t = useTokens();
+  const headingColor = tone === "flip" ? t.text : "text-zinc-950";
+  const subtitleColor = tone === "flip" ? t.muted : "text-zinc-500";
   return (
     <div className="mb-6">
-      <h1 className="text-3xl sm:text-4xl font-bold text-zinc-950">{title}</h1>
-      {subtitle && <p className="text-sm text-zinc-500 mt-1 font-semibold">{subtitle}</p>}
+      <h1 className={`text-3xl sm:text-4xl font-bold ${headingColor}`}>{title}</h1>
+      {subtitle && <p className={`text-sm ${subtitleColor} mt-1 font-semibold`}>{subtitle}</p>}
     </div>
   );
 }
