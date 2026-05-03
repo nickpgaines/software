@@ -6,7 +6,7 @@ import PayrollSettingsModal, {
   type PayrollSettingsValue,
 } from "./PayrollSettingsModal";
 
-type Tab = "overview" | "sales" | "jobs" | "subscriptions" | "map" | "payroll";
+type Tab = "overview" | "sales" | "jobs" | "subscriptions" | "map" | "employees" | "payroll";
 type Range = "1w" | "1m" | "3m" | "1y";
 
 const TABS: { key: Tab; label: string }[] = [
@@ -15,6 +15,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "jobs", label: "Jobs" },
   { key: "subscriptions", label: "Subscriptions" },
   { key: "map", label: "Map" },
+  { key: "employees", label: "Employees" },
   { key: "payroll", label: "Payroll" },
 ];
 
@@ -62,7 +63,7 @@ export default function ReportsClient() {
             );
           })}
         </nav>
-        {tab !== "subscriptions" && (
+        {tab !== "subscriptions" && tab !== "employees" && (
           <RangePills range={range} setRange={setRange} />
         )}
       </div>
@@ -72,6 +73,7 @@ export default function ReportsClient() {
       {tab === "jobs" && <JobsPanel range={range} />}
       {tab === "subscriptions" && <SubscriptionsPanel />}
       {tab === "map" && <MapPanel range={range} />}
+      {tab === "employees" && <EmployeesPanel />}
       {tab === "payroll" && <PayrollPanel range={range} />}
     </div>
   );
@@ -778,6 +780,176 @@ function Stats({
           </div>
         </div>
       ))}
+    </div>
+  );
+}
+
+type EmployeeSalesRow = {
+  id: number;
+  name: string;
+  email: string | null;
+  days_active: number;
+  months_active: number;
+  lifetime_revenue_cents: number;
+  avg_monthly_revenue_cents: number;
+  avg_daily_revenue_cents: number;
+};
+
+type EmployeeTechRow = EmployeeSalesRow & {
+  minutes_worked: number;
+  avg_dollar_per_hour_cents: number;
+};
+
+type EmployeesReport = {
+  sales: EmployeeSalesRow[];
+  tech: EmployeeTechRow[];
+  aggregates: {
+    sales_avg_monthly_cents: number;
+    sales_avg_lifetime_cents: number;
+    sales_avg_daily_cents: number;
+    tech_avg_monthly_cents: number;
+    tech_avg_daily_cents: number;
+    tech_avg_per_hour_cents: number;
+  };
+};
+
+function EmployeesPanel() {
+  const [data, setData] = useState<EmployeesReport | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/reports/employees`)
+      .then((r) => r.json())
+      .then((d: EmployeesReport) => {
+        if (!cancelled) setData(d);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (loading && !data)
+    return (
+      <p className="text-sm text-slate-400 py-10 text-center">Loading…</p>
+    );
+  if (!data) return null;
+
+  return (
+    <div className="space-y-6">
+      <Section title="Sales reps · averages across team">
+        <Stats
+          items={[
+            {
+              label: "Avg Monthly Revenue / Rep",
+              value: money(data.aggregates.sales_avg_monthly_cents),
+            },
+            {
+              label: "Avg Lifetime Value / Rep",
+              value: money(data.aggregates.sales_avg_lifetime_cents),
+            },
+            {
+              label: "Avg Daily Revenue / Rep",
+              value: money(data.aggregates.sales_avg_daily_cents),
+            },
+          ]}
+        />
+        <EmployeeTable
+          rows={data.sales}
+          variant="sales"
+          emptyText="No sales reps with attributed revenue yet."
+        />
+      </Section>
+
+      <Section title="Technicians · averages across team">
+        <Stats
+          items={[
+            {
+              label: "Avg Monthly Revenue / Tech",
+              value: money(data.aggregates.tech_avg_monthly_cents),
+            },
+            {
+              label: "Avg Daily Revenue / Tech",
+              value: money(data.aggregates.tech_avg_daily_cents),
+            },
+            {
+              label: "Avg $ / Hour Cleaned",
+              value: money(data.aggregates.tech_avg_per_hour_cents),
+            },
+          ]}
+        />
+        <EmployeeTable
+          rows={data.tech}
+          variant="tech"
+          emptyText="No technicians with attributed revenue yet."
+        />
+      </Section>
+    </div>
+  );
+}
+
+function EmployeeTable({
+  rows,
+  variant,
+  emptyText,
+}: {
+  rows: (EmployeeSalesRow | EmployeeTechRow)[];
+  variant: "sales" | "tech";
+  emptyText: string;
+}) {
+  return (
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      {rows.length === 0 ? (
+        <p className="p-8 text-sm text-slate-400 text-center">{emptyText}</p>
+      ) : (
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="text-xs uppercase tracking-wider text-slate-400 bg-slate-50">
+              <th className="text-left px-5 py-3 font-medium">Employee</th>
+              <th className="text-right px-5 py-3 font-medium">Tenure</th>
+              <th className="text-right px-5 py-3 font-medium">Lifetime</th>
+              <th className="text-right px-5 py-3 font-medium">Monthly</th>
+              <th className="text-right px-5 py-3 font-medium">Daily</th>
+              {variant === "tech" && (
+                <th className="text-right px-5 py-3 font-medium">$/hr</th>
+              )}
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r) => (
+              <tr key={r.id} className="border-t border-slate-100">
+                <td className="px-5 py-3">
+                  <div className="font-medium text-slate-900">{r.name}</div>
+                  {r.email && (
+                    <div className="text-xs text-slate-500">{r.email}</div>
+                  )}
+                </td>
+                <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                  {Math.round(r.days_active)} d
+                </td>
+                <td className="px-5 py-3 text-right font-semibold text-slate-900 tabular-nums">
+                  {money(r.lifetime_revenue_cents)}
+                </td>
+                <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                  {money(r.avg_monthly_revenue_cents)}
+                </td>
+                <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                  {money(r.avg_daily_revenue_cents)}
+                </td>
+                {variant === "tech" && (
+                  <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                    {money((r as EmployeeTechRow).avg_dollar_per_hour_cents)}
+                  </td>
+                )}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   );
 }
