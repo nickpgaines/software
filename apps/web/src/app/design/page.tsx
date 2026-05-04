@@ -20,7 +20,7 @@ const sidebars = [
   {
     slug: "concept-bold-15",
     name: "B15 — Static · leftbar",
-    tagline: "Always-open sidebar (Nick360 pattern) · leftbar accent active state.",
+    tagline: "Always-open sidebar (FORGE pattern) · leftbar accent active state.",
     description:
       "Sidebar is fixed at 240px wide and stays put — no hover expand. Active item gets the tinted blue + leftbar accent.",
     swatches: ["#fafafa", "#18181b", "#379CFB", "#71717a", "#ffffff"],

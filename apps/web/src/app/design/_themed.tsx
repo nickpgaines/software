@@ -56,7 +56,7 @@ function Sidebar({ p }: { p: Palette }) {
       <div className="flex items-center gap-2.5 px-2 mb-5">
         <div className="w-9 h-9 flex-shrink-0" aria-hidden />
         <div className="flex-1 min-w-0">
-          <div className={`font-bold tracking-tight text-[15px] ${p.brandTextOnSidebar}`}>Nick360</div>
+          <div className={`font-bold tracking-tight text-[15px] ${p.brandTextOnSidebar}`}>FORGE</div>
         </div>
       </div>
 

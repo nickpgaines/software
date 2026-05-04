@@ -424,7 +424,7 @@ function MappingStep({
   return (
     <div className="space-y-3">
       <p className="text-sm text-zinc-400 font-bold">
-        Match each CSV column to a Nick360 field. <strong>First name</strong>{" "}
+        Match each CSV column to a FORGE field. <strong>First name</strong>{" "}
         is required; the others are optional. If you map a single &ldquo;Full
         Name&rdquo; column to First name, we&rsquo;ll auto-split it.
       </p>
@@ -435,7 +435,7 @@ function MappingStep({
               <th className="text-left px-3 py-2 font-medium">CSV column</th>
               <th className="text-left px-3 py-2 font-medium">Sample</th>
               <th className="text-left px-3 py-2 font-medium">
-                Nick360 field
+                FORGE field
               </th>
             </tr>
           </thead>

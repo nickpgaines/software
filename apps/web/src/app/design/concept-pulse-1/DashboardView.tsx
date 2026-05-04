@@ -211,7 +211,7 @@ export default function DashboardView({
             <p className="text-[14.5px] leading-[1.7] font-medium" style={{ color: PULSE.textMuted }}>
               This {period === "today" ? "day" : period === "week" ? "week" : "month"},{" "}
               <span className="font-bold" style={{ color: PULSE.text }}>
-                Nick360
+                FORGE
               </span>{" "}
               generated{" "}
               <span className="font-bold" style={{ color: PULSE.green }}>

@@ -71,7 +71,7 @@ function Sidebar() {
           N
         </div>
         <div className="flex-1 truncate font-semibold tracking-tight">
-          Nick360
+          FORGE
         </div>
         <kbd className="text-[10px] text-zinc-400 border border-zinc-200 rounded px-1 py-0.5 bg-white">
           ⌘K

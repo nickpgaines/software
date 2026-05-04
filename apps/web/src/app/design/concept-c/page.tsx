@@ -63,7 +63,7 @@ function Sidebar() {
         <div className="w-7 h-7 rounded-lg bg-white text-black text-[12px] font-semibold flex items-center justify-center">
           N
         </div>
-        <div className="flex-1 truncate font-semibold tracking-tight">Nick360</div>
+        <div className="flex-1 truncate font-semibold tracking-tight">FORGE</div>
         <kbd className="text-[10px] text-zinc-500 border border-zinc-800 rounded px-1 py-0.5">
           ⌘K
         </kbd>
@@ -105,7 +105,7 @@ function Sidebar() {
         </div>
         <div className="flex-1 min-w-0">
           <div className="text-[13px] font-medium truncate">Nick Gaines</div>
-          <div className="text-[11px] text-zinc-500 truncate">Owner · Nick360</div>
+          <div className="text-[11px] text-zinc-500 truncate">Owner · FORGE</div>
         </div>
       </div>
     </aside>

@@ -61,7 +61,7 @@ function Sidebar() {
           N
         </div>
         <div className="flex-1">
-          <div className="font-bold tracking-tight text-[16px]">Nick360</div>
+          <div className="font-bold tracking-tight text-[16px]">FORGE</div>
         </div>
       </div>
 

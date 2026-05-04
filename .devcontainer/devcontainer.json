@@ -1,10 +1,10 @@
 {
-  "name": "Nick360",
+  "name": "FORGE",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
   "forwardPorts": [3000],
   "portsAttributes": {
     "3000": {
-      "label": "Nick360",
+      "label": "FORGE",
       "onAutoForward": "openPreview",
       "visibility": "public"
     }

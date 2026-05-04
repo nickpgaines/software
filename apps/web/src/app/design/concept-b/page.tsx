@@ -32,7 +32,7 @@ function Header() {
             N
           </div>
           <span className="font-semibold tracking-tight text-[15px]">
-            Nick360
+            FORGE
           </span>
         </div>
         <nav className="hidden md:flex items-center gap-7 text-[14px] text-neutral-500">
