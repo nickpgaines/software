@@ -140,6 +140,33 @@ const bold = [
   },
 ];
 
+const pulse = [
+  {
+    slug: "concept-pulse-1",
+    name: "Pulse 1 — Pure",
+    tagline: "Pure black · violet accent · single hero metric · executive summary.",
+    description:
+      "Faithful to Kyle's Pulse CRM. Pure black canvas, white text, violet primary accent. Single dominant revenue number, inline secondary metrics, monthly target as a violet donut, today's schedule as a dense list, paragraph executive summary at the bottom. Calmest of the three.",
+    swatches: ["#000000", "#0f0f12", "#8b5cf6", "#22c55e", "#ffffff"],
+  },
+  {
+    slug: "concept-pulse-2",
+    name: "Pulse 2 — Neon",
+    tagline: "Dopamine bento · gradient KPI cards · multi-color accents · glowing chart.",
+    description:
+      "The dopamine pick. Black canvas with a four-up KPI strip where each card has its own colored radial glow (violet / green / cyan / pink). Greeting headline uses a violet→pink gradient. Chart line is a gradient stroke with SVG glow. Schedule + activity feed beneath.",
+    swatches: ["#000000", "#0f0f12", "#8b5cf6", "#ec4899", "#22c55e"],
+  },
+  {
+    slug: "concept-pulse-3",
+    name: "Pulse 3 — Bold",
+    tagline: "Section-grouped sidebar · KPI strip + chart + Pipeline + Activity columns.",
+    description:
+      "Refresh of the earlier Black & Bold dashboard you liked, in this same dark+violet language. Sectioned sidebar (WORKSPACE / PIPELINE / INBOX / INSIGHTS / TEAM), three big KPIs with delta chips, white-stroke chart, schedule on the left, Pipeline + Activity in the right rail.",
+    swatches: ["#000000", "#0f0f12", "#8b5cf6", "#ffffff", "#ef4444"],
+  },
+];
+
 const live = [
   {
     slug: "concept-live",
@@ -385,12 +412,32 @@ export default function DesignIndexPage() {
             with all click-throughs wired to real CRM data (Schedule,
             Leaderboard, Reports, Customers).
           </p>
-          <Link
-            href="/design/reports"
-            className="inline-flex items-center gap-2 mt-6 px-4 py-2 rounded-full bg-neutral-950 text-white text-sm font-bold hover:bg-neutral-800 transition-colors"
-          >
-            Reports — 4 UI options →
-          </Link>
+          <div className="flex flex-wrap items-center gap-2 mt-6">
+            <Link
+              href="/design/reports"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-neutral-950 text-white text-sm font-bold hover:bg-neutral-800 transition-colors"
+            >
+              Reports — 4 UI options →
+            </Link>
+            <Link
+              href="/design/concept-pulse-1"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black text-white text-sm font-bold hover:opacity-80 transition-opacity ring-1 ring-violet-500"
+              style={{ boxShadow: "0 0 24px rgba(139,92,246,0.35)" }}
+            >
+              Pulse — dark / neon dashboards →
+            </Link>
+          </div>
+        </div>
+
+        <div className="mb-3">
+          <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
+            Pulse — dark / neon dashboards (NEW)
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
+          {pulse.map((c) => (
+            <ConceptCard key={c.slug} {...c} highlighted />
+          ))}
         </div>
 
         <div className="mb-3">
@@ -585,6 +632,73 @@ function ConceptCard({
 }
 
 function ConceptThumbnail({ slug }: { slug: string }) {
+  if (slug.startsWith("concept-pulse-")) {
+    const variant = slug.split("-")[2];
+    const isNeon = variant === "2";
+    const isBold = variant === "3";
+    return (
+      <div className="absolute inset-0 bg-black p-3 grid grid-cols-[44px_1fr] gap-2">
+        <div className="bg-black border border-zinc-900 rounded-lg p-1.5 space-y-1">
+          <div
+            className="h-3 rounded"
+            style={{
+              background: "linear-gradient(135deg, #8b5cf6, #a78bfa)",
+              boxShadow: "0 0 8px rgba(139,92,246,0.6)",
+            }}
+          />
+          <div className="h-1.5 bg-zinc-700 rounded" />
+          <div className="h-1.5 bg-zinc-800 rounded" />
+          <div className="h-1.5 bg-zinc-800 rounded" />
+          <div className="h-1.5 bg-zinc-800 rounded" />
+          <div className="h-1.5 bg-zinc-800 rounded" />
+        </div>
+        <div className="space-y-1.5">
+          <div className="h-4 w-32 bg-white rounded-sm" />
+          {isNeon ? (
+            <>
+              <div className="grid grid-cols-4 gap-1">
+                <div className="h-7 rounded-md border border-zinc-800" style={{ background: "radial-gradient(circle at top right, rgba(139,92,246,0.4), #0f0f12 60%)" }} />
+                <div className="h-7 rounded-md border border-zinc-800" style={{ background: "radial-gradient(circle at top right, rgba(34,197,94,0.35), #0f0f12 60%)" }} />
+                <div className="h-7 rounded-md border border-zinc-800" style={{ background: "radial-gradient(circle at top right, rgba(34,211,238,0.35), #0f0f12 60%)" }} />
+                <div className="h-7 rounded-md border border-zinc-800" style={{ background: "radial-gradient(circle at top right, rgba(236,72,153,0.4), #0f0f12 60%)" }} />
+              </div>
+              <div className="h-12 rounded-md border border-zinc-800 relative overflow-hidden" style={{ background: "radial-gradient(ellipse at top left, rgba(139,92,246,0.18), #0f0f12 60%)" }}>
+                <div className="absolute bottom-1 left-1 right-1 h-px" style={{ background: "linear-gradient(90deg, transparent, #8b5cf6, transparent)" }} />
+              </div>
+            </>
+          ) : isBold ? (
+            <>
+              <div className="grid grid-cols-3 gap-1">
+                <div className="h-9 rounded-md bg-zinc-900 border border-zinc-800" />
+                <div className="h-9 rounded-md bg-zinc-900 border border-zinc-800" />
+                <div className="h-9 rounded-md bg-zinc-900 border border-zinc-800" />
+              </div>
+              <div className="grid grid-cols-[1fr_60px] gap-1">
+                <div className="h-12 rounded-md bg-zinc-900 border border-zinc-800" />
+                <div className="h-12 rounded-md bg-zinc-900 border border-zinc-800 p-1 space-y-0.5">
+                  <div className="h-1 w-full rounded-full" style={{ background: "linear-gradient(90deg, #8b5cf6, #a78bfa)" }} />
+                  <div className="h-1 w-2/3 rounded-full" style={{ background: "linear-gradient(90deg, #8b5cf6, #a78bfa)" }} />
+                  <div className="h-1 w-3/4 rounded-full" style={{ background: "linear-gradient(90deg, #8b5cf6, #a78bfa)" }} />
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="h-3 w-20 bg-white rounded-sm" />
+              <div className="h-12 rounded-md border border-zinc-800 flex items-center justify-end pr-2" style={{ background: "linear-gradient(135deg, #0f0f12, #15101e)" }}>
+                <div className="w-7 h-7 rounded-full border-2 border-zinc-800 relative" style={{ borderTopColor: "#8b5cf6", borderRightColor: "#a78bfa" }} />
+              </div>
+              <div className="h-7 rounded-md bg-zinc-900 border border-zinc-800" />
+              <div className="space-y-1">
+                <div className="h-1.5 w-full bg-zinc-800 rounded-full" />
+                <div className="h-1.5 w-3/4 bg-zinc-800 rounded-full" />
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    );
+  }
   if (slug.startsWith("concept-bold-")) {
     const variant = slug.split("-")[2];
     const isDark = variant === "3";
