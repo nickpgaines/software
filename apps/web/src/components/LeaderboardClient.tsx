@@ -210,7 +210,7 @@ export default function LeaderboardClient({
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <h1 className="text-3xl sm:text-4xl font-bold text-white">{title}</h1>
+        <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">{title}</h1>
         <div className="flex items-center gap-1 bg-black rounded-full p-1 text-sm">
           <button
             onClick={() => setView("sales")}
@@ -290,7 +290,7 @@ export default function LeaderboardClient({
           )}
         </div>
         <div className="flex-1">
-          <div className="font-semibold text-white">Your Stats</div>
+          <div className="font-extrabold text-white tracking-tight">Your Stats</div>
           <div className="text-sm text-zinc-400">
             {money(meRevenue)} {view === "sales" ? "sold" : "cleaned"}
             {myRank
@@ -312,7 +312,7 @@ export default function LeaderboardClient({
       <div id="rankings" className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm">
         <div className="px-5 py-4 border-b border-[#1f1f24] flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
-            <h2 className="font-semibold text-white">
+            <h2 className="font-extrabold text-white tracking-tight">
               {view === "sales" ? "Sales Rankings" : "Technician Rankings"}
             </h2>
             <span className="inline-flex items-center gap-1.5 bg-sky-50 border border-sky-100 text-sky-700 text-xs px-2.5 py-1 rounded-full">
@@ -508,7 +508,7 @@ export default function LeaderboardClient({
                               initials(r.name)
                             )}
                           </div>
-                          <span className="font-medium text-white">
+                          <span className="font-bold text-white tracking-tight">
                             {r.name}
                           </span>
                         </div>
@@ -523,7 +523,7 @@ export default function LeaderboardClient({
                           {r.role || "Staff"}
                         </span>
                       </td>
-                      <td className="px-5 py-3 text-right font-semibold text-white tabular-nums">
+                      <td className="px-5 py-3 text-right font-extrabold text-white tracking-tight tabular-nums">
                         {money(r.revenue_cents)}
                       </td>
                       <td className="px-5 py-3 text-right text-zinc-300 tabular-nums">

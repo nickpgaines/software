@@ -165,8 +165,8 @@ export default function EmailListClient() {
     <div className="space-y-8">
       <div className="flex items-baseline justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Email</h1>
-          <p className="text-sm text-zinc-400 mt-1">
+          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Email</h1>
+          <p className="text-sm text-zinc-400 mt-3 font-bold">
             Send one-off blasts or turn on automated emails that go out on their own.
           </p>
         </div>
@@ -222,7 +222,7 @@ export default function EmailListClient() {
                               ? SEASON_EMOJI[a.season]
                               : "📧"}
                         </span>
-                        <h3 className="font-medium text-white">{a.name}</h3>
+                        <h3 className="font-bold text-white tracking-tight">{a.name}</h3>
                       </div>
                       {a.description && (
                         <p className="text-xs text-zinc-400 mt-1">
@@ -341,7 +341,7 @@ export default function EmailListClient() {
                     >
                       {mounted ? fmtTime(b.sent_at || b.created_at) : ""}
                     </td>
-                    <td className="px-4 py-2 font-medium text-white">
+                    <td className="px-4 py-2 font-bold text-white tracking-tight">
                       <Link href={`/email/${b.id}`} className="hover:underline">
                         {b.subject}
                       </Link>

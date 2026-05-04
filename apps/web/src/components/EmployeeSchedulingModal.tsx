@@ -431,10 +431,10 @@ export default function EmployeeSchedulingModal({
               <Users className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-white">
+              <h2 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
                 Employee Scheduling
               </h2>
-              <p className="text-sm text-zinc-400 mt-1">
+              <p className="text-sm text-zinc-400 mt-3 font-bold">
                 Set who&rsquo;s working and their shift hours.
               </p>
             </div>
@@ -457,7 +457,7 @@ export default function EmployeeSchedulingModal({
             >
               ‹
             </button>
-            <div className="text-base font-medium text-white">
+            <div className="text-base font-bold text-white tracking-tight">
               {formatRange(weekStart, addDays(weekStart, 6))}
             </div>
             <button
@@ -508,7 +508,7 @@ export default function EmployeeSchedulingModal({
                     <div>
                       {d.toLocaleDateString(undefined, { weekday: "short" })}
                     </div>
-                    <div className="text-base font-semibold text-white mt-0.5">
+                    <div className="text-base font-extrabold text-white tracking-tight mt-0.5">
                       {d.getDate()}
                     </div>
                   </div>
@@ -539,7 +539,7 @@ export default function EmployeeSchedulingModal({
                   >
                     {staffInitial(s)}
                   </span>
-                  <span className="text-sm font-medium text-white truncate">
+                  <span className="text-sm font-bold text-white tracking-tight truncate">
                     {staffName(s)}
                   </span>
                 </button>
@@ -697,7 +697,7 @@ export default function EmployeeSchedulingModal({
 
           <label className="flex items-center justify-between gap-4 bg-black border border-[#1f1f24] rounded-2xl px-4 py-3 cursor-pointer">
             <div>
-              <div className="text-sm font-semibold text-white">
+              <div className="text-sm font-extrabold text-white tracking-tight">
                 Set as default schedule
               </div>
               <p className="text-xs text-zinc-400 mt-0.5">
@@ -736,7 +736,7 @@ export default function EmployeeSchedulingModal({
             <button
               onClick={save}
               disabled={saving || loading}
-              className="px-5 py-2 text-sm font-medium text-white bg-sky-500 hover:bg-sky-600 rounded-full shadow-sm disabled:opacity-50"
+              className="px-5 py-2 text-sm font-bold text-white tracking-tight bg-sky-500 hover:bg-sky-600 rounded-full shadow-sm disabled:opacity-50"
             >
               {saving ? "Saving…" : "Apply to Schedule"}
             </button>
@@ -769,7 +769,7 @@ function TimeStepper({
       <button
         type="button"
         onClick={() => onChange(value)}
-        className="min-w-[64px] px-2 py-1 text-base font-semibold text-sky-700"
+        className="min-w-[64px] px-2 py-1 text-[15px] font-extrabold tracking-tight text-sky-700"
       >
         {formatTimeLong(value)}
       </button>

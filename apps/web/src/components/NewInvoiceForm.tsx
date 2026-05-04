@@ -194,10 +194,10 @@ export default function NewInvoiceForm() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-white">
+          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
             New Invoice
           </h1>
-          <p className="text-sm text-zinc-400 mt-1">
+          <p className="text-sm text-zinc-400 mt-3 font-bold">
             Bill a customer for completed work.
           </p>
         </div>
@@ -228,7 +228,7 @@ export default function NewInvoiceForm() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-white">
+              <h2 className="text-base font-extrabold text-white tracking-tight">
                 Customer
               </h2>
               <button
@@ -265,7 +265,7 @@ export default function NewInvoiceForm() {
 
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-white">
+              <h2 className="text-base font-extrabold text-white tracking-tight">
                 Details
               </h2>
             </CardHeader>
@@ -318,7 +318,7 @@ export default function NewInvoiceForm() {
 
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-white">
+              <h2 className="text-base font-extrabold text-white tracking-tight">
                 Action
               </h2>
             </CardHeader>
@@ -348,7 +348,7 @@ export default function NewInvoiceForm() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-white">
+              <h2 className="text-base font-extrabold text-white tracking-tight">
                 Line Items
               </h2>
               <button
@@ -445,7 +445,7 @@ export default function NewInvoiceForm() {
                       <label className="block text-[10px] uppercase tracking-wide text-zinc-500 mb-1">
                         Line total
                       </label>
-                      <div className="text-sm font-medium text-white px-3 py-2 bg-black rounded-lg">
+                      <div className="text-sm font-bold text-white tracking-tight px-3 py-2 bg-black rounded-lg">
                         {formatPrice(lineTotalCents(it))}
                       </div>
                     </div>
@@ -467,7 +467,7 @@ export default function NewInvoiceForm() {
 
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-white">Total</h2>
+              <h2 className="text-base font-extrabold text-white tracking-tight">Total</h2>
             </CardHeader>
             <div className="space-y-2 text-sm">
               <Row label="Subtotal" value={formatPrice(subtotalCents)} />
@@ -484,19 +484,19 @@ export default function NewInvoiceForm() {
                   />
                   <span className="ml-1 text-zinc-500">%</span>
                 </div>
-                <div className="font-medium text-white">
+                <div className="font-bold text-white tracking-tight">
                   {formatPrice(taxCents)}
                 </div>
               </div>
               <div className="border-t border-[#1f1f24] pt-2">
                 <Row
                   label={
-                    <span className="text-base font-semibold text-white">
+                    <span className="text-base font-extrabold text-white tracking-tight">
                       Total
                     </span>
                   }
                   value={
-                    <span className="text-base font-semibold text-white">
+                    <span className="text-base font-extrabold text-white tracking-tight">
                       {formatPrice(totalCents)}
                     </span>
                   }
@@ -565,7 +565,7 @@ function Row({
   return (
     <div className="flex items-center justify-between gap-3">
       <div className="text-zinc-400">{label}</div>
-      <div className="font-medium text-white">{value}</div>
+      <div className="font-bold text-white tracking-tight">{value}</div>
     </div>
   );
 }
@@ -604,7 +604,7 @@ function RadioOption({
           )}
         </span>
         <div>
-          <div className="text-sm font-medium text-white">{title}</div>
+          <div className="text-sm font-bold text-white tracking-tight">{title}</div>
           <div className="text-xs text-zinc-400 mt-0.5">{description}</div>
         </div>
       </div>
@@ -675,7 +675,7 @@ function CustomerPicker({
               }}
               className="w-full text-left px-4 py-2 hover:bg-black text-sm"
             >
-              <div className="font-medium text-white">{c.name}</div>
+              <div className="font-bold text-white tracking-tight">{c.name}</div>
               {(c.formatted_address || c.address) && (
                 <div className="text-xs text-zinc-400 truncate">
                   {c.formatted_address || c.address}
@@ -740,7 +740,7 @@ function NewCustomerModal({
         className="bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4"
       >
         <div className="flex items-start justify-between">
-          <h3 className="text-base font-semibold text-white">
+          <h3 className="text-base font-extrabold text-white tracking-tight">
             New customer
           </h3>
           <button

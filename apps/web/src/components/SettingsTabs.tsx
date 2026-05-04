@@ -232,8 +232,8 @@ function ProfilePanel({ username }: { username: string }) {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold text-white">Profile</h2>
-        <p className="text-sm text-zinc-400 mt-1">
+        <h2 className="text-lg font-extrabold text-white tracking-tight">Profile</h2>
+        <p className="text-sm text-zinc-400 mt-3 font-bold">
           Your account information.
         </p>
       </div>
@@ -337,7 +337,7 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
       <dt className="text-xs uppercase tracking-wide text-zinc-500 mb-1">
         {label}
       </dt>
-      <dd className="text-sm font-medium text-white bg-black border border-[#1f1f24] rounded-full px-4 py-2">
+      <dd className="text-sm font-bold text-white tracking-tight bg-black border border-[#1f1f24] rounded-full px-4 py-2">
         {value}
       </dd>
     </div>
@@ -393,8 +393,8 @@ function CompanyPanel() {
   return (
     <form onSubmit={save} className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-white">Company</h2>
-        <p className="text-sm text-zinc-400 mt-1">
+        <h2 className="text-lg font-extrabold text-white tracking-tight">Company</h2>
+        <p className="text-sm text-zinc-400 mt-3 font-bold">
           Information that appears on invoices and customer-facing materials.
         </p>
       </div>
@@ -542,8 +542,8 @@ function PaymentsPanel() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-white">Payments</h2>
-        <p className="text-sm text-zinc-400 mt-1">
+        <h2 className="text-lg font-extrabold text-white tracking-tight">Payments</h2>
+        <p className="text-sm text-zinc-400 mt-3 font-bold">
           Connect a Stripe account to accept card payments. Money is paid out
           to the bank account on file with Stripe.
         </p>
@@ -565,7 +565,7 @@ function PaymentsPanel() {
       ) : !status.connected ? (
         <div className="border border-[#1f1f24] rounded-2xl px-4 py-4 space-y-4">
           <div>
-            <p className="text-sm font-medium text-white">
+            <p className="text-sm font-bold text-white tracking-tight">
               No Stripe account connected
             </p>
             <p className="text-xs text-zinc-400 mt-1">
@@ -618,7 +618,7 @@ function PaymentsPanel() {
                       : "bg-amber-500")
                   }
                 />
-                <p className="text-sm font-medium text-white">
+                <p className="text-sm font-bold text-white tracking-tight">
                   {status.business_name ||
                     status.email ||
                     "Connected Stripe account"}
@@ -918,10 +918,10 @@ function SubscriptionsPanel() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-white">
+          <h2 className="text-lg font-extrabold text-white tracking-tight">
             Subscriptions
           </h2>
-          <p className="text-sm text-zinc-400 mt-1">
+          <p className="text-sm text-zinc-400 mt-3 font-bold">
             Create subscription templates to send to customers or accept on a
             customer&apos;s device.
           </p>
@@ -947,7 +947,7 @@ function SubscriptionsPanel() {
           onSubmit={saveTemplate}
           className="space-y-4 rounded-xl border border-[#1f1f24] bg-black p-4"
         >
-          <h3 className="text-sm font-semibold text-white">
+          <h3 className="text-sm font-extrabold text-white tracking-tight">
             {editingId === "new" ? "New template" : "Edit template"}
           </h3>
           <Field label="Name">
@@ -978,7 +978,7 @@ function SubscriptionsPanel() {
           </p>
           <div className="space-y-3 pt-2 border-t border-[#1f1f24]">
             <div>
-              <label className="block text-sm font-medium text-white mb-1">
+              <label className="block text-sm font-bold text-white tracking-tight mb-1">
                 Terms
               </label>
               <p className="text-xs text-zinc-400 mb-2">
@@ -1064,7 +1064,7 @@ function SubscriptionsPanel() {
       )}
 
       <div>
-        <h3 className="text-sm font-semibold text-white mb-3">
+        <h3 className="text-sm font-extrabold text-white tracking-tight mb-3">
           Templates
         </h3>
         {loading && templates.length === 0 ? (
@@ -1082,7 +1082,7 @@ function SubscriptionsPanel() {
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-white truncate">
+                    <span className="text-sm font-bold text-white tracking-tight truncate">
                       {t.name}
                     </span>
                     {t.active === 0 && (
@@ -1191,7 +1191,7 @@ function RecentSubscriptions({
 
   return (
     <div>
-      <h3 className="text-sm font-semibold text-white mb-3">
+      <h3 className="text-sm font-extrabold text-white tracking-tight mb-3">
         Recent subscriptions
       </h3>
       <ul className="divide-y divide-[#1f1f24] rounded-xl border border-[#1f1f24]">
@@ -1203,7 +1203,7 @@ function RecentSubscriptions({
               className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4"
             >
               <div className="min-w-0">
-                <div className="text-sm font-medium text-white truncate">
+                <div className="text-sm font-bold text-white tracking-tight truncate">
                   {cust?.name || `Customer #${s.customer_id}`}
                 </div>
                 <div className="text-xs text-zinc-400 mt-0.5">
@@ -1337,7 +1337,7 @@ function SendOrAcceptModal({
       <div className="bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-base font-semibold text-white">
+            <h3 className="text-base font-extrabold text-white tracking-tight">
               {template.name}
             </h3>
           </div>
@@ -1506,7 +1506,7 @@ function CreateTermsModal({
         className="bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-start justify-between gap-3">
-          <h3 className="text-base font-semibold text-white">New terms</h3>
+          <h3 className="text-base font-extrabold text-white tracking-tight">New terms</h3>
           <button
             type="button"
             onClick={onClose}
@@ -1745,8 +1745,8 @@ function MessagingPanel() {
   return (
     <form onSubmit={save} className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold text-white">Messaging</h2>
-        <p className="text-sm text-zinc-400 mt-1">
+        <h2 className="text-lg font-extrabold text-white tracking-tight">Messaging</h2>
+        <p className="text-sm text-zinc-400 mt-3 font-bold">
           Connect your Twilio account to send and receive SMS from the Messages
           tab. Each business uses its own Twilio number.
         </p>
@@ -1775,7 +1775,7 @@ function MessagingPanel() {
       </div>
 
       <div className="rounded-xl border border-[#1f1f24] bg-black p-4 space-y-3 text-sm">
-        <div className="font-medium text-white">Setup steps</div>
+        <div className="font-bold text-white tracking-tight">Setup steps</div>
         <ol className="list-decimal list-inside space-y-1 text-zinc-400">
           <li>
             Sign up at{" "}
@@ -1950,8 +1950,8 @@ function CallingPanel() {
   return (
     <form onSubmit={save} className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold text-white">Calling</h2>
-        <p className="text-sm text-zinc-400 mt-1">
+        <h2 className="text-lg font-extrabold text-white tracking-tight">Calling</h2>
+        <p className="text-sm text-zinc-400 mt-3 font-bold">
           Place and receive calls from the browser using your Twilio number.
           Calls can be recorded automatically and saved to the call log.
         </p>
@@ -1987,7 +1987,7 @@ function CallingPanel() {
       )}
 
       <div className="rounded-xl border border-[#1f1f24] bg-black p-4 space-y-3 text-sm">
-        <div className="font-medium text-white">Setup steps</div>
+        <div className="font-bold text-white tracking-tight">Setup steps</div>
         <ol className="list-decimal list-inside space-y-1 text-zinc-400">
           <li>
             In the Twilio Console, go to{" "}
@@ -2155,8 +2155,8 @@ function EmailPanel() {
   return (
     <form onSubmit={save} className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold text-white">Email</h2>
-        <p className="text-sm text-zinc-400 mt-1">
+        <h2 className="text-lg font-extrabold text-white tracking-tight">Email</h2>
+        <p className="text-sm text-zinc-400 mt-3 font-bold">
           Connect your Resend account to send email blasts to customers,
           subscribers, and prospects.
         </p>
@@ -2185,7 +2185,7 @@ function EmailPanel() {
       </div>
 
       <div className="rounded-xl border border-[#1f1f24] bg-black p-4 space-y-3 text-sm">
-        <div className="font-medium text-white">Setup steps</div>
+        <div className="font-bold text-white tracking-tight">Setup steps</div>
         <ol className="list-decimal list-inside space-y-1 text-zinc-400">
           <li>
             Sign up at{" "}
@@ -2344,8 +2344,8 @@ function AiPanel() {
   return (
     <form onSubmit={save} className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold text-white">AI</h2>
-        <p className="text-sm text-zinc-400 mt-1">
+        <h2 className="text-lg font-extrabold text-white tracking-tight">AI</h2>
+        <p className="text-sm text-zinc-400 mt-3 font-bold">
           Connect Claude to draft replies in the Messages tab. The AI reads the
           recent conversation and writes a suggested reply you can edit before
           sending.
@@ -2373,7 +2373,7 @@ function AiPanel() {
       </div>
 
       <div className="rounded-xl border border-[#1f1f24] bg-black p-4 space-y-3 text-sm">
-        <div className="font-medium text-white">Setup steps</div>
+        <div className="font-bold text-white tracking-tight">Setup steps</div>
         <ol className="list-decimal list-inside space-y-1 text-zinc-400">
           <li>
             Sign up at{" "}
@@ -2475,7 +2475,7 @@ function BillingPanel() {
           <line x1="2" y1="10" x2="22" y2="10" />
         </svg>
       </div>
-      <h2 className="text-lg font-semibold text-white">Billing</h2>
+      <h2 className="text-lg font-extrabold text-white tracking-tight">Billing</h2>
       <p className="text-sm text-zinc-400">Coming soon.</p>
     </div>
   );

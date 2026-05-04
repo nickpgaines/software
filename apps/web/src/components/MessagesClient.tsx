@@ -97,7 +97,7 @@ export default function MessagesClient() {
     <div className="flex bg-[#0f0f12] border border-[#1f1f24] rounded-2xl overflow-hidden h-[calc(100vh-9rem)] min-h-[480px] shadow-sm">
       <aside className="w-80 shrink-0 border-r border-[#1f1f24] flex flex-col">
         <div className="px-4 pt-4 pb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-white">Messages</h2>
+          <h2 className="text-lg font-extrabold text-white tracking-tight">Messages</h2>
           <button
             type="button"
             title="Compose"
@@ -176,7 +176,7 @@ export default function MessagesClient() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline justify-between gap-2">
-                        <span className="font-medium text-white truncate">
+                        <span className="font-bold text-white tracking-tight truncate">
                           {c.name}
                         </span>
                         <span
@@ -316,7 +316,7 @@ function Thread({
           {initials(conversation.name)}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="font-semibold text-white truncate">
+          <div className="font-extrabold text-white tracking-tight truncate">
             {conversation.name}
           </div>
           <div className="text-xs text-zinc-400 truncate">

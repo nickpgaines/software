@@ -110,7 +110,7 @@ export default function MapTerritoryModal({
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
       <div className="bg-[#0f0f12] rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="px-5 py-4 border-b border-[#1f1f24] flex items-center justify-between">
-          <h3 className="font-semibold text-white">
+          <h3 className="font-extrabold text-white tracking-tight">
             {draft.id ? "Reassign territory" : "Assign territory"}
           </h3>
           <button
@@ -175,7 +175,7 @@ export default function MapTerritoryModal({
                     className="w-full text-left px-4 py-2 hover:bg-black text-sm flex items-center gap-2"
                   >
                     <span
-                      className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold text-white"
+                      className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-extrabold text-white tracking-tight"
                       style={{ backgroundColor: staffColorHex(s.color) }}
                     >
                       {initials(s.name)}

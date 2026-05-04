@@ -166,7 +166,7 @@ export default function NewSprintModal({
         </div>
         <div className="px-6 py-5 space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-white mb-1">
+            <label className="block text-sm font-extrabold text-white tracking-tight mb-1">
               Sprint Name <span className="text-rose-500">*</span>
             </label>
             <input
@@ -178,7 +178,7 @@ export default function NewSprintModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-white mb-1">
+            <label className="block text-sm font-extrabold text-white tracking-tight mb-1">
               Description
             </label>
             <textarea
@@ -190,7 +190,7 @@ export default function NewSprintModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-semibold text-white mb-2">
+            <label className="block text-sm font-extrabold text-white tracking-tight mb-2">
               Sprint Duration <span className="text-rose-500">*</span>
             </label>
             <div className="flex flex-wrap items-center gap-1 bg-black border border-[#1f1f24] rounded-full p-1 text-sm w-fit">
@@ -245,7 +245,7 @@ export default function NewSprintModal({
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-semibold text-white">
+              <label className="block text-sm font-extrabold text-white tracking-tight">
                 Prizes (Optional)
               </label>
               <button

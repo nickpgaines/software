@@ -130,7 +130,7 @@ export default function EmailComposeClient() {
         >
           ← All blasts
         </Link>
-        <h1 className="text-2xl font-semibold text-white mt-2">
+        <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white mt-2">
           New email blast
         </h1>
       </div>
@@ -168,7 +168,7 @@ export default function EmailComposeClient() {
                 }
               >
                 <div className="flex items-baseline justify-between">
-                  <span className="font-medium text-white">{a.label}</span>
+                  <span className="font-bold text-white tracking-tight">{a.label}</span>
                   <span className="text-xs text-zinc-400 tabular-nums">
                     {a.count}
                   </span>

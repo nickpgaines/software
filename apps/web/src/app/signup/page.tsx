@@ -37,8 +37,8 @@ export default function SignupPage() {
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold text-white">Nick360</h1>
-          <p className="text-sm text-zinc-400 mt-1">
+          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Nick360</h1>
+          <p className="text-sm text-zinc-400 mt-3 font-bold">
             Start your free trial. No credit card required.
           </p>
         </div>

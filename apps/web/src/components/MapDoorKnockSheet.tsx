@@ -105,7 +105,7 @@ export default function MapDoorKnockSheet({
       <div className="w-full sm:max-w-lg bg-[#0f0f12] rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-[#0f0f12] px-5 pt-5 pb-3 border-b border-[#1f1f24] flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
-            <h3 className="font-semibold text-white truncate">
+            <h3 className="font-extrabold text-white tracking-tight truncate">
               {pin.address || "Unknown address"}
             </h3>
             <p className="text-xs text-zinc-500 mt-0.5">

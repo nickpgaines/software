@@ -101,7 +101,7 @@ export default function TodaySchedule({ initialJobs }: { initialJobs: Job[] }) {
             ‹
           </button>
           <h3
-            className="font-semibold text-white text-lg"
+            className="font-extrabold text-white tracking-tight text-lg"
             suppressHydrationWarning
           >
             {mounted ? formatDay(currentDate) : ""}
@@ -172,7 +172,7 @@ export default function TodaySchedule({ initialJobs }: { initialJobs: Job[] }) {
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-white truncate">
+                    <div className="font-bold text-white tracking-tight truncate">
                       Window Cleaning
                     </div>
                     <div className="text-sm text-zinc-400 truncate">
@@ -188,7 +188,7 @@ export default function TodaySchedule({ initialJobs }: { initialJobs: Job[] }) {
                   >
                     {statusLabel(j.status)}
                   </span>
-                  <span className="font-semibold text-white tabular-nums">
+                  <span className="font-extrabold text-white tracking-tight tabular-nums">
                     {money(j.price_cents)}
                   </span>
                 </div>

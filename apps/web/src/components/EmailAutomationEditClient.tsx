@@ -207,7 +207,7 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
           ← All email
         </Link>
         <div className="flex items-baseline justify-between mt-2">
-          <h1 className="text-2xl font-semibold text-white">
+          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
             {automation.name}
           </h1>
           <label className="flex items-center gap-2 text-sm text-zinc-300">
@@ -236,7 +236,7 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
           </label>
         </div>
         {automation.description && (
-          <p className="text-sm text-zinc-400 mt-1">{automation.description}</p>
+          <p className="text-sm text-zinc-400 mt-3 font-bold">{automation.description}</p>
         )}
       </div>
 
@@ -270,7 +270,7 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
                 }
               >
                 <div className="flex items-baseline justify-between">
-                  <span className="font-medium text-white">{a.label}</span>
+                  <span className="font-bold text-white tracking-tight">{a.label}</span>
                   <span className="text-xs text-zinc-400 tabular-nums">
                     {a.count}
                   </span>

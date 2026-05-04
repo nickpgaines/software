@@ -185,10 +185,10 @@ export default function PayrollSettingsModal({
       <div className="relative bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-[#0f0f12] border-b border-[#1f1f24] px-6 py-5 flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-white">
+            <h2 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
               Payroll Settings
             </h2>
-            <p className="text-sm text-zinc-400 mt-1">
+            <p className="text-sm text-zinc-400 mt-3 font-bold">
               Configure pay periods and commission rules.
             </p>
           </div>
@@ -380,7 +380,7 @@ export default function PayrollSettingsModal({
           <button
             onClick={save}
             disabled={saving}
-            className="px-4 py-2 text-sm font-medium text-white bg-slate-900 hover:bg-slate-800 rounded-full disabled:opacity-50"
+            className="px-4 py-2 text-sm font-bold text-white tracking-tight bg-slate-900 hover:bg-slate-800 rounded-full disabled:opacity-50"
           >
             {saving ? "Saving…" : "Save changes"}
           </button>
@@ -405,7 +405,7 @@ function Section({
         <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
           {title}
         </h3>
-        {subtitle && <p className="text-sm text-zinc-400 mt-1">{subtitle}</p>}
+        {subtitle && <p className="text-sm text-zinc-400 mt-3 font-bold">{subtitle}</p>}
       </div>
       {children}
     </section>
@@ -427,7 +427,7 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-sm font-semibold text-white">
+      <label className="block text-sm font-extrabold text-white tracking-tight">
         {label}
       </label>
       {children}
@@ -479,8 +479,8 @@ function ToggleRow({
   return (
     <div className="flex items-start justify-between gap-4">
       <div>
-        <div className="text-sm font-semibold text-white">{title}</div>
-        <p className="text-sm text-zinc-400 mt-0.5 max-w-md">{description}</p>
+        <div className="text-sm font-extrabold text-white tracking-tight">{title}</div>
+        <p className="text-sm text-zinc-400 mt-2 font-bold max-w-md">{description}</p>
       </div>
       <button
         type="button"
@@ -524,7 +524,7 @@ function CommissionConfig({
 }) {
   return (
     <div className="space-y-3">
-      <div className="text-sm font-semibold text-white">{roleLabel}</div>
+      <div className="text-sm font-extrabold text-white tracking-tight">{roleLabel}</div>
       <SegmentedControl
         value={mode}
         onChange={onMode}

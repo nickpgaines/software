@@ -47,7 +47,7 @@ export default function LeadsFormsClient({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-white">Forms</h2>
+        <h2 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Forms</h2>
         <p className="text-sm text-zinc-400">
           Create web forms that drop new leads into your pipeline
         </p>
@@ -69,8 +69,8 @@ export default function LeadsFormsClient({
           <div className="mx-auto w-12 h-12 rounded-full bg-black flex items-center justify-center text-zinc-500">
             <FileText className="w-5 h-5" />
           </div>
-          <p className="mt-3 font-medium text-white">No forms yet</p>
-          <p className="text-sm text-zinc-400 mt-1">
+          <p className="mt-3 font-bold text-white tracking-tight">No forms yet</p>
+          <p className="text-sm text-zinc-400 mt-3 font-bold">
             Build a form, share its link, and new leads land in your pipeline.
           </p>
         </div>
@@ -84,7 +84,7 @@ export default function LeadsFormsClient({
                 className="border border-[#1f1f24] rounded-2xl p-4 flex items-center justify-between gap-4"
               >
                 <div>
-                  <div className="font-semibold text-white">{f.name}</div>
+                  <div className="font-extrabold text-white tracking-tight">{f.name}</div>
                   <div className="text-xs text-zinc-400 mt-0.5 break-all">
                     /forms/{f.slug}
                   </div>
@@ -136,7 +136,7 @@ export default function LeadsFormsClient({
             className="bg-[#0f0f12] rounded-2xl p-6 w-full max-w-md"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-white mb-4">
+            <h3 className="text-lg font-extrabold text-white tracking-tight mb-4">
               New form
             </h3>
             <input

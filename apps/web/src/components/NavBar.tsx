@@ -138,7 +138,7 @@ export default function NavBar() {
               <span>{initials(displayName)}</span>
             )}
           </div>
-          <span className="text-sm font-medium text-white truncate">
+          <span className="text-sm font-bold text-white tracking-tight truncate">
             {displayName}
           </span>
         </div>

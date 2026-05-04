@@ -97,8 +97,8 @@ function CustomersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Customers</h1>
-          <p className="text-sm text-zinc-400 mt-1">
+          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Customers</h1>
+          <p className="text-sm text-zinc-400 mt-3 font-bold">
             People you clean windows for.
           </p>
         </div>
@@ -137,7 +137,7 @@ function CustomersPage() {
             <tbody className="divide-y divide-[#1f1f24]">
               {customers.map((c) => (
                 <tr key={c.id}>
-                  <td className="px-4 py-2 font-medium text-white">
+                  <td className="px-4 py-2 font-bold text-white tracking-tight">
                     {fullName(c) || "—"}
                   </td>
                   <td className="px-4 py-2 text-zinc-300">{c.address || "—"}</td>

@@ -67,7 +67,7 @@ export default function PaymentsSection({
   return (
     <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-white">Payments</h2>
+        <h2 className="font-extrabold text-white tracking-tight">Payments</h2>
         {payments.length > 0 && (
           <button
             type="button"
@@ -117,7 +117,7 @@ export default function PaymentsSection({
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 <div className="text-right">
-                  <div className="text-sm font-semibold text-white tabular-nums">
+                  <div className="text-sm font-extrabold text-white tracking-tight tabular-nums">
                     {money(p.amount_cents)}
                   </div>
                   {p.tip_cents > 0 && (

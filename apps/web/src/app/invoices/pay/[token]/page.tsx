@@ -31,8 +31,8 @@ export default async function InvoicePayPage({
   if (!invoice) {
     return (
       <Shell>
-        <h1 className="text-xl font-semibold text-white">Invoice not found</h1>
-        <p className="text-sm text-zinc-400 mt-2">
+        <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Invoice not found</h1>
+        <p className="text-sm text-zinc-400 mt-3 font-bold">
           The link you followed may be incorrect, or this invoice was deleted.
         </p>
       </Shell>
@@ -43,10 +43,10 @@ export default async function InvoicePayPage({
     return (
       <Shell>
         <div className="text-emerald-600 mb-2">✓</div>
-        <h1 className="text-xl font-semibold text-white">
+        <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
           Payment received
         </h1>
-        <p className="text-sm text-zinc-400 mt-2">
+        <p className="text-sm text-zinc-400 mt-3 font-bold">
           Thanks — {companyName} has been notified. You can close this window.
         </p>
       </Shell>
@@ -56,10 +56,10 @@ export default async function InvoicePayPage({
   if (invoice.status === "void") {
     return (
       <Shell>
-        <h1 className="text-xl font-semibold text-white">
+        <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
           Invoice no longer valid
         </h1>
-        <p className="text-sm text-zinc-400 mt-2">
+        <p className="text-sm text-zinc-400 mt-3 font-bold">
           This invoice has been voided by {companyName}. If you think this is a
           mistake, reach out to them directly.
         </p>
@@ -72,12 +72,12 @@ export default async function InvoicePayPage({
       <p className="text-xs uppercase tracking-wide text-zinc-500">
         Invoice from {companyName}
       </p>
-      <h1 className="text-2xl font-semibold text-white mt-1">
+      <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white mt-1">
         {invoice.title?.trim() || `Invoice #${invoice.id}`}
       </h1>
       <div className="mt-6 flex items-end justify-between gap-3 border-t border-[#1f1f24] pt-4">
         <span className="text-sm text-zinc-400">Amount due</span>
-        <span className="text-2xl font-semibold text-white tabular-nums">
+        <span className="text-[40px] font-extrabold tracking-tight leading-none text-white tabular-nums">
           {money(invoice.total_cents - invoice.paid_cents)}
         </span>
       </div>

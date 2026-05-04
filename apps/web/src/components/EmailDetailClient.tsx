@@ -84,10 +84,10 @@ export default function EmailDetailClient({ id }: { id: number }) {
         <Link href="/email" className="text-xs text-zinc-400 hover:text-white">
           ← All blasts
         </Link>
-        <h1 className="text-2xl font-semibold text-white mt-2">
+        <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white mt-2">
           {blast.subject}
         </h1>
-        <p className="text-sm text-zinc-400 mt-1" suppressHydrationWarning>
+        <p className="text-sm text-zinc-400 mt-3 font-bold" suppressHydrationWarning>
           {AUDIENCE_LABELS[blast.audience] || blast.audience} ·{" "}
           {mounted ? fmtTime(blast.sent_at || blast.created_at) : ""}
         </p>
@@ -111,7 +111,7 @@ export default function EmailDetailClient({ id }: { id: number }) {
       </div>
 
       <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-[#1f1f24] text-sm font-medium text-white">
+        <div className="px-6 py-4 border-b border-[#1f1f24] text-sm font-bold text-white tracking-tight">
           Recipients
         </div>
         <table className="w-full text-sm">

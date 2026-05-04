@@ -55,7 +55,7 @@ export default function LeadsWorkflowsClient({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-white">Workflows</h2>
+        <h2 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Workflows</h2>
         <p className="text-sm text-zinc-400">
           Automate follow-ups and lead nurturing sequences
         </p>
@@ -132,7 +132,7 @@ export default function LeadsWorkflowsClient({
             className="bg-[#0f0f12] rounded-2xl p-6 w-full max-w-md"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-white mb-4">
+            <h3 className="text-lg font-extrabold text-white tracking-tight mb-4">
               New workflow
             </h3>
             <input
@@ -203,7 +203,7 @@ function WorkflowRow({
   return (
     <div className="border border-[#1f1f24] rounded-2xl p-4 flex items-center justify-between gap-4">
       <div>
-        <div className="font-semibold text-white">{workflow.name}</div>
+        <div className="font-extrabold text-white tracking-tight">{workflow.name}</div>
         <div className="text-xs text-zinc-400 mt-0.5">
           Trigger: A new lead is created
         </div>

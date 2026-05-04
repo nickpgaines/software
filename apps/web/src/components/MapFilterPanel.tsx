@@ -73,7 +73,7 @@ export default function MapFilterPanel({
   return (
     <div className="absolute top-4 right-16 z-10 w-72 max-h-[80vh] flex flex-col rounded-lg border border-[#1f1f24] bg-[#0f0f12] shadow-md">
       <div className="px-4 py-3 border-b border-[#1f1f24] flex items-center justify-between">
-        <h3 className="font-semibold text-white text-sm">Filters</h3>
+        <h3 className="font-extrabold text-white tracking-tight text-sm">Filters</h3>
         <button
           onClick={onClose}
           className="text-zinc-500 hover:text-zinc-300"
@@ -155,7 +155,7 @@ export default function MapFilterPanel({
                   }
                 >
                   <span
-                    className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold text-white"
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white tracking-tight"
                     style={{ backgroundColor: staffColorHex(s.color) }}
                   >
                     {initials(s.name)}

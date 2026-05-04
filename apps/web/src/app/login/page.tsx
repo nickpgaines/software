@@ -57,13 +57,13 @@ function LoginPageInner() {
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold text-white">Nick360</h1>
-          <p className="text-sm text-zinc-400 mt-1">Sign in to continue</p>
+          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Nick360</h1>
+          <p className="text-sm text-zinc-400 mt-3 font-bold">Sign in to continue</p>
         </div>
         <div className="space-y-3 mb-4">
           <a
             href="/api/auth/google/start"
-            className="flex items-center justify-center gap-3 w-full bg-[#0f0f12] border border-[#1f1f24] rounded-lg py-2.5 text-sm font-medium text-white hover:bg-black shadow-sm"
+            className="flex items-center justify-center gap-3 w-full bg-[#0f0f12] border border-[#1f1f24] rounded-lg py-2.5 text-sm font-bold text-white tracking-tight hover:bg-black shadow-sm"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
               <path

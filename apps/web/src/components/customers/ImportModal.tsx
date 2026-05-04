@@ -442,7 +442,7 @@ function MappingStep({
           <tbody className="divide-y divide-[#1f1f24]">
             {headers.map((h) => (
               <tr key={h}>
-                <td className="px-3 py-2 font-medium text-white">{h}</td>
+                <td className="px-3 py-2 font-bold text-white tracking-tight">{h}</td>
                 <td className="px-3 py-2 text-zinc-400 truncate max-w-[200px]">
                   {(firstSample[h] ?? "").toString() || (
                     <span className="italic text-zinc-500">empty</span>
@@ -536,10 +536,10 @@ function ResultStep({
   return (
     <div className="space-y-4">
       <div className="bg-black border border-[#1f1f24] rounded-lg p-4 text-center">
-        <div className="text-2xl font-semibold text-white">
+        <div className="text-[40px] font-extrabold tracking-tight leading-none text-white">
           Imported {result.inserted} {result.inserted === 1 ? "customer" : "customers"}
         </div>
-        <div className="text-sm text-zinc-400 mt-1">
+        <div className="text-sm text-zinc-400 mt-3 font-bold">
           {result.skipped > 0 && (
             <>
               Skipped {result.skipped} duplicate

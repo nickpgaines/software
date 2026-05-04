@@ -183,7 +183,7 @@ export default function CalendarClient() {
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold text-white">Schedule</h1>
+          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Schedule</h1>
           <p className="text-sm text-zinc-500 mt-1">
             Drag, plan, and dispatch your jobs.
           </p>
@@ -561,7 +561,7 @@ function WeekView({
                 </div>
                 <div
                   className={
-                    "text-base font-semibold mt-0.5 " +
+                    "text-[15px] font-extrabold tracking-tight mt-0.5 " +
                     (isToday ? "text-white" : "text-white")
                   }
                 >

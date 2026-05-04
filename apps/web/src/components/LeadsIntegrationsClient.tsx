@@ -101,7 +101,7 @@ export default function LeadsIntegrationsClient({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-white">Integrations</h2>
+        <h2 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Integrations</h2>
         <p className="text-sm text-zinc-400">Connect Meta and other lead sources</p>
       </div>
 
@@ -125,7 +125,7 @@ export default function LeadsIntegrationsClient({
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-2xl font-bold text-white">
+              <h3 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
                 Meta Lead Ads
               </h3>
               <span
@@ -139,7 +139,7 @@ export default function LeadsIntegrationsClient({
                 {connected ? "Connected" : "Not connected"}
               </span>
             </div>
-            <p className="text-sm text-zinc-400 mt-2 max-w-xl">
+            <p className="text-sm text-zinc-400 mt-3 font-bold max-w-xl">
               Pipe Meta Lead Ads straight into your pipeline. Authorize once,
               pick the pages you want, and new leads show up automatically.
             </p>
@@ -178,7 +178,7 @@ export default function LeadsIntegrationsClient({
         <div className="border-t border-[#1f1f24] p-6">
           <div className="flex items-start justify-between gap-4 mb-4">
             <div>
-              <h4 className="font-semibold text-white">Connected pages</h4>
+              <h4 className="font-extrabold text-white tracking-tight">Connected pages</h4>
               <p className="text-xs text-zinc-400 mt-0.5">
                 Leads from these pages flow into your pipeline.
               </p>
@@ -201,10 +201,10 @@ export default function LeadsIntegrationsClient({
               <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
                 <MetaLogo />
               </div>
-              <p className="mt-3 font-semibold text-white">
+              <p className="mt-3 font-extrabold text-white tracking-tight">
                 No pages connected yet
               </p>
-              <p className="text-sm text-zinc-400 mt-1">
+              <p className="text-sm text-zinc-400 mt-3 font-bold">
                 Authorize Meta above to pick the pages you want to receive leads
                 from.
               </p>
@@ -217,7 +217,7 @@ export default function LeadsIntegrationsClient({
                   className="border border-[#1f1f24] rounded-lg p-3 flex items-center justify-between gap-3"
                 >
                   <div className="min-w-0">
-                    <div className="font-medium text-white truncate">
+                    <div className="font-bold text-white tracking-tight truncate">
                       {p.page_name}
                     </div>
                     <div className="text-xs text-zinc-400 truncate">

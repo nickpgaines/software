@@ -64,7 +64,7 @@ export default function MapPinDropModal({
       <div className="w-full max-w-md rounded-lg bg-[#0f0f12] p-6 shadow-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-white">Drop pin</h2>
+            <h2 className="text-lg font-extrabold text-white tracking-tight">Drop pin</h2>
             <p className="mt-1 text-sm text-zinc-400">
               Choose a status and add a note (optional).
             </p>
@@ -106,13 +106,13 @@ export default function MapPinDropModal({
           <button
             type="button"
             onClick={() => setObjectionsOpen((v) => !v)}
-            className="flex w-full items-center justify-between gap-2 px-3 py-2 text-sm font-medium text-white"
+            className="flex w-full items-center justify-between gap-2 px-3 py-2 text-sm font-bold text-white tracking-tight"
           >
             <span className="flex items-center gap-2">
               <Hand className="h-4 w-4 text-zinc-400" />
               Objections
               {objections.length > 0 && (
-                <span className="rounded-full bg-slate-900 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                <span className="rounded-full bg-slate-900 px-1.5 py-0.5 text-[10px] font-extrabold text-white tracking-tight">
                   {objections.length}
                 </span>
               )}
@@ -161,7 +161,7 @@ export default function MapPinDropModal({
             type="button"
             disabled={!status}
             onClick={() => status && onSubmit(status, note, objections)}
-            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-bold text-white tracking-tight hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
           >
             Drop Pin
           </button>

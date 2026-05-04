@@ -99,7 +99,7 @@ export default function LeadsPipelineClient({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-white">Pipeline</h2>
+        <h2 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Pipeline</h2>
         <p className="text-sm text-zinc-400">
           Track and move leads through the sales pipeline
         </p>
@@ -277,7 +277,7 @@ function EmptyNewHint() {
         <Sparkles className="w-4 h-4" />
       </div>
       <div>
-        <p className="font-semibold text-white text-sm">No leads yet</p>
+        <p className="font-extrabold text-white tracking-tight text-sm">No leads yet</p>
         <p className="text-xs text-zinc-400 mt-0.5">
           Publish your web form and new leads will land here first.
         </p>
@@ -414,7 +414,7 @@ function NewLeadDialog({
         className="bg-[#0f0f12] rounded-2xl p-6 w-full max-w-md"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-semibold text-white mb-4">New lead</h3>
+        <h3 className="text-lg font-extrabold text-white tracking-tight mb-4">New lead</h3>
         <form onSubmit={submit} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <Field label="First name">

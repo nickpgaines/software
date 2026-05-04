@@ -123,7 +123,7 @@ export default function MapLassoPanel({
     return (
       <div className="absolute top-4 right-16 z-10 w-80 bg-[#0f0f12] border border-[#1f1f24] rounded-lg shadow-md">
         <div className="px-4 py-3 border-b border-[#1f1f24] flex items-center justify-between">
-          <h3 className="font-semibold text-white text-sm">Blast sent</h3>
+          <h3 className="font-extrabold text-white tracking-tight text-sm">Blast sent</h3>
           <button
             onClick={onClose}
             className="text-zinc-500 hover:text-zinc-300"
@@ -160,7 +160,7 @@ export default function MapLassoPanel({
   return (
     <div className="absolute top-4 right-16 z-10 w-80 bg-[#0f0f12] border border-[#1f1f24] rounded-lg shadow-md flex flex-col max-h-[80vh]">
       <div className="px-4 py-3 border-b border-[#1f1f24] flex items-center justify-between">
-        <h3 className="font-semibold text-white text-sm">
+        <h3 className="font-extrabold text-white tracking-tight text-sm">
           Selected customers
         </h3>
         <button

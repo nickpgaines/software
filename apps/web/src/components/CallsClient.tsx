@@ -90,8 +90,8 @@ export default function CallsClient() {
     <div className="space-y-6">
       <div className="flex items-baseline justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Calls</h1>
-          <p className="text-sm text-zinc-400 mt-1">
+          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Calls</h1>
+          <p className="text-sm text-zinc-400 mt-3 font-bold">
             All calls made and received through your business number.
           </p>
         </div>
@@ -134,7 +134,7 @@ export default function CallsClient() {
                     <td className="px-4 py-2 text-zinc-300 capitalize">
                       {c.direction}
                     </td>
-                    <td className="px-4 py-2 font-medium text-white">
+                    <td className="px-4 py-2 font-bold text-white tracking-tight">
                       {c.customer_name || "—"}
                     </td>
                     <td className="px-4 py-2 text-zinc-300">

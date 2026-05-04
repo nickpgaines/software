@@ -389,7 +389,7 @@ export default function JobForm({
     <form onSubmit={submit} className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-white">
+          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
             {mode === "edit" ? "Edit Job" : "Create Job"}
           </h1>
           <p className="text-sm text-zinc-500 mt-1">
@@ -725,7 +725,7 @@ function Section({
   return (
     <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5 sm:p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-white">{title}</h2>
+        <h2 className="font-extrabold text-white tracking-tight">{title}</h2>
         {action}
       </div>
       {children}
@@ -834,7 +834,7 @@ function CustomerSearch({
               }}
               className="w-full text-left px-4 py-2 hover:bg-black text-sm"
             >
-              <div className="font-medium text-white">{c.name}</div>
+              <div className="font-bold text-white tracking-tight">{c.name}</div>
               {c.address && (
                 <div className="text-xs text-zinc-400 truncate">
                   {c.address}
@@ -1034,7 +1034,7 @@ function StaffMultiPicker({
               }}
               className="w-full text-left px-4 py-2 hover:bg-black text-sm flex items-center justify-between"
             >
-              <span className="font-medium text-white">{s.name}</span>
+              <span className="font-bold text-white tracking-tight">{s.name}</span>
               {s.role && (
                 <span className="text-xs text-zinc-500">{s.role}</span>
               )}
@@ -1195,7 +1195,7 @@ function LineItemCard({
       </div>
       <div className="flex justify-end text-sm text-zinc-400">
         Item total:{" "}
-        <span className="font-semibold text-white ml-1">
+        <span className="font-extrabold text-white tracking-tight ml-1">
           {money(lineTotal)}
         </span>
       </div>

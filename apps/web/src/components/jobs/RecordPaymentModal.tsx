@@ -214,7 +214,7 @@ export default function RecordPaymentModal({
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-[#0f0f12] rounded-2xl shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-[#1f1f24]">
-          <h3 className="font-semibold text-white">
+          <h3 className="font-extrabold text-white tracking-tight">
             {step === "card" ? "Charge card" : "Record payment"}
           </h3>
           <button
@@ -488,7 +488,7 @@ function CardStep({
     <form onSubmit={charge} className="p-5 space-y-4">
       <div className="text-sm text-zinc-400">
         Charging{" "}
-        <span className="font-semibold text-white">
+        <span className="font-extrabold text-white tracking-tight">
           ${(totalCents / 100).toFixed(2)}
         </span>{" "}
         to the customer&apos;s card.

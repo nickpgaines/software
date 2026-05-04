@@ -144,7 +144,7 @@ export default function StaffScorecardModal({
             <div className="text-xs uppercase tracking-wider text-sky-500 font-semibold">
               Sales Stats
             </div>
-            <h2 className="text-2xl font-bold text-white truncate">
+            <h2 className="text-[40px] font-extrabold tracking-tight leading-none text-white truncate">
               {staff?.name || "—"}
               <span className="text-zinc-500 font-medium">
                 {" "}
@@ -309,7 +309,7 @@ export default function StaffScorecardModal({
                         />
                         <span>{pct.toFixed(0)}%</span>
                       </div>
-                      <div className="text-2xl font-bold text-white tabular-nums leading-tight mt-1">
+                      <div className="text-[40px] font-extrabold tracking-tight leading-none text-white tabular-nums leading-tight mt-1">
                         {count}
                       </div>
                       <div className="text-xs text-zinc-400">{p.label}</div>
@@ -343,7 +343,7 @@ function Stat({
   return (
     <div className="border border-[#1f1f24] rounded-xl px-4 py-3">
       <div className="text-xs text-zinc-500">{label}</div>
-      <div className="text-2xl font-bold text-white tabular-nums mt-0.5">
+      <div className="text-[40px] font-extrabold tracking-tight leading-none text-white tabular-nums mt-0.5">
         {value}
       </div>
       {help ? <div className="text-xs text-zinc-400 mt-0.5">{help}</div> : null}

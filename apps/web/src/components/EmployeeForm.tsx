@@ -236,7 +236,7 @@ export default function EmployeeForm({
           Employees
         </Link>
         <div className="mt-2 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-white">
+          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
             {isEdit ? "Edit Employee" : "Add Employee"}
           </h1>
           <button
@@ -258,7 +258,7 @@ export default function EmployeeForm({
       {/* Personal Info */}
       <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm">
         <div className="px-6 py-4 border-b border-[#1f1f24]">
-          <h2 className="text-base font-semibold text-white">
+          <h2 className="text-base font-extrabold text-white tracking-tight">
             Personal Info
           </h2>
         </div>
@@ -415,7 +415,7 @@ export default function EmployeeForm({
       {/* Permissions */}
       <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm">
         <div className="px-6 py-4 border-b border-[#1f1f24]">
-          <h2 className="text-base font-semibold text-white">Permissions</h2>
+          <h2 className="text-base font-extrabold text-white tracking-tight">Permissions</h2>
         </div>
         <div className="px-6 py-4 space-y-1">
           {PERMISSIONS.map((p) => {
@@ -436,7 +436,7 @@ export default function EmployeeForm({
                   className="mt-1 accent-slate-900"
                 />
                 <div>
-                  <div className="text-sm font-semibold text-white">
+                  <div className="text-sm font-extrabold text-white tracking-tight">
                     {p.title}
                   </div>
                   <div className="text-xs text-zinc-400 mt-0.5">

@@ -251,7 +251,7 @@ function SalesPanel({ range }: { range: Range }) {
               <tbody>
                 {data.reps.map((r) => (
                   <tr key={r.id} className="border-t border-[#1f1f24]">
-                    <td className="px-5 py-3 font-medium text-white">
+                    <td className="px-5 py-3 font-bold text-white tracking-tight">
                       {r.name}
                     </td>
                     <td className="px-5 py-3 text-right text-zinc-300 tabular-nums">
@@ -263,7 +263,7 @@ function SalesPanel({ range }: { range: Range }) {
                     <td className="px-5 py-3 text-right text-zinc-300 tabular-nums">
                       {pct(r.conversion_rate)}
                     </td>
-                    <td className="px-5 py-3 text-right font-semibold text-white tabular-nums">
+                    <td className="px-5 py-3 text-right font-extrabold text-white tracking-tight tabular-nums">
                       {money(r.revenue_cents)}
                     </td>
                   </tr>
@@ -415,7 +415,7 @@ function SubscriptionsPanel() {
         </div>
 
         <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5 shadow-sm">
-          <div className="text-sm font-semibold text-white">
+          <div className="text-sm font-extrabold text-white tracking-tight">
             Monthly Recurring Revenue
           </div>
           <div className="text-xs text-zinc-500 mt-0.5">
@@ -596,13 +596,13 @@ function BreakdownTable({
           <tbody>
             {rows.map((r) => (
               <tr key={r.key} className="border-t border-[#1f1f24]">
-                <td className="px-5 py-3 font-medium text-white">
+                <td className="px-5 py-3 font-bold text-white tracking-tight">
                   {r.name}
                 </td>
                 <td className="px-5 py-3 text-right text-zinc-300 tabular-nums">
                   {r.count}
                 </td>
-                <td className="px-5 py-3 text-right font-semibold text-white tabular-nums">
+                <td className="px-5 py-3 text-right font-extrabold text-white tracking-tight tabular-nums">
                   {money(r.mrr_cents)}
                 </td>
               </tr>
@@ -649,7 +649,7 @@ function Stats({
           className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5 shadow-sm"
         >
           <div className="text-xs text-zinc-500">{it.label}</div>
-          <div className="text-2xl font-bold text-white mt-1 tabular-nums">
+          <div className="text-[40px] font-extrabold tracking-tight leading-none text-white mt-1 tabular-nums">
             {it.value}
           </div>
         </div>
@@ -746,8 +746,8 @@ function PayrollPanel({ range }: { range: Range }) {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-white">Payroll</h2>
-          <p className="text-sm text-zinc-400 mt-1">
+          <h2 className="text-lg font-extrabold text-white tracking-tight">Payroll</h2>
+          <p className="text-sm text-zinc-400 mt-3 font-bold">
             Calculate commissions for sales and technician teams.
           </p>
         </div>
@@ -894,7 +894,7 @@ function PayrollRowView({
 
   return (
     <tr className="border-t border-[#1f1f24]">
-      <td className="px-5 py-3 font-medium text-white">{row.name}</td>
+      <td className="px-5 py-3 font-bold text-white tracking-tight">{row.name}</td>
       <td className="px-5 py-3 text-zinc-400">{row.email || "—"}</td>
       <td className="px-5 py-3">
         <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 text-xs font-medium capitalize">
@@ -945,7 +945,7 @@ function PayrollRowView({
           {money(row.bonus_cents || 0)}
         </td>
       )}
-      <td className="px-5 py-3 text-right font-semibold text-white tabular-nums">
+      <td className="px-5 py-3 text-right font-extrabold text-white tracking-tight tabular-nums">
         {money(row.payout_cents)}
       </td>
       <td className="px-5 py-3 text-center">
@@ -1002,7 +1002,7 @@ function PayrollSummary({
             className={
               "text-sm " +
               (it.emphasis
-                ? "font-semibold text-white"
+                ? "font-extrabold text-white tracking-tight"
                 : "text-zinc-400")
             }
           >
@@ -1013,7 +1013,7 @@ function PayrollSummary({
               "tabular-nums " +
               (it.emphasis
                 ? "text-lg font-bold text-white"
-                : "font-semibold text-white")
+                : "font-extrabold text-white tracking-tight")
             }
           >
             {it.value}

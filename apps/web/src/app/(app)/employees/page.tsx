@@ -51,7 +51,7 @@ export default async function EmployeesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-white">Employees</h1>
+        <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Employees</h1>
         <Link
           href="/employees/new"
           className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-md px-4 py-2 text-sm font-medium"
@@ -118,7 +118,7 @@ export default async function EmployeesPage() {
                         )}
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-sm font-semibold text-white">
+                    <td className="px-4 py-4 text-sm font-extrabold text-white tracking-tight">
                       {displayName(e)}
                     </td>
                     <td className="px-4 py-4 text-sm text-zinc-400">{role}</td>

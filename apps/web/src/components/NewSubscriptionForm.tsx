@@ -218,10 +218,10 @@ export default function NewSubscriptionForm() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-white">
+          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
             New Subscription
           </h1>
-          <p className="text-sm text-zinc-400 mt-1">
+          <p className="text-sm text-zinc-400 mt-3 font-bold">
             Sell or set up a recurring subscription for a customer.
           </p>
         </div>
@@ -246,7 +246,7 @@ export default function NewSubscriptionForm() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-white">
+              <h2 className="text-base font-extrabold text-white tracking-tight">
                 Customer
               </h2>
               <button
@@ -282,7 +282,7 @@ export default function NewSubscriptionForm() {
 
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-white">
+              <h2 className="text-base font-extrabold text-white tracking-tight">
                 Schedule
               </h2>
             </CardHeader>
@@ -320,7 +320,7 @@ export default function NewSubscriptionForm() {
 
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-white">
+              <h2 className="text-base font-extrabold text-white tracking-tight">
                 Accept Plan
               </h2>
             </CardHeader>
@@ -351,7 +351,7 @@ export default function NewSubscriptionForm() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-white">Plan</h2>
+              <h2 className="text-base font-extrabold text-white tracking-tight">Plan</h2>
             </CardHeader>
             <Field label="Plan Template">
               <select
@@ -380,7 +380,7 @@ export default function NewSubscriptionForm() {
             </button>
             {selectedTemplate && (
               <div className="mt-3 rounded-xl border border-[#1f1f24] bg-black p-3 text-xs text-zinc-400 space-y-1">
-                <div className="font-medium text-white">
+                <div className="font-bold text-white tracking-tight">
                   {selectedTemplate.name}
                 </div>
                 {selectedTemplate.description && (
@@ -435,7 +435,7 @@ export default function NewSubscriptionForm() {
 
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-white">
+              <h2 className="text-base font-extrabold text-white tracking-tight">
                 Included Visits
               </h2>
             </CardHeader>
@@ -566,7 +566,7 @@ function RadioOption({
           )}
         </span>
         <div>
-          <div className="text-sm font-medium text-white">{title}</div>
+          <div className="text-sm font-bold text-white tracking-tight">{title}</div>
           <div className="text-xs text-zinc-400 mt-0.5">{description}</div>
         </div>
       </div>
@@ -637,7 +637,7 @@ function CustomerPicker({
               }}
               className="w-full text-left px-4 py-2 hover:bg-black text-sm"
             >
-              <div className="font-medium text-white">{c.name}</div>
+              <div className="font-bold text-white tracking-tight">{c.name}</div>
               {(c.formatted_address || c.address) && (
                 <div className="text-xs text-zinc-400 truncate">
                   {c.formatted_address || c.address}
@@ -702,7 +702,7 @@ function NewCustomerModal({
         className="bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4"
       >
         <div className="flex items-start justify-between">
-          <h3 className="text-base font-semibold text-white">
+          <h3 className="text-base font-extrabold text-white tracking-tight">
             New customer
           </h3>
           <button
@@ -829,7 +829,7 @@ function NewTemplateModal({
         className="bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-start justify-between">
-          <h3 className="text-base font-semibold text-white">
+          <h3 className="text-base font-extrabold text-white tracking-tight">
             New plan template
           </h3>
           <button

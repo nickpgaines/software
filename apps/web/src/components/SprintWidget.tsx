@@ -97,7 +97,7 @@ export default function SprintWidget({
         <div>
           <h3 className="text-xl font-bold text-white">{sprint.name}</h3>
           {sprint.description && (
-            <p className="text-sm text-zinc-400 mt-0.5">{sprint.description}</p>
+            <p className="text-sm text-zinc-400 mt-2 font-bold">{sprint.description}</p>
           )}
           <div className="flex items-center gap-2 mt-2 text-sm">
             <span className="inline-flex items-center gap-1 text-sky-600">

@@ -144,7 +144,7 @@ export default function CustomerCard({
         <div className="p-5 space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h3 className="text-xl font-semibold text-white truncate">
+              <h3 className="text-[40px] font-extrabold tracking-tight leading-none text-white truncate">
                 {customer.name || "Customer"}
               </h3>
             </div>

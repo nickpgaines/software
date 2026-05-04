@@ -302,7 +302,7 @@ function Chart({ days }: { days: Day[] }) {
           style={{ left: `${tooltipLeftPct}%`, top: 8 }}
         >
           <div className="text-zinc-400">{tooltipDate(hovered.date)}</div>
-          <div className="font-semibold text-white tabular-nums">
+          <div className="font-extrabold text-white tracking-tight tabular-nums">
             {tooltipMoney(hovered.cents)}
           </div>
         </div>
@@ -348,7 +348,7 @@ export default function RevenueChart() {
     <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-6 sm:p-8">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-lg font-semibold text-white">
+          <h2 className="text-lg font-extrabold text-white tracking-tight">
             {data?.label ?? "Revenue"}
           </h2>
           <div className="text-4xl sm:text-5xl font-bold text-white mt-2 tabular-nums">

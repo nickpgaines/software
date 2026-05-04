@@ -242,7 +242,7 @@ export default function JobDetailClient({
             ← Back to schedule
           </Link>
           <div className="flex items-center gap-3 flex-wrap mt-1">
-            <h1 className="text-3xl font-bold text-white">
+            <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
               {job.customer_name}
             </h1>
             <JobStatusBadge status={job.job_status} />
@@ -291,7 +291,7 @@ export default function JobDetailClient({
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-6">
         <div className="space-y-6">
           <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
-            <h2 className="font-semibold text-white mb-4">
+            <h2 className="font-extrabold text-white tracking-tight mb-4">
               Contact Information
             </h2>
             <div className="space-y-3 text-sm">
@@ -299,7 +299,7 @@ export default function JobDetailClient({
                 <div className="text-xs text-zinc-500 uppercase tracking-wide">
                   Name
                 </div>
-                <div className="font-medium text-white">
+                <div className="font-bold text-white tracking-tight">
                   {job.customer_name}
                 </div>
               </div>
@@ -321,7 +321,7 @@ export default function JobDetailClient({
                       <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
                     </svg>
                   </span>
-                  <span className="font-medium text-white">
+                  <span className="font-bold text-white tracking-tight">
                     {job.customer_phone}
                   </span>
                 </a>
@@ -345,7 +345,7 @@ export default function JobDetailClient({
                       <polyline points="22,6 12,13 2,6" />
                     </svg>
                   </span>
-                  <span className="font-medium text-white">
+                  <span className="font-bold text-white tracking-tight">
                     {job.customer_email}
                   </span>
                 </a>
@@ -371,7 +371,7 @@ export default function JobDetailClient({
                       <circle cx="12" cy="10" r="3" />
                     </svg>
                   </span>
-                  <span className="font-medium text-white">
+                  <span className="font-bold text-white tracking-tight">
                     {job.customer_address}
                   </span>
                 </a>
@@ -390,7 +390,7 @@ export default function JobDetailClient({
           </section>
 
           <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
-            <h2 className="font-semibold text-white mb-4">Quick Actions</h2>
+            <h2 className="font-extrabold text-white tracking-tight mb-4">Quick Actions</h2>
             <div className="space-y-2">
               <button
                 type="button"
@@ -430,7 +430,7 @@ export default function JobDetailClient({
         <div className="space-y-6">
           <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-white">Job Details</h2>
+              <h2 className="font-extrabold text-white tracking-tight">Job Details</h2>
               <Link
                 href={`/schedule/${job.id}/edit`}
                 className="text-sm text-zinc-300 hover:text-white hover:underline"
@@ -443,7 +443,7 @@ export default function JobDetailClient({
                 <div className="text-xs text-zinc-500 uppercase tracking-wide">
                   Scheduled
                 </div>
-                <div className="font-medium text-white">
+                <div className="font-bold text-white tracking-tight">
                   {dayStamp(job.scheduled_at)}
                 </div>
                 <div className="text-zinc-400">
@@ -458,7 +458,7 @@ export default function JobDetailClient({
                 <div className="text-xs text-zinc-500 uppercase tracking-wide">
                   Duration
                 </div>
-                <div className="font-medium text-white">
+                <div className="font-bold text-white tracking-tight">
                   {job.duration_minutes} min
                 </div>
               </div>
@@ -466,7 +466,7 @@ export default function JobDetailClient({
                 <div className="text-xs text-zinc-500 uppercase tracking-wide">
                   Salesperson
                 </div>
-                <div className="font-medium text-white">
+                <div className="font-bold text-white tracking-tight">
                   {job.sales.length === 0
                     ? "—"
                     : job.sales.map((s) => s.name).join(", ")}
@@ -476,7 +476,7 @@ export default function JobDetailClient({
                 <div className="text-xs text-zinc-500 uppercase tracking-wide">
                   Dispatched To
                 </div>
-                <div className="font-medium text-white">
+                <div className="font-bold text-white tracking-tight">
                   {job.techs.length === 0
                     ? "—"
                     : job.techs.map((s) => s.name).join(", ")}
@@ -487,7 +487,7 @@ export default function JobDetailClient({
                   <div className="text-xs text-zinc-500 uppercase tracking-wide">
                     Lead Source
                   </div>
-                  <div className="font-medium text-white">
+                  <div className="font-bold text-white tracking-tight">
                     {job.lead_source}
                   </div>
                 </div>
@@ -497,7 +497,7 @@ export default function JobDetailClient({
                   <div className="text-xs text-zinc-500 uppercase tracking-wide">
                     Recurring
                   </div>
-                  <div className="font-medium text-white">Yes</div>
+                  <div className="font-bold text-white tracking-tight">Yes</div>
                 </div>
               ) : null}
             </div>
@@ -514,7 +514,7 @@ export default function JobDetailClient({
           </section>
 
           <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
-            <h2 className="font-semibold text-white mb-4">Line Items</h2>
+            <h2 className="font-extrabold text-white tracking-tight mb-4">Line Items</h2>
             {job.line_items.length === 0 ? (
               <p className="text-sm text-zinc-500">No line items.</p>
             ) : (
@@ -525,9 +525,9 @@ export default function JobDetailClient({
                     className="py-3 flex items-start justify-between gap-4"
                   >
                     <div>
-                      <div className="font-medium text-white">{li.title}</div>
+                      <div className="font-bold text-white tracking-tight">{li.title}</div>
                       {li.description && (
-                        <div className="text-sm text-zinc-400 mt-0.5">
+                        <div className="text-sm text-zinc-400 mt-2 font-bold">
                           {li.description}
                         </div>
                       )}
@@ -543,7 +543,7 @@ export default function JobDetailClient({
                         ) : null}
                       </div>
                     </div>
-                    <div className="text-sm font-semibold text-white tabular-nums whitespace-nowrap">
+                    <div className="text-sm font-extrabold text-white tracking-tight tabular-nums whitespace-nowrap">
                       {money(Math.round(li.quantity * li.price_cents))}
                     </div>
                   </li>
@@ -569,7 +569,7 @@ export default function JobDetailClient({
           />
 
           <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
-            <h2 className="font-semibold text-white mb-4">Checklist</h2>
+            <h2 className="font-extrabold text-white tracking-tight mb-4">Checklist</h2>
             {job.checklist_items.length === 0 ? (
               <p className="text-sm text-zinc-500">No tasks selected.</p>
             ) : (
@@ -744,7 +744,7 @@ function StepButton({
         <div className="text-xs text-zinc-500 uppercase tracking-wide">
           Step {index + 1}
         </div>
-        <div className="font-semibold text-white">{label}</div>
+        <div className="font-extrabold text-white tracking-tight">{label}</div>
         <div className="text-xs text-zinc-400 mt-0.5">
           {done ? `Logged ${timeStamp(timestamp)}` : "Tap to log"}
         </div>
