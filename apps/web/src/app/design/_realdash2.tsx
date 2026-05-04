@@ -103,11 +103,11 @@ function Sidebar({ v, t }: { v: Variant2; t: Tokens }) {
         t.isDark ? "border-r border-zinc-800" : "border-r border-zinc-200"
       }`}
     >
-      {/* Brand — empty 36px square reserved for the future FORGE logo */}
+      {/* Brand — empty 36px square reserved for the future Forge CRM logo */}
       <div className="flex items-center gap-2.5 px-3 h-16 flex-shrink-0">
         <div className="w-9 h-9 flex-shrink-0" aria-hidden />
         <div className="flex-1 min-w-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150 group-hover:delay-100">
-          <div className={`font-bold tracking-tight text-[15px] ${t.text}`}>FORGE</div>
+          <div className={`font-bold tracking-tight text-[15px] ${t.text}`}>Forge CRM</div>
         </div>
       </div>
 

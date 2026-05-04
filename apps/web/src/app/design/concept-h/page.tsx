@@ -37,7 +37,7 @@ function TopNav() {
           <div className="w-8 h-8 rounded-xl bg-white text-black text-[13px] font-extrabold flex items-center justify-center">
             N
           </div>
-          <span className="font-bold tracking-tight text-[15px]">FORGE</span>
+          <span className="font-bold tracking-tight text-[15px]">Forge CRM</span>
         </div>
         <nav className="flex items-center gap-1 flex-1">
           {links.map((l) => (

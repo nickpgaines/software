@@ -114,7 +114,7 @@ export function PulseSidebar() {
             className="text-[15px] font-extrabold tracking-tight"
             style={{ color: PULSE.text }}
           >
-            FORGE
+            Forge CRM
           </span>
         </div>
       </div>

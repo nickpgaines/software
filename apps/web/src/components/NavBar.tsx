@@ -89,7 +89,7 @@ export default function NavBar() {
     <aside className="fixed inset-y-0 left-0 w-60 bg-black flex flex-col z-40">
       {/* Logo */}
       <div className="pt-6 pb-4 px-5 shrink-0">
-        <span className="font-bold text-lg text-white tracking-tight">FORGE</span>
+        <span className="font-bold text-lg text-white tracking-tight">Forge CRM</span>
       </div>
 
       {/* + New button */}

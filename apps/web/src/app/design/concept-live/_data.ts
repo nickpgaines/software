@@ -176,7 +176,7 @@ export type ReportsOverview = {
 };
 
 // Mirrors /api/reports/overview so the redesigned Reports view can show the
-// same numbers as the live FORGE Reports tab.
+// same numbers as the live Forge CRM Reports tab.
 export async function getReportsOverview(
   range: ReportRange = "1m"
 ): Promise<ReportsOverview> {

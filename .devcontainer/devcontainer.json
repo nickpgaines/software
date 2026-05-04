@@ -1,10 +1,10 @@
 {
-  "name": "FORGE",
+  "name": "Forge CRM",
   "image": "mcr.microsoft.com/devcontainers/javascript-node:1-22-bookworm",
   "forwardPorts": [3000],
   "portsAttributes": {
     "3000": {
-      "label": "FORGE",
+      "label": "Forge CRM",
       "onAutoForward": "openPreview",
       "visibility": "public"
     }

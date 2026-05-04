@@ -68,11 +68,11 @@ function FloatingSidebar({ initials }: { initials: string }) {
     <aside
       className={`group fixed left-3 top-14 bottom-3 w-14 hover:w-60 transition-[width] duration-200 z-40 ${sidebarBg} ${sidebarBorder} rounded-2xl shadow-[0_10px_30px_-12px_rgba(0,0,0,0.18),0_2px_6px_rgba(0,0,0,0.06)] overflow-hidden whitespace-nowrap flex flex-col`}
     >
-      {/* Brand — empty 36px square reserved for the future FORGE logo */}
+      {/* Brand — empty 36px square reserved for the future Forge CRM logo */}
       <div className="flex items-center gap-2.5 px-2.5 h-14 flex-shrink-0">
         <div className="w-9 h-9 flex-shrink-0" aria-hidden />
         <div className="flex-1 min-w-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150 group-hover:delay-100">
-          <div className={`font-bold tracking-tight text-[15px] ${t.text}`}>FORGE</div>
+          <div className={`font-bold tracking-tight text-[15px] ${t.text}`}>Forge CRM</div>
         </div>
       </div>
 

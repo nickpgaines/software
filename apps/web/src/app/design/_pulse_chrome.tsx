@@ -89,7 +89,7 @@ export function PulseSidebar({
           </div>
           <div className="flex-1 min-w-0 flex items-center gap-1">
             <span className="text-[14px] font-bold tracking-tight" style={{ color: PULSE.text }}>
-              FORGE
+              Forge CRM
             </span>
             <PulseIcon name="chevron" className="w-3.5 h-3.5" />
           </div>

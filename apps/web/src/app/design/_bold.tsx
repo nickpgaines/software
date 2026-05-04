@@ -188,11 +188,11 @@ function Sidebar({
 
   return (
     <aside className={asideCls}>
-      {/* Brand — empty 36px square reserved for the future FORGE logo */}
+      {/* Brand — empty 36px square reserved for the future Forge CRM logo */}
       <div className="flex items-center gap-2.5 px-2.5 h-14 flex-shrink-0">
         <div className="w-9 h-9 flex-shrink-0" aria-hidden />
         <div className={`flex-1 min-w-0 ${isStatic ? "" : "opacity-0 group-hover:opacity-100 transition-opacity duration-150 group-hover:delay-100"}`}>
-          <div className={`tracking-tight ${config.brandFontSize} font-extrabold ${t.text}`}>FORGE</div>
+          <div className={`tracking-tight ${config.brandFontSize} font-extrabold ${t.text}`}>Forge CRM</div>
         </div>
       </div>
 

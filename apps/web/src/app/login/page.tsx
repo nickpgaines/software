@@ -58,7 +58,7 @@ function LoginPageInner() {
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
           <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
-            FORGE
+            Forge CRM
           </h1>
           <p className="text-sm text-zinc-400 mt-3 font-bold">
             Sign in to continue
