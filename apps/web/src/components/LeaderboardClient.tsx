@@ -111,6 +111,7 @@ export default function LeaderboardClient({
   const [scorecardId, setScorecardId] = useState<number | null>(null);
   const [showNewSprint, setShowNewSprint] = useState(false);
   const [sprints, setSprints] = useState<Sprint[]>([]);
+  const [search, setSearch] = useState("");
 
   const loadSprints = useCallback(async () => {
     try {
@@ -184,6 +185,16 @@ export default function LeaderboardClient({
   const totalJobs = activeRows.reduce((a, r) => a + r.job_count, 0);
   const top = activeRows[0] || null;
 
+  const filteredRows = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return activeRows;
+    return activeRows.filter(
+      (r) =>
+        r.name.toLowerCase().includes(q) ||
+        (r.role || "").toLowerCase().includes(q)
+    );
+  }, [activeRows, search]);
+
   const me = useMemo(() => {
     if (!data) return null;
     if (currentStaffId != null) {
@@ -202,7 +213,7 @@ export default function LeaderboardClient({
   const meRevenue = me?.revenue_cents ?? total;
   const meIsFallback = !me;
 
-  const title = view === "sales" ? "Sales Leaderboard" : "Technician Leaderboard";
+  const titleLead = view === "sales" ? "Sales" : "Technician";
   const personColumn = view === "sales" ? "SALESPERSON" : "TECHNICIAN";
   const avgColumn = view === "sales" ? "AVG DEAL" : "AVG JOB";
   const lastColumn = view === "sales" ? "LAST SALE" : "LAST JOB";
@@ -210,7 +221,42 @@ export default function LeaderboardClient({
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <h1 className="text-3xl sm:text-4xl font-bold text-slate-900">{title}</h1>
+        <div>
+          <h1 className="text-3xl sm:text-4xl font-bold text-slate-900">
+            {titleLead} <span className="text-sky-400">Leaderboard</span>
+          </h1>
+          <p className="text-sm text-slate-400 mt-1">
+            Track your team&apos;s performance
+          </p>
+        </div>
+        <div className="relative">
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search"
+            className="bg-white border border-slate-200 rounded-full pl-10 pr-16 py-2.5 text-sm w-72 max-w-full focus:outline-none focus:ring-2 focus:ring-slate-400"
+          />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 bg-slate-100 rounded px-1.5 py-0.5">
+            ⌘K
+          </kbd>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-1 bg-slate-100 rounded-full p-1 text-sm">
           <button
             onClick={() => setView("sales")}
@@ -235,18 +281,15 @@ export default function LeaderboardClient({
             Technicians
           </button>
         </div>
-      </div>
-
-      {isAdmin && (
-        <div className="flex justify-end">
+        {isAdmin && (
           <button
             onClick={() => setShowNewSprint(true)}
-            className="text-sm border border-slate-200 bg-white hover:bg-slate-50 rounded-full px-4 py-2 flex items-center gap-2 text-slate-700"
+            className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 flex items-center gap-2"
           >
             <span className="text-lg leading-none">+</span> Start a sprint
           </button>
-        </div>
-      )}
+        )}
+      </div>
 
       {sprints.length > 0 && (
         <div className="space-y-3">
@@ -270,11 +313,11 @@ export default function LeaderboardClient({
             if (el) el.scrollIntoView({ behavior: "smooth" });
           }
         }}
-        className="w-full text-left flex items-center gap-3 bg-white border border-slate-200 rounded-2xl px-5 py-4 hover:bg-slate-50 shadow-sm"
+        className="w-full text-left flex items-center gap-4 bg-white border border-slate-200 rounded-2xl p-6 hover:bg-slate-50"
       >
         <div
           className={
-            "w-12 h-12 rounded-full flex items-center justify-center font-semibold text-base overflow-hidden " +
+            "w-14 h-14 rounded-full flex items-center justify-center font-semibold text-lg overflow-hidden " +
             (me?.photo_url ? "" : "bg-amber-100 text-amber-700")
           }
         >
@@ -290,8 +333,8 @@ export default function LeaderboardClient({
           )}
         </div>
         <div className="flex-1">
-          <div className="font-semibold text-slate-900">Your Stats</div>
-          <div className="text-sm text-slate-500">
+          <div className="text-lg font-semibold text-slate-900">Your Stats</div>
+          <div className="text-sm text-slate-500 mt-0.5">
             {money(meRevenue)} {view === "sales" ? "sold" : "cleaned"}
             {myRank
               ? ` · Rank #${myRank}`
@@ -309,10 +352,10 @@ export default function LeaderboardClient({
         <KpiCard label="Top Performer" value={top?.name || "—"} />
       </div>
 
-      <div id="rankings" className="bg-white border border-slate-200 rounded-2xl shadow-sm">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
+      <div id="rankings" className="bg-white border border-slate-200 rounded-2xl">
+        <div className="px-6 py-5 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
-            <h2 className="font-semibold text-slate-900">
+            <h2 className="text-lg font-semibold text-slate-900">
               {view === "sales" ? "Sales Rankings" : "Technician Rankings"}
             </h2>
             <span className="inline-flex items-center gap-1.5 bg-sky-50 border border-sky-100 text-sky-700 text-xs px-2.5 py-1 rounded-full">
@@ -446,24 +489,29 @@ export default function LeaderboardClient({
             No {view === "sales" ? "sales" : "technician"} revenue in this
             window yet. Assign staff to jobs in the schedule.
           </div>
+        ) : filteredRows.length === 0 ? (
+          <div className="p-10 text-center text-sm text-slate-500">
+            No matches for &ldquo;{search}&rdquo;.
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-xs uppercase tracking-wider text-slate-400">
-                  <th className="text-left px-5 py-3 font-medium">Rank</th>
-                  <th className="text-left px-5 py-3 font-medium">
+                  <th className="text-left px-6 py-3 font-medium">Rank</th>
+                  <th className="text-left px-6 py-3 font-medium">
                     {personColumn}
                   </th>
-                  <th className="text-left px-5 py-3 font-medium">Role</th>
-                  <th className="text-right px-5 py-3 font-medium">Revenue</th>
-                  <th className="text-right px-5 py-3 font-medium">Jobs</th>
-                  <th className="text-right px-5 py-3 font-medium">{avgColumn}</th>
-                  <th className="text-right px-5 py-3 font-medium">{lastColumn}</th>
+                  <th className="text-left px-6 py-3 font-medium">Role</th>
+                  <th className="text-right px-6 py-3 font-medium">Revenue</th>
+                  <th className="text-right px-6 py-3 font-medium">Jobs</th>
+                  <th className="text-right px-6 py-3 font-medium">{avgColumn}</th>
+                  <th className="text-right px-6 py-3 font-medium">{lastColumn}</th>
                 </tr>
               </thead>
               <tbody>
-                {activeRows.map((r, i) => {
+                {filteredRows.map((r) => {
+                  const i = activeRows.findIndex((x) => x.id === r.id);
                   const isMe = me?.id === r.id;
                   const isTop = i === 0;
                   return (
@@ -479,7 +527,7 @@ export default function LeaderboardClient({
                           : "")
                       }
                     >
-                      <td className="px-5 py-3">
+                      <td className="px-6 py-4">
                         <span
                           className={
                             "inline-flex items-center justify-center w-8 h-8 rounded-full font-semibold text-sm " +
@@ -489,7 +537,7 @@ export default function LeaderboardClient({
                           {i + 1}
                         </span>
                       </td>
-                      <td className="px-5 py-3">
+                      <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
                           <div
                             className={
@@ -513,7 +561,7 @@ export default function LeaderboardClient({
                           </span>
                         </div>
                       </td>
-                      <td className="px-5 py-3">
+                      <td className="px-6 py-4">
                         <span
                           className={
                             "text-xs px-2.5 py-1 rounded-full font-medium " +
@@ -523,17 +571,17 @@ export default function LeaderboardClient({
                           {r.role || "Staff"}
                         </span>
                       </td>
-                      <td className="px-5 py-3 text-right font-semibold text-slate-900 tabular-nums">
+                      <td className="px-6 py-4 text-right font-semibold text-slate-900 tabular-nums">
                         {money(r.revenue_cents)}
                       </td>
-                      <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                      <td className="px-6 py-4 text-right text-slate-700 tabular-nums">
                         {r.job_count}
                       </td>
-                      <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                      <td className="px-6 py-4 text-right text-slate-700 tabular-nums">
                         {money(Math.round(r.revenue_cents / r.job_count))}
                       </td>
                       <td
-                        className="px-5 py-3 text-right text-slate-900 tabular-nums whitespace-nowrap"
+                        className="px-6 py-4 text-right text-slate-900 tabular-nums whitespace-nowrap"
                         suppressHydrationWarning
                       >
                         {formatDate(r.last_sale_at, mounted)}
@@ -570,9 +618,9 @@ export default function LeaderboardClient({
 
 function KpiCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 min-h-[140px] flex flex-col justify-between shadow-sm">
-      <div className="text-sm text-slate-400">{label}</div>
-      <div className="text-4xl font-bold text-slate-900 tabular-nums">
+    <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 min-h-[160px] flex flex-col justify-between">
+      <div className="text-lg font-semibold text-slate-900">{label}</div>
+      <div className="text-4xl sm:text-5xl font-bold text-slate-900 mt-2 tabular-nums truncate">
         {value}
       </div>
     </div>
