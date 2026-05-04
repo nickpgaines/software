@@ -140,6 +140,41 @@ const bold = [
   },
 ];
 
+const pulseHeroLayouts = [
+  {
+    slug: "concept-pulse-13",
+    name: "Pulse 13 — Stack ↑",
+    tagline: "Centered with margin · KPIs ABOVE chart · 5 widgets stacked below.",
+    description:
+      "Same bold/thick P12 typography but centered (max-w-6xl) with margin on each side. Compact KPI strip (Close rate · ARR · Jobs sold) sits above the revenue chart, then 3-up Schedule + Inbox + Tasks, then 2-up Pipeline + Activity below. The KPI cards are intentionally smaller than the widget cards so the visual hierarchy reads widgets > KPIs.",
+    swatches: ["#000000", "#0f0f12", "#8b5cf6", "#22c55e", "#ffffff"],
+  },
+  {
+    slug: "concept-pulse-14",
+    name: "Pulse 14 — Stack ↓",
+    tagline: "Centered with margin · KPIs BELOW chart · 5 widgets stacked below.",
+    description:
+      "Same centered container as P13 but the chart leads. Header → chart hero → KPI strip → 3-up Schedule + Inbox + Tasks → 2-up Pipeline + Activity. The chart commands attention first; the supporting metrics sit beneath it.",
+    swatches: ["#000000", "#0f0f12", "#8b5cf6", "#22c55e", "#ffffff"],
+  },
+  {
+    slug: "concept-pulse-15",
+    name: "Pulse 15 — Wide rail",
+    tagline: "Full width · KPIs ABOVE chart · Pipeline + Activity in a right rail.",
+    description:
+      "The only one of the four that keeps Pipeline + Activity beside the main column. Full-bleed layout, main column carries the KPI strip + chart + 3-up of Schedule, Inbox, Tasks, while Pipeline + Activity stack in a 360px right rail. KPIs are above the chart.",
+    swatches: ["#000000", "#0f0f12", "#8b5cf6", "#22c55e", "#ef4444"],
+  },
+  {
+    slug: "concept-pulse-16",
+    name: "Pulse 16 — Wide flat",
+    tagline: "Full width · no rail · KPIs BELOW chart · everything stacks full-width.",
+    description:
+      "Full-bleed and flat. Chart leads at full width, KPI strip below it spans the full width, then 3-up Schedule + Inbox + Tasks full-width, then 2-up Pipeline + Activity full-width. Most edge-to-edge of the four; densest information presentation per scroll.",
+    swatches: ["#000000", "#0f0f12", "#8b5cf6", "#22c55e", "#ffffff"],
+  },
+];
+
 const pulseHero = [
   {
     slug: "concept-pulse-12",
@@ -501,23 +536,34 @@ export default function DesignIndexPage() {
               Reports — 4 UI options →
             </Link>
             <Link
-              href="/design/concept-pulse-12"
+              href="/design/concept-pulse-13"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black text-white text-sm font-bold hover:opacity-80 transition-opacity ring-1 ring-violet-500"
               style={{ boxShadow: "0 0 24px rgba(139,92,246,0.35)" }}
             >
-              Pulse 12 — Hero (NEWEST) →
+              Pulse 13–16 — P12 layouts (NEWEST) →
             </Link>
           </div>
         </div>
 
         <div className="mb-3">
           <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
-            Pulse 12 — Hero (NEWEST · bold typography + restructured KPIs)
+            Pulse 13–16 — P12 layout variations (NEWEST)
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
+          {pulseHeroLayouts.map((c) => (
+            <ConceptCard key={c.slug} {...c} highlighted />
+          ))}
+        </div>
+
+        <div className="mb-3">
+          <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
+            Pulse 12 — Hero (baseline · bold typography + restructured KPIs)
           </h2>
         </div>
         <div className="grid grid-cols-1 gap-5 mb-16">
           {pulseHero.map((c) => (
-            <ConceptCard key={c.slug} {...c} highlighted />
+            <ConceptCard key={c.slug} {...c} />
           ))}
         </div>
 

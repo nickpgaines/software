@@ -579,3 +579,201 @@ export function LiveBadge() {
     </span>
   );
 }
+
+// ---------- Hero chart (white-stroke wavy with grid + axis labels) -------
+
+export function HeroChart({
+  days,
+  height = 300,
+}: {
+  days: RevenuePoint[];
+  height?: number;
+}) {
+  if (days.length === 0) {
+    return (
+      <div
+        className="flex items-center justify-center text-[13px] font-extrabold"
+        style={{ height, color: PULSE.textDim }}
+      >
+        No data yet.
+      </div>
+    );
+  }
+  const w = 1000;
+  const h = height;
+  const padL = 44;
+  const padR = 8;
+  const padT = 12;
+  const padB = 28;
+  const max = Math.max(...days.map((d) => d.cents), 1);
+  const niceMax = niceCeil(max);
+  const innerW = w - padL - padR;
+  const innerH = h - padT - padB;
+  const baseY = padT + innerH;
+  const x = (i: number) =>
+    padL + (days.length <= 1 ? innerW / 2 : (i / (days.length - 1)) * innerW);
+  const y = (v: number) => baseY - (v / niceMax) * innerH;
+  let path = `M ${x(0)},${y(days[0].cents)}`;
+  for (let i = 0; i < days.length - 1; i++) {
+    const x0 = x(i);
+    const y0 = y(days[i].cents);
+    const x1 = x(i + 1);
+    const y1 = y(days[i + 1].cents);
+    const cx = (x0 + x1) / 2;
+    path += ` C ${cx},${y0} ${cx},${y1} ${x1},${y1}`;
+  }
+  const area = `${path} L ${x(days.length - 1)},${baseY} L ${x(0)},${baseY} Z`;
+  const yTicks = [0, niceMax / 4, niceMax / 2, (niceMax * 3) / 4, niceMax];
+  const everyN = Math.max(1, Math.ceil(days.length / 10));
+  const id = `hero-${Math.random().toString(36).slice(2, 7)}`;
+
+  return (
+    <div className="w-full" style={{ height }}>
+      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-full" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.18" />
+            <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        {yTicks.map((tick, i) => {
+          const yp = y(tick);
+          return (
+            <g key={i}>
+              <line
+                x1={padL}
+                x2={w - padR}
+                y1={yp}
+                y2={yp}
+                stroke={PULSE.cardBorder}
+                strokeDasharray="2 4"
+              />
+              <text
+                x={padL - 8}
+                y={yp + 3}
+                textAnchor="end"
+                fontSize="11"
+                fontWeight="800"
+                fill={PULSE.textDim}
+              >
+                ${Math.round(tick / 100)}
+              </text>
+            </g>
+          );
+        })}
+        <path d={area} fill={`url(#${id})`} />
+        <path
+          d={path}
+          fill="none"
+          stroke={PULSE.text}
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        {days.map((d, i) =>
+          i % everyN === 0 || i === days.length - 1 ? (
+            <text
+              key={d.date}
+              x={x(i)}
+              y={h - 8}
+              textAnchor="middle"
+              fontSize="11"
+              fontWeight="800"
+              fill={PULSE.textDim}
+            >
+              {new Date(`${d.date}T12:00:00`).getDate()}
+            </text>
+          ) : null
+        )}
+      </svg>
+    </div>
+  );
+}
+
+function niceCeil(v: number) {
+  if (v <= 0) return 1;
+  const exp = Math.floor(Math.log10(v));
+  const mag = Math.pow(10, exp);
+  const norm = v / mag;
+  const nice = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
+  return nice * mag;
+}
+
+// ---------- Hero KPI (compact card, smaller than widgets) ----------------
+// The four P12-derived variants want KPIs visually subordinate to the
+// Schedule/Inbox/Tasks/Pipeline/Activity widgets. This card runs ~80px
+// tall vs the ~280px widget cards.
+
+export function CompactHeroKpi({
+  label,
+  value,
+  delta,
+  deltaPositive,
+}: {
+  label: string;
+  value: string;
+  delta: string;
+  deltaPositive: boolean;
+}) {
+  return (
+    <div
+      className="rounded-2xl px-5 py-4 flex items-center justify-between gap-4"
+      style={{ background: PULSE.card, border: `1px solid ${PULSE.cardBorder}` }}
+    >
+      <div className="min-w-0">
+        <div
+          className="text-[11px] uppercase tracking-[0.18em] font-extrabold mb-1.5"
+          style={{ color: PULSE.textSubtle }}
+        >
+          {label}
+        </div>
+        <div className="text-[26px] font-black tracking-tight tabular-nums leading-none">
+          {value}
+        </div>
+      </div>
+      <span
+        className="text-[11px] px-2 py-0.5 rounded-md font-extrabold tabular-nums whitespace-nowrap"
+        style={{
+          background: deltaPositive ? `${PULSE.green}1F` : `${PULSE.red}1F`,
+          color: deltaPositive ? PULSE.green : PULSE.red,
+        }}
+      >
+        {delta}
+      </span>
+    </div>
+  );
+}
+
+// ---------- Empty state (used by Inbox / Tasks widgets) ------------------
+
+export function PulseEmptyState({
+  iconNode,
+  title,
+  sub,
+}: {
+  iconNode: React.ReactNode;
+  title: string;
+  sub: string;
+}) {
+  return (
+    <div className="py-10 flex flex-col items-center text-center">
+      <div
+        className="w-12 h-12 rounded-full flex items-center justify-center"
+        style={{
+          background: PULSE.bgAlt,
+          color: PULSE.textSubtle,
+          border: `1px solid ${PULSE.cardBorder}`,
+        }}
+      >
+        {iconNode}
+      </div>
+      <p className="mt-3 text-[13.5px] font-extrabold">{title}</p>
+      <p
+        className="text-[11.5px] mt-1 font-bold max-w-[20ch]"
+        style={{ color: PULSE.textSubtle }}
+      >
+        {sub}
+      </p>
+    </div>
+  );
+}

@@ -205,6 +205,10 @@ const PULSE_NAMES_BY_KEY: Record<string, string> = {
   "10": "Color",
   "11": "Charted",
   "12": "Hero",
+  "13": "Stack ↑",
+  "14": "Stack ↓",
+  "15": "Wide rail",
+  "16": "Wide flat",
 };
 
 export function PulsePreviewBar({
