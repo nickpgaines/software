@@ -140,7 +140,42 @@ const bold = [
   },
 ];
 
-const pulse = [
+const pulseBold = [
+  {
+    slug: "concept-pulse-4",
+    name: "Pulse 4 — Airy",
+    tagline: "Pulse 3 with breathing room · single column · big numbers · less density.",
+    description:
+      "Same bold dark + violet/green/red language as Pulse 3, but loose. Centered max-w-4xl content, generous py-16, larger 56px greeting, three large KPIs, full-width chart, schedule, then Pipeline + Activity in a calm 2-up below. The 'less going on' end of the spectrum.",
+    swatches: ["#000000", "#0f0f12", "#8b5cf6", "#22c55e", "#ffffff"],
+  },
+  {
+    slug: "concept-pulse-5",
+    name: "Pulse 5 — Dense",
+    tagline: "Edge-to-edge · five-up KPI strip · 8 schedule rows · three side-rail cards.",
+    description:
+      "The 'more going on' option. Full-bleed (no max-width), five-up KPI strip including Today and Customers, taller schedule (8 rows visible), and a side rail that stacks Pipeline + Activity + Top performer. Smaller padding, more information per screen.",
+    swatches: ["#000000", "#0f0f12", "#8b5cf6", "#22c55e", "#ef4444"],
+  },
+  {
+    slug: "concept-pulse-6",
+    name: "Pulse 6 — Donut",
+    tagline: "Donuts replace the line chart · pipeline conversion · target · jobs split.",
+    description:
+      "Three big donut rings as the hero: Pipeline conversion (violet), Monthly target (green), Jobs split (multi-segment with Done/Sched/Cancel legend). KPI strip stays up top, schedule + activity below. Same bold language, different chart vocabulary.",
+    swatches: ["#000000", "#0f0f12", "#8b5cf6", "#22c55e", "#ef4444"],
+  },
+  {
+    slug: "concept-pulse-7",
+    name: "Pulse 7 — Sparks",
+    tagline: "Five KPIs each with their own sparkline · no hero chart · pipeline strip.",
+    description:
+      "Sparklines do the trend work. Five KPI cards (Revenue, Today, Jobs done, Close rate, Customers) each carry an inline white-line sparkline. The standalone hero chart is gone — Pipeline becomes a horizontal four-up strip instead of a stacked rail. Densest data-per-pixel of the four.",
+    swatches: ["#000000", "#0f0f12", "#ffffff", "#8b5cf6", "#22c55e"],
+  },
+];
+
+const pulseDirections = [
   {
     slug: "concept-pulse-1",
     name: "Pulse 1 — Pure",
@@ -420,23 +455,34 @@ export default function DesignIndexPage() {
               Reports — 4 UI options →
             </Link>
             <Link
-              href="/design/concept-pulse-1"
+              href="/design/concept-pulse-4"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black text-white text-sm font-bold hover:opacity-80 transition-opacity ring-1 ring-violet-500"
               style={{ boxShadow: "0 0 24px rgba(139,92,246,0.35)" }}
             >
-              Pulse — dark / neon dashboards →
+              Pulse Bold — 4 layouts (NEW) →
             </Link>
           </div>
         </div>
 
         <div className="mb-3">
           <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
-            Pulse — dark / neon dashboards (NEW)
+            Pulse Bold — refinements of P3 (NEW · 4 layouts)
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
-          {pulse.map((c) => (
+          {pulseBold.map((c) => (
             <ConceptCard key={c.slug} {...c} highlighted />
+          ))}
+        </div>
+
+        <div className="mb-3">
+          <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
+            Pulse — original directions (P1 · P2 · P3)
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
+          {pulseDirections.map((c) => (
+            <ConceptCard key={c.slug} {...c} />
           ))}
         </div>
 

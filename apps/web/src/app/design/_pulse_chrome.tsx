@@ -192,7 +192,24 @@ function PulseNavRow({
   );
 }
 
-export function PulsePreviewBar({ active }: { active: "1" | "2" | "3" }) {
+const PULSE_NAMES_BY_KEY: Record<string, string> = {
+  "1": "Pure",
+  "2": "Neon",
+  "3": "Bold",
+  "4": "Airy",
+  "5": "Dense",
+  "6": "Donut",
+  "7": "Sparks",
+};
+
+export function PulsePreviewBar({
+  active,
+  group = ["1", "2", "3"],
+}: {
+  active: string;
+  group?: string[];
+}) {
+  const name = PULSE_NAMES_BY_KEY[active] ?? "";
   return (
     <div
       className="h-11 flex items-center justify-between px-4 text-[12px] sticky top-0 z-50"
@@ -205,13 +222,10 @@ export function PulsePreviewBar({ active }: { active: "1" | "2" | "3" }) {
         ← All concepts
       </Link>
       <div className="font-bold tracking-tight" style={{ color: PULSE.text }}>
-        Pulse {active} ·{" "}
-        <span style={{ color: PULSE.violet }}>
-          {active === "1" ? "Pure" : active === "2" ? "Neon" : "Bold"}
-        </span>
+        Pulse {active} · <span style={{ color: PULSE.violet }}>{name}</span>
       </div>
       <div className="flex items-center gap-1.5 font-bold" style={{ color: PULSE.textDim }}>
-        {(["1", "2", "3"] as const).map((n, i) => (
+        {group.map((n, i) => (
           <span key={n} className="flex items-center gap-1.5">
             <Link
               href={`/design/concept-pulse-${n}`}
@@ -220,7 +234,7 @@ export function PulsePreviewBar({ active }: { active: "1" | "2" | "3" }) {
             >
               P{n}
             </Link>
-            {i < 2 && <span>·</span>}
+            {i < group.length - 1 && <span>·</span>}
           </span>
         ))}
       </div>
