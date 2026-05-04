@@ -116,7 +116,10 @@ export async function GET(req: Request) {
   }
 
   const identity = staff.email || email;
-  const token = createSessionToken(identity);
+  const token = createSessionToken(identity, {
+    staffId: staff.id,
+    companyId: staff.company_id ?? 1,
+  });
   const res = NextResponse.redirect(new URL("/", req.url));
   res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,

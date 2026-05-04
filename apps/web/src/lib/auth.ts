@@ -19,13 +19,36 @@ function sign(value: string) {
   return crypto.createHmac("sha256", secret()).update(value).digest("hex");
 }
 
-export function createSessionToken(username: string) {
-  const payload = `${username}:${Date.now()}`;
+// Cookie payload format:
+//   v1 (legacy):  `${username}:${ts}`
+//   v2:           `${username}:${ts}:${staffId}:${companyId}`
+// Both verify under the same HMAC. Reading code falls back gracefully when
+// the v2 fields are absent, so existing v1 cookies stay valid.
+type SessionTokenIds = {
+  staffId?: number | null;
+  companyId?: number | null;
+};
+
+export function createSessionToken(
+  username: string,
+  ids: SessionTokenIds = {}
+) {
+  const staff = ids.staffId == null ? "" : String(ids.staffId);
+  const company = ids.companyId == null ? "" : String(ids.companyId);
+  const payload = `${username}:${Date.now()}:${staff}:${company}`;
   const sig = sign(payload);
   return `${Buffer.from(payload).toString("base64url")}.${sig}`;
 }
 
-export function verifySessionToken(token: string | undefined): string | null {
+export type VerifiedSession = {
+  username: string;
+  staffId: number | null;
+  companyId: number | null;
+};
+
+export function verifySessionToken(
+  token: string | undefined
+): VerifiedSession | null {
   if (!token) return null;
   const [b64, sig] = token.split(".");
   if (!b64 || !sig) return null;
@@ -42,13 +65,21 @@ export function verifySessionToken(token: string | undefined): string | null {
   ) {
     return null;
   }
-  const [username] = payload.split(":");
-  return username || null;
+  const parts = payload.split(":");
+  const username = parts[0];
+  if (!username) return null;
+  const staffRaw = parts[2];
+  const companyRaw = parts[3];
+  const staffId =
+    staffRaw && /^\d+$/.test(staffRaw) ? Number(staffRaw) : null;
+  const companyId =
+    companyRaw && /^\d+$/.test(companyRaw) ? Number(companyRaw) : null;
+  return { username, staffId, companyId };
 }
 
 export function getSessionUser(): string | null {
   const token = cookies().get(COOKIE_NAME)?.value;
-  return verifySessionToken(token);
+  return verifySessionToken(token)?.username ?? null;
 }
 
 export type SessionContext = {
@@ -69,8 +100,10 @@ const ADMIN_USER = () => process.env.ADMIN_USERNAME || "admin";
 // Resolve the cookie identity to a full session context (staffId + companyId).
 // Returns null when the cookie is missing or invalid, so callers can return 401.
 export async function getSessionContext(): Promise<SessionContext | null> {
-  const identity = getSessionUser();
-  if (!identity) return null;
+  const token = cookies().get(COOKIE_NAME)?.value;
+  const verified = verifySessionToken(token);
+  if (!verified) return null;
+  const identity = verified.username;
 
   if (identity === ADMIN_USER()) {
     return {
@@ -81,6 +114,18 @@ export async function getSessionContext(): Promise<SessionContext | null> {
     };
   }
 
+  // Fast path: the cookie carries staffId + companyId for sessions issued
+  // after the v2 cookie format landed. No DB round-trip required.
+  if (verified.staffId != null && verified.companyId != null) {
+    return {
+      identity,
+      staffId: verified.staffId,
+      companyId: verified.companyId,
+      isPlatformAdmin: false,
+    };
+  }
+
+  // Legacy v1 cookie — look up the staff row to fill in IDs.
   const db = await getDb();
   const row = await db
     .prepare(

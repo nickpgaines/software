@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     username === expectedUser &&
     password === expectedPass
   ) {
-    return issueSession(username);
+    return issueSession(username, { staffId: null, companyId: 1 });
   }
 
   // Staff login (email + scrypt-hashed password from the staff table).
@@ -41,15 +41,21 @@ export async function POST(req: Request) {
       .prepare("SELECT * FROM staff WHERE LOWER(email) = ? LIMIT 1")
       .get(identifier)) as Staff | undefined;
     if (row && row.password_hash && verifyPassword(password, row.password_hash)) {
-      return issueSession(row.email || identifier);
+      return issueSession(row.email || identifier, {
+        staffId: row.id,
+        companyId: row.company_id ?? 1,
+      });
     }
   }
 
   return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
 }
 
-function issueSession(identity: string) {
-  const token = createSessionToken(identity);
+function issueSession(
+  identity: string,
+  ids: { staffId: number | null; companyId: number | null }
+) {
+  const token = createSessionToken(identity, ids);
   const res = NextResponse.json({ ok: true });
   res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
