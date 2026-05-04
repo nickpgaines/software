@@ -1,29 +1,18 @@
 "use client";
 
 import Link from "next/link";
+import { useId } from "react";
 import { PULSE } from "./theme";
 import { PulseIcon } from "./Icon";
+import type {
+  LiveJob,
+  PipelineEntry,
+  RevenuePoint,
+  RevenueSummary,
+} from "./types";
 
-// ---------- Types -------------------------------------------------------
-
-export type RevenuePoint = { date: string; cents: number };
-export type RevenueSummary = {
-  totalCents: number;
-  jobsCompleted: number;
-  customersCount: number;
-  daily: RevenuePoint[];
-};
-export type LiveJob = {
-  id: number;
-  scheduled_at: string;
-  duration_minutes: number;
-  price_cents: number;
-  status: string;
-  customer_name: string;
-  customer_address: string | null;
-  salesperson_name: string | null;
-  technician_name: string | null;
-};
+// Re-export so existing widget importers don't have to change.
+export type { LiveJob, PipelineEntry, RevenuePoint, RevenueSummary };
 
 // ---------- Formatters --------------------------------------------------
 
@@ -205,7 +194,9 @@ export function HeroChart({
   const area = `${path} L ${x(days.length - 1)},${baseY} L ${x(0)},${baseY} Z`;
   const yTicks = [0, niceMax / 4, niceMax / 2, (niceMax * 3) / 4, niceMax];
   const everyN = Math.max(1, Math.ceil(days.length / 10));
-  const id = `hero-${Math.random().toString(36).slice(2, 7)}`;
+  // Stable across SSR + hydration so the gradient ref isn't broken on hydrate.
+  const reactId = useId();
+  const id = `hero-${reactId.replace(/:/g, "")}`;
   const padLPct = (padL / w) * 100;
   const padRPct = (padR / w) * 100;
 
@@ -476,13 +467,6 @@ export function PulseScheduleCard({
 // ---------- Pipeline ----------------------------------------------------
 // Pipeline numbers are placeholder for now — real lead/estimate counts can
 // be wired in when the pipeline aggregator is ready.
-
-export type PipelineEntry = {
-  label: string;
-  count: number;
-  value: number;
-  pct: number;
-};
 
 export const PLACEHOLDER_PIPELINE: PipelineEntry[] = [
   { label: "New leads", count: 12, value: 540_000, pct: 0.4 },

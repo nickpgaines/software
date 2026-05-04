@@ -1,6 +1,10 @@
 import { getDb } from "@/lib/db";
 import { getSessionContext } from "@/lib/auth";
-import type { LiveJob, RevenuePoint, RevenueSummary } from "@/components/pulse/widgets";
+import type {
+  LiveJob,
+  RevenuePoint,
+  RevenueSummary,
+} from "@/components/pulse/types";
 
 export async function getDashboardIdentity(): Promise<{
   firstName: string;
