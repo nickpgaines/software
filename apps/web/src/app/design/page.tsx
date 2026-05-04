@@ -385,6 +385,12 @@ export default function DesignIndexPage() {
             with all click-throughs wired to real CRM data (Schedule,
             Leaderboard, Reports, Customers).
           </p>
+          <Link
+            href="/design/reports"
+            className="inline-flex items-center gap-2 mt-6 px-4 py-2 rounded-full bg-neutral-950 text-white text-sm font-bold hover:bg-neutral-800 transition-colors"
+          >
+            Reports — 4 UI options →
+          </Link>
         </div>
 
         <div className="mb-3">
