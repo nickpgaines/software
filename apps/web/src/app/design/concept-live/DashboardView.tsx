@@ -32,11 +32,7 @@ export default function DashboardView({
   return (
     <>
       <PageHeader
-        title={
-          <>
-            {greeting}, <span style={{ color: ACCENT }}>{firstName}</span>
-          </>
-        }
+        title={`${greeting}, ${firstName}`}
         subtitle="Welcome to your dashboard"
       />
       <div className="space-y-6">

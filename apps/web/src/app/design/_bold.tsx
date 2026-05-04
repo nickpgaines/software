@@ -42,6 +42,10 @@ export type BoldConfig = {
   // Sidebar layout
   sidebarMode?: "floating" | "static"; // default "floating"
   navSize?: "default" | "large"; // default "default"
+  // Optional override for the primary action ("New") button color and the
+  // active nav state color. Defaults to ACCENT (blue) when omitted.
+  newButtonAccent?: string;
+  navActiveAccent?: string;
 };
 
 // ---------- Nav ------------------------------------------------------------
@@ -194,14 +198,16 @@ function Sidebar({
         </div>
         <div className={`flex-1 min-w-0 ${isStatic ? "" : "opacity-0 group-hover:opacity-100 transition-opacity duration-150 group-hover:delay-100"}`}>
           <div className={`tracking-tight ${config.brandFontSize} font-extrabold ${t.text}`}>Nick360</div>
-          <div className={`text-[11px] ${t.subtle} font-bold truncate`}>Window cleaning</div>
         </div>
       </div>
 
       {/* New */}
       <button
         className={`mx-2 mb-3 ${config.navSize === "large" ? "h-11" : "h-10"} rounded-xl text-white ${config.navWeight === "font-extrabold" ? "font-extrabold" : "font-bold"} flex items-center gap-2 px-3`}
-        style={{ background: ACCENT, boxShadow: `0 2px 12px ${ACCENT}40` }}
+        style={{
+          background: config.newButtonAccent ?? ACCENT,
+          boxShadow: `0 2px 12px ${config.newButtonAccent ?? ACCENT}40`,
+        }}
       >
         <NavIcon name="plus" />
         <span className={`${config.navSize === "large" ? "text-[14px]" : "text-[13px]"} ${isStatic ? "" : "opacity-0 group-hover:opacity-100 transition-opacity duration-150 group-hover:delay-100"}`}>
@@ -291,19 +297,21 @@ function NavRow({
   const baseRow = `flex items-center ${gap} ${padding} rounded-xl ${textSize} ${config.navWeight} transition-colors`;
   void active;
 
+  const activeAccent = config.navActiveAccent ?? ACCENT;
+
   if (isActive && config.navActive === "leftbar") {
     return (
       <li>
         <Link
           href={it.href ?? "#"}
           className={`${baseRow} relative ${t.text}`}
-          style={{ background: `${ACCENT}1A` }}
+          style={{ background: `${activeAccent}1A` }}
         >
-          <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r" style={{ background: ACCENT }} />
-          <span className={`flex-shrink-0 ${iconSize}`} style={{ color: ACCENT }}>
+          <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r" style={{ background: activeAccent }} />
+          <span className={`flex-shrink-0 ${iconSize}`} style={{ color: activeAccent }}>
             <NavIcon name={it.icon} className={iconSize} />
           </span>
-          <span className={labelHoverCls} style={{ color: ACCENT }}>
+          <span className={labelHoverCls} style={{ color: activeAccent }}>
             {it.name}
           </span>
         </Link>
@@ -317,7 +325,7 @@ function NavRow({
         <Link
           href={it.href ?? "#"}
           className={`${baseRow} text-white`}
-          style={{ background: ACCENT, boxShadow: `0 2px 8px ${ACCENT}33` }}
+          style={{ background: activeAccent, boxShadow: `0 2px 8px ${activeAccent}33` }}
         >
           <NavIcon name={it.icon} className={iconSize} />
           <span className={labelHoverCls}>{it.name}</span>
@@ -424,7 +432,7 @@ export function BoldDashboard({
     <>
       <div className="mb-6">
         <h1 className={`${config.headlineSize} ${config.headlineWeight} ${headingColor} tracking-tight`}>
-          {greeting}, <span style={{ color: ACCENT }}>{firstName}</span>
+          {greeting}, {firstName}
         </h1>
         <p className={`text-sm ${subtitleColor} mt-1 font-bold`}>Welcome to your dashboard</p>
       </div>

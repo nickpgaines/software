@@ -21,4 +21,7 @@ export const boldConfig: BoldConfig = {
   navSlugPrefix: "concept-bold-",
   sidebarMode: "floating",
   navSize: "large",
+  // Solid variant: New button and active fill both go black.
+  newButtonAccent: "#0a0a0a",
+  navActiveAccent: "#0a0a0a",
 };

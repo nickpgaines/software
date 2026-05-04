@@ -100,7 +100,6 @@ function Sidebar({ v, t }: { v: Variant; t: Tokens }) {
         </div>
         <div className="flex-1 min-w-0">
           <div className={`font-bold tracking-tight text-[15px] ${t.text}`}>Nick360</div>
-          <div className={`text-[11px] ${t.subtle} font-semibold truncate`}>Window cleaning</div>
         </div>
       </div>
 
@@ -220,8 +219,7 @@ function Header({ t }: { t: Tokens }) {
     <div className="flex items-start justify-between gap-4 flex-wrap px-8 pt-8 pb-5">
       <div>
         <h1 className={`text-3xl sm:text-4xl font-bold ${t.text}`}>
-          Good afternoon,{" "}
-          <span style={{ color: ACCENT }}>Nick</span>
+          Good afternoon, Nick
         </h1>
         <p className={`text-sm ${t.subtle} mt-1 font-medium`}>Welcome to your dashboard</p>
       </div>

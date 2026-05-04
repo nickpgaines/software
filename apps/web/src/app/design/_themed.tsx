@@ -62,7 +62,6 @@ function Sidebar({ p }: { p: Palette }) {
         </div>
         <div className="flex-1 min-w-0">
           <div className={`font-bold tracking-tight text-[15px] ${p.brandTextOnSidebar}`}>Nick360</div>
-          <div className={`text-[11px] ${p.textSubtle} font-semibold truncate`}>Window cleaning</div>
         </div>
       </div>
 

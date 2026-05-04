@@ -78,7 +78,6 @@ function FloatingSidebar({ initials }: { initials: string }) {
         </div>
         <div className="flex-1 min-w-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150 group-hover:delay-100">
           <div className={`font-bold tracking-tight text-[15px] ${t.text}`}>Nick360</div>
-          <div className={`text-[11px] ${t.subtle} font-semibold truncate`}>Window cleaning</div>
         </div>
       </div>
 

@@ -63,7 +63,6 @@ function Sidebar() {
         </div>
         <div className="flex-1">
           <div className="font-semibold tracking-tight text-[15px]">Nick360</div>
-          <div className="text-[11px] text-stone-500">Window cleaning</div>
         </div>
       </div>
 
