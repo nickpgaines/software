@@ -61,11 +61,11 @@ export default function MapPinDropModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+      <div className="w-full max-w-md rounded-lg bg-[#0f0f12] p-6 shadow-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Drop pin</h2>
-            <p className="mt-1 text-sm text-slate-500">
+            <h2 className="text-lg font-semibold text-white">Drop pin</h2>
+            <p className="mt-1 text-sm text-zinc-400">
               Choose a status and add a note (optional).
             </p>
           </div>
@@ -99,17 +99,17 @@ export default function MapPinDropModal({
           onChange={(e) => setNote(e.target.value)}
           placeholder="Add a note..."
           rows={3}
-          className="mt-4 block w-full resize-none rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:outline-none"
+          className="mt-4 block w-full resize-none rounded-md border border-[#1f1f24] px-3 py-2 text-sm text-white placeholder:text-zinc-500 focus:border-slate-900 focus:outline-none"
         />
 
-        <div className="mt-4 rounded-md border border-slate-200">
+        <div className="mt-4 rounded-md border border-[#1f1f24]">
           <button
             type="button"
             onClick={() => setObjectionsOpen((v) => !v)}
-            className="flex w-full items-center justify-between gap-2 px-3 py-2 text-sm font-medium text-slate-900"
+            className="flex w-full items-center justify-between gap-2 px-3 py-2 text-sm font-medium text-white"
           >
             <span className="flex items-center gap-2">
-              <Hand className="h-4 w-4 text-slate-500" />
+              <Hand className="h-4 w-4 text-zinc-400" />
               Objections
               {objections.length > 0 && (
                 <span className="rounded-full bg-slate-900 px-1.5 py-0.5 text-[10px] font-semibold text-white">
@@ -119,26 +119,26 @@ export default function MapPinDropModal({
             </span>
             <ChevronDown
               className={
-                "h-4 w-4 text-slate-500 transition-transform " +
+                "h-4 w-4 text-zinc-400 transition-transform " +
                 (objectionsOpen ? "rotate-180" : "")
               }
             />
           </button>
           {objectionsOpen && (
-            <ul className="border-t border-slate-100">
+            <ul className="border-t border-[#1f1f24]">
               {DEFAULT_OBJECTIONS.map((o) => {
                 const checked = objections.includes(o);
                 return (
                   <li
                     key={o}
-                    className="border-b border-slate-100 last:border-b-0"
+                    className="border-b border-[#1f1f24] last:border-b-0"
                   >
-                    <label className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-50">
+                    <label className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-black">
                       <input
                         type="checkbox"
                         checked={checked}
                         onChange={() => toggleObjection(o)}
-                        className="h-4 w-4 rounded border-slate-300 accent-slate-900"
+                        className="h-4 w-4 rounded border-[#2a2a32] accent-slate-900"
                       />
                       <span className="font-medium">{o}</span>
                     </label>
@@ -153,7 +153,7 @@ export default function MapPinDropModal({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="rounded-md border border-[#1f1f24] px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-black"
           >
             Cancel
           </button>

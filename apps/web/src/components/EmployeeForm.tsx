@@ -230,13 +230,13 @@ export default function EmployeeForm({
       <div>
         <Link
           href="/employees"
-          className="inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-900"
+          className="inline-flex items-center gap-1 text-sm text-zinc-400 hover:text-white"
         >
           <ChevronLeft className="w-4 h-4" />
           Employees
         </Link>
         <div className="mt-2 flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="text-2xl font-semibold text-white">
             {isEdit ? "Edit Employee" : "Add Employee"}
           </h1>
           <button
@@ -256,16 +256,16 @@ export default function EmployeeForm({
       )}
 
       {/* Personal Info */}
-      <section className="bg-white border border-slate-200 rounded-2xl shadow-sm">
-        <div className="px-6 py-4 border-b border-slate-100">
-          <h2 className="text-base font-semibold text-slate-900">
+      <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm">
+        <div className="px-6 py-4 border-b border-[#1f1f24]">
+          <h2 className="text-base font-semibold text-white">
             Personal Info
           </h2>
         </div>
         <div className="px-6 py-6 grid grid-cols-1 md:grid-cols-[160px_1fr] gap-6">
           {/* Photo column */}
           <div className="flex flex-col gap-3">
-            <div className="w-[140px] h-[140px] rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
+            <div className="w-[140px] h-[140px] rounded-lg bg-black border border-[#1f1f24] flex items-center justify-center overflow-hidden">
               {photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -275,7 +275,7 @@ export default function EmployeeForm({
                 />
               ) : (
                 <User
-                  className="w-14 h-14 text-slate-400"
+                  className="w-14 h-14 text-zinc-500"
                   strokeWidth={1.5}
                 />
               )}
@@ -291,7 +291,7 @@ export default function EmployeeForm({
               type="button"
               onClick={() => fileInputRef.current?.click()}
               disabled={photoBusy}
-              className="w-[140px] text-sm border border-slate-300 hover:border-slate-400 rounded-lg px-3 py-2 text-slate-700 disabled:opacity-60"
+              className="w-[140px] text-sm border border-[#2a2a32] hover:border-slate-400 rounded-lg px-3 py-2 text-zinc-300 disabled:opacity-60"
             >
               {photoBusy
                 ? "Loading…"
@@ -303,7 +303,7 @@ export default function EmployeeForm({
               <button
                 type="button"
                 onClick={() => setPhotoUrl(null)}
-                className="w-[140px] text-xs text-slate-500 hover:text-slate-900"
+                className="w-[140px] text-xs text-zinc-400 hover:text-white"
               >
                 Remove
               </button>
@@ -320,7 +320,7 @@ export default function EmployeeForm({
                 type="text"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white"
+                className="w-full border border-[#2a2a32] rounded-lg px-3 py-2 text-sm bg-[#0f0f12]"
               />
             </Field>
             <Field label="Last Name" required>
@@ -328,7 +328,7 @@ export default function EmployeeForm({
                 type="text"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white"
+                className="w-full border border-[#2a2a32] rounded-lg px-3 py-2 text-sm bg-[#0f0f12]"
               />
             </Field>
             <Field label="Phone">
@@ -336,7 +336,7 @@ export default function EmployeeForm({
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white"
+                className="w-full border border-[#2a2a32] rounded-lg px-3 py-2 text-sm bg-[#0f0f12]"
               />
             </Field>
             <Field label="Email" required>
@@ -344,7 +344,7 @@ export default function EmployeeForm({
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white"
+                className="w-full border border-[#2a2a32] rounded-lg px-3 py-2 text-sm bg-[#0f0f12]"
               />
             </Field>
             <Field label="Password" required={!isEdit}>
@@ -354,12 +354,12 @@ export default function EmployeeForm({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={isEdit ? "Leave blank to keep current" : ""}
-                  className="w-full border border-slate-300 rounded-lg pl-3 pr-10 py-2 text-sm bg-white"
+                  className="w-full border border-[#2a2a32] rounded-lg pl-3 pr-10 py-2 text-sm bg-[#0f0f12]"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
@@ -375,15 +375,15 @@ export default function EmployeeForm({
                 <button
                   type="button"
                   onClick={() => setColorOpen((v) => !v)}
-                  className="w-full flex items-center gap-2 border border-slate-300 rounded-lg px-3 py-2 text-sm bg-white hover:border-slate-400"
+                  className="w-full flex items-center gap-2 border border-[#2a2a32] rounded-lg px-3 py-2 text-sm bg-[#0f0f12] hover:border-slate-400"
                 >
                   <span
                     className={`w-4 h-4 rounded-full ${selectedColor.swatch}`}
                   />
-                  <span className="text-slate-700">{selectedColor.label}</span>
+                  <span className="text-zinc-300">{selectedColor.label}</span>
                 </button>
                 {colorOpen && (
-                  <div className="absolute z-10 left-0 top-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg p-2 grid grid-cols-3 gap-1 w-48">
+                  <div className="absolute z-10 left-0 top-full mt-1 bg-[#0f0f12] border border-[#1f1f24] rounded-lg shadow-lg p-2 grid grid-cols-3 gap-1 w-48">
                     {COLORS.map((c) => (
                       <button
                         key={c.key}
@@ -392,14 +392,14 @@ export default function EmployeeForm({
                           setColor(c.key);
                           setColorOpen(false);
                         }}
-                        className={`flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 text-sm ${
-                          c.key === color ? "bg-slate-50" : ""
+                        className={`flex items-center gap-2 px-2 py-1.5 rounded hover:bg-black text-sm ${
+                          c.key === color ? "bg-black" : ""
                         }`}
                       >
                         <span
                           className={`w-3.5 h-3.5 rounded-full ${c.swatch}`}
                         />
-                        <span className="text-slate-700 text-xs">
+                        <span className="text-zinc-300 text-xs">
                           {c.label}
                         </span>
                       </button>
@@ -413,9 +413,9 @@ export default function EmployeeForm({
       </section>
 
       {/* Permissions */}
-      <section className="bg-white border border-slate-200 rounded-2xl shadow-sm">
-        <div className="px-6 py-4 border-b border-slate-100">
-          <h2 className="text-base font-semibold text-slate-900">Permissions</h2>
+      <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm">
+        <div className="px-6 py-4 border-b border-[#1f1f24]">
+          <h2 className="text-base font-semibold text-white">Permissions</h2>
         </div>
         <div className="px-6 py-4 space-y-1">
           {PERMISSIONS.map((p) => {
@@ -424,7 +424,7 @@ export default function EmployeeForm({
               <label
                 key={p.key}
                 className={`flex items-start gap-3 px-3 py-3 rounded-lg cursor-pointer ${
-                  checked ? "bg-slate-50" : "hover:bg-slate-50"
+                  checked ? "bg-black" : "hover:bg-black"
                 }`}
               >
                 <input
@@ -436,10 +436,10 @@ export default function EmployeeForm({
                   className="mt-1 accent-slate-900"
                 />
                 <div>
-                  <div className="text-sm font-semibold text-slate-900">
+                  <div className="text-sm font-semibold text-white">
                     {p.title}
                   </div>
-                  <div className="text-xs text-slate-500 mt-0.5">
+                  <div className="text-xs text-zinc-400 mt-0.5">
                     {p.description}
                   </div>
                 </div>
@@ -448,7 +448,7 @@ export default function EmployeeForm({
           })}
 
           {permission === "custom" && (
-            <div className="mt-3 ml-7 px-4 py-3 border border-dashed border-slate-300 rounded-lg text-sm text-slate-500 bg-slate-50">
+            <div className="mt-3 ml-7 px-4 py-3 border border-dashed border-[#2a2a32] rounded-lg text-sm text-zinc-400 bg-black">
               Custom permissions configuration coming soon.
             </div>
           )}
@@ -469,7 +469,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-slate-500 mb-1.5">
+      <label className="block text-xs font-medium text-zinc-400 mb-1.5">
         {label}
         {required && <span className="text-rose-500 ml-0.5">*</span>}
       </label>

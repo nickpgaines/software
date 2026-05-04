@@ -37,14 +37,14 @@ export default function SignupPage() {
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold text-slate-900">Nick360</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-2xl font-semibold text-white">Nick360</h1>
+          <p className="text-sm text-zinc-400 mt-1">
             Start your free trial. No credit card required.
           </p>
         </div>
         <form onSubmit={onSubmit} className="space-y-5">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-300 mb-1">
               Company name
             </label>
             <input
@@ -52,12 +52,12 @@ export default function SignupPage() {
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
               placeholder="Ocean Bay Home Services"
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+              className="w-full bg-black border border-[#1f1f24] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500"
               autoFocus
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-300 mb-1">
               Your name
             </label>
             <input
@@ -66,11 +66,11 @@ export default function SignupPage() {
               onChange={(e) => setName(e.target.value)}
               placeholder="Nick Gaines"
               autoComplete="name"
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+              className="w-full bg-black border border-[#1f1f24] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-300 mb-1">
               Email address
             </label>
             <input
@@ -79,11 +79,11 @@ export default function SignupPage() {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               autoComplete="email"
-              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+              className="w-full bg-black border border-[#1f1f24] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-300 mb-1">
               Password
             </label>
             <div className="relative">
@@ -93,12 +93,12 @@ export default function SignupPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="At least 8 characters"
                 autoComplete="new-password"
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                className="w-full bg-black border border-[#1f1f24] rounded-lg px-3 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute inset-y-0 right-2 flex items-center text-slate-400 hover:text-slate-600"
+                className="absolute inset-y-0 right-2 flex items-center text-zinc-500 hover:text-zinc-400"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? (
@@ -117,7 +117,7 @@ export default function SignupPage() {
           >
             {loading ? "Creating account…" : "Create account →"}
           </button>
-          <p className="text-sm text-slate-500 text-center pt-2">
+          <p className="text-sm text-zinc-400 text-center pt-2">
             Already have an account?{" "}
             <Link
               href="/login"

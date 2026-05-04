@@ -45,19 +45,19 @@ export default function MapTerritoryListPanel({
   }
 
   return (
-    <div className="absolute top-4 right-16 z-10 w-72 max-h-[70vh] flex flex-col rounded-lg border border-slate-200 bg-white shadow-md">
-      <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-        <h3 className="font-semibold text-slate-900 text-sm">Territories</h3>
+    <div className="absolute top-4 right-16 z-10 w-72 max-h-[70vh] flex flex-col rounded-lg border border-[#1f1f24] bg-[#0f0f12] shadow-md">
+      <div className="px-4 py-3 border-b border-[#1f1f24] flex items-center justify-between">
+        <h3 className="font-semibold text-white text-sm">Territories</h3>
         <button
           onClick={onClose}
-          className="text-slate-400 hover:text-slate-700"
+          className="text-zinc-500 hover:text-zinc-300"
           aria-label="Close"
         >
           <X className="h-4 w-4" />
         </button>
       </div>
       {list.length === 0 ? (
-        <div className="px-4 py-6 text-sm text-slate-500 text-center">
+        <div className="px-4 py-6 text-sm text-zinc-400 text-center">
           No territories yet. Use the hexagon button to draw one.
         </div>
       ) : (
@@ -67,16 +67,16 @@ export default function MapTerritoryListPanel({
               key={t.id}
               type="button"
               onClick={() => onPick(t)}
-              className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-slate-50 text-left border-b border-slate-50 last:border-b-0"
+              className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-black text-left border-b border-slate-50 last:border-b-0"
             >
               <span
                 className="w-4 h-4 rounded shrink-0"
                 style={{ backgroundColor: t.color }}
               />
-              <span className="flex-1 text-sm text-slate-900 truncate">
+              <span className="flex-1 text-sm text-white truncate">
                 {nameFor(t)}
               </span>
-              <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
+              <ChevronRight className="h-4 w-4 text-zinc-500 shrink-0" />
             </button>
           ))}
         </div>

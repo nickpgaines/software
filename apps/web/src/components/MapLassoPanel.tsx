@@ -121,12 +121,12 @@ export default function MapLassoPanel({
 
   if (result) {
     return (
-      <div className="absolute top-4 right-16 z-10 w-80 bg-white border border-slate-200 rounded-lg shadow-md">
-        <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="font-semibold text-slate-900 text-sm">Blast sent</h3>
+      <div className="absolute top-4 right-16 z-10 w-80 bg-[#0f0f12] border border-[#1f1f24] rounded-lg shadow-md">
+        <div className="px-4 py-3 border-b border-[#1f1f24] flex items-center justify-between">
+          <h3 className="font-semibold text-white text-sm">Blast sent</h3>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700"
+            className="text-zinc-500 hover:text-zinc-300"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
@@ -145,7 +145,7 @@ export default function MapLassoPanel({
             <Stat label="Failed" value={result.failed} tone="bad" />
           )}
         </div>
-        <div className="px-4 py-3 border-t border-slate-100 flex justify-end">
+        <div className="px-4 py-3 border-t border-[#1f1f24] flex justify-end">
           <button
             onClick={onClose}
             className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-1.5 font-medium"
@@ -158,14 +158,14 @@ export default function MapLassoPanel({
   }
 
   return (
-    <div className="absolute top-4 right-16 z-10 w-80 bg-white border border-slate-200 rounded-lg shadow-md flex flex-col max-h-[80vh]">
-      <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-        <h3 className="font-semibold text-slate-900 text-sm">
+    <div className="absolute top-4 right-16 z-10 w-80 bg-[#0f0f12] border border-[#1f1f24] rounded-lg shadow-md flex flex-col max-h-[80vh]">
+      <div className="px-4 py-3 border-b border-[#1f1f24] flex items-center justify-between">
+        <h3 className="font-semibold text-white text-sm">
           Selected customers
         </h3>
         <button
           onClick={onClose}
-          className="text-slate-400 hover:text-slate-700"
+          className="text-zinc-500 hover:text-zinc-300"
           aria-label="Close"
           disabled={sending}
         >
@@ -173,19 +173,19 @@ export default function MapLassoPanel({
         </button>
       </div>
 
-      <div className="px-4 pt-3 pb-2 text-xs text-slate-600">
+      <div className="px-4 pt-3 pb-2 text-xs text-zinc-400">
         {customers.length} selected
         {", "}
         {withPhone.length} with a mobile phone number
         {withoutPhone > 0 && (
-          <span className="text-slate-400"> · {withoutPhone} without</span>
+          <span className="text-zinc-500"> · {withoutPhone} without</span>
         )}
       </div>
 
       <div className="px-4 pb-3">
-        <ul className="border border-slate-100 rounded-lg max-h-44 overflow-y-auto divide-y divide-slate-100">
+        <ul className="border border-[#1f1f24] rounded-lg max-h-44 overflow-y-auto divide-y divide-[#1f1f24]">
           {customers.length === 0 ? (
-            <li className="px-3 py-6 text-center text-xs text-slate-400">
+            <li className="px-3 py-6 text-center text-xs text-zinc-500">
               No customers selected.
             </li>
           ) : (
@@ -206,16 +206,16 @@ export default function MapLassoPanel({
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
-                  <span className="flex-1 truncate text-slate-900">
+                  <span className="flex-1 truncate text-white">
                     {c.name || "Unnamed"}
                   </span>
                   {hasPhone ? (
                     <Phone
-                      className="h-3.5 w-3.5 text-slate-400 shrink-0"
+                      className="h-3.5 w-3.5 text-zinc-500 shrink-0"
                       aria-label="Has phone"
                     />
                   ) : (
-                    <span className="text-[10px] text-slate-400 shrink-0">
+                    <span className="text-[10px] text-zinc-500 shrink-0">
                       no phone
                     </span>
                   )}
@@ -227,7 +227,7 @@ export default function MapLassoPanel({
       </div>
 
       <div className="px-4 pt-1 pb-2">
-        <div className="text-xs uppercase tracking-wide text-slate-400 mb-1.5">
+        <div className="text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
           Message
         </div>
         <textarea
@@ -240,7 +240,7 @@ export default function MapLassoPanel({
           maxLength={MAX_LEN}
           placeholder="Hey {first_name}, we're running a special this month — interested?"
           disabled={sending}
-          className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white resize-y"
+          className="w-full border border-[#1f1f24] rounded-xl px-3 py-2 text-sm bg-[#0f0f12] resize-y"
         />
         <div className="flex flex-wrap items-center gap-1.5 mt-2">
           {MERGE_TAGS.map((t) => (
@@ -255,7 +255,7 @@ export default function MapLassoPanel({
               {t.label} +
             </button>
           ))}
-          <span className="ml-auto text-[11px] text-slate-400">
+          <span className="ml-auto text-[11px] text-zinc-500">
             {charCount}/{MAX_LEN} · {segments} SMS
           </span>
         </div>
@@ -263,11 +263,11 @@ export default function MapLassoPanel({
         {error && <p className="text-sm text-rose-600 mt-2">{error}</p>}
       </div>
 
-      <div className="px-4 py-3 border-t border-slate-100 flex justify-end gap-2">
+      <div className="px-4 py-3 border-t border-[#1f1f24] flex justify-end gap-2">
         <button
           onClick={onClose}
           disabled={sending}
-          className="text-sm text-slate-600 hover:text-slate-900 disabled:opacity-50"
+          className="text-sm text-zinc-400 hover:text-white disabled:opacity-50"
         >
           Cancel
         </button>
@@ -302,10 +302,10 @@ function Stat({
       ? "text-emerald-700"
       : tone === "bad"
       ? "text-rose-700"
-      : "text-slate-500";
+      : "text-zinc-400";
   return (
     <div className="flex items-center justify-between">
-      <span className="text-slate-500">{label}</span>
+      <span className="text-zinc-400">{label}</span>
       <span className={"font-semibold " + cls}>{value}</span>
     </div>
   );

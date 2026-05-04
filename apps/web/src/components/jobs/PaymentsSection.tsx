@@ -65,9 +65,9 @@ export default function PaymentsSection({
   }
 
   return (
-    <section className="bg-white border border-slate-200 rounded-2xl p-5">
+    <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-slate-900">Payments</h2>
+        <h2 className="font-semibold text-white">Payments</h2>
         {payments.length > 0 && (
           <button
             type="button"
@@ -81,7 +81,7 @@ export default function PaymentsSection({
 
       {payments.length === 0 ? (
         <div className="py-6 text-center">
-          <p className="text-sm text-slate-500">No payments recorded yet.</p>
+          <p className="text-sm text-zinc-400">No payments recorded yet.</p>
           <button
             type="button"
             onClick={() => setModalOpen(true)}
@@ -91,33 +91,33 @@ export default function PaymentsSection({
           </button>
         </div>
       ) : (
-        <ul className="divide-y divide-slate-100">
+        <ul className="divide-y divide-[#1f1f24]">
           {payments.map((p) => (
             <li
               key={p.id}
               className="py-3 flex items-start justify-between gap-3"
             >
               <div className="min-w-0">
-                <div className="flex items-center gap-2 text-sm text-slate-900">
+                <div className="flex items-center gap-2 text-sm text-white">
                   <span
                     className="font-medium tabular-nums"
                     suppressHydrationWarning
                   >
                     {formatDate(p.payment_date, mounted)}
                   </span>
-                  <span className="text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                  <span className="text-xs px-2 py-0.5 rounded-full bg-black text-zinc-400">
                     {METHOD_LABELS[p.method] || p.method}
                   </span>
                 </div>
                 {p.notes && (
-                  <div className="text-xs text-slate-500 mt-0.5 break-words">
+                  <div className="text-xs text-zinc-400 mt-0.5 break-words">
                     {p.notes}
                   </div>
                 )}
               </div>
               <div className="flex items-center gap-3 shrink-0">
                 <div className="text-right">
-                  <div className="text-sm font-semibold text-slate-900 tabular-nums">
+                  <div className="text-sm font-semibold text-white tabular-nums">
                     {money(p.amount_cents)}
                   </div>
                   {p.tip_cents > 0 && (
@@ -129,7 +129,7 @@ export default function PaymentsSection({
                 <button
                   type="button"
                   onClick={() => deletePayment(p.id)}
-                  className="text-xs text-slate-400 hover:text-rose-600"
+                  className="text-xs text-zinc-500 hover:text-rose-600"
                   aria-label="Delete payment"
                 >
                   Delete

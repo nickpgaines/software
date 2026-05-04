@@ -63,15 +63,15 @@ export default function EmailDetailClient({ id }: { id: number }) {
   }, [id]);
 
   if (loading) {
-    return <div className="text-sm text-slate-400">Loading…</div>;
+    return <div className="text-sm text-zinc-500">Loading…</div>;
   }
   if (!data) {
     return (
       <div className="space-y-3">
-        <Link href="/email" className="text-xs text-slate-500 hover:text-slate-900">
+        <Link href="/email" className="text-xs text-zinc-400 hover:text-white">
           ← All blasts
         </Link>
-        <p className="text-sm text-slate-400">Blast not found.</p>
+        <p className="text-sm text-zinc-500">Blast not found.</p>
       </div>
     );
   }
@@ -81,13 +81,13 @@ export default function EmailDetailClient({ id }: { id: number }) {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/email" className="text-xs text-slate-500 hover:text-slate-900">
+        <Link href="/email" className="text-xs text-zinc-400 hover:text-white">
           ← All blasts
         </Link>
-        <h1 className="text-2xl font-semibold text-slate-900 mt-2">
+        <h1 className="text-2xl font-semibold text-white mt-2">
           {blast.subject}
         </h1>
-        <p className="text-sm text-slate-500 mt-1" suppressHydrationWarning>
+        <p className="text-sm text-zinc-400 mt-1" suppressHydrationWarning>
           {AUDIENCE_LABELS[blast.audience] || blast.audience} ·{" "}
           {mounted ? fmtTime(blast.sent_at || blast.created_at) : ""}
         </p>
@@ -100,22 +100,22 @@ export default function EmailDetailClient({ id }: { id: number }) {
         <Stat label="Status" value={blast.status} />
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6">
-        <div className="text-xs uppercase tracking-wide text-slate-400 mb-2">
+      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm p-6">
+        <div className="text-xs uppercase tracking-wide text-zinc-500 mb-2">
           Message preview
         </div>
         <div
-          className="prose prose-sm max-w-none text-slate-800 border-t border-slate-100 pt-4"
+          className="prose prose-sm max-w-none text-white border-t border-[#1f1f24] pt-4"
           dangerouslySetInnerHTML={{ __html: blast.body_html }}
         />
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-100 text-sm font-medium text-slate-900">
+      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-[#1f1f24] text-sm font-medium text-white">
           Recipients
         </div>
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-500">
+          <thead className="bg-black text-zinc-400">
             <tr>
               <th className="text-left px-4 py-2 font-medium">Email</th>
               <th className="text-left px-4 py-2 font-medium">Name</th>
@@ -124,13 +124,13 @@ export default function EmailDetailClient({ id }: { id: number }) {
               <th className="text-left px-4 py-2 font-medium">Error</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-100">
+          <tbody className="divide-y divide-[#1f1f24]">
             {recipients.map((r) => (
               <tr key={r.id}>
-                <td className="px-4 py-2 text-slate-700">{r.email}</td>
-                <td className="px-4 py-2 text-slate-700">{r.name || "—"}</td>
-                <td className="px-4 py-2 text-slate-700 capitalize">{r.status}</td>
-                <td className="px-4 py-2 text-slate-500" suppressHydrationWarning>
+                <td className="px-4 py-2 text-zinc-300">{r.email}</td>
+                <td className="px-4 py-2 text-zinc-300">{r.name || "—"}</td>
+                <td className="px-4 py-2 text-zinc-300 capitalize">{r.status}</td>
+                <td className="px-4 py-2 text-zinc-400" suppressHydrationWarning>
                   {mounted ? fmtTime(r.sent_at) : ""}
                 </td>
                 <td className="px-4 py-2 text-rose-600">{r.error || "—"}</td>
@@ -155,10 +155,10 @@ function Stat({
   const ring =
     tone === "rose"
       ? "bg-rose-50 border-rose-200 text-rose-700"
-      : "bg-white border-slate-200 text-slate-900";
+      : "bg-[#0f0f12] border-[#1f1f24] text-white";
   return (
     <div className={`border rounded-xl p-4 ${ring}`}>
-      <div className="text-xs uppercase tracking-wide text-slate-400 mb-1">
+      <div className="text-xs uppercase tracking-wide text-zinc-500 mb-1">
         {label}
       </div>
       <div className="text-xl font-semibold capitalize">{value}</div>

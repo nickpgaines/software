@@ -126,11 +126,11 @@ export default function EmailComposeClient() {
       <div>
         <Link
           href="/email"
-          className="text-xs text-slate-500 hover:text-slate-900"
+          className="text-xs text-zinc-400 hover:text-white"
         >
           ← All blasts
         </Link>
-        <h1 className="text-2xl font-semibold text-slate-900 mt-2">
+        <h1 className="text-2xl font-semibold text-white mt-2">
           New email blast
         </h1>
       </div>
@@ -149,9 +149,9 @@ export default function EmailComposeClient() {
         </div>
       )}
 
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-5">
+      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm p-6 space-y-5">
         <div>
-          <label className="block text-xs uppercase tracking-wide text-slate-400 mb-2">
+          <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-2">
             Audience
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -163,17 +163,17 @@ export default function EmailComposeClient() {
                 className={
                   "text-left p-3 rounded-xl border transition " +
                   (audience === a.audience
-                    ? "border-slate-900 bg-slate-50"
-                    : "border-slate-200 hover:border-slate-400")
+                    ? "border-slate-900 bg-black"
+                    : "border-[#1f1f24] hover:border-slate-400")
                 }
               >
                 <div className="flex items-baseline justify-between">
-                  <span className="font-medium text-slate-900">{a.label}</span>
-                  <span className="text-xs text-slate-500 tabular-nums">
+                  <span className="font-medium text-white">{a.label}</span>
+                  <span className="text-xs text-zinc-400 tabular-nums">
                     {a.count}
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-zinc-400 mt-0.5">
                   {AUDIENCE_DESCRIPTIONS[a.audience] || ""}
                 </p>
               </button>
@@ -182,7 +182,7 @@ export default function EmailComposeClient() {
         </div>
 
         <div>
-          <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1.5">
+          <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
             Subject
           </label>
           <input
@@ -190,12 +190,12 @@ export default function EmailComposeClient() {
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             placeholder="Spring window cleaning special — 15% off this month"
-            className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+            className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
           />
         </div>
 
         <div>
-          <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1.5">
+          <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
             Message (HTML or plain text)
           </label>
           <textarea
@@ -203,9 +203,9 @@ export default function EmailComposeClient() {
             onChange={(e) => setBodyHtml(e.target.value)}
             rows={12}
             placeholder={"Hi there,\n\nWe're running a 15% off special on..."}
-            className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-sm bg-white font-mono"
+            className="w-full border border-[#1f1f24] rounded-2xl px-4 py-3 text-sm bg-[#0f0f12] font-mono"
           />
-          <p className="text-xs text-slate-400 mt-2">
+          <p className="text-xs text-zinc-500 mt-2">
             An unsubscribe link and your business address are appended to every
             email automatically.
           </p>
@@ -214,19 +214,19 @@ export default function EmailComposeClient() {
         {error && <p className="text-sm text-rose-600">{error}</p>}
         {info && <p className="text-sm text-emerald-700">{info}</p>}
 
-        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100">
+        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-[#1f1f24]">
           <input
             type="email"
             value={testEmail}
             onChange={(e) => setTestEmail(e.target.value)}
             placeholder="you@example.com"
-            className="border border-slate-200 rounded-full px-4 py-2 text-sm bg-white w-64"
+            className="border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] w-64"
           />
           <button
             type="button"
             onClick={handleTestSend}
             disabled={sending || !emailStatus?.configured}
-            className="text-sm bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 rounded-full px-4 py-2 font-medium"
+            className="text-sm bg-[#0f0f12] border border-[#1f1f24] hover:bg-black disabled:opacity-50 rounded-full px-4 py-2 font-medium"
           >
             Send test
           </button>

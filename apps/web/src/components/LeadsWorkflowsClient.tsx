@@ -55,8 +55,8 @@ export default function LeadsWorkflowsClient({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-slate-900">Workflows</h2>
-        <p className="text-sm text-slate-500">
+        <h2 className="text-xl font-semibold text-white">Workflows</h2>
+        <p className="text-sm text-zinc-400">
           Automate follow-ups and lead nurturing sequences
         </p>
       </div>
@@ -73,15 +73,15 @@ export default function LeadsWorkflowsClient({
       </div>
 
       <div className="flex justify-center">
-        <div className="bg-slate-100 rounded-full p-1 flex items-center text-sm">
+        <div className="bg-black rounded-full p-1 flex items-center text-sm">
           <button
             type="button"
             onClick={() => setTab("workflows")}
             className={
               "px-4 py-1.5 rounded-full " +
               (tab === "workflows"
-                ? "bg-white text-slate-900 shadow-sm font-medium"
-                : "text-slate-500")
+                ? "bg-[#0f0f12] text-white shadow-sm font-medium"
+                : "text-zinc-400")
             }
           >
             Workflows
@@ -92,8 +92,8 @@ export default function LeadsWorkflowsClient({
             className={
               "px-4 py-1.5 rounded-full " +
               (tab === "logs"
-                ? "bg-white text-slate-900 shadow-sm font-medium"
-                : "text-slate-500")
+                ? "bg-[#0f0f12] text-white shadow-sm font-medium"
+                : "text-zinc-400")
             }
           >
             Workflow Logs
@@ -104,9 +104,9 @@ export default function LeadsWorkflowsClient({
       {tab === "workflows" ? (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Stat label="TOTAL" value={total} valueClass="text-slate-900" />
+            <Stat label="TOTAL" value={total} valueClass="text-white" />
             <Stat label="ACTIVE" value={active} valueClass="text-emerald-600" />
-            <Stat label="PAUSED" value={paused} valueClass="text-slate-900" />
+            <Stat label="PAUSED" value={paused} valueClass="text-white" />
           </div>
 
           <div className="space-y-3">
@@ -129,10 +129,10 @@ export default function LeadsWorkflowsClient({
           onClick={() => setShowNew(false)}
         >
           <div
-            className="bg-white rounded-2xl p-6 w-full max-w-md"
+            className="bg-[#0f0f12] rounded-2xl p-6 w-full max-w-md"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">
+            <h3 className="text-lg font-semibold text-white mb-4">
               New workflow
             </h3>
             <input
@@ -140,13 +140,13 @@ export default function LeadsWorkflowsClient({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Workflow name"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+              className="w-full border border-[#1f1f24] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2a2a32]"
             />
             <div className="flex justify-end gap-2 mt-4">
               <button
                 type="button"
                 onClick={() => setShowNew(false)}
-                className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900"
+                className="px-4 py-2 text-sm text-zinc-400 hover:text-white"
               >
                 Cancel
               </button>
@@ -175,8 +175,8 @@ function Stat({
   valueClass: string;
 }) {
   return (
-    <div className="border border-slate-200 rounded-2xl p-5">
-      <div className="text-xs uppercase tracking-wide text-slate-500">
+    <div className="border border-[#1f1f24] rounded-2xl p-5">
+      <div className="text-xs uppercase tracking-wide text-zinc-400">
         {label}
       </div>
       <div className={`text-3xl font-bold mt-2 ${valueClass}`}>{value}</div>
@@ -201,13 +201,13 @@ function WorkflowRow({
     }
   })();
   return (
-    <div className="border border-slate-200 rounded-2xl p-4 flex items-center justify-between gap-4">
+    <div className="border border-[#1f1f24] rounded-2xl p-4 flex items-center justify-between gap-4">
       <div>
-        <div className="font-semibold text-slate-900">{workflow.name}</div>
-        <div className="text-xs text-slate-500 mt-0.5">
+        <div className="font-semibold text-white">{workflow.name}</div>
+        <div className="text-xs text-zinc-400 mt-0.5">
           Trigger: A new lead is created
         </div>
-        <div className="text-xs text-slate-500 mt-0.5">
+        <div className="text-xs text-zinc-400 mt-0.5">
           {stepCount} steps &middot; Max/day {workflow.max_per_day}
         </div>
       </div>
@@ -217,7 +217,7 @@ function WorkflowRow({
             "text-xs px-3 py-1 rounded-full " +
             (enabled
               ? "bg-emerald-50 text-emerald-700"
-              : "bg-slate-100 text-slate-600")
+              : "bg-black text-zinc-400")
           }
         >
           {enabled ? "Active" : "Paused"}
@@ -229,17 +229,17 @@ function WorkflowRow({
           onClick={() => onToggle(!enabled)}
           className={
             "relative w-10 h-6 rounded-full transition-colors " +
-            (enabled ? "bg-emerald-500" : "bg-slate-300")
+            (enabled ? "bg-emerald-500" : "bg-[#2a2a32]")
           }
         >
           <span
             className={
-              "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform " +
+              "absolute top-0.5 left-0.5 w-5 h-5 bg-[#0f0f12] rounded-full shadow transition-transform " +
               (enabled ? "translate-x-4" : "")
             }
           />
         </button>
-        <ChevronRight className="w-4 h-4 text-slate-400" />
+        <ChevronRight className="w-4 h-4 text-zinc-500" />
       </div>
     </div>
   );
@@ -254,7 +254,7 @@ function LogsTable({
 }) {
   if (runs.length === 0) {
     return (
-      <div className="border border-dashed border-slate-200 rounded-2xl p-12 text-center text-sm text-slate-500">
+      <div className="border border-dashed border-[#1f1f24] rounded-2xl p-12 text-center text-sm text-zinc-400">
         No workflow runs yet. They&rsquo;ll appear here once a workflow is
         active and a lead matches its trigger.
       </div>
@@ -262,9 +262,9 @@ function LogsTable({
   }
   const wfMap = new Map(workflows.map((w) => [w.id, w.name]));
   return (
-    <div className="border border-slate-200 rounded-2xl overflow-hidden">
+    <div className="border border-[#1f1f24] rounded-2xl overflow-hidden">
       <table className="w-full text-sm">
-        <thead className="bg-slate-50 text-xs uppercase text-slate-500">
+        <thead className="bg-black text-xs uppercase text-zinc-400">
           <tr>
             <th className="text-left px-4 py-3">Workflow</th>
             <th className="text-left px-4 py-3">Lead</th>
@@ -275,14 +275,14 @@ function LogsTable({
         </thead>
         <tbody>
           {runs.map((r) => (
-            <tr key={r.id} className="border-t border-slate-100">
-              <td className="px-4 py-3 text-slate-900">
+            <tr key={r.id} className="border-t border-[#1f1f24]">
+              <td className="px-4 py-3 text-white">
                 {wfMap.get(r.workflow_id) || `#${r.workflow_id}`}
               </td>
-              <td className="px-4 py-3 text-slate-600">#{r.lead_id}</td>
-              <td className="px-4 py-3 text-slate-600">{r.step_index}</td>
-              <td className="px-4 py-3 text-slate-600">{r.status}</td>
-              <td className="px-4 py-3 text-slate-500 text-xs">
+              <td className="px-4 py-3 text-zinc-400">#{r.lead_id}</td>
+              <td className="px-4 py-3 text-zinc-400">{r.step_index}</td>
+              <td className="px-4 py-3 text-zinc-400">{r.status}</td>
+              <td className="px-4 py-3 text-zinc-400 text-xs">
                 {new Date(r.created_at).toLocaleString()}
               </td>
             </tr>

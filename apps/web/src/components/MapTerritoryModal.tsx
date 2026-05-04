@@ -108,14 +108,14 @@ export default function MapTerritoryModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-          <h3 className="font-semibold text-slate-900">
+      <div className="bg-[#0f0f12] rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="px-5 py-4 border-b border-[#1f1f24] flex items-center justify-between">
+          <h3 className="font-semibold text-white">
             {draft.id ? "Reassign territory" : "Assign territory"}
           </h3>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 text-2xl leading-none"
+            className="text-zinc-500 hover:text-zinc-300 text-2xl leading-none"
             aria-label="Close"
           >
             ×
@@ -124,16 +124,16 @@ export default function MapTerritoryModal({
 
         <div className="p-5 space-y-4">
           <div ref={ref} className="relative">
-            <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1.5">
+            <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
               Assign to Employee
             </label>
-            <div className="min-h-[42px] flex flex-wrap items-center gap-1.5 border border-slate-200 rounded-2xl px-2 py-1.5 bg-white">
+            <div className="min-h-[42px] flex flex-wrap items-center gap-1.5 border border-[#1f1f24] rounded-2xl px-2 py-1.5 bg-[#0f0f12]">
               {picked && (
                 <span
                   className="inline-flex items-center gap-1.5 rounded-full pl-1 pr-2 py-0.5 text-xs text-white"
                   style={{ backgroundColor: staffColorHex(picked.color) }}
                 >
-                  <span className="w-5 h-5 rounded-full bg-white/30 flex items-center justify-center text-[10px] font-semibold">
+                  <span className="w-5 h-5 rounded-full bg-[#0f0f12]/30 flex items-center justify-center text-[10px] font-semibold">
                     {initials(picked.name)}
                   </span>
                   {picked.name}
@@ -162,7 +162,7 @@ export default function MapTerritoryModal({
               )}
             </div>
             {open && !picked && suggestions.length > 0 && (
-              <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden">
+              <div className="absolute z-20 left-0 right-0 mt-1 bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-lg overflow-hidden">
                 {suggestions.map((s) => (
                   <button
                     key={s.id}
@@ -172,7 +172,7 @@ export default function MapTerritoryModal({
                       setQuery("");
                       setOpen(false);
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm flex items-center gap-2"
+                    className="w-full text-left px-4 py-2 hover:bg-black text-sm flex items-center gap-2"
                   >
                     <span
                       className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold text-white"
@@ -185,7 +185,7 @@ export default function MapTerritoryModal({
                 ))}
               </div>
             )}
-            <p className="text-xs text-slate-400 mt-1.5">
+            <p className="text-xs text-zinc-500 mt-1.5">
               The territory will use this employee&apos;s color on the map.
             </p>
           </div>
@@ -193,7 +193,7 @@ export default function MapTerritoryModal({
           {error && <p className="text-sm text-rose-600">{error}</p>}
         </div>
 
-        <div className="px-5 py-3 border-t border-slate-100 flex items-center justify-between gap-2">
+        <div className="px-5 py-3 border-t border-[#1f1f24] flex items-center justify-between gap-2">
           {draft.id && onDelete && (
             <button
               onClick={() => {
@@ -208,7 +208,7 @@ export default function MapTerritoryModal({
           <button
             type="button"
             onClick={onClose}
-            className="text-sm border border-slate-200 bg-white hover:bg-slate-50 rounded-full px-4 py-2 text-slate-700"
+            className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-zinc-300"
           >
             Cancel
           </button>

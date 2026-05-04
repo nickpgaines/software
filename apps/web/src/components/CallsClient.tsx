@@ -52,7 +52,7 @@ function statusColor(status: string): string {
     status === "canceled"
   )
     return "text-rose-700 bg-rose-50 border-rose-200";
-  return "text-slate-700 bg-slate-50 border-slate-200";
+  return "text-zinc-300 bg-black border-[#1f1f24]";
 }
 
 export default function CallsClient() {
@@ -90,28 +90,28 @@ export default function CallsClient() {
     <div className="space-y-6">
       <div className="flex items-baseline justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Calls</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-2xl font-semibold text-white">Calls</h1>
+          <p className="text-sm text-zinc-400 mt-1">
             All calls made and received through your business number.
           </p>
         </div>
         {!phone.configured && (
-          <span className="text-xs text-slate-500 bg-slate-100 border border-slate-200 rounded-full px-3 py-1">
+          <span className="text-xs text-zinc-400 bg-black border border-[#1f1f24] rounded-full px-3 py-1">
             Calling not configured. Connect Twilio Voice in Settings → Calling.
           </span>
         )}
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-10 text-center text-sm text-slate-400">Loading…</div>
+          <div className="p-10 text-center text-sm text-zinc-500">Loading…</div>
         ) : calls.length === 0 ? (
-          <div className="p-10 text-center text-sm text-slate-400">
+          <div className="p-10 text-center text-sm text-zinc-500">
             No calls yet.
           </div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-500">
+            <thead className="bg-black text-zinc-400">
               <tr>
                 <th className="text-left px-4 py-2 font-medium">When</th>
                 <th className="text-left px-4 py-2 font-medium">Direction</th>
@@ -122,22 +122,22 @@ export default function CallsClient() {
                 <th className="text-left px-4 py-2 font-medium">Recording</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-[#1f1f24]">
               {calls.map((c) => {
                 const otherNumber =
                   c.direction === "outbound" ? c.to_phone : c.from_phone;
                 return (
                   <tr key={c.id}>
-                    <td className="px-4 py-2 text-slate-700 whitespace-nowrap" suppressHydrationWarning>
+                    <td className="px-4 py-2 text-zinc-300 whitespace-nowrap" suppressHydrationWarning>
                       {mounted ? fmtTime(c.created_at) : ""}
                     </td>
-                    <td className="px-4 py-2 text-slate-700 capitalize">
+                    <td className="px-4 py-2 text-zinc-300 capitalize">
                       {c.direction}
                     </td>
-                    <td className="px-4 py-2 font-medium text-slate-900">
+                    <td className="px-4 py-2 font-medium text-white">
                       {c.customer_name || "—"}
                     </td>
-                    <td className="px-4 py-2 text-slate-700">
+                    <td className="px-4 py-2 text-zinc-300">
                       {otherNumber || "—"}
                     </td>
                     <td className="px-4 py-2">
@@ -150,7 +150,7 @@ export default function CallsClient() {
                         {c.status}
                       </span>
                     </td>
-                    <td className="px-4 py-2 text-slate-700 tabular-nums">
+                    <td className="px-4 py-2 text-zinc-300 tabular-nums">
                       {fmtDuration(c.duration_seconds)}
                     </td>
                     <td className="px-4 py-2">
@@ -162,7 +162,7 @@ export default function CallsClient() {
                           className="h-8"
                         />
                       ) : (
-                        <span className="text-xs text-slate-400">—</span>
+                        <span className="text-xs text-zinc-500">—</span>
                       )}
                     </td>
                   </tr>

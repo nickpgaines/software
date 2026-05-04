@@ -298,11 +298,11 @@ function Chart({ days }: { days: Day[] }) {
 
       {hovered && (
         <div
-          className="pointer-events-none absolute -translate-x-1/2 -translate-y-full bg-white border border-slate-200 rounded-lg shadow-md px-2.5 py-1.5 text-xs whitespace-nowrap"
+          className="pointer-events-none absolute -translate-x-1/2 -translate-y-full bg-[#0f0f12] border border-[#1f1f24] rounded-lg shadow-md px-2.5 py-1.5 text-xs whitespace-nowrap"
           style={{ left: `${tooltipLeftPct}%`, top: 8 }}
         >
-          <div className="text-slate-500">{tooltipDate(hovered.date)}</div>
-          <div className="font-semibold text-slate-900 tabular-nums">
+          <div className="text-zinc-400">{tooltipDate(hovered.date)}</div>
+          <div className="font-semibold text-white tabular-nums">
             {tooltipMoney(hovered.cents)}
           </div>
         </div>
@@ -345,17 +345,17 @@ export default function RevenueChart() {
   }, [data]);
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-8">
+    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-6 sm:p-8">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">
+          <h2 className="text-lg font-semibold text-white">
             {data?.label ?? "Revenue"}
           </h2>
-          <div className="text-4xl sm:text-5xl font-bold text-slate-900 mt-2 tabular-nums">
+          <div className="text-4xl sm:text-5xl font-bold text-white mt-2 tabular-nums">
             {data ? money(data.total_cents) : "—"}
           </div>
         </div>
-        <div className="flex items-center gap-1 bg-slate-100 rounded-full p-1 text-sm">
+        <div className="flex items-center gap-1 bg-black rounded-full p-1 text-sm">
           {RANGES.map((r) => (
             <button
               key={r.key}
@@ -363,14 +363,14 @@ export default function RevenueChart() {
               className={
                 "px-3 py-1.5 rounded-full transition " +
                 (range === r.key
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-500 hover:text-slate-900")
+                  ? "bg-[#0f0f12] text-white shadow-sm"
+                  : "text-zinc-400 hover:text-white")
               }
             >
               {r.label}
             </button>
           ))}
-          <div className="px-3 py-1.5 text-slate-500 text-xs whitespace-nowrap">
+          <div className="px-3 py-1.5 text-zinc-400 text-xs whitespace-nowrap">
             {data ? formatRangeLabel(data.start, data.end, data.range) : "—"}
           </div>
         </div>
@@ -378,17 +378,17 @@ export default function RevenueChart() {
 
       <div className="mt-4">
         {loading && !data ? (
-          <div className="h-[280px] sm:h-[320px] animate-pulse bg-slate-50 rounded-xl" />
+          <div className="h-[280px] sm:h-[320px] animate-pulse bg-black rounded-xl" />
         ) : data && data.days.length > 0 ? (
           <Chart days={data.days} />
         ) : (
-          <div className="h-[280px] flex items-center justify-center text-slate-400 text-sm">
+          <div className="h-[280px] flex items-center justify-center text-zinc-500 text-sm">
             No data yet.
           </div>
         )}
       </div>
 
-      <div className="mt-2 text-right text-xs text-slate-500">
+      <div className="mt-2 text-right text-xs text-zinc-400">
         Avg: {data ? moneyDecimal(data.avg_cents) : "—"} · Updated{" "}
         <span suppressHydrationWarning>{updatedLabel || "—"}</span>
       </div>

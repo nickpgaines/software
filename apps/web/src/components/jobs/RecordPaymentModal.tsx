@@ -212,14 +212,14 @@ export default function RecordPaymentModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-200">
-          <h3 className="font-semibold text-slate-900">
+      <div className="bg-[#0f0f12] rounded-2xl shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-[#1f1f24]">
+          <h3 className="font-semibold text-white">
             {step === "card" ? "Charge card" : "Record payment"}
           </h3>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 text-xl leading-none"
+            className="text-zinc-500 hover:text-zinc-300 text-xl leading-none"
             aria-label="Close"
           >
             ×
@@ -230,11 +230,11 @@ export default function RecordPaymentModal({
           <form onSubmit={submit} className="p-5 space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+                <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1">
                   Amount
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">
                     $
                   </span>
                   <input
@@ -243,18 +243,18 @@ export default function RecordPaymentModal({
                     step="0.01"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="w-full border border-slate-200 rounded-full pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    className="w-full border border-[#1f1f24] rounded-full pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500"
                     autoFocus
                     required
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+                <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1">
                   Tip
                 </label>
                 <div className="relative">
-                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">
                     $
                   </span>
                   <input
@@ -263,14 +263,14 @@ export default function RecordPaymentModal({
                     step="0.01"
                     value={tip}
                     onChange={(e) => setTip(e.target.value)}
-                    className="w-full border border-slate-200 rounded-full pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+                    className="w-full border border-[#1f1f24] rounded-full pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500"
                   />
                 </div>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1.5">
+              <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
                 Payment method
               </label>
               <div className="flex flex-wrap gap-1.5">
@@ -285,7 +285,7 @@ export default function RecordPaymentModal({
                         "rounded-full px-3 py-1.5 text-sm border transition " +
                         (active
                           ? "bg-slate-900 border-slate-900 text-white"
-                          : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50")
+                          : "bg-[#0f0f12] border-[#1f1f24] text-zinc-300 hover:bg-black")
                       }
                     >
                       {m.label}
@@ -332,7 +332,7 @@ export default function RecordPaymentModal({
             </div>
 
             <div>
-              <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+              <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1">
                 Notes
               </label>
               <input
@@ -340,7 +340,7 @@ export default function RecordPaymentModal({
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Optional"
-                className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm"
+                className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm"
               />
             </div>
 
@@ -365,7 +365,7 @@ export default function RecordPaymentModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="text-sm border border-slate-200 bg-white hover:bg-slate-50 rounded-full px-4 py-2 text-slate-700"
+                className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-zinc-300"
               >
                 Cancel
               </button>
@@ -486,9 +486,9 @@ function CardStep({
 
   return (
     <form onSubmit={charge} className="p-5 space-y-4">
-      <div className="text-sm text-slate-600">
+      <div className="text-sm text-zinc-400">
         Charging{" "}
-        <span className="font-semibold text-slate-900">
+        <span className="font-semibold text-white">
           ${(totalCents / 100).toFixed(2)}
         </span>{" "}
         to the customer&apos;s card.
@@ -506,7 +506,7 @@ function CardStep({
           type="button"
           onClick={onBack}
           disabled={submitting}
-          className="text-sm border border-slate-200 bg-white hover:bg-slate-50 rounded-full px-4 py-2 text-slate-700 disabled:opacity-50"
+          className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-zinc-300 disabled:opacity-50"
         >
           Back
         </button>
@@ -536,21 +536,21 @@ function ReceiptToggle({
   placeholder: string;
 }) {
   return (
-    <div className="border border-slate-200 rounded-2xl px-4 py-3">
+    <div className="border border-[#1f1f24] rounded-2xl px-4 py-3">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm text-slate-700">{label}</span>
+        <span className="text-sm text-zinc-300">{label}</span>
         <button
           type="button"
           onClick={() => setEnabled(!enabled)}
           aria-pressed={enabled}
           className={
             "relative w-10 h-6 rounded-full transition shrink-0 " +
-            (enabled ? "bg-slate-900" : "bg-slate-200")
+            (enabled ? "bg-slate-900" : "bg-[#1f1f24]")
           }
         >
           <span
             className={
-              "absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition " +
+              "absolute top-0.5 w-5 h-5 bg-[#0f0f12] rounded-full shadow transition " +
               (enabled ? "left-[18px]" : "left-0.5")
             }
           />
@@ -562,7 +562,7 @@ function ReceiptToggle({
           value={value || ""}
           readOnly
           placeholder={placeholder}
-          className="mt-2 w-full border border-slate-200 bg-slate-50 rounded-full px-3 py-1.5 text-sm text-slate-600"
+          className="mt-2 w-full border border-[#1f1f24] bg-black rounded-full px-3 py-1.5 text-sm text-zinc-400"
         />
       )}
     </div>

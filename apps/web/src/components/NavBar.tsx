@@ -86,10 +86,10 @@ export default function NavBar() {
   const photo = me?.staff?.photo_url ?? null;
 
   return (
-    <aside className="fixed inset-y-0 left-0 w-60 bg-slate-50 flex flex-col z-40">
+    <aside className="fixed inset-y-0 left-0 w-60 bg-black flex flex-col z-40">
       {/* Logo */}
       <div className="pt-6 pb-4 px-5 shrink-0">
-        <span className="font-bold text-lg text-slate-900 tracking-tight">Nick360</span>
+        <span className="font-bold text-lg text-white tracking-tight">Nick360</span>
       </div>
 
       {/* + New button */}
@@ -109,12 +109,12 @@ export default function NavBar() {
               className={
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium mb-0.5 transition-colors " +
                 (active
-                  ? "bg-slate-100 text-slate-900"
-                  : "text-slate-600 hover:bg-slate-50 hover:text-slate-900")
+                  ? "bg-black text-white"
+                  : "text-zinc-400 hover:bg-black hover:text-white")
               }
             >
               <Icon
-                className={`w-5 h-5 ${active ? "text-slate-900" : ""}`}
+                className={`w-5 h-5 ${active ? "text-white" : ""}`}
                 strokeWidth={1.8}
               />
               {label}
@@ -124,9 +124,9 @@ export default function NavBar() {
       </nav>
 
       {/* Footer */}
-      <div className="mt-auto shrink-0 px-3 pb-4 pt-3 border-t border-slate-200/60">
+      <div className="mt-auto shrink-0 px-3 pb-4 pt-3 border-t border-[#1f1f24]/60">
         <div className="flex items-center gap-3 px-3 py-2">
-          <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-700 text-sm font-semibold shrink-0 overflow-hidden">
+          <div className="w-8 h-8 rounded-full bg-[#1f1f24] flex items-center justify-center text-zinc-300 text-sm font-semibold shrink-0 overflow-hidden">
             {photo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -138,14 +138,14 @@ export default function NavBar() {
               <span>{initials(displayName)}</span>
             )}
           </div>
-          <span className="text-sm font-medium text-slate-900 truncate">
+          <span className="text-sm font-medium text-white truncate">
             {displayName}
           </span>
         </div>
         <button
           type="button"
           onClick={logout}
-          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 transition-colors"
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-black hover:text-white transition-colors"
         >
           <LogOut className="w-5 h-5" strokeWidth={1.8} />
           Sign out

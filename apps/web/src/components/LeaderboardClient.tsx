@@ -59,9 +59,9 @@ function formatDate(iso: string | null, mounted: boolean) {
 
 function rankBadgeClass(i: number) {
   if (i === 0) return "bg-amber-400 text-white";
-  if (i === 1) return "bg-slate-300 text-white";
+  if (i === 1) return "bg-[#2a2a32] text-white";
   if (i === 2) return "bg-orange-300 text-white";
-  return "bg-slate-100 text-slate-500";
+  return "bg-black text-zinc-400";
 }
 
 function roleBadgeClass(role: string | null) {
@@ -69,7 +69,7 @@ function roleBadgeClass(role: string | null) {
   if (r === "admin") return "bg-rose-100 text-rose-600";
   if (r === "sales" || r === "salesperson") return "bg-sky-100 text-sky-700";
   if (r === "tech" || r === "technician") return "bg-emerald-100 text-emerald-700";
-  return "bg-slate-100 text-slate-600";
+  return "bg-black text-zinc-400";
 }
 
 function avatarColor(name: string) {
@@ -210,15 +210,15 @@ export default function LeaderboardClient({
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <h1 className="text-3xl sm:text-4xl font-bold text-slate-900">{title}</h1>
-        <div className="flex items-center gap-1 bg-slate-100 rounded-full p-1 text-sm">
+        <h1 className="text-3xl sm:text-4xl font-bold text-white">{title}</h1>
+        <div className="flex items-center gap-1 bg-black rounded-full p-1 text-sm">
           <button
             onClick={() => setView("sales")}
             className={
               "px-4 py-1.5 rounded-full transition " +
               (view === "sales"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500 hover:text-slate-900")
+                ? "bg-[#0f0f12] text-white shadow-sm"
+                : "text-zinc-400 hover:text-white")
             }
           >
             Sales
@@ -228,8 +228,8 @@ export default function LeaderboardClient({
             className={
               "px-4 py-1.5 rounded-full transition " +
               (view === "tech"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500 hover:text-slate-900")
+                ? "bg-[#0f0f12] text-white shadow-sm"
+                : "text-zinc-400 hover:text-white")
             }
           >
             Technicians
@@ -241,7 +241,7 @@ export default function LeaderboardClient({
         <div className="flex justify-end">
           <button
             onClick={() => setShowNewSprint(true)}
-            className="text-sm border border-slate-200 bg-white hover:bg-slate-50 rounded-full px-4 py-2 flex items-center gap-2 text-slate-700"
+            className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 flex items-center gap-2 text-zinc-300"
           >
             <span className="text-lg leading-none">+</span> Start a sprint
           </button>
@@ -270,7 +270,7 @@ export default function LeaderboardClient({
             if (el) el.scrollIntoView({ behavior: "smooth" });
           }
         }}
-        className="w-full text-left flex items-center gap-3 bg-white border border-slate-200 rounded-2xl px-5 py-4 hover:bg-slate-50 shadow-sm"
+        className="w-full text-left flex items-center gap-3 bg-[#0f0f12] border border-[#1f1f24] rounded-2xl px-5 py-4 hover:bg-black shadow-sm"
       >
         <div
           className={
@@ -290,8 +290,8 @@ export default function LeaderboardClient({
           )}
         </div>
         <div className="flex-1">
-          <div className="font-semibold text-slate-900">Your Stats</div>
-          <div className="text-sm text-slate-500">
+          <div className="font-semibold text-white">Your Stats</div>
+          <div className="text-sm text-zinc-400">
             {money(meRevenue)} {view === "sales" ? "sold" : "cleaned"}
             {myRank
               ? ` · Rank #${myRank}`
@@ -300,7 +300,7 @@ export default function LeaderboardClient({
               : ""}
           </div>
         </div>
-        <span className="text-slate-300 text-2xl leading-none">›</span>
+        <span className="text-zinc-500 text-2xl leading-none">›</span>
       </button>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -309,10 +309,10 @@ export default function LeaderboardClient({
         <KpiCard label="Top Performer" value={top?.name || "—"} />
       </div>
 
-      <div id="rankings" className="bg-white border border-slate-200 rounded-2xl shadow-sm">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
+      <div id="rankings" className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm">
+        <div className="px-5 py-4 border-b border-[#1f1f24] flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
-            <h2 className="font-semibold text-slate-900">
+            <h2 className="font-semibold text-white">
               {view === "sales" ? "Sales Rankings" : "Technician Rankings"}
             </h2>
             <span className="inline-flex items-center gap-1.5 bg-sky-50 border border-sky-100 text-sky-700 text-xs px-2.5 py-1 rounded-full">
@@ -334,7 +334,7 @@ export default function LeaderboardClient({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-slate-50 border border-slate-100 rounded-full p-1 text-sm">
+            <div className="flex items-center gap-1 bg-black border border-[#1f1f24] rounded-full p-1 text-sm">
               {PRESET_RANGES.map((r) => (
                 <button
                   key={r.key}
@@ -345,8 +345,8 @@ export default function LeaderboardClient({
                   className={
                     "px-3 py-1 rounded-full transition whitespace-nowrap " +
                     (range === r.key
-                      ? "bg-white text-slate-900 shadow-sm"
-                      : "text-slate-500 hover:text-slate-900")
+                      ? "bg-[#0f0f12] text-white shadow-sm"
+                      : "text-zinc-400 hover:text-white")
                   }
                 >
                   {r.label}
@@ -361,8 +361,8 @@ export default function LeaderboardClient({
                   className={
                     "px-3 py-1 rounded-full transition whitespace-nowrap inline-flex items-center gap-1 " +
                     (range === "custom"
-                      ? "bg-white text-slate-900 shadow-sm"
-                      : "text-slate-500 hover:text-slate-900")
+                      ? "bg-[#0f0f12] text-white shadow-sm"
+                      : "text-zinc-400 hover:text-white")
                   }
                 >
                   Custom
@@ -382,9 +382,9 @@ export default function LeaderboardClient({
                   </svg>
                 </button>
                 {customOpen && (
-                  <div className="absolute right-0 mt-2 z-30 bg-white border border-slate-200 rounded-2xl shadow-lg p-4 w-64 space-y-3">
+                  <div className="absolute right-0 mt-2 z-30 bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-lg p-4 w-64 space-y-3">
                     <div>
-                      <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+                      <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1">
                         From
                       </label>
                       <input
@@ -392,11 +392,11 @@ export default function LeaderboardClient({
                         value={customFrom}
                         max={customTo || undefined}
                         onChange={(e) => setCustomFrom(e.target.value)}
-                        className="w-full border border-slate-200 rounded-full px-3 py-1.5 text-sm"
+                        className="w-full border border-[#1f1f24] rounded-full px-3 py-1.5 text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+                      <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1">
                         To
                       </label>
                       <input
@@ -404,7 +404,7 @@ export default function LeaderboardClient({
                         value={customTo}
                         min={customFrom || undefined}
                         onChange={(e) => setCustomTo(e.target.value)}
-                        className="w-full border border-slate-200 rounded-full px-3 py-1.5 text-sm"
+                        className="w-full border border-[#1f1f24] rounded-full px-3 py-1.5 text-sm"
                       />
                     </div>
                     <button
@@ -421,7 +421,7 @@ export default function LeaderboardClient({
             <button
               type="button"
               title="Filter"
-              className="w-9 h-9 border border-slate-200 bg-white hover:bg-slate-50 rounded-full flex items-center justify-center text-slate-500"
+              className="w-9 h-9 border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full flex items-center justify-center text-zinc-400"
               aria-label="Filter"
             >
               <svg
@@ -440,9 +440,9 @@ export default function LeaderboardClient({
         </div>
 
         {loading && !data ? (
-          <div className="p-10 text-center text-sm text-slate-400">Loading…</div>
+          <div className="p-10 text-center text-sm text-zinc-500">Loading…</div>
         ) : activeRows.length === 0 ? (
-          <div className="p-10 text-center text-sm text-slate-500">
+          <div className="p-10 text-center text-sm text-zinc-400">
             No {view === "sales" ? "sales" : "technician"} revenue in this
             window yet. Assign staff to jobs in the schedule.
           </div>
@@ -450,7 +450,7 @@ export default function LeaderboardClient({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-xs uppercase tracking-wider text-slate-400">
+                <tr className="text-xs uppercase tracking-wider text-zinc-500">
                   <th className="text-left px-5 py-3 font-medium">Rank</th>
                   <th className="text-left px-5 py-3 font-medium">
                     {personColumn}
@@ -471,7 +471,7 @@ export default function LeaderboardClient({
                       key={r.id}
                       onClick={() => setScorecardId(r.id)}
                       className={
-                        "border-t border-slate-100 cursor-pointer hover:bg-slate-50 " +
+                        "border-t border-[#1f1f24] cursor-pointer hover:bg-black " +
                         (isMe
                           ? "bg-amber-50/60 ring-1 ring-amber-200"
                           : isTop
@@ -508,7 +508,7 @@ export default function LeaderboardClient({
                               initials(r.name)
                             )}
                           </div>
-                          <span className="font-medium text-slate-900">
+                          <span className="font-medium text-white">
                             {r.name}
                           </span>
                         </div>
@@ -523,17 +523,17 @@ export default function LeaderboardClient({
                           {r.role || "Staff"}
                         </span>
                       </td>
-                      <td className="px-5 py-3 text-right font-semibold text-slate-900 tabular-nums">
+                      <td className="px-5 py-3 text-right font-semibold text-white tabular-nums">
                         {money(r.revenue_cents)}
                       </td>
-                      <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                      <td className="px-5 py-3 text-right text-zinc-300 tabular-nums">
                         {r.job_count}
                       </td>
-                      <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                      <td className="px-5 py-3 text-right text-zinc-300 tabular-nums">
                         {money(Math.round(r.revenue_cents / r.job_count))}
                       </td>
                       <td
-                        className="px-5 py-3 text-right text-slate-900 tabular-nums whitespace-nowrap"
+                        className="px-5 py-3 text-right text-white tabular-nums whitespace-nowrap"
                         suppressHydrationWarning
                       >
                         {formatDate(r.last_sale_at, mounted)}
@@ -570,9 +570,9 @@ export default function LeaderboardClient({
 
 function KpiCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 min-h-[140px] flex flex-col justify-between shadow-sm">
-      <div className="text-sm text-slate-400">{label}</div>
-      <div className="text-4xl font-bold text-slate-900 tabular-nums">
+    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-6 min-h-[140px] flex flex-col justify-between shadow-sm">
+      <div className="text-sm text-zinc-500">{label}</div>
+      <div className="text-4xl font-bold text-white tabular-nums">
         {value}
       </div>
     </div>

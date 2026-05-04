@@ -218,10 +218,10 @@ export default function NewSubscriptionForm() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="text-2xl font-semibold text-white">
             New Subscription
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-zinc-400 mt-1">
             Sell or set up a recurring subscription for a customer.
           </p>
         </div>
@@ -246,13 +246,13 @@ export default function NewSubscriptionForm() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 className="text-base font-semibold text-white">
                 Customer
               </h2>
               <button
                 type="button"
                 onClick={() => setShowNewCustomer(true)}
-                className="text-sm font-medium text-slate-700 border border-slate-200 hover:bg-slate-50 rounded-full px-3 py-1.5"
+                className="text-sm font-medium text-zinc-300 border border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5"
               >
                 + Create New Customer
               </button>
@@ -272,7 +272,7 @@ export default function NewSubscriptionForm() {
               }}
             />
             {selectedCustomer && (
-              <div className="text-xs text-slate-500 mt-2">
+              <div className="text-xs text-zinc-400 mt-2">
                 {selectedCustomer.formatted_address ||
                   selectedCustomer.address ||
                   "—"}
@@ -282,7 +282,7 @@ export default function NewSubscriptionForm() {
 
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 className="text-base font-semibold text-white">
                 Schedule
               </h2>
             </CardHeader>
@@ -292,9 +292,9 @@ export default function NewSubscriptionForm() {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white"
+                  className="w-full border border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12]"
                 />
-                <div className="text-xs text-slate-500 mt-1">
+                <div className="text-xs text-zinc-400 mt-1">
                   {formatDateLabel(startDate)}
                 </div>
               </div>
@@ -305,7 +305,7 @@ export default function NewSubscriptionForm() {
                 onChange={(e) =>
                   setSoldById(e.target.value ? Number(e.target.value) : "")
                 }
-                className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white"
+                className="w-full border border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12]"
               >
                 <option value="">Select salesperson…</option>
                 {staff.map((s) => (
@@ -320,7 +320,7 @@ export default function NewSubscriptionForm() {
 
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 className="text-base font-semibold text-white">
                 Accept Plan
               </h2>
             </CardHeader>
@@ -351,7 +351,7 @@ export default function NewSubscriptionForm() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-slate-900">Plan</h2>
+              <h2 className="text-base font-semibold text-white">Plan</h2>
             </CardHeader>
             <Field label="Plan Template">
               <select
@@ -359,7 +359,7 @@ export default function NewSubscriptionForm() {
                 onChange={(e) =>
                   setTemplateId(e.target.value ? Number(e.target.value) : "")
                 }
-                className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white"
+                className="w-full border border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12]"
               >
                 <option value="">Select plan template…</option>
                 {templates
@@ -379,8 +379,8 @@ export default function NewSubscriptionForm() {
               + Create new template
             </button>
             {selectedTemplate && (
-              <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 space-y-1">
-                <div className="font-medium text-slate-900">
+              <div className="mt-3 rounded-xl border border-[#1f1f24] bg-black p-3 text-xs text-zinc-400 space-y-1">
+                <div className="font-medium text-white">
                   {selectedTemplate.name}
                 </div>
                 {selectedTemplate.description && (
@@ -389,12 +389,12 @@ export default function NewSubscriptionForm() {
                   </div>
                 )}
                 {linkedTerms && (
-                  <div className="text-slate-500">
+                  <div className="text-zinc-400">
                     Terms: <span className="font-medium">{linkedTerms.name}</span>
                   </div>
                 )}
                 {selectedTemplate.require_signature === 1 && (
-                  <div className="text-slate-500">Signature required</div>
+                  <div className="text-zinc-400">Signature required</div>
                 )}
               </div>
             )}
@@ -407,7 +407,7 @@ export default function NewSubscriptionForm() {
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   placeholder="49.00"
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white"
+                  className="w-full border border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12]"
                 />
               </Field>
               <Field label="Billing & service frequency">
@@ -416,7 +416,7 @@ export default function NewSubscriptionForm() {
                   onChange={(e) =>
                     setInterval(e.target.value as SubscriptionInterval)
                   }
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white"
+                  className="w-full border border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12]"
                 >
                   {(
                     Object.entries(INTERVAL_LABELS) as [
@@ -435,25 +435,25 @@ export default function NewSubscriptionForm() {
 
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 className="text-base font-semibold text-white">
                 Included Visits
               </h2>
             </CardHeader>
             {!selectedTemplate ? (
-              <p className="text-sm text-slate-500 py-6 text-center">
+              <p className="text-sm text-zinc-400 py-6 text-center">
                 Select a plan template to see included visits.
               </p>
             ) : (
-              <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
+              <ul className="divide-y divide-[#1f1f24] rounded-xl border border-[#1f1f24] bg-[#0f0f12]">
                 {includedVisits.map((v, i) => (
                   <li
                     key={i}
                     className="flex items-center justify-between gap-3 px-4 py-2.5"
                   >
-                    <div className="text-sm text-slate-900">
+                    <div className="text-sm text-white">
                       Visit {i + 1}
                     </div>
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs text-zinc-400">
                       {formatDateLabel(v.date)}
                     </div>
                   </li>
@@ -461,7 +461,7 @@ export default function NewSubscriptionForm() {
               </ul>
             )}
             {selectedTemplate && (
-              <p className="text-[11px] text-slate-400 mt-2">
+              <p className="text-[11px] text-zinc-500 mt-2">
                 Projected based on {INTERVAL_LABELS[interval].toLowerCase()}{" "}
                 cadence from the start date.
               </p>
@@ -499,7 +499,7 @@ export default function NewSubscriptionForm() {
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5 shadow-sm">
       {children}
     </div>
   );
@@ -522,7 +522,7 @@ function Field({
 }) {
   return (
     <div className="mb-3">
-      <label className="block text-xs font-medium text-slate-500 mb-1.5">
+      <label className="block text-xs font-medium text-zinc-400 mb-1.5">
         {label}
       </label>
       {children}
@@ -548,8 +548,8 @@ function RadioOption({
       className={
         "w-full text-left rounded-xl border p-3 transition " +
         (checked
-          ? "border-slate-900 bg-slate-50"
-          : "border-slate-200 hover:border-slate-300")
+          ? "border-slate-900 bg-black"
+          : "border-[#1f1f24] hover:border-[#2a2a32]")
       }
     >
       <div className="flex items-start gap-3">
@@ -558,7 +558,7 @@ function RadioOption({
             "mt-0.5 inline-flex h-4 w-4 shrink-0 rounded-full border-2 " +
             (checked
               ? "border-slate-900"
-              : "border-slate-300")
+              : "border-[#2a2a32]")
           }
         >
           {checked && (
@@ -566,8 +566,8 @@ function RadioOption({
           )}
         </span>
         <div>
-          <div className="text-sm font-medium text-slate-900">{title}</div>
-          <div className="text-xs text-slate-500 mt-0.5">{description}</div>
+          <div className="text-sm font-medium text-white">{title}</div>
+          <div className="text-xs text-zinc-400 mt-0.5">{description}</div>
         </div>
       </div>
     </button>
@@ -620,13 +620,13 @@ function CustomerPicker({
         }}
         onFocus={() => setOpen(true)}
         placeholder="Search"
-        className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white pl-9"
+        className="w-full border border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12] pl-9"
       />
-      <span className="absolute left-3 top-2.5 text-slate-400" aria-hidden>
+      <span className="absolute left-3 top-2.5 text-zinc-500" aria-hidden>
         ⌕
       </span>
       {open && suggestions.length > 0 && !selectedId && (
-        <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+        <div className="absolute z-30 left-0 right-0 mt-1 bg-[#0f0f12] border border-[#1f1f24] rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
           {suggestions.map((c) => (
             <button
               key={c.id}
@@ -635,11 +635,11 @@ function CustomerPicker({
                 onPick(c);
                 setOpen(false);
               }}
-              className="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm"
+              className="w-full text-left px-4 py-2 hover:bg-black text-sm"
             >
-              <div className="font-medium text-slate-900">{c.name}</div>
+              <div className="font-medium text-white">{c.name}</div>
               {(c.formatted_address || c.address) && (
-                <div className="text-xs text-slate-500 truncate">
+                <div className="text-xs text-zinc-400 truncate">
                   {c.formatted_address || c.address}
                 </div>
               )}
@@ -699,16 +699,16 @@ function NewCustomerModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <form
         onSubmit={save}
-        className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4"
+        className="bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4"
       >
         <div className="flex items-start justify-between">
-          <h3 className="text-base font-semibold text-slate-900">
+          <h3 className="text-base font-semibold text-white">
             New customer
           </h3>
           <button
             type="button"
             onClick={onClose}
-            className="text-sm text-slate-400 hover:text-slate-700"
+            className="text-sm text-zinc-500 hover:text-zinc-300"
           >
             ✕
           </button>
@@ -719,7 +719,7 @@ function NewCustomerModal({
               type="text"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+              className="w-full border border-[#1f1f24] rounded-xl px-3 py-2 text-sm"
               autoFocus
             />
           </Field>
@@ -728,7 +728,7 @@ function NewCustomerModal({
               type="text"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+              className="w-full border border-[#1f1f24] rounded-xl px-3 py-2 text-sm"
             />
           </Field>
         </div>
@@ -737,7 +737,7 @@ function NewCustomerModal({
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+            className="w-full border border-[#1f1f24] rounded-xl px-3 py-2 text-sm"
           />
         </Field>
         <Field label="Email">
@@ -745,7 +745,7 @@ function NewCustomerModal({
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+            className="w-full border border-[#1f1f24] rounded-xl px-3 py-2 text-sm"
           />
         </Field>
         <Field label="Address">
@@ -753,7 +753,7 @@ function NewCustomerModal({
             type="text"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+            className="w-full border border-[#1f1f24] rounded-xl px-3 py-2 text-sm"
           />
         </Field>
         {err && <p className="text-sm text-rose-600">{err}</p>}
@@ -768,7 +768,7 @@ function NewCustomerModal({
           <button
             type="button"
             onClick={onClose}
-            className="text-sm text-slate-600 hover:text-slate-900"
+            className="text-sm text-zinc-400 hover:text-white"
           >
             Cancel
           </button>
@@ -826,16 +826,16 @@ function NewTemplateModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <form
         onSubmit={save}
-        className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4 max-h-[90vh] overflow-y-auto"
+        className="bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-start justify-between">
-          <h3 className="text-base font-semibold text-slate-900">
+          <h3 className="text-base font-semibold text-white">
             New plan template
           </h3>
           <button
             type="button"
             onClick={onClose}
-            className="text-sm text-slate-400 hover:text-slate-700"
+            className="text-sm text-zinc-500 hover:text-zinc-300"
           >
             ✕
           </button>
@@ -846,7 +846,7 @@ function NewTemplateModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Monthly Window Cleaning"
-            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+            className="w-full border border-[#1f1f24] rounded-xl px-3 py-2 text-sm"
             autoFocus
           />
         </Field>
@@ -855,10 +855,10 @@ function NewTemplateModal({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
-            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+            className="w-full border border-[#1f1f24] rounded-xl px-3 py-2 text-sm"
           />
         </Field>
-        <p className="text-xs text-slate-500 -mt-1">
+        <p className="text-xs text-zinc-400 -mt-1">
           Price and billing interval are set per customer when you create a
           subscription from this template.
         </p>
@@ -868,7 +868,7 @@ function NewTemplateModal({
             onChange={(e) =>
               setTermsId(e.target.value ? Number(e.target.value) : "")
             }
-            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+            className="w-full border border-[#1f1f24] rounded-xl px-3 py-2 text-sm"
           >
             <option value="">None</option>
             {terms.map((t) => (
@@ -878,7 +878,7 @@ function NewTemplateModal({
             ))}
           </select>
         </Field>
-        <label className="inline-flex items-center gap-2 text-sm text-slate-700">
+        <label className="inline-flex items-center gap-2 text-sm text-zinc-300">
           <input
             type="checkbox"
             checked={requireSignature}
@@ -898,7 +898,7 @@ function NewTemplateModal({
           <button
             type="button"
             onClick={onClose}
-            className="text-sm text-slate-600 hover:text-slate-900"
+            className="text-sm text-zinc-400 hover:text-white"
           >
             Cancel
           </button>

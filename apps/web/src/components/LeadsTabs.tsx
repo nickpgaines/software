@@ -13,7 +13,7 @@ const TABS = [
 export default function LeadsTabs() {
   const pathname = usePathname();
   return (
-    <div className="bg-slate-100 rounded-full p-1 flex items-center text-sm">
+    <div className="bg-black rounded-full p-1 flex items-center text-sm">
       {TABS.map((t) => {
         const active =
           t.href === "/leads"
@@ -26,8 +26,8 @@ export default function LeadsTabs() {
             className={
               "px-4 py-1.5 rounded-full transition-colors " +
               (active
-                ? "bg-white text-slate-900 shadow-sm font-medium"
-                : "text-slate-500 hover:text-slate-900")
+                ? "bg-[#0f0f12] text-white shadow-sm font-medium"
+                : "text-zinc-400 hover:text-white")
             }
           >
             {t.label}

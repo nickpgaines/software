@@ -187,11 +187,11 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
   }
 
   if (loading) {
-    return <div className="text-sm text-slate-400">Loading…</div>;
+    return <div className="text-sm text-zinc-500">Loading…</div>;
   }
   if (!automation) {
     return (
-      <div className="text-sm text-slate-500">
+      <div className="text-sm text-zinc-400">
         Automation not found.{" "}
         <Link href="/email" className="underline">
           Back to email
@@ -203,14 +203,14 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
   return (
     <div className="space-y-6 max-w-3xl">
       <div>
-        <Link href="/email" className="text-xs text-slate-500 hover:text-slate-900">
+        <Link href="/email" className="text-xs text-zinc-400 hover:text-white">
           ← All email
         </Link>
         <div className="flex items-baseline justify-between mt-2">
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="text-2xl font-semibold text-white">
             {automation.name}
           </h1>
-          <label className="flex items-center gap-2 text-sm text-slate-700">
+          <label className="flex items-center gap-2 text-sm text-zinc-300">
             <span>{automation.enabled === 1 ? "Enabled" : "Disabled"}</span>
             <button
               type="button"
@@ -221,12 +221,12 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
               }
               className={
                 "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition " +
-                (automation.enabled === 1 ? "bg-emerald-500" : "bg-slate-200")
+                (automation.enabled === 1 ? "bg-emerald-500" : "bg-[#1f1f24]")
               }
             >
               <span
                 className={
-                  "inline-block h-5 w-5 transform rounded-full bg-white shadow transition " +
+                  "inline-block h-5 w-5 transform rounded-full bg-[#0f0f12] shadow transition " +
                   (automation.enabled === 1
                     ? "translate-x-5"
                     : "translate-x-0.5")
@@ -236,7 +236,7 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
           </label>
         </div>
         {automation.description && (
-          <p className="text-sm text-slate-500 mt-1">{automation.description}</p>
+          <p className="text-sm text-zinc-400 mt-1">{automation.description}</p>
         )}
       </div>
 
@@ -251,9 +251,9 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
         </div>
       )}
 
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-6 space-y-5">
+      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm p-6 space-y-5">
         <div>
-          <label className="block text-xs uppercase tracking-wide text-slate-400 mb-2">
+          <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-2">
             Audience
           </label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -265,17 +265,17 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
                 className={
                   "text-left p-3 rounded-xl border transition " +
                   (automation.audience === a.audience
-                    ? "border-slate-900 bg-slate-50"
-                    : "border-slate-200 hover:border-slate-400")
+                    ? "border-slate-900 bg-black"
+                    : "border-[#1f1f24] hover:border-slate-400")
                 }
               >
                 <div className="flex items-baseline justify-between">
-                  <span className="font-medium text-slate-900">{a.label}</span>
-                  <span className="text-xs text-slate-500 tabular-nums">
+                  <span className="font-medium text-white">{a.label}</span>
+                  <span className="text-xs text-zinc-400 tabular-nums">
                     {a.count}
                   </span>
                 </div>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <p className="text-xs text-zinc-400 mt-0.5">
                   {AUDIENCE_DESCRIPTIONS[a.audience] || ""}
                 </p>
               </button>
@@ -285,7 +285,7 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
 
         {automation.kind === "seasonal" && (
           <div>
-            <label className="block text-xs uppercase tracking-wide text-slate-400 mb-2">
+            <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-2">
               Send date
             </label>
             <div className="flex items-center gap-2">
@@ -297,7 +297,7 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
                     e.target.value ? Number(e.target.value) : null
                   )
                 }
-                className="border border-slate-200 rounded-full px-3 py-2 text-sm bg-white"
+                className="border border-[#1f1f24] rounded-full px-3 py-2 text-sm bg-[#0f0f12]"
               >
                 <option value="">Month…</option>
                 {MONTHS.map((m) => (
@@ -318,9 +318,9 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
                   )
                 }
                 placeholder="Day"
-                className="border border-slate-200 rounded-full px-3 py-2 text-sm bg-white w-24"
+                className="border border-[#1f1f24] rounded-full px-3 py-2 text-sm bg-[#0f0f12] w-24"
               />
-              <span className="text-xs text-slate-400">
+              <span className="text-xs text-zinc-500">
                 Sends once per year on this date when enabled.
               </span>
             </div>
@@ -328,7 +328,7 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
         )}
 
         <div>
-          <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1.5">
+          <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
             Subject
           </label>
           <input
@@ -336,12 +336,12 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
             value={automation.subject}
             onChange={(e) => patch("subject", e.target.value)}
             placeholder="Spring is here — book your seasonal service"
-            className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+            className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
           />
         </div>
 
         <div>
-          <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1.5">
+          <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
             Message (HTML or plain text)
           </label>
           <textarea
@@ -349,9 +349,9 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
             onChange={(e) => patch("body_html", e.target.value)}
             rows={12}
             placeholder="Hi there, ..."
-            className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-sm bg-white font-mono"
+            className="w-full border border-[#1f1f24] rounded-2xl px-4 py-3 text-sm bg-[#0f0f12] font-mono"
           />
-          <p className="text-xs text-slate-400 mt-2">
+          <p className="text-xs text-zinc-500 mt-2">
             An unsubscribe link and your business address are appended
             automatically.
           </p>
@@ -360,19 +360,19 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
         {error && <p className="text-sm text-rose-600">{error}</p>}
         {info && <p className="text-sm text-emerald-700">{info}</p>}
 
-        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100">
+        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-[#1f1f24]">
           <input
             type="email"
             value={testEmail}
             onChange={(e) => setTestEmail(e.target.value)}
             placeholder="you@example.com"
-            className="border border-slate-200 rounded-full px-4 py-2 text-sm bg-white w-64"
+            className="border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] w-64"
           />
           <button
             type="button"
             onClick={handleTestSend}
             disabled={testing || !emailStatus?.configured}
-            className="text-sm bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 rounded-full px-4 py-2 font-medium"
+            className="text-sm bg-[#0f0f12] border border-[#1f1f24] hover:bg-black disabled:opacity-50 rounded-full px-4 py-2 font-medium"
           >
             Send test
           </button>
@@ -392,7 +392,7 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
               disabled={
                 saving || automation.enabled !== 1 || !emailStatus?.configured
               }
-              className="text-sm bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white rounded-full px-5 py-2 font-medium"
+              className="text-sm bg-emerald-600 hover:bg-emerald-700 disabled:bg-[#2a2a32] text-white rounded-full px-5 py-2 font-medium"
               title={
                 automation.enabled !== 1
                   ? "Enable to send"

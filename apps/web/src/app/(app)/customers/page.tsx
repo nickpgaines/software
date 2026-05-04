@@ -97,15 +97,15 @@ function CustomersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Customers</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-2xl font-semibold text-white">Customers</h1>
+          <p className="text-sm text-zinc-400 mt-1">
             People you clean windows for.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => setImporting(true)}
-            className="text-sm border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 rounded px-3 py-2"
+            className="text-sm border border-[#2a2a32] bg-[#0f0f12] hover:bg-black text-zinc-300 rounded px-3 py-2"
           >
             Import
           </button>
@@ -118,14 +118,14 @@ function CustomersPage() {
         </div>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-lg overflow-hidden">
         {customers.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-500">
+          <div className="p-8 text-center text-sm text-zinc-400">
             No customers yet.
           </div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-600">
+            <thead className="bg-black text-zinc-400">
               <tr>
                 <th className="text-left px-4 py-2 font-medium">Name</th>
                 <th className="text-left px-4 py-2 font-medium">Address</th>
@@ -134,15 +134,15 @@ function CustomersPage() {
                 <th className="px-4 py-2" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-200">
+            <tbody className="divide-y divide-[#1f1f24]">
               {customers.map((c) => (
                 <tr key={c.id}>
-                  <td className="px-4 py-2 font-medium text-slate-900">
+                  <td className="px-4 py-2 font-medium text-white">
                     {fullName(c) || "—"}
                   </td>
-                  <td className="px-4 py-2 text-slate-700">{c.address || "—"}</td>
-                  <td className="px-4 py-2 text-slate-700">{c.phone || "—"}</td>
-                  <td className="px-4 py-2 text-slate-700">{c.email || "—"}</td>
+                  <td className="px-4 py-2 text-zinc-300">{c.address || "—"}</td>
+                  <td className="px-4 py-2 text-zinc-300">{c.phone || "—"}</td>
+                  <td className="px-4 py-2 text-zinc-300">{c.email || "—"}</td>
                   <td className="px-4 py-2 text-right">
                     {phone.configured && c.phone && (
                       <button
@@ -161,7 +161,7 @@ function CustomersPage() {
                     )}
                     <button
                       onClick={() => setEditing(c)}
-                      className="text-xs text-slate-500 hover:text-slate-900 mr-3"
+                      className="text-xs text-zinc-400 hover:text-white mr-3"
                     >
                       Edit
                     </button>
@@ -271,14 +271,14 @@ function CustomerForm({
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-md">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
+      <div className="bg-[#0f0f12] rounded-lg shadow-lg w-full max-w-md">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1f1f24]">
           <h3 className="font-medium">
             {customer ? "Edit customer" : "New customer"}
           </h3>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 text-xl leading-none"
+            className="text-zinc-500 hover:text-zinc-300 text-xl leading-none"
           >
             ×
           </button>
@@ -290,7 +290,7 @@ function CustomerForm({
                 type="text"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
+                className="w-full border border-[#2a2a32] rounded px-3 py-2 text-sm"
                 autoFocus
                 required
               />
@@ -300,7 +300,7 @@ function CustomerForm({
                 type="text"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
+                className="w-full border border-[#2a2a32] rounded px-3 py-2 text-sm"
                 required
               />
             </Field>
@@ -311,7 +311,7 @@ function CustomerForm({
                 type="tel"
                 value={phone ?? ""}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
+                className="w-full border border-[#2a2a32] rounded px-3 py-2 text-sm"
               />
             </Field>
             <Field label="Email">
@@ -319,7 +319,7 @@ function CustomerForm({
                 type="email"
                 value={email ?? ""}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
+                className="w-full border border-[#2a2a32] rounded px-3 py-2 text-sm"
               />
             </Field>
           </div>
@@ -329,7 +329,7 @@ function CustomerForm({
               value={notes ?? ""}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
+              className="w-full border border-[#2a2a32] rounded px-3 py-2 text-sm"
             />
           </Field>
           {error && <p className="text-sm text-red-600">{error}</p>}
@@ -337,7 +337,7 @@ function CustomerForm({
             <button
               type="button"
               onClick={onClose}
-              className="text-sm border border-slate-300 bg-white hover:bg-slate-50 rounded px-3 py-2"
+              className="text-sm border border-[#2a2a32] bg-[#0f0f12] hover:bg-black rounded px-3 py-2"
             >
               Cancel
             </button>
@@ -366,7 +366,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1">
+      <label className="block text-sm font-medium text-zinc-300 mb-1">
         {label}
         {required && <span className="text-red-500 ml-0.5">*</span>}
       </label>

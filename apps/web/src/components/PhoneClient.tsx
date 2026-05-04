@@ -281,11 +281,11 @@ function CallWidget() {
           <div className="text-sm font-medium truncate">
             {state.target.customerName || state.target.toPhone}
           </div>
-          <div className="text-xs text-slate-400 truncate">
+          <div className="text-xs text-zinc-500 truncate">
             {state.target.customerName ? state.target.toPhone : status}
           </div>
         </div>
-        <div className="text-xs text-slate-300 tabular-nums">{status}</div>
+        <div className="text-xs text-zinc-500 tabular-nums">{status}</div>
       </div>
 
       <div className="flex items-center gap-2 mt-3">
@@ -296,7 +296,7 @@ function CallWidget() {
           className={
             "flex-1 text-xs rounded-full px-3 py-2 font-medium transition " +
             (muted
-              ? "bg-amber-500 text-slate-900 hover:bg-amber-400"
+              ? "bg-amber-500 text-white hover:bg-amber-400"
               : "bg-slate-800 hover:bg-slate-700 disabled:opacity-50")
           }
         >

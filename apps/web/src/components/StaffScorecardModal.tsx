@@ -119,10 +119,10 @@ export default function StaffScorecardModal({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl w-full max-w-3xl my-4 shadow-xl"
+        className="bg-[#0f0f12] rounded-2xl w-full max-w-3xl my-4 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-6 py-5 border-b border-slate-100 flex items-start gap-4">
+        <div className="px-6 py-5 border-b border-[#1f1f24] flex items-start gap-4">
           <div
             className={
               "w-14 h-14 rounded-full flex items-center justify-center font-semibold text-base overflow-hidden " +
@@ -144,9 +144,9 @@ export default function StaffScorecardModal({
             <div className="text-xs uppercase tracking-wider text-sky-500 font-semibold">
               Sales Stats
             </div>
-            <h2 className="text-2xl font-bold text-slate-900 truncate">
+            <h2 className="text-2xl font-bold text-white truncate">
               {staff?.name || "—"}
-              <span className="text-slate-400 font-medium">
+              <span className="text-zinc-500 font-medium">
                 {" "}
                 · {moneyShort((subs?.arr_cents || 0) + (ot?.revenue_cents || 0))}{" "}
                 this period
@@ -161,14 +161,14 @@ export default function StaffScorecardModal({
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-slate-100 rounded-full p-1 text-xs">
+            <div className="flex items-center gap-1 bg-black rounded-full p-1 text-xs">
               <button
                 onClick={() => setView("sales")}
                 className={
                   "px-3 py-1 rounded-full transition " +
                   (view === "sales"
-                    ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-500 hover:text-slate-900")
+                    ? "bg-[#0f0f12] text-white shadow-sm"
+                    : "text-zinc-400 hover:text-white")
                 }
               >
                 Sales
@@ -178,8 +178,8 @@ export default function StaffScorecardModal({
                 className={
                   "px-3 py-1 rounded-full transition " +
                   (view === "tech"
-                    ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-500 hover:text-slate-900")
+                    ? "bg-[#0f0f12] text-white shadow-sm"
+                    : "text-zinc-400 hover:text-white")
                 }
               >
                 Tech
@@ -187,7 +187,7 @@ export default function StaffScorecardModal({
             </div>
             <button
               onClick={onClose}
-              className="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center"
+              className="w-8 h-8 rounded-full hover:bg-black text-zinc-400 flex items-center justify-center"
               aria-label="Close"
             >
               <svg
@@ -206,8 +206,8 @@ export default function StaffScorecardModal({
           </div>
         </div>
 
-        <div className="px-6 py-4 border-b border-slate-100 flex justify-end">
-          <div className="flex items-center gap-1 bg-slate-50 border border-slate-100 rounded-full p-1 text-xs">
+        <div className="px-6 py-4 border-b border-[#1f1f24] flex justify-end">
+          <div className="flex items-center gap-1 bg-black border border-[#1f1f24] rounded-full p-1 text-xs">
             {PRESETS.map((p) => (
               <button
                 key={p.key}
@@ -215,8 +215,8 @@ export default function StaffScorecardModal({
                 className={
                   "px-3 py-1 rounded-full transition whitespace-nowrap " +
                   (range === p.key
-                    ? "bg-white text-slate-900 shadow-sm"
-                    : "text-slate-500 hover:text-slate-900")
+                    ? "bg-[#0f0f12] text-white shadow-sm"
+                    : "text-zinc-400 hover:text-white")
                 }
               >
                 {p.label}
@@ -226,11 +226,11 @@ export default function StaffScorecardModal({
         </div>
 
         {loading && !data ? (
-          <div className="p-10 text-center text-sm text-slate-400">Loading…</div>
+          <div className="p-10 text-center text-sm text-zinc-500">Loading…</div>
         ) : (
           <div className="p-6 space-y-6">
             <section>
-              <h3 className="text-lg font-bold text-slate-900 mb-3">
+              <h3 className="text-lg font-bold text-white mb-3">
                 Subscriptions
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -253,7 +253,7 @@ export default function StaffScorecardModal({
             </section>
 
             <section>
-              <h3 className="text-lg font-bold text-slate-900 mb-3">
+              <h3 className="text-lg font-bold text-white mb-3">
                 One-Time Cleans
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -276,7 +276,7 @@ export default function StaffScorecardModal({
             </section>
 
             <section>
-              <h3 className="text-lg font-bold text-slate-900 mb-3">
+              <h3 className="text-lg font-bold text-white mb-3">
                 Door Knocks
               </h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
@@ -301,19 +301,19 @@ export default function StaffScorecardModal({
                   return (
                     <div
                       key={p.key}
-                      className="border border-slate-200 rounded-xl px-3 py-2"
+                      className="border border-[#1f1f24] rounded-xl px-3 py-2"
                     >
-                      <div className="flex items-center justify-between text-xs text-slate-400">
+                      <div className="flex items-center justify-between text-xs text-zinc-500">
                         <span
                           className={"w-2 h-2 rounded-full " + p.color}
                         />
                         <span>{pct.toFixed(0)}%</span>
                       </div>
-                      <div className="text-2xl font-bold text-slate-900 tabular-nums leading-tight mt-1">
+                      <div className="text-2xl font-bold text-white tabular-nums leading-tight mt-1">
                         {count}
                       </div>
-                      <div className="text-xs text-slate-500">{p.label}</div>
-                      <div className="mt-1.5 h-1 bg-slate-100 rounded-full overflow-hidden">
+                      <div className="text-xs text-zinc-400">{p.label}</div>
+                      <div className="mt-1.5 h-1 bg-black rounded-full overflow-hidden">
                         <div
                           className={p.color + " h-full"}
                           style={{ width: `${pct}%` }}
@@ -341,12 +341,12 @@ function Stat({
   help?: string;
 }) {
   return (
-    <div className="border border-slate-200 rounded-xl px-4 py-3">
-      <div className="text-xs text-slate-400">{label}</div>
-      <div className="text-2xl font-bold text-slate-900 tabular-nums mt-0.5">
+    <div className="border border-[#1f1f24] rounded-xl px-4 py-3">
+      <div className="text-xs text-zinc-500">{label}</div>
+      <div className="text-2xl font-bold text-white tabular-nums mt-0.5">
         {value}
       </div>
-      {help ? <div className="text-xs text-slate-500 mt-0.5">{help}</div> : null}
+      {help ? <div className="text-xs text-zinc-400 mt-0.5">{help}</div> : null}
     </div>
   );
 }

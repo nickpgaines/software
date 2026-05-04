@@ -424,24 +424,24 @@ export default function EmployeeSchedulingModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <div className="absolute inset-0" onClick={onClose} aria-hidden />
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-3xl max-h-[92vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-5 flex items-start justify-between z-10">
+      <div className="relative bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-3xl max-h-[92vh] overflow-y-auto">
+        <div className="sticky top-0 bg-[#0f0f12] border-b border-[#1f1f24] px-6 py-5 flex items-start justify-between z-10">
           <div className="flex items-start gap-3">
-            <div className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
+            <div className="w-9 h-9 rounded-full bg-black flex items-center justify-center text-zinc-400">
               <Users className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-xl font-semibold text-slate-900">
+              <h2 className="text-xl font-semibold text-white">
                 Employee Scheduling
               </h2>
-              <p className="text-sm text-slate-500 mt-1">
+              <p className="text-sm text-zinc-400 mt-1">
                 Set who&rsquo;s working and their shift hours.
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 p-1 -m-1"
+            className="text-zinc-500 hover:text-zinc-300 p-1 -m-1"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
@@ -452,17 +452,17 @@ export default function EmployeeSchedulingModal({
           <div className="flex items-center justify-center gap-3">
             <button
               onClick={() => setWeekStart(addDays(weekStart, -7))}
-              className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500"
+              className="w-8 h-8 rounded-full hover:bg-black flex items-center justify-center text-zinc-400"
               aria-label="Previous week"
             >
               ‹
             </button>
-            <div className="text-base font-medium text-slate-900">
+            <div className="text-base font-medium text-white">
               {formatRange(weekStart, addDays(weekStart, 6))}
             </div>
             <button
               onClick={() => setWeekStart(addDays(weekStart, 7))}
-              className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500"
+              className="w-8 h-8 rounded-full hover:bg-black flex items-center justify-center text-zinc-400"
               aria-label="Next week"
             >
               ›
@@ -486,14 +486,14 @@ export default function EmployeeSchedulingModal({
             </div>
             <button
               onClick={clearSelection}
-              className="text-slate-500 hover:text-slate-700"
+              className="text-zinc-400 hover:text-zinc-300"
             >
               Clear
             </button>
           </div>
 
-          <div className="border border-slate-200 rounded-2xl overflow-hidden">
-            <div className="grid grid-cols-[160px_repeat(7,1fr)] bg-slate-50 text-[11px] uppercase tracking-wider text-slate-500">
+          <div className="border border-[#1f1f24] rounded-2xl overflow-hidden">
+            <div className="grid grid-cols-[160px_repeat(7,1fr)] bg-black text-[11px] uppercase tracking-wider text-zinc-400">
               <div className="px-3 py-3">Employee</div>
               {days.map((d) => {
                 const isToday = isoDate(d) === isoDate(new Date());
@@ -508,7 +508,7 @@ export default function EmployeeSchedulingModal({
                     <div>
                       {d.toLocaleDateString(undefined, { weekday: "short" })}
                     </div>
-                    <div className="text-base font-semibold text-slate-900 mt-0.5">
+                    <div className="text-base font-semibold text-white mt-0.5">
                       {d.getDate()}
                     </div>
                   </div>
@@ -517,7 +517,7 @@ export default function EmployeeSchedulingModal({
             </div>
 
             {activeStaff.length === 0 && !loading && (
-              <div className="p-8 text-center text-sm text-slate-400">
+              <div className="p-8 text-center text-sm text-zinc-500">
                 Add an employee below to get started.
               </div>
             )}
@@ -525,11 +525,11 @@ export default function EmployeeSchedulingModal({
             {activeStaff.map((s) => (
               <div
                 key={s.id}
-                className="grid grid-cols-[160px_repeat(7,1fr)] border-t border-slate-100 items-center"
+                className="grid grid-cols-[160px_repeat(7,1fr)] border-t border-[#1f1f24] items-center"
               >
                 <button
                   onClick={() => toggleStaffRow(s.id)}
-                  className="flex items-center gap-2 px-3 py-2 text-left hover:bg-slate-50"
+                  className="flex items-center gap-2 px-3 py-2 text-left hover:bg-black"
                 >
                   <span
                     className={
@@ -539,7 +539,7 @@ export default function EmployeeSchedulingModal({
                   >
                     {staffInitial(s)}
                   </span>
-                  <span className="text-sm font-medium text-slate-900 truncate">
+                  <span className="text-sm font-medium text-white truncate">
                     {staffName(s)}
                   </span>
                 </button>
@@ -557,9 +557,9 @@ export default function EmployeeSchedulingModal({
                           ? "border-sky-500 ring-2 ring-sky-200 bg-sky-50"
                           : sh
                           ? sh.source === "default"
-                            ? "border-slate-200 bg-white text-slate-500"
-                            : "border-slate-200 bg-white text-slate-700"
-                          : "border-dashed border-slate-200 bg-white text-slate-300 hover:text-slate-500")
+                            ? "border-[#1f1f24] bg-[#0f0f12] text-zinc-400"
+                            : "border-[#1f1f24] bg-[#0f0f12] text-zinc-300"
+                          : "border-dashed border-[#1f1f24] bg-[#0f0f12] text-zinc-500 hover:text-zinc-400")
                       }
                     >
                       {sh ? (
@@ -583,7 +583,7 @@ export default function EmployeeSchedulingModal({
           </div>
 
           <div>
-            <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-slate-500 mb-2">
+            <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-zinc-400 mb-2">
               <Users className="w-3.5 h-3.5" /> Add employees
             </div>
             <div className="relative mb-2">
@@ -591,10 +591,10 @@ export default function EmployeeSchedulingModal({
                 value={staffSearch}
                 onChange={(e) => setStaffSearch(e.target.value)}
                 placeholder="Search employees…"
-                className="w-full bg-white border border-slate-200 rounded-full pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+                className="w-full bg-[#0f0f12] border border-[#1f1f24] rounded-full pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2a2a32]"
               />
               <svg
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500"
                 viewBox="0 0 24 24"
                 fill="none"
                 stroke="currentColor"
@@ -606,13 +606,13 @@ export default function EmployeeSchedulingModal({
                 <path d="m21 21-4.3-4.3" />
               </svg>
               {staffSearch && candidateStaff.length > 0 && (
-                <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute z-20 left-0 right-0 mt-1 bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-lg max-h-60 overflow-y-auto">
                   {candidateStaff.slice(0, 12).map((s) => (
                     <button
                       key={s.id}
                       type="button"
                       onClick={() => addEmployee(s.id)}
-                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-left hover:bg-slate-50"
+                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-left hover:bg-black"
                     >
                       <span
                         className={
@@ -632,7 +632,7 @@ export default function EmployeeSchedulingModal({
               {activeStaff.map((s) => (
                 <span
                   key={s.id}
-                  className="inline-flex items-center gap-2 bg-sky-50 border border-sky-100 rounded-full pl-1 pr-2 py-1 text-xs text-slate-700"
+                  className="inline-flex items-center gap-2 bg-sky-50 border border-sky-100 rounded-full pl-1 pr-2 py-1 text-xs text-zinc-300"
                 >
                   <span
                     className={
@@ -646,7 +646,7 @@ export default function EmployeeSchedulingModal({
                   <button
                     type="button"
                     onClick={() => removeEmployee(s.id)}
-                    className="text-slate-400 hover:text-rose-600"
+                    className="text-zinc-500 hover:text-rose-600"
                     aria-label={`Remove ${staffName(s)}`}
                   >
                     <X className="w-3 h-3" />
@@ -670,7 +670,7 @@ export default function EmployeeSchedulingModal({
                   }}
                   onAdjust={(d) => adjustBulk("start", d)}
                 />
-                <span className="text-sm text-slate-600">to</span>
+                <span className="text-sm text-zinc-400">to</span>
                 <TimeStepper
                   value={bulkEnd}
                   onChange={(v) => {
@@ -688,19 +688,19 @@ export default function EmployeeSchedulingModal({
                   Remove {selected.size} shift{selected.size === 1 ? "" : "s"}
                 </button>
               </div>
-              <p className="text-center text-xs text-slate-500 mt-2">
+              <p className="text-center text-xs text-zinc-400 mt-2">
                 Tap cells to select &middot; tap again to deselect &middot; click an
                 employee name to select the entire row.
               </p>
             </div>
           )}
 
-          <label className="flex items-center justify-between gap-4 bg-slate-50 border border-slate-100 rounded-2xl px-4 py-3 cursor-pointer">
+          <label className="flex items-center justify-between gap-4 bg-black border border-[#1f1f24] rounded-2xl px-4 py-3 cursor-pointer">
             <div>
-              <div className="text-sm font-semibold text-slate-900">
+              <div className="text-sm font-semibold text-white">
                 Set as default schedule
               </div>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <p className="text-xs text-zinc-400 mt-0.5">
                 Apply these hours to every week going forward, until
                 modified again.
               </p>
@@ -720,15 +720,15 @@ export default function EmployeeSchedulingModal({
           )}
         </div>
 
-        <div className="sticky bottom-0 bg-white border-t border-slate-100 px-6 py-4 flex items-center justify-between gap-3">
-          <div className="text-sm text-slate-500">
+        <div className="sticky bottom-0 bg-[#0f0f12] border-t border-[#1f1f24] px-6 py-4 flex items-center justify-between gap-3">
+          <div className="text-sm text-zinc-400">
             {employeeCount} employee{employeeCount === 1 ? "" : "s"} &middot;{" "}
             {totalShifts} shift{totalShifts === 1 ? "" : "s"}
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-full hover:bg-slate-50"
+              className="px-4 py-2 text-sm font-medium text-zinc-300 bg-[#0f0f12] border border-[#1f1f24] rounded-full hover:bg-black"
               disabled={saving}
             >
               Cancel
@@ -761,7 +761,7 @@ function TimeStepper({
       <button
         type="button"
         onClick={() => onAdjust(-1)}
-        className="w-8 h-8 rounded-full bg-white border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-600"
+        className="w-8 h-8 rounded-full bg-[#0f0f12] border border-[#1f1f24] hover:bg-black flex items-center justify-center text-zinc-400"
         aria-label="Earlier"
       >
         <Minus className="w-3.5 h-3.5" />
@@ -776,7 +776,7 @@ function TimeStepper({
       <button
         type="button"
         onClick={() => onAdjust(1)}
-        className="w-8 h-8 rounded-full bg-white border border-slate-200 hover:bg-slate-50 flex items-center justify-center text-slate-600"
+        className="w-8 h-8 rounded-full bg-[#0f0f12] border border-[#1f1f24] hover:bg-black flex items-center justify-center text-zinc-400"
         aria-label="Later"
       >
         <Plus className="w-3.5 h-3.5" />

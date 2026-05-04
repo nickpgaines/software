@@ -4,7 +4,7 @@ const MapClient = nextDynamic(() => import("@/components/MapClient"), {
   ssr: false,
   loading: () => (
     <div
-      className="fixed inset-0 flex items-center justify-center text-sm text-slate-500"
+      className="fixed inset-0 flex items-center justify-center text-sm text-zinc-400"
       style={{ top: "56px" }}
     >
       Loading map…

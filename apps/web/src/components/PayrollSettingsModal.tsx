@@ -182,19 +182,19 @@ export default function PayrollSettingsModal({
         onClick={onClose}
         aria-hidden
       />
-      <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-slate-100 px-6 py-5 flex items-start justify-between">
+      <div className="relative bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-[#0f0f12] border-b border-[#1f1f24] px-6 py-5 flex items-start justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-slate-900">
+            <h2 className="text-xl font-semibold text-white">
               Payroll Settings
             </h2>
-            <p className="text-sm text-slate-500 mt-1">
+            <p className="text-sm text-zinc-400 mt-1">
               Configure pay periods and commission rules.
             </p>
           </div>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 p-1 -m-1"
+            className="text-zinc-500 hover:text-zinc-300 p-1 -m-1"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
@@ -369,10 +369,10 @@ export default function PayrollSettingsModal({
           )}
         </div>
 
-        <div className="sticky bottom-0 bg-white border-t border-slate-100 px-6 py-4 flex items-center justify-end gap-3">
+        <div className="sticky bottom-0 bg-[#0f0f12] border-t border-[#1f1f24] px-6 py-4 flex items-center justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-slate-700 hover:text-slate-900"
+            className="px-4 py-2 text-sm font-medium text-zinc-300 hover:text-white"
             disabled={saving}
           >
             Cancel
@@ -402,10 +402,10 @@ function Section({
   return (
     <section className="space-y-4">
       <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
           {title}
         </h3>
-        {subtitle && <p className="text-sm text-slate-500 mt-1">{subtitle}</p>}
+        {subtitle && <p className="text-sm text-zinc-400 mt-1">{subtitle}</p>}
       </div>
       {children}
     </section>
@@ -413,7 +413,7 @@ function Section({
 }
 
 function Divider() {
-  return <div className="border-t border-slate-100" />;
+  return <div className="border-t border-[#1f1f24]" />;
 }
 
 function Field({
@@ -427,11 +427,11 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-sm font-semibold text-slate-900">
+      <label className="block text-sm font-semibold text-white">
         {label}
       </label>
       {children}
-      {help && <p className="text-xs text-slate-500">{help}</p>}
+      {help && <p className="text-xs text-zinc-400">{help}</p>}
     </div>
   );
 }
@@ -449,7 +449,7 @@ function Select<T extends string>({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
-      className="w-full appearance-none border border-slate-300 rounded-full px-4 py-2.5 text-sm pr-10 bg-white bg-no-repeat bg-right"
+      className="w-full appearance-none border border-[#2a2a32] rounded-full px-4 py-2.5 text-sm pr-10 bg-[#0f0f12] bg-no-repeat bg-right"
       style={{
         backgroundImage:
           "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M1 1l5 5 5-5'/%3E%3C/svg%3E\")",
@@ -479,8 +479,8 @@ function ToggleRow({
   return (
     <div className="flex items-start justify-between gap-4">
       <div>
-        <div className="text-sm font-semibold text-slate-900">{title}</div>
-        <p className="text-sm text-slate-500 mt-0.5 max-w-md">{description}</p>
+        <div className="text-sm font-semibold text-white">{title}</div>
+        <p className="text-sm text-zinc-400 mt-0.5 max-w-md">{description}</p>
       </div>
       <button
         type="button"
@@ -489,12 +489,12 @@ function ToggleRow({
         onClick={() => onChange(!checked)}
         className={
           "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition " +
-          (checked ? "bg-slate-900" : "bg-slate-200")
+          (checked ? "bg-slate-900" : "bg-[#1f1f24]")
         }
       >
         <span
           className={
-            "inline-block h-5 w-5 rounded-full bg-white shadow transform transition " +
+            "inline-block h-5 w-5 rounded-full bg-[#0f0f12] shadow transform transition " +
             (checked ? "translate-x-5" : "translate-x-0.5")
           }
         />
@@ -524,7 +524,7 @@ function CommissionConfig({
 }) {
   return (
     <div className="space-y-3">
-      <div className="text-sm font-semibold text-slate-900">{roleLabel}</div>
+      <div className="text-sm font-semibold text-white">{roleLabel}</div>
       <SegmentedControl
         value={mode}
         onChange={onMode}
@@ -552,7 +552,7 @@ function SegmentedControl<T extends string>({
   options: { value: T; label: string }[];
 }) {
   return (
-    <div className="inline-flex items-center bg-slate-100 rounded-full p-1 text-sm">
+    <div className="inline-flex items-center bg-black rounded-full p-1 text-sm">
       {options.map((o) => {
         const active = o.value === value;
         return (
@@ -563,8 +563,8 @@ function SegmentedControl<T extends string>({
             className={
               "px-4 py-1.5 rounded-full transition " +
               (active
-                ? "bg-white text-slate-900 shadow-sm font-medium"
-                : "text-slate-600 hover:text-slate-900")
+                ? "bg-[#0f0f12] text-white shadow-sm font-medium"
+                : "text-zinc-400 hover:text-white")
             }
           >
             {o.label}
@@ -607,9 +607,9 @@ function PctInput({
         onBlur={(e) => commit(e.target.value)}
         placeholder={placeholder}
         inputMode="decimal"
-        className="w-full border border-slate-300 rounded-full px-4 py-2.5 pr-10 text-sm"
+        className="w-full border border-[#2a2a32] rounded-full px-4 py-2.5 pr-10 text-sm"
       />
-      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-zinc-500">
         %
       </span>
     </div>
@@ -629,7 +629,7 @@ function DollarInput({
   }, [cents]);
   return (
     <div className="relative w-full">
-      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-slate-400">
+      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-zinc-500">
         $
       </span>
       <input
@@ -638,7 +638,7 @@ function DollarInput({
         onBlur={() => onChange(dollarsToCents(text))}
         placeholder="0.00"
         inputMode="decimal"
-        className="w-full border border-slate-300 rounded-full pl-8 pr-4 py-2.5 text-sm"
+        className="w-full border border-[#2a2a32] rounded-full pl-8 pr-4 py-2.5 text-sm"
       />
     </div>
   );
@@ -666,17 +666,17 @@ function TiersEditor({
   return (
     <div className="space-y-2">
       {tiers.length === 0 && (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-zinc-400">
           No tiers yet. Add a tier to define a revenue threshold and its rate.
         </p>
       )}
       {tiers.map((t, idx) => (
         <div
           key={idx}
-          className="flex items-center gap-2 bg-slate-50 rounded-2xl p-2"
+          className="flex items-center gap-2 bg-black rounded-2xl p-2"
         >
           <div className="flex-1">
-            <label className="block text-[11px] uppercase tracking-wider text-slate-500 px-2">
+            <label className="block text-[11px] uppercase tracking-wider text-zinc-400 px-2">
               From ($)
             </label>
             <DollarInput
@@ -685,7 +685,7 @@ function TiersEditor({
             />
           </div>
           <div className="flex-1">
-            <label className="block text-[11px] uppercase tracking-wider text-slate-500 px-2">
+            <label className="block text-[11px] uppercase tracking-wider text-zinc-400 px-2">
               Rate (%)
             </label>
             <PctInput
@@ -696,7 +696,7 @@ function TiersEditor({
           <button
             type="button"
             onClick={() => remove(idx)}
-            className="text-slate-400 hover:text-rose-600 p-2"
+            className="text-zinc-500 hover:text-rose-600 p-2"
             aria-label="Remove tier"
           >
             <Trash2 className="w-4 h-4" />
@@ -706,7 +706,7 @@ function TiersEditor({
       <button
         type="button"
         onClick={add}
-        className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:text-slate-900"
+        className="inline-flex items-center gap-1 text-sm font-medium text-zinc-300 hover:text-white"
       >
         <Plus className="w-4 h-4" /> Add tier
       </button>
@@ -740,7 +740,7 @@ function BonusTiersEditor({
   return (
     <div className="space-y-2">
       {tiers.length === 0 && (
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-zinc-400">
           No bonus tiers yet. Add one to pay a bonus when daily revenue
           reaches a threshold.
         </p>
@@ -748,10 +748,10 @@ function BonusTiersEditor({
       {tiers.map((t, idx) => (
         <div
           key={idx}
-          className="flex items-center gap-2 bg-slate-50 rounded-2xl p-2"
+          className="flex items-center gap-2 bg-black rounded-2xl p-2"
         >
           <div className="flex-1">
-            <label className="block text-[11px] uppercase tracking-wider text-slate-500 px-2">
+            <label className="block text-[11px] uppercase tracking-wider text-zinc-400 px-2">
               Daily revenue ≥ ($)
             </label>
             <DollarInput
@@ -760,7 +760,7 @@ function BonusTiersEditor({
             />
           </div>
           <div className="flex-1">
-            <label className="block text-[11px] uppercase tracking-wider text-slate-500 px-2">
+            <label className="block text-[11px] uppercase tracking-wider text-zinc-400 px-2">
               Bonus ($)
             </label>
             <DollarInput
@@ -771,7 +771,7 @@ function BonusTiersEditor({
           <button
             type="button"
             onClick={() => remove(idx)}
-            className="text-slate-400 hover:text-rose-600 p-2"
+            className="text-zinc-500 hover:text-rose-600 p-2"
             aria-label="Remove bonus tier"
           >
             <Trash2 className="w-4 h-4" />
@@ -781,7 +781,7 @@ function BonusTiersEditor({
       <button
         type="button"
         onClick={add}
-        className="inline-flex items-center gap-1 text-sm font-medium text-slate-700 hover:text-slate-900"
+        className="inline-flex items-center gap-1 text-sm font-medium text-zinc-300 hover:text-white"
       >
         <Plus className="w-4 h-4" /> Add bonus tier
       </button>

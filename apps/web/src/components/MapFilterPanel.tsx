@@ -71,12 +71,12 @@ export default function MapFilterPanel({
   }
 
   return (
-    <div className="absolute top-4 right-16 z-10 w-72 max-h-[80vh] flex flex-col rounded-lg border border-slate-200 bg-white shadow-md">
-      <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-        <h3 className="font-semibold text-slate-900 text-sm">Filters</h3>
+    <div className="absolute top-4 right-16 z-10 w-72 max-h-[80vh] flex flex-col rounded-lg border border-[#1f1f24] bg-[#0f0f12] shadow-md">
+      <div className="px-4 py-3 border-b border-[#1f1f24] flex items-center justify-between">
+        <h3 className="font-semibold text-white text-sm">Filters</h3>
         <button
           onClick={onClose}
-          className="text-slate-400 hover:text-slate-700"
+          className="text-zinc-500 hover:text-zinc-300"
           aria-label="Close"
         >
           <X className="h-4 w-4" />
@@ -113,7 +113,7 @@ export default function MapFilterPanel({
                   onChange={() => onChangeDateRange(r.key)}
                   className="accent-slate-900"
                 />
-                <span className="text-slate-700">{r.label}</span>
+                <span className="text-zinc-300">{r.label}</span>
               </label>
             ))}
           </div>
@@ -127,14 +127,14 @@ export default function MapFilterPanel({
               "text-xs px-2 py-1 rounded-full mb-2 " +
               (allEmployees
                 ? "bg-slate-900 text-white"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200")
+                : "bg-black text-zinc-400 hover:bg-[#1f1f24]")
             }
           >
             All employees
           </button>
           <div className="flex flex-wrap gap-1.5">
             {staff.length === 0 && (
-              <p className="text-xs text-slate-400">No employees yet.</p>
+              <p className="text-xs text-zinc-500">No employees yet.</p>
             )}
             {staff.map((s) => {
               const active =
@@ -148,7 +148,7 @@ export default function MapFilterPanel({
                     "inline-flex items-center gap-1.5 rounded-full pl-1 pr-2 py-0.5 text-xs border transition " +
                     (active
                       ? "border-transparent text-white"
-                      : "border-slate-200 text-slate-700 hover:bg-slate-50")
+                      : "border-[#1f1f24] text-zinc-300 hover:bg-black")
                   }
                   style={
                     active ? { backgroundColor: staffColorHex(s.color) } : {}
@@ -180,7 +180,7 @@ function Section({
 }) {
   return (
     <div>
-      <div className="text-xs uppercase tracking-wide text-slate-400 mb-2">
+      <div className="text-xs uppercase tracking-wide text-zinc-500 mb-2">
         {label}
       </div>
       {children}
@@ -211,7 +211,7 @@ function CheckRow({
         className="w-3.5 h-3.5 rounded-full border border-white shadow-sm"
         style={{ backgroundColor: swatch }}
       />
-      <span className="text-slate-700">{label}</span>
+      <span className="text-zinc-300">{label}</span>
     </label>
   );
 }

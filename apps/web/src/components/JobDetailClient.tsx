@@ -237,17 +237,17 @@ export default function JobDetailClient({
         <div>
           <Link
             href="/schedule"
-            className="text-sm text-slate-500 hover:text-slate-900 inline-flex items-center gap-1"
+            className="text-sm text-zinc-400 hover:text-white inline-flex items-center gap-1"
           >
             ← Back to schedule
           </Link>
           <div className="flex items-center gap-3 flex-wrap mt-1">
-            <h1 className="text-3xl font-bold text-slate-900">
+            <h1 className="text-3xl font-bold text-white">
               {job.customer_name}
             </h1>
             <JobStatusBadge status={job.job_status} />
           </div>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-zinc-500 mt-1">
             {dayStamp(job.scheduled_at)} ·{" "}
             {job.anytime
               ? "Anytime"
@@ -259,7 +259,7 @@ export default function JobDetailClient({
         <div className="flex items-center gap-2">
           <Link
             href={`/schedule/${job.id}/edit`}
-            className="text-sm border border-slate-200 bg-white hover:bg-slate-50 rounded-full px-4 py-2 text-slate-700"
+            className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-zinc-300"
           >
             Edit
           </Link>
@@ -272,7 +272,7 @@ export default function JobDetailClient({
         </div>
       </div>
 
-      <section className="bg-white border border-slate-200 rounded-2xl p-5">
+      <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           {STEPS.map((s, idx) => (
             <StepButton
@@ -290,25 +290,25 @@ export default function JobDetailClient({
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-6">
         <div className="space-y-6">
-          <section className="bg-white border border-slate-200 rounded-2xl p-5">
-            <h2 className="font-semibold text-slate-900 mb-4">
+          <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
+            <h2 className="font-semibold text-white mb-4">
               Contact Information
             </h2>
             <div className="space-y-3 text-sm">
               <div>
-                <div className="text-xs text-slate-400 uppercase tracking-wide">
+                <div className="text-xs text-zinc-500 uppercase tracking-wide">
                   Name
                 </div>
-                <div className="font-medium text-slate-900">
+                <div className="font-medium text-white">
                   {job.customer_name}
                 </div>
               </div>
               {job.customer_phone && (
                 <a
                   href={`sms:${job.customer_phone}`}
-                  className="flex items-center gap-3 hover:text-slate-900"
+                  className="flex items-center gap-3 hover:text-white"
                 >
-                  <span className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+                  <span className="w-8 h-8 rounded-full bg-black text-zinc-400 flex items-center justify-center">
                     <svg
                       className="w-4 h-4"
                       viewBox="0 0 24 24"
@@ -321,7 +321,7 @@ export default function JobDetailClient({
                       <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
                     </svg>
                   </span>
-                  <span className="font-medium text-slate-900">
+                  <span className="font-medium text-white">
                     {job.customer_phone}
                   </span>
                 </a>
@@ -329,9 +329,9 @@ export default function JobDetailClient({
               {job.customer_email && (
                 <a
                   href={`mailto:${job.customer_email}`}
-                  className="flex items-center gap-3 hover:text-slate-900"
+                  className="flex items-center gap-3 hover:text-white"
                 >
-                  <span className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center">
+                  <span className="w-8 h-8 rounded-full bg-black text-zinc-400 flex items-center justify-center">
                     <svg
                       className="w-4 h-4"
                       viewBox="0 0 24 24"
@@ -345,7 +345,7 @@ export default function JobDetailClient({
                       <polyline points="22,6 12,13 2,6" />
                     </svg>
                   </span>
-                  <span className="font-medium text-slate-900">
+                  <span className="font-medium text-white">
                     {job.customer_email}
                   </span>
                 </a>
@@ -355,9 +355,9 @@ export default function JobDetailClient({
                   href={`https://www.google.com/maps?q=${mapsAddr}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-start gap-3 hover:text-slate-900"
+                  className="flex items-start gap-3 hover:text-white"
                 >
-                  <span className="w-8 h-8 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center shrink-0">
+                  <span className="w-8 h-8 rounded-full bg-black text-zinc-400 flex items-center justify-center shrink-0">
                     <svg
                       className="w-4 h-4"
                       viewBox="0 0 24 24"
@@ -371,14 +371,14 @@ export default function JobDetailClient({
                       <circle cx="12" cy="10" r="3" />
                     </svg>
                   </span>
-                  <span className="font-medium text-slate-900">
+                  <span className="font-medium text-white">
                     {job.customer_address}
                   </span>
                 </a>
               )}
             </div>
             {job.customer_address && (
-              <div className="mt-4 rounded-2xl overflow-hidden border border-slate-200 aspect-[4/3] bg-slate-100">
+              <div className="mt-4 rounded-2xl overflow-hidden border border-[#1f1f24] aspect-[4/3] bg-black">
                 <iframe
                   title="Map"
                   src={`https://maps.google.com/maps?q=${mapsAddr}&z=15&output=embed`}
@@ -389,64 +389,64 @@ export default function JobDetailClient({
             )}
           </section>
 
-          <section className="bg-white border border-slate-200 rounded-2xl p-5">
-            <h2 className="font-semibold text-slate-900 mb-4">Quick Actions</h2>
+          <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
+            <h2 className="font-semibold text-white mb-4">Quick Actions</h2>
             <div className="space-y-2">
               <button
                 type="button"
                 onClick={() => setPaymentModalOpen(true)}
-                className="w-full inline-flex items-center justify-between border border-slate-200 hover:bg-slate-50 rounded-2xl px-4 py-3 text-sm text-slate-700 font-medium"
+                className="w-full inline-flex items-center justify-between border border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-medium"
               >
                 <span>Record Payment</span>
-                <span className="text-slate-300">›</span>
+                <span className="text-zinc-500">›</span>
               </button>
               <Link
                 href="/schedule"
-                className="w-full inline-flex items-center justify-between border border-slate-200 hover:bg-slate-50 rounded-2xl px-4 py-3 text-sm text-slate-700"
+                className="w-full inline-flex items-center justify-between border border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300"
               >
                 <span>View in Schedule</span>
-                <span className="text-slate-300">›</span>
+                <span className="text-zinc-500">›</span>
               </Link>
               <button
                 type="button"
                 title="Coming soon"
-                className="w-full inline-flex items-center justify-between border border-slate-200 hover:bg-slate-50 rounded-2xl px-4 py-3 text-sm text-slate-700"
+                className="w-full inline-flex items-center justify-between border border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300"
               >
                 <span>Create Invoice</span>
-                <span className="text-slate-300">›</span>
+                <span className="text-zinc-500">›</span>
               </button>
               <button
                 type="button"
                 title="Coming soon"
-                className="w-full inline-flex items-center justify-between border border-slate-200 hover:bg-slate-50 rounded-2xl px-4 py-3 text-sm text-slate-700"
+                className="w-full inline-flex items-center justify-between border border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300"
               >
                 <span>Send Review Request</span>
-                <span className="text-slate-300">›</span>
+                <span className="text-zinc-500">›</span>
               </button>
             </div>
           </section>
         </div>
 
         <div className="space-y-6">
-          <section className="bg-white border border-slate-200 rounded-2xl p-5">
+          <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-semibold text-slate-900">Job Details</h2>
+              <h2 className="font-semibold text-white">Job Details</h2>
               <Link
                 href={`/schedule/${job.id}/edit`}
-                className="text-sm text-slate-700 hover:text-slate-900 hover:underline"
+                className="text-sm text-zinc-300 hover:text-white hover:underline"
               >
                 Edit
               </Link>
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <div className="text-xs text-slate-400 uppercase tracking-wide">
+                <div className="text-xs text-zinc-500 uppercase tracking-wide">
                   Scheduled
                 </div>
-                <div className="font-medium text-slate-900">
+                <div className="font-medium text-white">
                   {dayStamp(job.scheduled_at)}
                 </div>
-                <div className="text-slate-500">
+                <div className="text-zinc-400">
                   {job.anytime
                     ? "Anytime"
                     : `${timeStamp(job.scheduled_at)}${
@@ -455,28 +455,28 @@ export default function JobDetailClient({
                 </div>
               </div>
               <div>
-                <div className="text-xs text-slate-400 uppercase tracking-wide">
+                <div className="text-xs text-zinc-500 uppercase tracking-wide">
                   Duration
                 </div>
-                <div className="font-medium text-slate-900">
+                <div className="font-medium text-white">
                   {job.duration_minutes} min
                 </div>
               </div>
               <div>
-                <div className="text-xs text-slate-400 uppercase tracking-wide">
+                <div className="text-xs text-zinc-500 uppercase tracking-wide">
                   Salesperson
                 </div>
-                <div className="font-medium text-slate-900">
+                <div className="font-medium text-white">
                   {job.sales.length === 0
                     ? "—"
                     : job.sales.map((s) => s.name).join(", ")}
                 </div>
               </div>
               <div>
-                <div className="text-xs text-slate-400 uppercase tracking-wide">
+                <div className="text-xs text-zinc-500 uppercase tracking-wide">
                   Dispatched To
                 </div>
-                <div className="font-medium text-slate-900">
+                <div className="font-medium text-white">
                   {job.techs.length === 0
                     ? "—"
                     : job.techs.map((s) => s.name).join(", ")}
@@ -484,54 +484,54 @@ export default function JobDetailClient({
               </div>
               {job.lead_source && (
                 <div>
-                  <div className="text-xs text-slate-400 uppercase tracking-wide">
+                  <div className="text-xs text-zinc-500 uppercase tracking-wide">
                     Lead Source
                   </div>
-                  <div className="font-medium text-slate-900">
+                  <div className="font-medium text-white">
                     {job.lead_source}
                   </div>
                 </div>
               )}
               {job.recurring ? (
                 <div>
-                  <div className="text-xs text-slate-400 uppercase tracking-wide">
+                  <div className="text-xs text-zinc-500 uppercase tracking-wide">
                     Recurring
                   </div>
-                  <div className="font-medium text-slate-900">Yes</div>
+                  <div className="font-medium text-white">Yes</div>
                 </div>
               ) : null}
             </div>
             {job.notes && (
               <div className="mt-4">
-                <div className="text-xs text-slate-400 uppercase tracking-wide">
+                <div className="text-xs text-zinc-500 uppercase tracking-wide">
                   Notes
                 </div>
-                <p className="text-sm text-slate-700 mt-1 whitespace-pre-wrap">
+                <p className="text-sm text-zinc-300 mt-1 whitespace-pre-wrap">
                   {job.notes}
                 </p>
               </div>
             )}
           </section>
 
-          <section className="bg-white border border-slate-200 rounded-2xl p-5">
-            <h2 className="font-semibold text-slate-900 mb-4">Line Items</h2>
+          <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
+            <h2 className="font-semibold text-white mb-4">Line Items</h2>
             {job.line_items.length === 0 ? (
-              <p className="text-sm text-slate-400">No line items.</p>
+              <p className="text-sm text-zinc-500">No line items.</p>
             ) : (
-              <ul className="divide-y divide-slate-100">
+              <ul className="divide-y divide-[#1f1f24]">
                 {job.line_items.map((li) => (
                   <li
                     key={li.id}
                     className="py-3 flex items-start justify-between gap-4"
                   >
                     <div>
-                      <div className="font-medium text-slate-900">{li.title}</div>
+                      <div className="font-medium text-white">{li.title}</div>
                       {li.description && (
-                        <div className="text-sm text-slate-500 mt-0.5">
+                        <div className="text-sm text-zinc-400 mt-0.5">
                           {li.description}
                         </div>
                       )}
-                      <div className="text-xs text-slate-400 mt-1 flex gap-2 flex-wrap">
+                      <div className="text-xs text-zinc-500 mt-1 flex gap-2 flex-wrap">
                         <span>
                           Qty {li.quantity} · {money(li.price_cents)} ea
                         </span>
@@ -543,7 +543,7 @@ export default function JobDetailClient({
                         ) : null}
                       </div>
                     </div>
-                    <div className="text-sm font-semibold text-slate-900 tabular-nums whitespace-nowrap">
+                    <div className="text-sm font-semibold text-white tabular-nums whitespace-nowrap">
                       {money(Math.round(li.quantity * li.price_cents))}
                     </div>
                   </li>
@@ -568,10 +568,10 @@ export default function JobDetailClient({
             onChanged={refreshJob}
           />
 
-          <section className="bg-white border border-slate-200 rounded-2xl p-5">
-            <h2 className="font-semibold text-slate-900 mb-4">Checklist</h2>
+          <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
+            <h2 className="font-semibold text-white mb-4">Checklist</h2>
             {job.checklist_items.length === 0 ? (
-              <p className="text-sm text-slate-400">No tasks selected.</p>
+              <p className="text-sm text-zinc-500">No tasks selected.</p>
             ) : (
               <ChecklistView
                 jobId={job.id}
@@ -618,7 +618,7 @@ function TotalsPanel({
   const totalPaidCents = paidTotalCents + tipTotalCents;
   const hasTips = tipTotalCents > 0;
   return (
-    <div className="border-t border-slate-100 mt-4 pt-4">
+    <div className="border-t border-[#1f1f24] mt-4 pt-4">
       <dl className="ml-auto max-w-xs space-y-1.5 text-sm">
         <Row label="Subtotal" value={money(subtotalCents)} />
         <Row label="Total" value={money(totalCents)} bold />
@@ -681,14 +681,14 @@ function Row({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
-      <dt className={"text-slate-500 " + (bold ? "font-medium" : "")}>
+      <dt className={"text-zinc-400 " + (bold ? "font-medium" : "")}>
         {label}
       </dt>
       <dd
         className={
           "tabular-nums " +
           (bold ? "font-bold " : "font-semibold ") +
-          (valueClass || "text-slate-900")
+          (valueClass || "text-white")
         }
       >
         {value}
@@ -698,7 +698,7 @@ function Row({
 }
 
 function Divider() {
-  return <div className="border-t border-slate-100 my-1.5" />;
+  return <div className="border-t border-[#1f1f24] my-1.5" />;
 }
 
 // Step button reads its "logged" state directly from the timestamp
@@ -728,24 +728,24 @@ function StepButton({
       className={
         "relative text-left rounded-2xl border p-4 transition flex items-start gap-3 " +
         (done
-          ? "border-slate-300 bg-slate-50"
-          : "border-slate-200 bg-white hover:bg-slate-50")
+          ? "border-[#2a2a32] bg-black"
+          : "border-[#1f1f24] bg-[#0f0f12] hover:bg-black")
       }
     >
       <div
         className={
           "w-9 h-9 rounded-full flex items-center justify-center shrink-0 " +
-          (done ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-400")
+          (done ? "bg-slate-900 text-white" : "bg-black text-zinc-500")
         }
       >
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-xs text-slate-400 uppercase tracking-wide">
+        <div className="text-xs text-zinc-500 uppercase tracking-wide">
           Step {index + 1}
         </div>
-        <div className="font-semibold text-slate-900">{label}</div>
-        <div className="text-xs text-slate-500 mt-0.5">
+        <div className="font-semibold text-white">{label}</div>
+        <div className="text-xs text-zinc-400 mt-0.5">
           {done ? `Logged ${timeStamp(timestamp)}` : "Tap to log"}
         </div>
       </div>
@@ -767,7 +767,7 @@ const STATUS_VISUALS: Record<
   scheduled: {
     label: "Scheduled",
     outer:
-      "bg-slate-100 text-slate-600 border border-slate-200",
+      "bg-black text-zinc-400 border border-[#1f1f24]",
     dot: "bg-slate-400",
   },
   in_progress: {
@@ -846,12 +846,12 @@ function ChecklistView({
             type="checkbox"
             checked={!!c.completed}
             onChange={() => toggle(i)}
-            className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+            className="rounded border-[#2a2a32] text-white focus:ring-zinc-500"
           />
           <span
             className={
               "text-sm " +
-              (c.completed ? "text-slate-400 line-through" : "text-slate-700")
+              (c.completed ? "text-zinc-500 line-through" : "text-zinc-300")
             }
           >
             {c.text}

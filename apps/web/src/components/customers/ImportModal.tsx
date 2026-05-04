@@ -174,17 +174,17 @@ export default function ImportModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 shrink-0">
+      <div className="bg-[#0f0f12] rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1f1f24] shrink-0">
           <div>
             <h3 className="font-medium">Import customers</h3>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <p className="text-xs text-zinc-500 mt-0.5">
               <Stepper step={step} />
             </p>
           </div>
           <button
             onClick={close}
-            className="text-slate-400 hover:text-slate-700 text-xl leading-none"
+            className="text-zinc-500 hover:text-zinc-300 text-xl leading-none"
             aria-label="Close"
           >
             ×
@@ -220,7 +220,7 @@ export default function ImportModal({
           )}
 
           {step === "importing" && (
-            <div className="py-12 text-center text-sm text-slate-500">
+            <div className="py-12 text-center text-sm text-zinc-400">
               Importing…
             </div>
           )}
@@ -234,13 +234,13 @@ export default function ImportModal({
           )}
         </div>
 
-        <div className="px-4 py-3 border-t border-slate-200 flex items-center justify-between gap-2 shrink-0">
+        <div className="px-4 py-3 border-t border-[#1f1f24] flex items-center justify-between gap-2 shrink-0">
           {step === "upload" && (
             <>
               <button
                 type="button"
                 onClick={close}
-                className="text-sm border border-slate-300 bg-white hover:bg-slate-50 rounded px-3 py-2"
+                className="text-sm border border-[#2a2a32] bg-[#0f0f12] hover:bg-black rounded px-3 py-2"
               >
                 Cancel
               </button>
@@ -256,7 +256,7 @@ export default function ImportModal({
                   setStep("upload");
                   setError(null);
                 }}
-                className="text-sm border border-slate-300 bg-white hover:bg-slate-50 rounded px-3 py-2"
+                className="text-sm border border-[#2a2a32] bg-[#0f0f12] hover:bg-black rounded px-3 py-2"
               >
                 Back
               </button>
@@ -276,7 +276,7 @@ export default function ImportModal({
               <button
                 type="button"
                 onClick={() => setStep("mapping")}
-                className="text-sm border border-slate-300 bg-white hover:bg-slate-50 rounded px-3 py-2"
+                className="text-sm border border-[#2a2a32] bg-[#0f0f12] hover:bg-black rounded px-3 py-2"
               >
                 Back
               </button>
@@ -337,7 +337,7 @@ function Stepper({ step }: { step: Step }) {
             className={
               i === activeIdx ||
               (step === "importing" && l.key === "preview")
-                ? "text-slate-700 font-medium"
+                ? "text-zinc-300 font-medium"
                 : ""
             }
           >
@@ -365,7 +365,7 @@ function UploadStep({
 }) {
   return (
     <div className="space-y-3">
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-zinc-400">
         Upload a CSV file. The first row should be column headers.
       </p>
       <div
@@ -384,15 +384,15 @@ function UploadStep({
         className={
           "rounded-lg border-2 border-dashed py-12 text-center cursor-pointer transition " +
           (dragActive
-            ? "border-slate-400 bg-slate-50"
-            : "border-slate-200 bg-slate-50/40 hover:bg-slate-50")
+            ? "border-slate-400 bg-black"
+            : "border-[#1f1f24] bg-black/40 hover:bg-black")
         }
       >
-        <div className="text-3xl text-slate-300">⤴</div>
-        <p className="mt-2 text-sm font-medium text-slate-700">
+        <div className="text-3xl text-zinc-500">⤴</div>
+        <p className="mt-2 text-sm font-medium text-zinc-300">
           Click to choose or drag & drop a CSV file
         </p>
-        <p className="text-xs text-slate-400">.csv files only</p>
+        <p className="text-xs text-zinc-500">.csv files only</p>
       </div>
       <input
         ref={fileInputRef}
@@ -423,14 +423,14 @@ function MappingStep({
   const firstSample = csvRows[0] ?? {};
   return (
     <div className="space-y-3">
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-zinc-400">
         Match each CSV column to a Nick360 field. <strong>First name</strong>{" "}
         is required; the others are optional. If you map a single &ldquo;Full
         Name&rdquo; column to First name, we&rsquo;ll auto-split it.
       </p>
-      <div className="border border-slate-200 rounded-lg overflow-hidden">
+      <div className="border border-[#1f1f24] rounded-lg overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-600">
+          <thead className="bg-black text-zinc-400">
             <tr>
               <th className="text-left px-3 py-2 font-medium">CSV column</th>
               <th className="text-left px-3 py-2 font-medium">Sample</th>
@@ -439,13 +439,13 @@ function MappingStep({
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200">
+          <tbody className="divide-y divide-[#1f1f24]">
             {headers.map((h) => (
               <tr key={h}>
-                <td className="px-3 py-2 font-medium text-slate-900">{h}</td>
-                <td className="px-3 py-2 text-slate-500 truncate max-w-[200px]">
+                <td className="px-3 py-2 font-medium text-white">{h}</td>
+                <td className="px-3 py-2 text-zinc-400 truncate max-w-[200px]">
                   {(firstSample[h] ?? "").toString() || (
-                    <span className="italic text-slate-300">empty</span>
+                    <span className="italic text-zinc-500">empty</span>
                   )}
                 </td>
                 <td className="px-3 py-2">
@@ -454,7 +454,7 @@ function MappingStep({
                     onChange={(e) =>
                       setField(h, e.target.value as Field | "")
                     }
-                    className="border border-slate-300 rounded px-2 py-1 text-sm"
+                    className="border border-[#2a2a32] rounded px-2 py-1 text-sm"
                   >
                     <option value="">— ignore —</option>
                     {FIELDS.map((f) => (
@@ -484,13 +484,13 @@ function PreviewStep({
 }) {
   return (
     <div className="space-y-3">
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-zinc-400">
         Showing the first {previewRows.length} of {totalRows} rows after mapping.
         Review for accuracy before importing.
       </p>
-      <div className="border border-slate-200 rounded-lg overflow-hidden">
+      <div className="border border-[#1f1f24] rounded-lg overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-600">
+          <thead className="bg-black text-zinc-400">
             <tr>
               {FIELDS.map((f) => (
                 <th key={f} className="text-left px-3 py-2 font-medium">
@@ -499,16 +499,16 @@ function PreviewStep({
               ))}
             </tr>
           </thead>
-          <tbody className="divide-y divide-slate-200">
+          <tbody className="divide-y divide-[#1f1f24]">
             {previewRows.map((row, i) => (
               <tr key={i}>
                 {FIELDS.map((f) => (
                   <td
                     key={f}
-                    className="px-3 py-2 text-slate-700 truncate max-w-[160px]"
+                    className="px-3 py-2 text-zinc-300 truncate max-w-[160px]"
                   >
                     {row[f] || (
-                      <span className="italic text-slate-300">empty</span>
+                      <span className="italic text-zinc-500">empty</span>
                     )}
                   </td>
                 ))}
@@ -535,11 +535,11 @@ function ResultStep({
     result.inserted + result.skipped + result.errors.length;
   return (
     <div className="space-y-4">
-      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-center">
-        <div className="text-2xl font-semibold text-slate-900">
+      <div className="bg-black border border-[#1f1f24] rounded-lg p-4 text-center">
+        <div className="text-2xl font-semibold text-white">
           Imported {result.inserted} {result.inserted === 1 ? "customer" : "customers"}
         </div>
-        <div className="text-sm text-slate-500 mt-1">
+        <div className="text-sm text-zinc-400 mt-1">
           {result.skipped > 0 && (
             <>
               Skipped {result.skipped} duplicate
@@ -564,15 +564,15 @@ function ResultStep({
           <button
             type="button"
             onClick={() => setShowSkipped(!showSkipped)}
-            className="text-sm text-slate-600 hover:text-slate-900"
+            className="text-sm text-zinc-400 hover:text-white"
           >
             {showSkipped ? "▾" : "▸"} Show details (
             {result.skippedReasons.length + result.errors.length})
           </button>
           {showSkipped && (
-            <div className="mt-2 border border-slate-200 rounded-lg overflow-hidden max-h-60 overflow-y-auto">
+            <div className="mt-2 border border-[#1f1f24] rounded-lg overflow-hidden max-h-60 overflow-y-auto">
               <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-slate-600 sticky top-0">
+                <thead className="bg-black text-zinc-400 sticky top-0">
                   <tr>
                     <th className="text-left px-3 py-2 font-medium w-16">
                       Row
@@ -580,10 +580,10 @@ function ResultStep({
                     <th className="text-left px-3 py-2 font-medium">Reason</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200">
+                <tbody className="divide-y divide-[#1f1f24]">
                   {result.errors.map((e, i) => (
                     <tr key={`e-${i}`}>
-                      <td className="px-3 py-2 text-slate-700 tabular-nums">
+                      <td className="px-3 py-2 text-zinc-300 tabular-nums">
                         {e.row}
                       </td>
                       <td className="px-3 py-2 text-red-600">{e.reason}</td>
@@ -591,10 +591,10 @@ function ResultStep({
                   ))}
                   {result.skippedReasons.map((s, i) => (
                     <tr key={`s-${i}`}>
-                      <td className="px-3 py-2 text-slate-700 tabular-nums">
+                      <td className="px-3 py-2 text-zinc-300 tabular-nums">
                         {s.row}
                       </td>
-                      <td className="px-3 py-2 text-slate-600">{s.reason}</td>
+                      <td className="px-3 py-2 text-zinc-400">{s.reason}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -57,7 +57,7 @@ export default function NewMenu({ fullWidth }: { fullWidth?: boolean }) {
 
       {open && (
         <div
-          className={`absolute top-full mt-2 z-50 w-48 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden ${
+          className={`absolute top-full mt-2 z-50 w-48 bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-lg overflow-hidden ${
             fullWidth ? "left-0" : "right-0"
           }`}
         >
@@ -68,13 +68,13 @@ export default function NewMenu({ fullWidth }: { fullWidth?: boolean }) {
                   className={
                     "flex items-center justify-between gap-2 px-4 py-2 text-sm " +
                     (it.disabled
-                      ? "text-slate-400 cursor-not-allowed"
-                      : "text-slate-700 hover:bg-slate-50 cursor-pointer")
+                      ? "text-zinc-500 cursor-not-allowed"
+                      : "text-zinc-300 hover:bg-black cursor-pointer")
                   }
                 >
                   <span>{it.label}</span>
                   {it.disabled && (
-                    <span className="text-[10px] uppercase tracking-wide bg-slate-100 text-slate-500 rounded-full px-1.5 py-0.5">
+                    <span className="text-[10px] uppercase tracking-wide bg-black text-zinc-400 rounded-full px-1.5 py-0.5">
                       Soon
                     </span>
                   )}

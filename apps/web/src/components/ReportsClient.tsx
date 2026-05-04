@@ -40,7 +40,7 @@ export default function ReportsClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between gap-4 flex-wrap border-b border-slate-200">
+      <div className="flex items-end justify-between gap-4 flex-wrap border-b border-[#1f1f24]">
         <nav className="-mb-px flex gap-6">
           {TABS.map((t) => {
             const active = tab === t.key;
@@ -51,8 +51,8 @@ export default function ReportsClient() {
                 className={
                   "whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-medium transition " +
                   (active
-                    ? "border-slate-900 text-slate-900"
-                    : "border-transparent text-slate-500 hover:text-slate-700")
+                    ? "border-slate-900 text-white"
+                    : "border-transparent text-zinc-400 hover:text-zinc-300")
                 }
               >
                 {t.label}
@@ -81,7 +81,7 @@ function RangePills({
   setRange: (r: Range) => void;
 }) {
   return (
-    <div className="flex items-center gap-1 bg-slate-100 rounded-full p-1 text-sm mb-3">
+    <div className="flex items-center gap-1 bg-black rounded-full p-1 text-sm mb-3">
       {RANGES.map((r) => (
         <button
           key={r.key}
@@ -89,8 +89,8 @@ function RangePills({
           className={
             "px-3 py-1 rounded-full transition whitespace-nowrap " +
             (range === r.key
-              ? "bg-white text-slate-900 shadow-sm"
-              : "text-slate-500 hover:text-slate-900")
+              ? "bg-[#0f0f12] text-white shadow-sm"
+              : "text-zinc-400 hover:text-white")
           }
         >
           {r.label}
@@ -139,7 +139,7 @@ function OverviewPanel({ range }: { range: Range }) {
 
   if (loading && !data)
     return (
-      <p className="text-sm text-slate-400 py-10 text-center">Loading…</p>
+      <p className="text-sm text-zinc-500 py-10 text-center">Loading…</p>
     );
   if (!data) return null;
 
@@ -215,7 +215,7 @@ function SalesPanel({ range }: { range: Range }) {
 
   if (loading && !data)
     return (
-      <p className="text-sm text-slate-400 py-10 text-center">Loading…</p>
+      <p className="text-sm text-zinc-500 py-10 text-center">Loading…</p>
     );
   if (!data) return null;
 
@@ -232,15 +232,15 @@ function SalesPanel({ range }: { range: Range }) {
       </Section>
 
       <Section title="Top reps">
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
           {data.reps.length === 0 ? (
-            <p className="p-8 text-sm text-slate-400 text-center">
+            <p className="p-8 text-sm text-zinc-500 text-center">
               No rep activity in this window.
             </p>
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-xs uppercase tracking-wider text-slate-400">
+                <tr className="text-xs uppercase tracking-wider text-zinc-500">
                   <th className="text-left px-5 py-3 font-medium">Rep</th>
                   <th className="text-right px-5 py-3 font-medium">Doors</th>
                   <th className="text-right px-5 py-3 font-medium">Sales</th>
@@ -250,20 +250,20 @@ function SalesPanel({ range }: { range: Range }) {
               </thead>
               <tbody>
                 {data.reps.map((r) => (
-                  <tr key={r.id} className="border-t border-slate-100">
-                    <td className="px-5 py-3 font-medium text-slate-900">
+                  <tr key={r.id} className="border-t border-[#1f1f24]">
+                    <td className="px-5 py-3 font-medium text-white">
                       {r.name}
                     </td>
-                    <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                    <td className="px-5 py-3 text-right text-zinc-300 tabular-nums">
                       {r.doors_knocked}
                     </td>
-                    <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                    <td className="px-5 py-3 text-right text-zinc-300 tabular-nums">
                       {r.sales}
                     </td>
-                    <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                    <td className="px-5 py-3 text-right text-zinc-300 tabular-nums">
                       {pct(r.conversion_rate)}
                     </td>
-                    <td className="px-5 py-3 text-right font-semibold text-slate-900 tabular-nums">
+                    <td className="px-5 py-3 text-right font-semibold text-white tabular-nums">
                       {money(r.revenue_cents)}
                     </td>
                   </tr>
@@ -346,7 +346,7 @@ function SubscriptionsPanel() {
 
   if (loading && !data)
     return (
-      <p className="text-sm text-slate-400 py-10 text-center">Loading…</p>
+      <p className="text-sm text-zinc-500 py-10 text-center">Loading…</p>
     );
   if (!data) return null;
 
@@ -379,7 +379,7 @@ function SubscriptionsPanel() {
       </div>
 
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-400">
           Statistics
         </h2>
         <div className="flex items-center gap-6">
@@ -414,11 +414,11 @@ function SubscriptionsPanel() {
           />
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-          <div className="text-sm font-semibold text-slate-900">
+        <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5 shadow-sm">
+          <div className="text-sm font-semibold text-white">
             Monthly Recurring Revenue
           </div>
-          <div className="text-xs text-slate-400 mt-0.5">
+          <div className="text-xs text-zinc-500 mt-0.5">
             {data.monthly[0]?.iso} – {data.monthly[data.monthly.length - 1]?.iso}
           </div>
           <div className="mt-4 flex items-end gap-2 h-40">
@@ -429,14 +429,14 @@ function SubscriptionsPanel() {
                   key={m.iso}
                   className="flex-1 flex flex-col items-center justify-end gap-1"
                 >
-                  <div className="text-[10px] text-slate-500 tabular-nums">
+                  <div className="text-[10px] text-zinc-400 tabular-nums">
                     {m.mrr_cents > 0 ? money(m.mrr_cents) : "—"}
                   </div>
                   <div
                     className="w-full bg-amber-400 rounded-sm"
                     style={{ height: `${h}%` }}
                   />
-                  <div className="text-[10px] text-slate-500">{m.label}</div>
+                  <div className="text-[10px] text-zinc-400">{m.label}</div>
                 </div>
               );
             })}
@@ -490,11 +490,11 @@ function SelectFilter({
 }) {
   return (
     <label className="block">
-      <span className="text-xs font-medium text-slate-500">{label}</span>
+      <span className="text-xs font-medium text-zinc-400">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+        className="mt-1 block w-full rounded-xl border border-[#1f1f24] bg-[#0f0f12] px-3 py-2 text-sm text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2a2a32]"
       >
         <option value="">All</option>
         {options.map((o) => (
@@ -517,20 +517,20 @@ function Toggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="inline-flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+    <label className="inline-flex items-center gap-2 text-sm text-zinc-300 cursor-pointer">
       <span>{label}</span>
       <button
         type="button"
         onClick={() => onChange(!checked)}
         className={
           "relative inline-flex h-5 w-9 items-center rounded-full transition " +
-          (checked ? "bg-emerald-500" : "bg-slate-300")
+          (checked ? "bg-emerald-500" : "bg-[#2a2a32]")
         }
         aria-pressed={checked}
       >
         <span
           className={
-            "inline-block h-4 w-4 transform rounded-full bg-white shadow transition " +
+            "inline-block h-4 w-4 transform rounded-full bg-[#0f0f12] shadow transition " +
             (checked ? "translate-x-4" : "translate-x-0.5")
           }
         />
@@ -553,16 +553,16 @@ function StatCard({
   return (
     <div
       className={
-        "bg-white border border-slate-200 rounded-2xl shadow-sm " +
+        "bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm " +
         (compact ? "p-4" : "p-5")
       }
     >
-      <div className="text-xs text-slate-400">{label}</div>
+      <div className="text-xs text-zinc-500">{label}</div>
       <div
         className={
           (compact ? "text-xl" : "text-2xl") +
           " font-bold mt-1 tabular-nums " +
-          (valueClassName || "text-slate-900")
+          (valueClassName || "text-white")
         }
       >
         {value}
@@ -579,15 +579,15 @@ function BreakdownTable({
   rows: { key: string; name: string; count: number; mrr_cents: number }[];
 }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
       {rows.length === 0 ? (
-        <p className="p-8 text-sm text-slate-400 text-center">
+        <p className="p-8 text-sm text-zinc-500 text-center">
           No subscriptions yet.
         </p>
       ) : (
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-xs uppercase tracking-wider text-slate-400 bg-slate-50">
+            <tr className="text-xs uppercase tracking-wider text-zinc-500 bg-black">
               <th className="text-left px-5 py-3 font-medium">{header}</th>
               <th className="text-right px-5 py-3 font-medium">Count</th>
               <th className="text-right px-5 py-3 font-medium">MRR</th>
@@ -595,14 +595,14 @@ function BreakdownTable({
           </thead>
           <tbody>
             {rows.map((r) => (
-              <tr key={r.key} className="border-t border-slate-100">
-                <td className="px-5 py-3 font-medium text-slate-900">
+              <tr key={r.key} className="border-t border-[#1f1f24]">
+                <td className="px-5 py-3 font-medium text-white">
                   {r.name}
                 </td>
-                <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                <td className="px-5 py-3 text-right text-zinc-300 tabular-nums">
                   {r.count}
                 </td>
-                <td className="px-5 py-3 text-right font-semibold text-slate-900 tabular-nums">
+                <td className="px-5 py-3 text-right font-semibold text-white tabular-nums">
                   {money(r.mrr_cents)}
                 </td>
               </tr>
@@ -623,7 +623,7 @@ function Section({
 }) {
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+      <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-400">
         {title}
       </h2>
       {children}
@@ -646,10 +646,10 @@ function Stats({
       {items.map((it) => (
         <div
           key={it.label}
-          className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm"
+          className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5 shadow-sm"
         >
-          <div className="text-xs text-slate-400">{it.label}</div>
-          <div className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">
+          <div className="text-xs text-zinc-500">{it.label}</div>
+          <div className="text-2xl font-bold text-white mt-1 tabular-nums">
             {it.value}
           </div>
         </div>
@@ -735,7 +735,7 @@ function PayrollPanel({ range }: { range: Range }) {
 
   if (loading && !data)
     return (
-      <p className="text-sm text-slate-400 py-10 text-center">Loading…</p>
+      <p className="text-sm text-zinc-500 py-10 text-center">Loading…</p>
     );
   if (!data) return null;
 
@@ -746,14 +746,14 @@ function PayrollPanel({ range }: { range: Range }) {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">Payroll</h2>
-          <p className="text-sm text-slate-500 mt-1">
+          <h2 className="text-lg font-semibold text-white">Payroll</h2>
+          <p className="text-sm text-zinc-400 mt-1">
             Calculate commissions for sales and technician teams.
           </p>
         </div>
         <button
           onClick={() => setSettingsOpen(true)}
-          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-full hover:bg-slate-50 shadow-sm"
+          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-zinc-300 bg-[#0f0f12] border border-[#1f1f24] rounded-full hover:bg-black shadow-sm"
           aria-label="Payroll settings"
         >
           <Settings className="w-4 h-4" />
@@ -818,15 +818,15 @@ function PayrollTable({
 }) {
   return (
     <Section title={title}>
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
         {rows.length === 0 ? (
-          <p className="p-8 text-sm text-slate-400 text-center">
+          <p className="p-8 text-sm text-zinc-500 text-center">
             No employees yet.
           </p>
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-xs uppercase tracking-wider text-slate-400 bg-slate-50">
+              <tr className="text-xs uppercase tracking-wider text-zinc-500 bg-black">
                 <th className="text-left px-5 py-3 font-medium">Employee</th>
                 <th className="text-left px-5 py-3 font-medium">Email</th>
                 <th className="text-left px-5 py-3 font-medium">Role</th>
@@ -893,9 +893,9 @@ function PayrollRowView({
   }
 
   return (
-    <tr className="border-t border-slate-100">
-      <td className="px-5 py-3 font-medium text-slate-900">{row.name}</td>
-      <td className="px-5 py-3 text-slate-600">{row.email || "—"}</td>
+    <tr className="border-t border-[#1f1f24]">
+      <td className="px-5 py-3 font-medium text-white">{row.name}</td>
+      <td className="px-5 py-3 text-zinc-400">{row.email || "—"}</td>
       <td className="px-5 py-3">
         <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 text-xs font-medium capitalize">
           {row.role.replace(/_/g, " ")}
@@ -916,36 +916,36 @@ function PayrollRowView({
                   setEditing(false);
                 }
               }}
-              className="w-20 text-right border border-slate-300 rounded px-2 py-1"
+              className="w-20 text-right border border-[#2a2a32] rounded px-2 py-1"
             />
           ) : (
             <button
               onClick={() => setEditing(true)}
-              className="text-slate-700 hover:text-slate-900 hover:underline"
+              className="text-zinc-300 hover:text-white hover:underline"
             >
               {(row.rate * 100).toFixed(1)}%
             </button>
           )
         ) : (
-          <span className="text-slate-700">
+          <span className="text-zinc-300">
             {(row.rate * 100).toFixed(1)}%
           </span>
         )}
       </td>
-      <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+      <td className="px-5 py-3 text-right text-zinc-300 tabular-nums">
         {money(row.total_cents)}
       </td>
       {showTips && (
-        <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+        <td className="px-5 py-3 text-right text-zinc-300 tabular-nums">
           {money(row.tips_cents)}
         </td>
       )}
       {showBonus && (
-        <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+        <td className="px-5 py-3 text-right text-zinc-300 tabular-nums">
           {money(row.bonus_cents || 0)}
         </td>
       )}
-      <td className="px-5 py-3 text-right font-semibold text-slate-900 tabular-nums">
+      <td className="px-5 py-3 text-right font-semibold text-white tabular-nums">
         {money(row.payout_cents)}
       </td>
       <td className="px-5 py-3 text-center">
@@ -992,7 +992,7 @@ function PayrollSummary({
     }
   );
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm divide-y divide-slate-100">
+    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm divide-y divide-[#1f1f24]">
       {items.map((it) => (
         <div
           key={it.label}
@@ -1002,8 +1002,8 @@ function PayrollSummary({
             className={
               "text-sm " +
               (it.emphasis
-                ? "font-semibold text-slate-900"
-                : "text-slate-600")
+                ? "font-semibold text-white"
+                : "text-zinc-400")
             }
           >
             {it.label}
@@ -1012,8 +1012,8 @@ function PayrollSummary({
             className={
               "tabular-nums " +
               (it.emphasis
-                ? "text-lg font-bold text-slate-900"
-                : "font-semibold text-slate-900")
+                ? "text-lg font-bold text-white"
+                : "font-semibold text-white")
             }
           >
             {it.value}
