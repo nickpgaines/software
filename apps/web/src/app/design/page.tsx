@@ -140,6 +140,17 @@ const bold = [
   },
 ];
 
+const pulseHero = [
+  {
+    slug: "concept-pulse-12",
+    name: "Pulse 12 — Hero",
+    tagline: "Chart owns the headline · Close rate · ARR · Jobs sold · Schedule + Inbox + Tasks · Pipeline rail.",
+    description:
+      "The bold/thick typography of the original Black & Bold dashboard applied to the dark+violet color scheme. Revenue moves into the chart card itself (52px font-black headline + green delta chip + grid-line chart) so it isn't shown twice. KPI strip becomes Close rate · ARR · Jobs sold. Bottom row is a three-up of Schedule, Inbox, and Tasks. Pipeline + Activity stay in the right rail. font-extrabold/font-black throughout.",
+    swatches: ["#000000", "#0f0f12", "#8b5cf6", "#22c55e", "#ffffff"],
+  },
+];
+
 const pulseP3Variants = [
   {
     slug: "concept-pulse-8",
@@ -490,23 +501,34 @@ export default function DesignIndexPage() {
               Reports — 4 UI options →
             </Link>
             <Link
-              href="/design/concept-pulse-8"
+              href="/design/concept-pulse-12"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black text-white text-sm font-bold hover:opacity-80 transition-opacity ring-1 ring-violet-500"
               style={{ boxShadow: "0 0 24px rgba(139,92,246,0.35)" }}
             >
-              Pulse — P3 close variants (NEWEST) →
+              Pulse 12 — Hero (NEWEST) →
             </Link>
           </div>
         </div>
 
         <div className="mb-3">
           <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
-            Pulse P3 close variants — same bones, four refinements (NEWEST)
+            Pulse 12 — Hero (NEWEST · bold typography + restructured KPIs)
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 gap-5 mb-16">
+          {pulseHero.map((c) => (
+            <ConceptCard key={c.slug} {...c} highlighted />
+          ))}
+        </div>
+
+        <div className="mb-3">
+          <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
+            Pulse P3 close variants — same bones, four refinements
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
           {pulseP3Variants.map((c) => (
-            <ConceptCard key={c.slug} {...c} highlighted />
+            <ConceptCard key={c.slug} {...c} />
           ))}
         </div>
 
