@@ -4,6 +4,13 @@ import Link from "next/link";
 import { useId } from "react";
 import { PULSE } from "./theme";
 import { PulseIcon } from "./Icon";
+import {
+  formatCents,
+  formatCentsShort,
+  formatTime,
+  greeting,
+  dateLabel,
+} from "./format";
 import type {
   LiveJob,
   PipelineEntry,
@@ -11,45 +18,12 @@ import type {
   RevenueSummary,
 } from "./types";
 
-// Re-export so existing widget importers don't have to change.
+// Re-export so existing client-side importers can keep getting types
+// from this barrel. Server components must import formatters/types
+// directly from ./format and ./types — re-exports of values from a
+// "use client" module become client references in production builds
+// and aren't callable on the server.
 export type { LiveJob, PipelineEntry, RevenuePoint, RevenueSummary };
-
-// ---------- Formatters --------------------------------------------------
-
-export function formatCents(c: number, decimals = 0) {
-  return `$${(c / 100).toLocaleString(undefined, {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  })}`;
-}
-
-export function formatCentsShort(c: number) {
-  if (c >= 100_000_000) return `$${(c / 100_000_000).toFixed(1)}M`;
-  if (c >= 100_000) return `$${(c / 100_000).toFixed(1)}K`;
-  return `$${(c / 100).toFixed(0)}`;
-}
-
-export function formatTime(iso: string) {
-  const d = new Date(iso);
-  const h12 = ((d.getHours() + 11) % 12) + 1;
-  const ampm = d.getHours() < 12 ? "AM" : "PM";
-  const m = d.getMinutes().toString().padStart(2, "0");
-  return { time: `${h12}:${m}`, ampm };
-}
-
-export function greeting(h: number) {
-  if (h < 12) return "Good morning";
-  if (h < 18) return "Good afternoon";
-  return "Good evening";
-}
-
-export function dateLabel() {
-  return new Date().toLocaleDateString(undefined, {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-  });
-}
 
 function niceCeil(v: number) {
   if (v <= 0) return 1;

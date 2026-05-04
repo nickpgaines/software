@@ -12,8 +12,8 @@ import {
   PulsePipelineCard,
   PulseScheduleCard,
   PulseTasksCard,
-  formatCentsShort,
 } from "@/components/pulse/widgets";
+import { formatCentsShort } from "@/components/pulse/format";
 
 export const dynamic = "force-dynamic";
 
