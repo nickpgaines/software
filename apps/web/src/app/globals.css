@@ -19,3 +19,40 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+/* Form-control defaults: any text-y input/textarea/select that doesn't
+   set its own bg or text color via Tailwind classes inherits the dark
+   Pulse styling so typed text is visible on dark backgrounds. Tailwind
+   utility classes override these (they live in the utilities layer
+   which beats @layer base). */
+@layer base {
+  input,
+  textarea,
+  select {
+    color-scheme: dark;
+    background-color: #000000;
+    color: #ffffff;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #52525b; /* zinc-600 */
+  }
+
+  /* Don't paint over checkbox/radio/file/submit/reset/button — those
+     have their own native rendering and can use accent-color instead. */
+  input[type="checkbox"],
+  input[type="radio"] {
+    accent-color: #8b5cf6; /* pulse violet */
+    background-color: transparent;
+    color: inherit;
+  }
+
+  input[type="file"],
+  input[type="submit"],
+  input[type="reset"],
+  input[type="button"] {
+    background-color: transparent;
+    color: inherit;
+  }
+}

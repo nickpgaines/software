@@ -57,13 +57,17 @@ function LoginPageInner() {
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Nick360</h1>
-          <p className="text-sm text-zinc-400 mt-3 font-bold">Sign in to continue</p>
+          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
+            Nick360
+          </h1>
+          <p className="text-sm text-zinc-400 mt-3 font-bold">
+            Sign in to continue
+          </p>
         </div>
         <div className="space-y-3 mb-4">
           <a
             href="/api/auth/google/start"
-            className="flex items-center justify-center gap-3 w-full bg-[#0f0f12] border border-[#1f1f24] rounded-lg py-2.5 text-sm font-bold text-white tracking-tight hover:bg-black shadow-sm"
+            className="flex items-center justify-center gap-3 w-full bg-[#0f0f12] border border-[#1f1f24] rounded-lg py-2.5 text-sm font-extrabold text-white tracking-tight hover:bg-black"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
               <path
@@ -85,23 +89,23 @@ function LoginPageInner() {
             </svg>
             Sign in with Google
           </a>
-          <div className="flex items-center gap-3 text-xs text-zinc-500">
+          <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.22em] font-extrabold text-zinc-500">
             <div className="flex-1 h-px bg-[#1f1f24]" />
             <span>or</span>
             <div className="flex-1 h-px bg-[#1f1f24]" />
           </div>
         </div>
         {oauthError && (
-          <div className="mb-4 text-sm text-red-600 bg-red-50 border border-red-200 rounded p-3">
+          <div className="mb-4 text-sm font-bold text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg p-3">
             {oauthError}
           </div>
         )}
         <form
           onSubmit={onSubmit}
-          className="bg-[#0f0f12] border border-[#1f1f24] rounded-lg p-6 space-y-4 shadow-sm"
+          className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-6 space-y-5"
         >
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">
+            <label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
               Email or username
             </label>
             <input
@@ -110,45 +114,47 @@ function LoginPageInner() {
               onChange={(e) => setUsername(e.target.value)}
               placeholder="employee@example.com"
               autoComplete="username"
-              className="w-full border border-[#2a2a32] rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500"
+              className="w-full bg-black border border-[#2a2a32] rounded-lg px-3 py-2.5 text-sm font-bold text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50"
               autoFocus
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">
+            <label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
               Password
             </label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full border border-[#2a2a32] rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500"
+              className="w-full bg-black border border-[#2a2a32] rounded-lg px-3 py-2.5 text-sm font-bold text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50"
             />
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && (
+            <p className="text-sm font-bold text-red-400">{error}</p>
+          )}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded py-2 text-sm font-medium"
+            className="w-full bg-white hover:bg-zinc-200 disabled:bg-zinc-600 disabled:text-zinc-400 text-black rounded-lg py-2.5 text-sm font-extrabold tracking-tight"
           >
             {loading ? "Signing in…" : "Sign in"}
           </button>
-          <p className="text-xs text-zinc-400 text-center">
+          <p className="text-[11px] text-zinc-500 text-center font-bold">
             {process.env.NODE_ENV === "production" ? (
               <>Employees sign in with their email + password.</>
             ) : (
               <>
-                Admin default: <span className="font-mono">admin / admin</span>.
+                Admin default: <span className="font-mono text-zinc-400">admin / admin</span>.
                 Employees sign in with their email + password.
               </>
             )}
           </p>
         </form>
-        <p className="text-sm text-zinc-400 text-center mt-6">
+        <p className="text-sm text-zinc-400 text-center mt-6 font-bold">
           Don&apos;t have an account?{" "}
           <Link
             href="/signup"
-            className="text-amber-600 hover:text-amber-700 font-medium"
+            className="text-violet-400 hover:text-violet-300 font-extrabold"
           >
             Sign up
           </Link>{" "}

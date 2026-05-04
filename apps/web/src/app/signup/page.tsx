@@ -33,59 +33,61 @@ export default function SignupPage() {
     router.refresh();
   }
 
+  const inputCls =
+    "w-full bg-black border border-[#2a2a32] rounded-lg px-3 py-2.5 text-sm font-bold text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50";
+  const labelCls =
+    "block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2";
+
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Nick360</h1>
+          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
+            Nick360
+          </h1>
           <p className="text-sm text-zinc-400 mt-3 font-bold">
             Start your free trial. No credit card required.
           </p>
         </div>
-        <form onSubmit={onSubmit} className="space-y-5">
+        <form
+          onSubmit={onSubmit}
+          className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-6 space-y-5"
+        >
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">
-              Company name
-            </label>
+            <label className={labelCls}>Company name</label>
             <input
               type="text"
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
               placeholder="Ocean Bay Home Services"
-              className="w-full bg-black border border-[#1f1f24] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500"
+              className={inputCls}
               autoFocus
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">
-              Your name
-            </label>
+            <label className={labelCls}>Your name</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Nick Gaines"
               autoComplete="name"
-              className="w-full bg-black border border-[#1f1f24] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500"
+              className={inputCls}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">
-              Email address
-            </label>
+            <label className={labelCls}>Email address</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="you@example.com"
               autoComplete="email"
-              className="w-full bg-black border border-[#1f1f24] rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500"
+              className={inputCls}
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-1">
-              Password
-            </label>
+            <label className={labelCls}>Password</label>
             <div className="relative">
               <input
                 type={showPassword ? "text" : "password"}
@@ -93,35 +95,33 @@ export default function SignupPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="At least 8 characters"
                 autoComplete="new-password"
-                className="w-full bg-black border border-[#1f1f24] rounded-lg px-3 py-2.5 pr-10 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500"
+                className={inputCls + " pr-10"}
               />
               <button
                 type="button"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute inset-y-0 right-2 flex items-center text-zinc-500 hover:text-zinc-400"
+                className="absolute inset-y-0 right-2 flex items-center text-zinc-500 hover:text-zinc-300"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
-                {showPassword ? (
-                  <EyeOffIcon />
-                ) : (
-                  <EyeIcon />
-                )}
+                {showPassword ? <EyeOffIcon /> : <EyeIcon />}
               </button>
             </div>
           </div>
-          {error && <p className="text-sm text-red-600">{error}</p>}
+          {error && (
+            <p className="text-sm font-bold text-red-400">{error}</p>
+          )}
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full py-3 text-sm font-medium"
+            className="w-full bg-white hover:bg-zinc-200 disabled:bg-zinc-600 disabled:text-zinc-400 text-black rounded-lg py-3 text-sm font-extrabold tracking-tight"
           >
             {loading ? "Creating account…" : "Create account →"}
           </button>
-          <p className="text-sm text-zinc-400 text-center pt-2">
+          <p className="text-sm text-zinc-400 text-center pt-2 font-bold">
             Already have an account?{" "}
             <Link
               href="/login"
-              className="text-amber-600 hover:text-amber-700 font-medium"
+              className="text-violet-400 hover:text-violet-300 font-extrabold"
             >
               Sign in
             </Link>
