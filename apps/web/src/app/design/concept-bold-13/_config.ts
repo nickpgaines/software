@@ -21,7 +21,4 @@ export const boldConfig: BoldConfig = {
   navSlugPrefix: "concept-bold-",
   sidebarMode: "floating",
   navSize: "large",
-  // Tinted pill variant: New button is black (matches text color); active
-  // nav state stays blue-tinted.
-  newButtonAccent: "#0a0a0a",
 };

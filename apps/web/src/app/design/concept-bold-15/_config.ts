@@ -21,8 +21,4 @@ export const boldConfig: BoldConfig = {
   navSlugPrefix: "concept-bold-",
   sidebarMode: "static",
   navSize: "large",
-  // Tinted pill variant where BOTH the New button and the tinted active
-  // state go black.
-  newButtonAccent: "#0a0a0a",
-  navActiveAccent: "#0a0a0a",
 };
