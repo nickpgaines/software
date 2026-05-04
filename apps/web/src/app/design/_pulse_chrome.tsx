@@ -213,6 +213,10 @@ const PULSE_NAMES_BY_KEY: Record<string, string> = {
   "18": "7xl",
   "19": "Wider",
   "20": "Full",
+  "21": "Baseline",
+  "22": "Right · 3 small",
+  "23": "Right · 2 large",
+  "24": "Right · Schedule",
 };
 
 export function PulsePreviewBar({

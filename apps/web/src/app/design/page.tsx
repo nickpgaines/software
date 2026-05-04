@@ -140,6 +140,41 @@ const bold = [
   },
 ];
 
+const pulseSideRails = [
+  {
+    slug: "concept-pulse-21",
+    name: "Pulse 21 — Baseline",
+    tagline: "P19 layout exactly · KPIs at top · chart · 2-up · 3-up underneath.",
+    description:
+      "The current P19 baseline at max-w-[1440px], untouched. Use this to A/B against the right-rail variants below. Chart text is no longer stretched — axis labels render as HTML overlay so they keep native aspect ratio at any width.",
+    swatches: ["#000000", "#0f0f12", "#8b5cf6", "#22c55e", "#ffffff"],
+  },
+  {
+    slug: "concept-pulse-22",
+    name: "Pulse 22 — Right · 3 small",
+    tagline: "Inbox + Tasks + Activity move to a 340px right rail · stacked vertically.",
+    description:
+      "The bottom three small widgets stand on top of each other along the right side. The left column still carries KPIs at top → chart → 2-up Schedule + Pipeline. The three rail items roughly line up with the three left rows since the totals match.",
+    swatches: ["#000000", "#0f0f12", "#8b5cf6", "#22c55e", "#ffffff"],
+  },
+  {
+    slug: "concept-pulse-23",
+    name: "Pulse 23 — Right · 2 large",
+    tagline: "Schedule + Pipeline move to a 400px right rail · stacked vertically.",
+    description:
+      "The two larger widgets go to the right. The left column has KPIs → chart → 3-up Inbox + Tasks + Activity. Schedule shows 6 rows on the right so the rail has substantive height.",
+    swatches: ["#000000", "#0f0f12", "#8b5cf6", "#22c55e", "#ffffff"],
+  },
+  {
+    slug: "concept-pulse-24",
+    name: "Pulse 24 — Right · Schedule",
+    tagline: "Schedule alone in a tall 400px right rail · everything else fills the left.",
+    description:
+      "Schedule becomes a tall single card on the right (10 rows visible). Left column carries KPIs → chart → Pipeline (full-width) → 3-up Inbox + Tasks + Activity. Most asymmetric of the four — turns Schedule into a focused agenda panel.",
+    swatches: ["#000000", "#0f0f12", "#8b5cf6", "#22c55e", "#ffffff"],
+  },
+];
+
 const pulseHeroWidths = [
   {
     slug: "concept-pulse-17",
@@ -571,23 +606,34 @@ export default function DesignIndexPage() {
               Reports — 4 UI options →
             </Link>
             <Link
-              href="/design/concept-pulse-17"
+              href="/design/concept-pulse-21"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black text-white text-sm font-bold hover:opacity-80 transition-opacity ring-1 ring-violet-500"
               style={{ boxShadow: "0 0 24px rgba(139,92,246,0.35)" }}
             >
-              Pulse 17–20 — width variations (NEWEST) →
+              Pulse 21–24 — side rail experiments (NEWEST) →
             </Link>
           </div>
         </div>
 
         <div className="mb-3">
           <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
-            Pulse 17–20 — width variations · KPIs · chart · 2-up · 3-up (NEWEST)
+            Pulse 21–24 — P19 width · widgets on the side experiments (NEWEST)
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
+          {pulseSideRails.map((c) => (
+            <ConceptCard key={c.slug} {...c} highlighted />
+          ))}
+        </div>
+
+        <div className="mb-3">
+          <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
+            Pulse 17–20 — width variations
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
           {pulseHeroWidths.map((c) => (
-            <ConceptCard key={c.slug} {...c} highlighted />
+            <ConceptCard key={c.slug} {...c} />
           ))}
         </div>
 

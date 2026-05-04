@@ -95,11 +95,11 @@ export function PulseChartHero({
             Revenue · Last 12 weeks
           </div>
           <div className="flex items-baseline gap-3">
-            <span className="text-[52px] font-black tracking-tight tabular-nums leading-none">
+            <span className="text-[52px] font-black tracking-tight leading-none">
               {formatCentsShort(revenue.totalCents)}
             </span>
             <span
-              className="text-[13px] font-extrabold tabular-nums px-2.5 py-1 rounded-md"
+              className="text-[13px] font-extrabold px-2.5 py-1 rounded-md"
               style={{ background: `${PULSE.green}1F`, color: PULSE.green }}
             >
               +12.4%

@@ -581,6 +581,9 @@ export function LiveBadge() {
 }
 
 // ---------- Hero chart (white-stroke wavy with grid + axis labels) -------
+// Path + grid lines render in an SVG with preserveAspectRatio="none" so they
+// stretch with the container. Axis labels are HTML overlays positioned by
+// percent — that way text never gets horizontally stretched on wide layouts.
 
 export function HeroChart({
   days,
@@ -627,9 +630,17 @@ export function HeroChart({
   const everyN = Math.max(1, Math.ceil(days.length / 10));
   const id = `hero-${Math.random().toString(36).slice(2, 7)}`;
 
+  const padLPct = (padL / w) * 100;
+  const padRPct = (padR / w) * 100;
+
   return (
-    <div className="w-full" style={{ height }}>
-      <svg viewBox={`0 0 ${w} ${h}`} className="w-full h-full" preserveAspectRatio="none">
+    <div className="relative w-full" style={{ height }}>
+      {/* Path + grid: SVG, stretches with container */}
+      <svg
+        viewBox={`0 0 ${w} ${h}`}
+        className="absolute inset-0 w-full h-full"
+        preserveAspectRatio="none"
+      >
         <defs>
           <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#ffffff" stopOpacity="0.18" />
@@ -639,26 +650,15 @@ export function HeroChart({
         {yTicks.map((tick, i) => {
           const yp = y(tick);
           return (
-            <g key={i}>
-              <line
-                x1={padL}
-                x2={w - padR}
-                y1={yp}
-                y2={yp}
-                stroke={PULSE.cardBorder}
-                strokeDasharray="2 4"
-              />
-              <text
-                x={padL - 8}
-                y={yp + 3}
-                textAnchor="end"
-                fontSize="11"
-                fontWeight="800"
-                fill={PULSE.textDim}
-              >
-                ${Math.round(tick / 100)}
-              </text>
-            </g>
+            <line
+              key={i}
+              x1={padL}
+              x2={w - padR}
+              y1={yp}
+              y2={yp}
+              stroke={PULSE.cardBorder}
+              strokeDasharray="2 4"
+            />
           );
         })}
         <path d={area} fill={`url(#${id})`} />
@@ -670,22 +670,53 @@ export function HeroChart({
           strokeLinecap="round"
           strokeLinejoin="round"
         />
+      </svg>
+
+      {/* Labels: HTML overlay, positioned by percent. Text stays at native
+          aspect ratio regardless of container width. */}
+      <div className="absolute inset-0 pointer-events-none">
+        {yTicks.map((tick, i) => {
+          const yPct = (y(tick) / h) * 100;
+          return (
+            <div
+              key={i}
+              className="absolute text-[11px] font-extrabold"
+              style={{
+                left: 0,
+                width: `${padLPct}%`,
+                top: `${yPct}%`,
+                transform: "translateY(-50%)",
+                textAlign: "right",
+                paddingRight: 8,
+                color: PULSE.textDim,
+              }}
+            >
+              ${Math.round(tick / 100)}
+            </div>
+          );
+        })}
         {days.map((d, i) =>
           i % everyN === 0 || i === days.length - 1 ? (
-            <text
+            <div
               key={d.date}
-              x={x(i)}
-              y={h - 8}
-              textAnchor="middle"
-              fontSize="11"
-              fontWeight="800"
-              fill={PULSE.textDim}
+              className="absolute text-[11px] font-extrabold"
+              style={{
+                left: `${(x(i) / w) * 100}%`,
+                bottom: 4,
+                transform: "translateX(-50%)",
+                color: PULSE.textDim,
+              }}
             >
               {new Date(`${d.date}T12:00:00`).getDate()}
-            </text>
+            </div>
           ) : null
         )}
-      </svg>
+        {/* Reserve space on right edge to match SVG padR for visual balance */}
+        <div
+          className="absolute"
+          style={{ right: 0, top: 0, width: `${padRPct}%`, height: "100%" }}
+        />
+      </div>
     </div>
   );
 }
