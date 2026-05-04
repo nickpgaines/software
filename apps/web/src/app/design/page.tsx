@@ -140,6 +140,41 @@ const bold = [
   },
 ];
 
+const pulseP3Variants = [
+  {
+    slug: "concept-pulse-8",
+    name: "Pulse 8 — Compact",
+    tagline: "P3 with tighter padding · 28px KPIs · 6 schedule rows · 320px rail.",
+    description:
+      "Same exact bones as Pulse 3 but dialed denser. Smaller p-5 cards instead of p-7, KPI numbers drop from 34px to 28px, schedule shows 6 rows instead of 4, side rail trims from 360px to 320px. Reads as P3 with the volume turned down.",
+    swatches: ["#000000", "#0f0f12", "#8b5cf6", "#22c55e", "#ef4444"],
+  },
+  {
+    slug: "concept-pulse-9",
+    name: "Pulse 9 — Premium",
+    tagline: "P3 with rounded-3xl · 42px KPIs · 52px greeting · wider rail.",
+    description:
+      "Same exact bones as Pulse 3 but dialed up. rounded-3xl cards everywhere, p-7/p-8 padding, KPI numbers go to 42px, greeting bumps to 52px, side rail widens to 380px. Feels more luxe and confident, less like a working dashboard, more like a flagship one.",
+    swatches: ["#000000", "#0f0f12", "#8b5cf6", "#22c55e", "#ef4444"],
+  },
+  {
+    slug: "concept-pulse-10",
+    name: "Pulse 10 — Color",
+    tagline: "P3 with per-stage pipeline colors · status-tinted schedule rows.",
+    description:
+      "Same exact bones and dimensions as Pulse 3, but more accent color throughout. Pipeline bars get one accent per stage (cyan / violet / amber / green) with matching glow dots in the labels. Schedule rows pick up a colored left rail and a tinted status pill matching the job state. Reads richer at a glance.",
+    swatches: ["#000000", "#22d3ee", "#8b5cf6", "#f59e0b", "#22c55e"],
+  },
+  {
+    slug: "concept-pulse-11",
+    name: "Pulse 11 — Charted",
+    tagline: "P3 with the chart as the hero · y-axis labels · grid lines · headline metric inside.",
+    description:
+      "Same exact bones as Pulse 3 but the chart card carries more weight. The big revenue number ($X.XK +12.4%) moves into the chart card itself, the chart grows from 260px to 340px and gains dashed grid lines and y-axis dollar labels. Schedule trims to 3 rows so the chart can dominate.",
+    swatches: ["#000000", "#0f0f12", "#8b5cf6", "#ffffff", "#22c55e"],
+  },
+];
+
 const pulseBold = [
   {
     slug: "concept-pulse-4",
@@ -455,23 +490,34 @@ export default function DesignIndexPage() {
               Reports — 4 UI options →
             </Link>
             <Link
-              href="/design/concept-pulse-4"
+              href="/design/concept-pulse-8"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black text-white text-sm font-bold hover:opacity-80 transition-opacity ring-1 ring-violet-500"
               style={{ boxShadow: "0 0 24px rgba(139,92,246,0.35)" }}
             >
-              Pulse Bold — 4 layouts (NEW) →
+              Pulse — P3 close variants (NEWEST) →
             </Link>
           </div>
         </div>
 
         <div className="mb-3">
           <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
-            Pulse Bold — refinements of P3 (NEW · 4 layouts)
+            Pulse P3 close variants — same bones, four refinements (NEWEST)
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
+          {pulseP3Variants.map((c) => (
+            <ConceptCard key={c.slug} {...c} highlighted />
+          ))}
+        </div>
+
+        <div className="mb-3">
+          <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
+            Pulse Bold — earlier refinements of P3 (4 layouts)
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
           {pulseBold.map((c) => (
-            <ConceptCard key={c.slug} {...c} highlighted />
+            <ConceptCard key={c.slug} {...c} />
           ))}
         </div>
 
