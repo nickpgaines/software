@@ -451,15 +451,15 @@ export default function LeaderboardClient({
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
-                  <th className="text-left px-5 py-3 font-bold">Rank</th>
-                  <th className="text-left px-5 py-3 font-bold">
+                  <th className="text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Rank</th>
+                  <th className="text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">
                     {personColumn}
                   </th>
-                  <th className="text-left px-5 py-3 font-bold">Role</th>
-                  <th className="text-right px-5 py-3 font-bold">Revenue</th>
-                  <th className="text-right px-5 py-3 font-bold">Jobs</th>
-                  <th className="text-right px-5 py-3 font-bold">{avgColumn}</th>
-                  <th className="text-right px-5 py-3 font-bold">{lastColumn}</th>
+                  <th className="text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Role</th>
+                  <th className="text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Revenue</th>
+                  <th className="text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Jobs</th>
+                  <th className="text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">{avgColumn}</th>
+                  <th className="text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">{lastColumn}</th>
                 </tr>
               </thead>
               <tbody>
@@ -526,10 +526,10 @@ export default function LeaderboardClient({
                       <td className="px-5 py-3 text-right font-extrabold text-white tracking-tight tabular-nums">
                         {money(r.revenue_cents)}
                       </td>
-                      <td className="px-5 py-3 text-right text-zinc-300 tabular-nums">
+                      <td className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
                         {r.job_count}
                       </td>
-                      <td className="px-5 py-3 text-right text-zinc-300 tabular-nums">
+                      <td className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
                         {money(Math.round(r.revenue_cents / r.job_count))}
                       </td>
                       <td

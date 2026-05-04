@@ -125,12 +125,12 @@ function CustomersPage() {
           </div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-black text-zinc-400">
+            <thead className="bg-black border-b border-[#1f1f24]">
               <tr>
-                <th className="text-left px-4 py-2 font-bold">Name</th>
-                <th className="text-left px-4 py-2 font-bold">Address</th>
-                <th className="text-left px-4 py-2 font-bold">Phone</th>
-                <th className="text-left px-4 py-2 font-bold">Email</th>
+                <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Name</th>
+                <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Address</th>
+                <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Phone</th>
+                <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Email</th>
                 <th className="px-4 py-2" />
               </tr>
             </thead>
@@ -140,9 +140,9 @@ function CustomersPage() {
                   <td className="px-4 py-2 font-bold text-white tracking-tight">
                     {fullName(c) || "—"}
                   </td>
-                  <td className="px-4 py-2 text-zinc-300">{c.address || "—"}</td>
-                  <td className="px-4 py-2 text-zinc-300">{c.phone || "—"}</td>
-                  <td className="px-4 py-2 text-zinc-300">{c.email || "—"}</td>
+                  <td className="px-4 py-2 text-zinc-300 font-bold">{c.address || "—"}</td>
+                  <td className="px-4 py-2 text-zinc-300 font-bold">{c.phone || "—"}</td>
+                  <td className="px-4 py-2 text-zinc-300 font-bold">{c.email || "—"}</td>
                   <td className="px-4 py-2 text-right">
                     {phone.configured && c.phone && (
                       <button
@@ -154,20 +154,20 @@ function CustomersPage() {
                           })
                         }
                         disabled={phone.state.kind !== "idle"}
-                        className="text-xs text-emerald-700 hover:text-emerald-900 disabled:opacity-40 mr-3"
+                        className="text-[11px] uppercase tracking-[0.14em] font-extrabold text-emerald-400 hover:text-emerald-300 disabled:opacity-40 mr-4"
                       >
                         Call
                       </button>
                     )}
                     <button
                       onClick={() => setEditing(c)}
-                      className="text-xs text-zinc-400 hover:text-white mr-3"
+                      className="text-[11px] uppercase tracking-[0.14em] font-extrabold text-zinc-400 hover:text-white mr-4"
                     >
                       Edit
                     </button>
                     <button
                       onClick={() => del(c.id)}
-                      className="text-xs text-red-500 hover:text-red-700"
+                      className="text-[11px] uppercase tracking-[0.14em] font-extrabold text-red-400 hover:text-red-300"
                     >
                       Delete
                     </button>

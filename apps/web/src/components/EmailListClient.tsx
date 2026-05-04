@@ -322,14 +322,14 @@ export default function EmailListClient() {
             </div>
           ) : (
             <table className="w-full text-sm">
-              <thead className="bg-black text-zinc-400">
+              <thead className="bg-black border-b border-[#1f1f24]">
                 <tr>
-                  <th className="text-left px-4 py-2 font-bold">Sent</th>
-                  <th className="text-left px-4 py-2 font-bold">Subject</th>
-                  <th className="text-left px-4 py-2 font-bold">Audience</th>
-                  <th className="text-left px-4 py-2 font-bold">Recipients</th>
-                  <th className="text-left px-4 py-2 font-bold">Delivered</th>
-                  <th className="text-left px-4 py-2 font-bold">Status</th>
+                  <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Sent</th>
+                  <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Subject</th>
+                  <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Audience</th>
+                  <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Recipients</th>
+                  <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Delivered</th>
+                  <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1f1f24]">
@@ -346,7 +346,7 @@ export default function EmailListClient() {
                         {b.subject}
                       </Link>
                     </td>
-                    <td className="px-4 py-2 text-zinc-300">
+                    <td className="px-4 py-2 text-zinc-300 font-bold">
                       {AUDIENCE_LABELS[b.audience] || b.audience}
                     </td>
                     <td className="px-4 py-2 text-zinc-300 tabular-nums">

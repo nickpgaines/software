@@ -111,15 +111,15 @@ export default function CallsClient() {
           </div>
         ) : (
           <table className="w-full text-sm">
-            <thead className="bg-black text-zinc-400">
+            <thead className="bg-black border-b border-[#1f1f24]">
               <tr>
-                <th className="text-left px-4 py-2 font-bold">When</th>
-                <th className="text-left px-4 py-2 font-bold">Direction</th>
-                <th className="text-left px-4 py-2 font-bold">Customer</th>
-                <th className="text-left px-4 py-2 font-bold">Number</th>
-                <th className="text-left px-4 py-2 font-bold">Status</th>
-                <th className="text-left px-4 py-2 font-bold">Duration</th>
-                <th className="text-left px-4 py-2 font-bold">Recording</th>
+                <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">When</th>
+                <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Direction</th>
+                <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Customer</th>
+                <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Number</th>
+                <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Status</th>
+                <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Duration</th>
+                <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Recording</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1f1f24]">
@@ -137,7 +137,7 @@ export default function CallsClient() {
                     <td className="px-4 py-2 font-bold text-white tracking-tight">
                       {c.customer_name || "—"}
                     </td>
-                    <td className="px-4 py-2 text-zinc-300">
+                    <td className="px-4 py-2 text-zinc-300 font-bold">
                       {otherNumber || "—"}
                     </td>
                     <td className="px-4 py-2">

@@ -241,11 +241,11 @@ function SalesPanel({ range }: { range: Range }) {
             <table className="w-full text-sm">
               <thead>
                 <tr className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
-                  <th className="text-left px-5 py-3 font-bold">Rep</th>
-                  <th className="text-right px-5 py-3 font-bold">Doors</th>
-                  <th className="text-right px-5 py-3 font-bold">Sales</th>
-                  <th className="text-right px-5 py-3 font-bold">Conv.</th>
-                  <th className="text-right px-5 py-3 font-bold">Revenue</th>
+                  <th className="text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Rep</th>
+                  <th className="text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Doors</th>
+                  <th className="text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Sales</th>
+                  <th className="text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Conv.</th>
+                  <th className="text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Revenue</th>
                 </tr>
               </thead>
               <tbody>
@@ -254,13 +254,13 @@ function SalesPanel({ range }: { range: Range }) {
                     <td className="px-5 py-3 font-bold text-white tracking-tight">
                       {r.name}
                     </td>
-                    <td className="px-5 py-3 text-right text-zinc-300 tabular-nums">
+                    <td className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
                       {r.doors_knocked}
                     </td>
-                    <td className="px-5 py-3 text-right text-zinc-300 tabular-nums">
+                    <td className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
                       {r.sales}
                     </td>
-                    <td className="px-5 py-3 text-right text-zinc-300 tabular-nums">
+                    <td className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
                       {pct(r.conversion_rate)}
                     </td>
                     <td className="px-5 py-3 text-right font-extrabold text-white tracking-tight tabular-nums">
@@ -590,9 +590,9 @@ function BreakdownTable({
         <table className="w-full text-sm">
           <thead>
             <tr className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 bg-black">
-              <th className="text-left px-5 py-3 font-bold">{header}</th>
-              <th className="text-right px-5 py-3 font-bold">Count</th>
-              <th className="text-right px-5 py-3 font-bold">MRR</th>
+              <th className="text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">{header}</th>
+              <th className="text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Count</th>
+              <th className="text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">MRR</th>
             </tr>
           </thead>
           <tbody>
@@ -601,7 +601,7 @@ function BreakdownTable({
                 <td className="px-5 py-3 font-bold text-white tracking-tight">
                   {r.name}
                 </td>
-                <td className="px-5 py-3 text-right text-zinc-300 tabular-nums">
+                <td className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
                   {r.count}
                 </td>
                 <td className="px-5 py-3 text-right font-extrabold text-white tracking-tight tabular-nums">
@@ -833,19 +833,19 @@ function PayrollTable({
           <table className="w-full text-sm">
             <thead>
               <tr className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 bg-black">
-                <th className="text-left px-5 py-3 font-bold">Employee</th>
-                <th className="text-left px-5 py-3 font-bold">Email</th>
-                <th className="text-left px-5 py-3 font-bold">Role</th>
-                <th className="text-right px-5 py-3 font-bold">{rateLabel}</th>
-                <th className="text-right px-5 py-3 font-bold">Total</th>
+                <th className="text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Employee</th>
+                <th className="text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Email</th>
+                <th className="text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Role</th>
+                <th className="text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">{rateLabel}</th>
+                <th className="text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Total</th>
                 {showTips && (
-                  <th className="text-right px-5 py-3 font-bold">Tips</th>
+                  <th className="text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Tips</th>
                 )}
                 {showBonus && (
-                  <th className="text-right px-5 py-3 font-bold">Bonus</th>
+                  <th className="text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Bonus</th>
                 )}
-                <th className="text-right px-5 py-3 font-bold">Payout</th>
-                <th className="text-center px-5 py-3 font-bold">Paid</th>
+                <th className="text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Payout</th>
+                <th className="text-center px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Paid</th>
               </tr>
             </thead>
             <tbody>
@@ -938,16 +938,16 @@ function PayrollRowView({
           </span>
         )}
       </td>
-      <td className="px-5 py-3 text-right text-zinc-300 tabular-nums">
+      <td className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
         {money(row.total_cents)}
       </td>
       {showTips && (
-        <td className="px-5 py-3 text-right text-zinc-300 tabular-nums">
+        <td className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
           {money(row.tips_cents)}
         </td>
       )}
       {showBonus && (
-        <td className="px-5 py-3 text-right text-zinc-300 tabular-nums">
+        <td className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
           {money(row.bonus_cents || 0)}
         </td>
       )}

@@ -430,11 +430,11 @@ function MappingStep({
       </p>
       <div className="border border-[#1f1f24] rounded-lg overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-black text-zinc-400">
+          <thead className="bg-black border-b border-[#1f1f24]">
             <tr>
-              <th className="text-left px-3 py-2 font-bold">CSV column</th>
-              <th className="text-left px-3 py-2 font-bold">Sample</th>
-              <th className="text-left px-3 py-2 font-bold">
+              <th className="text-left px-3 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">CSV column</th>
+              <th className="text-left px-3 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Sample</th>
+              <th className="text-left px-3 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">
                 Forge CRM field
               </th>
             </tr>
@@ -490,7 +490,7 @@ function PreviewStep({
       </p>
       <div className="border border-[#1f1f24] rounded-lg overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-black text-zinc-400">
+          <thead className="bg-black border-b border-[#1f1f24]">
             <tr>
               {FIELDS.map((f) => (
                 <th key={f} className="text-left px-3 py-2 font-bold">
@@ -577,7 +577,7 @@ function ResultStep({
                     <th className="text-left px-3 py-2 font-bold w-16">
                       Row
                     </th>
-                    <th className="text-left px-3 py-2 font-bold">Reason</th>
+                    <th className="text-left px-3 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Reason</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#1f1f24]">

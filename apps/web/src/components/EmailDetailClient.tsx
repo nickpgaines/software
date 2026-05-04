@@ -115,20 +115,20 @@ export default function EmailDetailClient({ id }: { id: number }) {
           Recipients
         </div>
         <table className="w-full text-sm">
-          <thead className="bg-black text-zinc-400">
+          <thead className="bg-black border-b border-[#1f1f24]">
             <tr>
-              <th className="text-left px-4 py-2 font-bold">Email</th>
-              <th className="text-left px-4 py-2 font-bold">Name</th>
-              <th className="text-left px-4 py-2 font-bold">Status</th>
-              <th className="text-left px-4 py-2 font-bold">Sent</th>
-              <th className="text-left px-4 py-2 font-bold">Error</th>
+              <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Email</th>
+              <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Name</th>
+              <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Status</th>
+              <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Sent</th>
+              <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Error</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#1f1f24]">
             {recipients.map((r) => (
               <tr key={r.id}>
-                <td className="px-4 py-2 text-zinc-300">{r.email}</td>
-                <td className="px-4 py-2 text-zinc-300">{r.name || "—"}</td>
+                <td className="px-4 py-2 text-zinc-300 font-bold">{r.email}</td>
+                <td className="px-4 py-2 text-zinc-300 font-bold">{r.name || "—"}</td>
                 <td className="px-4 py-2 text-zinc-300 capitalize">{r.status}</td>
                 <td className="px-4 py-2 text-zinc-400" suppressHydrationWarning>
                   {mounted ? fmtTime(r.sent_at) : ""}
