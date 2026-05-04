@@ -58,7 +58,7 @@ export default async function DashboardPage() {
       </div>
 
       <div className="mb-5">
-        <PulseChartHero revenue={revenue} />
+        <PulseChartHero />
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">

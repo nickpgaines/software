@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useId } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { PULSE } from "./theme";
 import { PulseIcon } from "./Icon";
 import {
@@ -120,10 +120,29 @@ export function CompactHeroKpi({
   );
 }
 
-// ---------- Hero chart (white-stroke wavy) -----------------------------
-// Path renders inside an SVG with preserveAspectRatio="none" so it stretches
-// to fill the container. Axis labels are HTML overlays positioned by percent
-// so text stays at native aspect ratio at any width.
+// ---------- Hero chart (white-stroke wavy, interactive) ----------------
+// Path + grid render inside an SVG with preserveAspectRatio="none" so they
+// stretch to fill the container. Axis labels and the hover tooltip are
+// HTML overlays positioned by percent so text never gets stretched. Hover
+// shows a crosshair, dot, and tooltip with the date + dollar value of the
+// nearest data point.
+
+function tooltipMoney(cents: number) {
+  return `$${(cents / 100).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+function tooltipDate(iso: string) {
+  const d = new Date(`${iso}T12:00:00`);
+  if (isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
+}
 
 export function HeroChart({
   days,
@@ -132,6 +151,12 @@ export function HeroChart({
   days: RevenuePoint[];
   height?: number;
 }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  // Stable across SSR + hydration so the gradient ref isn't broken on hydrate.
+  const reactId = useId();
+  const id = `hero-${reactId.replace(/:/g, "")}`;
+
   if (days.length === 0) {
     return (
       <div
@@ -168,14 +193,40 @@ export function HeroChart({
   const area = `${path} L ${x(days.length - 1)},${baseY} L ${x(0)},${baseY} Z`;
   const yTicks = [0, niceMax / 4, niceMax / 2, (niceMax * 3) / 4, niceMax];
   const everyN = Math.max(1, Math.ceil(days.length / 10));
-  // Stable across SSR + hydration so the gradient ref isn't broken on hydrate.
-  const reactId = useId();
-  const id = `hero-${reactId.replace(/:/g, "")}`;
   const padLPct = (padL / w) * 100;
   const padRPct = (padR / w) * 100;
 
+  function onMove(e: React.MouseEvent<HTMLDivElement>) {
+    const node = containerRef.current;
+    if (!node || days.length === 0) return;
+    const rect = node.getBoundingClientRect();
+    // Plot area is between padL/w and (w-padR)/w of the container width.
+    const plotLeft = (padL / w) * rect.width;
+    const plotRight = ((w - padR) / w) * rect.width;
+    const localX = e.clientX - rect.left;
+    if (localX < plotLeft || localX > plotRight) {
+      setHoverIdx(null);
+      return;
+    }
+    const ratio = (localX - plotLeft) / (plotRight - plotLeft);
+    let idx = Math.round(ratio * (days.length - 1));
+    if (idx < 0) idx = 0;
+    if (idx > days.length - 1) idx = days.length - 1;
+    setHoverIdx(idx);
+  }
+
+  const hovered = hoverIdx !== null ? days[hoverIdx] : null;
+  const hoverXPct = hoverIdx !== null ? (x(hoverIdx) / w) * 100 : 0;
+  const hoverYPct = hovered ? (y(hovered.cents) / h) * 100 : 0;
+
   return (
-    <div className="relative w-full" style={{ height }}>
+    <div
+      ref={containerRef}
+      className="relative w-full cursor-crosshair"
+      style={{ height }}
+      onMouseMove={onMove}
+      onMouseLeave={() => setHoverIdx(null)}
+    >
       <svg
         viewBox={`0 0 ${w} ${h}`}
         className="absolute inset-0 w-full h-full"
@@ -210,6 +261,17 @@ export function HeroChart({
           strokeLinecap="round"
           strokeLinejoin="round"
         />
+        {hoverIdx !== null && (
+          <line
+            x1={x(hoverIdx)}
+            x2={x(hoverIdx)}
+            y1={padT}
+            y2={baseY}
+            stroke={PULSE.textDim}
+            strokeDasharray="2 4"
+            vectorEffect="non-scaling-stroke"
+          />
+        )}
       </svg>
       <div className="absolute inset-0 pointer-events-none">
         {yTicks.map((tick, i) => {
@@ -252,20 +314,106 @@ export function HeroChart({
           className="absolute"
           style={{ right: 0, top: 0, width: `${padRPct}%`, height: "100%" }}
         />
+        {/* Hover dot — outline + violet fill, sits exactly on the path */}
+        {hovered && (
+          <div
+            className="absolute rounded-full"
+            style={{
+              left: `${hoverXPct}%`,
+              top: `${hoverYPct}%`,
+              transform: "translate(-50%, -50%)",
+              width: 12,
+              height: 12,
+              background: PULSE.text,
+              boxShadow: `0 0 0 3px ${PULSE.bg}`,
+            }}
+          />
+        )}
+        {/* Hover tooltip — date + dollar value, follows the dot horizontally */}
+        {hovered && (
+          <div
+            className="absolute rounded-lg px-2.5 py-1.5 text-[12px] whitespace-nowrap"
+            style={{
+              left: `${hoverXPct}%`,
+              top: 0,
+              transform: "translate(-50%, -8px)",
+              marginTop: -36,
+              background: PULSE.card,
+              border: `1px solid ${PULSE.cardBorderHi}`,
+              boxShadow: "0 8px 24px -8px rgba(0,0,0,0.6)",
+              color: PULSE.text,
+            }}
+          >
+            <div
+              className="text-[10px] font-extrabold uppercase tracking-[0.16em]"
+              style={{ color: PULSE.textSubtle }}
+            >
+              {tooltipDate(hovered.date)}
+            </div>
+            <div className="font-black tracking-tight tabular-nums mt-0.5">
+              {tooltipMoney(hovered.cents)}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 // ---------- Chart hero card (with embedded headline + range pills) ------
+// Fetches its own data from /api/revenue for the selected range so the
+// toggle (7D / 1M / 3M) actually works and the headline + path update
+// when the range changes. The HeroChart inside handles hover tooltips.
+
+type ChartRange = "1w" | "1m" | "3m";
+
+const CHART_RANGES: { key: ChartRange; label: string; title: string }[] = [
+  { key: "1w", label: "7D", title: "Last 7 days" },
+  { key: "1m", label: "1M", title: "This month" },
+  { key: "3m", label: "3M", title: "Last 3 months" },
+];
+
+type ApiRevenue = {
+  range: ChartRange | "1y";
+  label: string;
+  start: string;
+  end: string;
+  days: RevenuePoint[];
+  total_cents: number;
+  avg_cents: number;
+};
 
 export function PulseChartHero({
-  revenue,
+  initialRange = "1m",
   height = 300,
 }: {
-  revenue: RevenueSummary;
+  initialRange?: ChartRange;
   height?: number;
-}) {
+} = {}) {
+  const [range, setRange] = useState<ChartRange>(initialRange);
+  const [data, setData] = useState<ApiRevenue | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    fetch(`/api/revenue?range=${range}`)
+      .then((r) => r.json())
+      .then((d: ApiRevenue) => {
+        if (!cancelled) setData(d);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [range]);
+
+  const titleLabel =
+    CHART_RANGES.find((r) => r.key === range)?.title ?? data?.label ?? "Revenue";
+  const total = data ? data.total_cents : 0;
+
   return (
     <section
       className="rounded-2xl p-7"
@@ -277,17 +425,11 @@ export function PulseChartHero({
             className="text-[12px] uppercase tracking-[0.22em] font-extrabold mb-3"
             style={{ color: PULSE.textSubtle }}
           >
-            Revenue · Last 12 weeks
+            Revenue · {titleLabel}
           </div>
           <div className="flex items-baseline gap-3">
             <span className="text-[52px] font-black tracking-tight leading-none">
-              {formatCentsShort(revenue.totalCents)}
-            </span>
-            <span
-              className="text-[13px] font-extrabold px-2.5 py-1 rounded-md"
-              style={{ background: `${PULSE.green}1F`, color: PULSE.green }}
-            >
-              +12.4%
+              {data ? formatCentsShort(total) : "—"}
             </span>
           </div>
         </div>
@@ -295,21 +437,32 @@ export function PulseChartHero({
           className="flex items-center gap-1 p-1 rounded-full"
           style={{ background: PULSE.bgAlt }}
         >
-          {["12W", "26W", "YTD"].map((r, i) => (
-            <button
-              key={r}
-              className="px-3.5 py-1 rounded-full text-[11.5px] font-extrabold"
-              style={{
-                background: i === 0 ? PULSE.text : "transparent",
-                color: i === 0 ? PULSE.bg : PULSE.textMuted,
-              }}
-            >
-              {r}
-            </button>
-          ))}
+          {CHART_RANGES.map((r) => {
+            const active = r.key === range;
+            return (
+              <button
+                key={r.key}
+                onClick={() => setRange(r.key)}
+                className="px-3.5 py-1 rounded-full text-[11.5px] font-extrabold transition-colors"
+                style={{
+                  background: active ? PULSE.text : "transparent",
+                  color: active ? PULSE.bg : PULSE.textMuted,
+                }}
+              >
+                {r.label}
+              </button>
+            );
+          })}
         </div>
       </div>
-      <HeroChart days={revenue.daily} height={height} />
+      {loading && !data ? (
+        <div
+          className="rounded-xl animate-pulse"
+          style={{ height, background: PULSE.bgAlt }}
+        />
+      ) : (
+        <HeroChart days={data?.days ?? []} height={height} />
+      )}
     </section>
   );
 }
