@@ -150,7 +150,7 @@ function LoginPageInner() {
             )}
           </p>
         </form>
-        <p className="text-sm text-zinc-400 text-center mt-6 font-bold">
+        <p className="text-sm text-zinc-400 font-bold text-center mt-6 font-bold">
           Don&apos;t have an account?{" "}
           <Link
             href="/signup"

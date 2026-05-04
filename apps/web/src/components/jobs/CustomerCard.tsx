@@ -260,7 +260,7 @@ function MapPlaceholder({
   message: string;
 }) {
   return (
-    <div className="w-full h-full min-h-[220px] flex items-center justify-center px-4 py-8 text-sm text-zinc-400 text-center">
+    <div className="w-full h-full min-h-[220px] flex items-center justify-center px-4 py-8 text-sm text-zinc-400 font-bold text-center">
       {status === "loading" ? (
         <span>Looking up address…</span>
       ) : (

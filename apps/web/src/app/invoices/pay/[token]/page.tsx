@@ -76,7 +76,7 @@ export default async function InvoicePayPage({
         {invoice.title?.trim() || `Invoice #${invoice.id}`}
       </h1>
       <div className="mt-6 flex items-end justify-between gap-3 border-t border-[#1f1f24] pt-4">
-        <span className="text-sm text-zinc-400">Amount due</span>
+        <span className="text-sm text-zinc-400 font-bold">Amount due</span>
         <span className="text-[40px] font-extrabold tracking-tight leading-none text-white tabular-nums">
           {money(invoice.total_cents - invoice.paid_cents)}
         </span>

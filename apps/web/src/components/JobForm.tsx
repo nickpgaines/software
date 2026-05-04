@@ -477,7 +477,7 @@ export default function JobForm({
       <Section title="Scheduling">
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-[80px_1fr_1fr] items-center gap-3">
-            <label className="text-sm font-medium text-zinc-300">Start</label>
+            <label className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">Start</label>
             <input
               type="date"
               value={startDate}
@@ -494,7 +494,7 @@ export default function JobForm({
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-[80px_1fr_1fr] items-center gap-3">
-            <label className="text-sm font-medium text-zinc-300">End</label>
+            <label className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">End</label>
             <input
               type="date"
               value={endDate}
@@ -511,7 +511,7 @@ export default function JobForm({
             />
           </div>
           <div className="flex flex-wrap gap-4 pt-1">
-            <label className="inline-flex items-center gap-2 text-sm text-zinc-300">
+            <label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">
               <input
                 type="checkbox"
                 checked={anytime}
@@ -520,7 +520,7 @@ export default function JobForm({
               />
               Anytime (no specific time of day)
             </label>
-            <label className="inline-flex items-center gap-2 text-sm text-zinc-300">
+            <label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">
               <input
                 type="checkbox"
                 checked={scheduleLater}
@@ -679,7 +679,7 @@ export default function JobForm({
       </Section>
 
       <Section title="Recurring Service">
-        <label className="inline-flex items-center gap-2 text-sm text-zinc-300">
+        <label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">
           <input
             type="checkbox"
             checked={recurring}
@@ -742,7 +742,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-zinc-300 mb-1.5">
+      <label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
         {label}
       </label>
       {children}
@@ -1193,7 +1193,7 @@ function LineItemCard({
           </svg>
         </button>
       </div>
-      <div className="flex justify-end text-sm text-zinc-400">
+      <div className="flex justify-end text-sm text-zinc-400 font-bold">
         Item total:{" "}
         <span className="font-extrabold text-white tracking-tight ml-1">
           {money(lineTotal)}
@@ -1224,7 +1224,7 @@ function Dropzone() {
       }
     >
       <div className="text-3xl text-zinc-500">⤴</div>
-      <p className="mt-2 text-sm font-medium text-zinc-300">
+      <p className="mt-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
         Click to upload or drag and drop
       </p>
       <p className="text-xs text-zinc-500">PNG, JPG, GIF up to 5MB</p>

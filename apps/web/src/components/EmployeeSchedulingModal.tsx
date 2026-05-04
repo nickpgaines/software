@@ -670,7 +670,7 @@ export default function EmployeeSchedulingModal({
                   }}
                   onAdjust={(d) => adjustBulk("start", d)}
                 />
-                <span className="text-sm text-zinc-400">to</span>
+                <span className="text-sm text-zinc-400 font-bold">to</span>
                 <TimeStepper
                   value={bulkEnd}
                   onChange={(v) => {
@@ -721,14 +721,14 @@ export default function EmployeeSchedulingModal({
         </div>
 
         <div className="sticky bottom-0 bg-[#0f0f12] border-t border-[#1f1f24] px-6 py-4 flex items-center justify-between gap-3">
-          <div className="text-sm text-zinc-400">
+          <div className="text-sm text-zinc-400 font-bold">
             {employeeCount} employee{employeeCount === 1 ? "" : "s"} &middot;{" "}
             {totalShifts} shift{totalShifts === 1 ? "" : "s"}
           </div>
           <div className="flex items-center gap-3">
             <button
               onClick={onClose}
-              className="px-4 py-2 text-sm font-medium text-zinc-300 bg-[#0f0f12] border border-[#1f1f24] rounded-full hover:bg-black"
+              className="px-4 py-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 bg-[#0f0f12] border border-[#1f1f24] rounded-full hover:bg-black"
               disabled={saving}
             >
               Cancel

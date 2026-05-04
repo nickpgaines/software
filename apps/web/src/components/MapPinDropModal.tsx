@@ -65,7 +65,7 @@ export default function MapPinDropModal({
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-extrabold text-white tracking-tight">Drop pin</h2>
-            <p className="mt-1 text-sm text-zinc-400">
+            <p className="mt-1 text-sm text-zinc-400 font-bold">
               Choose a status and add a note (optional).
             </p>
           </div>
@@ -153,7 +153,7 @@ export default function MapPinDropModal({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-md border border-[#1f1f24] px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-black"
+            className="rounded-md border border-[#1f1f24] px-4 py-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:bg-black"
           >
             Cancel
           </button>

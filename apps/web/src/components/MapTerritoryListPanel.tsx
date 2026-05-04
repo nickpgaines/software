@@ -57,7 +57,7 @@ export default function MapTerritoryListPanel({
         </button>
       </div>
       {list.length === 0 ? (
-        <div className="px-4 py-6 text-sm text-zinc-400 text-center">
+        <div className="px-4 py-6 text-sm text-zinc-400 font-bold text-center">
           No territories yet. Use the hexagon button to draw one.
         </div>
       ) : (

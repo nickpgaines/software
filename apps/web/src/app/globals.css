@@ -20,39 +20,54 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Form-control defaults: any text-y input/textarea/select that doesn't
-   set its own bg or text color via Tailwind classes inherits the dark
-   Pulse styling so typed text is visible on dark backgrounds. Tailwind
-   utility classes override these (they live in the utilities layer
-   which beats @layer base). */
-@layer base {
-  input,
-  textarea,
-  select {
-    color-scheme: dark;
-    background-color: #000000;
-    color: #ffffff;
-  }
+/* Form-control defaults. Any text-y input/textarea/select that doesn't
+   set its own bg via a Tailwind utility class gets the dark Pulse styling
+   forced. The :not([class*="bg-"]) selector skips inputs that opt-in to
+   a custom background (e.g. bg-[#0f0f12], bg-zinc-900). The !important
+   wins against Tailwind's text-* / border-* utilities that don't touch
+   bg-color, and against browser user-agent default styles that paint
+   inputs white in light mode. */
+input:not([class*="bg-"]):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="reset"]):not([type="button"]):not([type="file"]),
+textarea:not([class*="bg-"]),
+select:not([class*="bg-"]) {
+  background-color: #000000 !important;
+  color: #ffffff;
+  color-scheme: dark;
+}
 
-  input::placeholder,
-  textarea::placeholder {
-    color: #52525b; /* zinc-600 */
-  }
+/* Same for inputs without an explicit text color — keep typed text
+   readable on the dark bg. */
+input:not([class*="text-"]):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="reset"]):not([type="button"]):not([type="file"]),
+textarea:not([class*="text-"]),
+select:not([class*="text-"]) {
+  color: #ffffff;
+  color-scheme: dark;
+}
 
-  /* Don't paint over checkbox/radio/file/submit/reset/button — those
-     have their own native rendering and can use accent-color instead. */
-  input[type="checkbox"],
-  input[type="radio"] {
-    accent-color: #8b5cf6; /* pulse violet */
-    background-color: transparent;
-    color: inherit;
-  }
+input::placeholder,
+textarea::placeholder {
+  color: #52525b; /* zinc-600 */
+}
 
-  input[type="file"],
-  input[type="submit"],
-  input[type="reset"],
-  input[type="button"] {
-    background-color: transparent;
-    color: inherit;
-  }
+/* Browser autofill paints inputs white in Chrome / Safari and ignores
+   background-color. Force the inset shadow trick so autofilled fields
+   keep the dark Pulse look and the typed text stays white. */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+textarea:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #000000 inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Checkboxes and radios get the violet accent instead of the dark fill. */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: #8b5cf6;
 }

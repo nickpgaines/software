@@ -56,7 +56,7 @@ export default function LeadsWorkflowsClient({
     <div className="space-y-6">
       <div>
         <h2 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Workflows</h2>
-        <p className="text-sm text-zinc-400">
+        <p className="text-sm text-zinc-400 font-bold">
           Automate follow-ups and lead nurturing sequences
         </p>
       </div>
@@ -146,7 +146,7 @@ export default function LeadsWorkflowsClient({
               <button
                 type="button"
                 onClick={() => setShowNew(false)}
-                className="px-4 py-2 text-sm text-zinc-400 hover:text-white"
+                className="px-4 py-2 text-sm text-zinc-400 font-bold hover:text-white"
               >
                 Cancel
               </button>
@@ -254,7 +254,7 @@ function LogsTable({
 }) {
   if (runs.length === 0) {
     return (
-      <div className="border border-dashed border-[#1f1f24] rounded-2xl p-12 text-center text-sm text-zinc-400">
+      <div className="border border-dashed border-[#1f1f24] rounded-2xl p-12 text-center text-sm text-zinc-400 font-bold">
         No workflow runs yet. They&rsquo;ll appear here once a workflow is
         active and a lead matches its trigger.
       </div>

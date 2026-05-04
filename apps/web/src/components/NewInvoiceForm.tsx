@@ -234,7 +234,7 @@ export default function NewInvoiceForm() {
               <button
                 type="button"
                 onClick={() => setShowNewCustomer(true)}
-                className="text-sm font-medium text-zinc-300 border border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5"
+                className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 border border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5"
               >
                 + Create New Customer
               </button>
@@ -354,7 +354,7 @@ export default function NewInvoiceForm() {
               <button
                 type="button"
                 onClick={() => addItem()}
-                className="text-sm font-medium text-zinc-300 border border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5"
+                className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 border border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5"
               >
                 + Add item
               </button>
@@ -547,7 +547,7 @@ function Field({
 }) {
   return (
     <div className="mb-3">
-      <label className="block text-xs font-medium text-zinc-400 mb-1.5">
+      <label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
         {label}
       </label>
       {children}
@@ -806,7 +806,7 @@ function NewCustomerModal({
           <button
             type="button"
             onClick={onClose}
-            className="text-sm text-zinc-400 hover:text-white"
+            className="text-sm text-zinc-400 font-bold hover:text-white"
           >
             Cancel
           </button>

@@ -191,7 +191,7 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
   }
   if (!automation) {
     return (
-      <div className="text-sm text-zinc-400">
+      <div className="text-sm text-zinc-400 font-bold">
         Automation not found.{" "}
         <Link href="/email" className="underline">
           Back to email
@@ -210,7 +210,7 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
           <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
             {automation.name}
           </h1>
-          <label className="flex items-center gap-2 text-sm text-zinc-300">
+          <label className="flex items-center gap-2 text-sm text-zinc-300 font-bold">
             <span>{automation.enabled === 1 ? "Enabled" : "Disabled"}</span>
             <button
               type="button"

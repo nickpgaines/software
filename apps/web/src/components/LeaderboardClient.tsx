@@ -291,7 +291,7 @@ export default function LeaderboardClient({
         </div>
         <div className="flex-1">
           <div className="font-extrabold text-white tracking-tight">Your Stats</div>
-          <div className="text-sm text-zinc-400">
+          <div className="text-sm text-zinc-400 font-bold">
             {money(meRevenue)} {view === "sales" ? "sold" : "cleaned"}
             {myRank
               ? ` · Rank #${myRank}`
@@ -442,7 +442,7 @@ export default function LeaderboardClient({
         {loading && !data ? (
           <div className="p-10 text-center text-sm text-zinc-500">Loading…</div>
         ) : activeRows.length === 0 ? (
-          <div className="p-10 text-center text-sm text-zinc-400">
+          <div className="p-10 text-center text-sm text-zinc-400 font-bold">
             No {view === "sales" ? "sales" : "technician"} revenue in this
             window yet. Assign staff to jobs in the schedule.
           </div>

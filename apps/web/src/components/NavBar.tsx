@@ -145,7 +145,7 @@ export default function NavBar() {
         <button
           type="button"
           onClick={logout}
-          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-medium text-zinc-400 hover:bg-black hover:text-white transition-colors"
+          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:bg-black hover:text-white transition-colors"
         >
           <LogOut className="w-5 h-5" strokeWidth={1.8} />
           Sign out

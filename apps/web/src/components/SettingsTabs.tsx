@@ -282,7 +282,7 @@ function ProfilePanel({ username }: { username: string }) {
                   <button
                     type="button"
                     onClick={() => setPhotoUrl(null)}
-                    className="text-sm text-zinc-400 hover:text-white"
+                    className="text-sm text-zinc-400 font-bold hover:text-white"
                   >
                     Remove
                   </button>
@@ -1010,7 +1010,7 @@ function SubscriptionsPanel() {
                 Create new terms +
               </button>
             </div>
-            <label className="inline-flex items-center gap-3 text-sm text-zinc-300">
+            <label className="inline-flex items-center gap-3 text-sm text-zinc-300 font-bold">
               <span>Require signature</span>
               <button
                 type="button"
@@ -1036,7 +1036,7 @@ function SubscriptionsPanel() {
               </button>
             </label>
           </div>
-          <label className="inline-flex items-center gap-2 text-sm text-zinc-300">
+          <label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">
             <input
               type="checkbox"
               checked={form.active}
@@ -1055,7 +1055,7 @@ function SubscriptionsPanel() {
             <button
               type="button"
               onClick={cancelEdit}
-              className="text-sm text-zinc-400 hover:text-white"
+              className="text-sm text-zinc-400 font-bold hover:text-white"
             >
               Cancel
             </button>
@@ -1068,9 +1068,9 @@ function SubscriptionsPanel() {
           Templates
         </h3>
         {loading && templates.length === 0 ? (
-          <p className="text-sm text-zinc-400">Loading…</p>
+          <p className="text-sm text-zinc-400 font-bold">Loading…</p>
         ) : templates.length === 0 ? (
-          <p className="text-sm text-zinc-400">
+          <p className="text-sm text-zinc-400 font-bold">
             No templates yet. Create one to get started.
           </p>
         ) : (
@@ -1350,7 +1350,7 @@ function SendOrAcceptModal({
         </div>
 
         {template.description && (
-          <p className="text-sm text-zinc-400 whitespace-pre-wrap">
+          <p className="text-sm text-zinc-400 font-bold whitespace-pre-wrap">
             {template.description}
           </p>
         )}
@@ -1546,7 +1546,7 @@ function CreateTermsModal({
           <button
             type="button"
             onClick={onClose}
-            className="text-sm text-zinc-400 hover:text-white"
+            className="text-sm text-zinc-400 font-bold hover:text-white"
           >
             Cancel
           </button>
@@ -2061,7 +2061,7 @@ function CallingPanel() {
         />
       </Field>
 
-      <label className="flex items-center gap-2 text-sm text-zinc-300">
+      <label className="flex items-center gap-2 text-sm text-zinc-300 font-bold">
         <input
           type="checkbox"
           checked={recordCalls}
@@ -2476,7 +2476,7 @@ function BillingPanel() {
         </svg>
       </div>
       <h2 className="text-lg font-extrabold text-white tracking-tight">Billing</h2>
-      <p className="text-sm text-zinc-400">Coming soon.</p>
+      <p className="text-sm text-zinc-400 font-bold">Coming soon.</p>
     </div>
   );
 }

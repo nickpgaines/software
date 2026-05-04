@@ -230,7 +230,7 @@ export default function EmployeeForm({
       <div>
         <Link
           href="/employees"
-          className="inline-flex items-center gap-1 text-sm text-zinc-400 hover:text-white"
+          className="inline-flex items-center gap-1 text-sm text-zinc-400 font-bold hover:text-white"
         >
           <ChevronLeft className="w-4 h-4" />
           Employees
@@ -448,7 +448,7 @@ export default function EmployeeForm({
           })}
 
           {permission === "custom" && (
-            <div className="mt-3 ml-7 px-4 py-3 border border-dashed border-[#2a2a32] rounded-lg text-sm text-zinc-400 bg-black">
+            <div className="mt-3 ml-7 px-4 py-3 border border-dashed border-[#2a2a32] rounded-lg text-sm text-zinc-400 font-bold bg-black">
               Custom permissions configuration coming soon.
             </div>
           )}
@@ -469,7 +469,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-zinc-400 mb-1.5">
+      <label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
         {label}
         {required && <span className="text-rose-500 ml-0.5">*</span>}
       </label>

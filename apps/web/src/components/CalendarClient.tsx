@@ -232,7 +232,7 @@ export default function CalendarClient() {
           <button
             type="button"
             onClick={() => setSchedulingOpen(true)}
-            className="inline-flex items-center gap-2 border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-sm text-zinc-300"
+            className="inline-flex items-center gap-2 border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-sm text-zinc-300 font-bold"
           >
             <svg
               className="w-4 h-4"
@@ -252,7 +252,7 @@ export default function CalendarClient() {
           </button>
           <button
             type="button"
-            className="inline-flex items-center gap-2 border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-sm text-zinc-300"
+            className="inline-flex items-center gap-2 border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-sm text-zinc-300 font-bold"
             title="Coming soon"
           >
             <svg
@@ -302,7 +302,7 @@ export default function CalendarClient() {
       </div>
 
       <div className="flex items-center justify-center">
-        <div className="inline-flex items-center gap-2 bg-[#0f0f12] border border-[#1f1f24] rounded-full px-2 py-1 text-sm text-zinc-300">
+        <div className="inline-flex items-center gap-2 bg-[#0f0f12] border border-[#1f1f24] rounded-full px-2 py-1 text-sm text-zinc-300 font-bold">
           <button
             onClick={() => navigate(-1)}
             className="w-8 h-8 rounded-full hover:bg-black flex items-center justify-center"
@@ -704,7 +704,7 @@ function MonthView({
         {weekDayHeaders.map((d) => (
           <div
             key={d}
-            className="text-xs font-medium text-zinc-400 uppercase tracking-wide text-center py-2"
+            className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 uppercase tracking-wide text-center py-2"
           >
             {d}
           </div>

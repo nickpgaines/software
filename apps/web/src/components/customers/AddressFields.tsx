@@ -340,7 +340,7 @@ function Field({
   if (!show) return <>{children}</>;
   return (
     <div>
-      <label className="block text-sm font-medium text-zinc-300 mb-1">
+      <label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
         {label}
         {required && <span className="text-red-500 ml-0.5">*</span>}
       </label>

@@ -81,7 +81,7 @@ export default function PaymentsSection({
 
       {payments.length === 0 ? (
         <div className="py-6 text-center">
-          <p className="text-sm text-zinc-400">No payments recorded yet.</p>
+          <p className="text-sm text-zinc-400 font-bold">No payments recorded yet.</p>
           <button
             type="button"
             onClick={() => setModalOpen(true)}

@@ -120,7 +120,7 @@ function CustomersPage() {
 
       <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-lg overflow-hidden">
         {customers.length === 0 ? (
-          <div className="p-8 text-center text-sm text-zinc-400">
+          <div className="p-8 text-center text-sm text-zinc-400 font-bold">
             No customers yet.
           </div>
         ) : (
@@ -366,7 +366,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-zinc-300 mb-1">
+      <label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
         {label}
         {required && <span className="text-red-500 ml-0.5">*</span>}
       </label>

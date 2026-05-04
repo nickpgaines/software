@@ -220,7 +220,7 @@ export default function ImportModal({
           )}
 
           {step === "importing" && (
-            <div className="py-12 text-center text-sm text-zinc-400">
+            <div className="py-12 text-center text-sm text-zinc-400 font-bold">
               Importing…
             </div>
           )}
@@ -365,7 +365,7 @@ function UploadStep({
 }) {
   return (
     <div className="space-y-3">
-      <p className="text-sm text-zinc-400">
+      <p className="text-sm text-zinc-400 font-bold">
         Upload a CSV file. The first row should be column headers.
       </p>
       <div
@@ -389,7 +389,7 @@ function UploadStep({
         }
       >
         <div className="text-3xl text-zinc-500">⤴</div>
-        <p className="mt-2 text-sm font-medium text-zinc-300">
+        <p className="mt-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
           Click to choose or drag & drop a CSV file
         </p>
         <p className="text-xs text-zinc-500">.csv files only</p>
@@ -423,7 +423,7 @@ function MappingStep({
   const firstSample = csvRows[0] ?? {};
   return (
     <div className="space-y-3">
-      <p className="text-sm text-zinc-400">
+      <p className="text-sm text-zinc-400 font-bold">
         Match each CSV column to a Nick360 field. <strong>First name</strong>{" "}
         is required; the others are optional. If you map a single &ldquo;Full
         Name&rdquo; column to First name, we&rsquo;ll auto-split it.
@@ -484,7 +484,7 @@ function PreviewStep({
 }) {
   return (
     <div className="space-y-3">
-      <p className="text-sm text-zinc-400">
+      <p className="text-sm text-zinc-400 font-bold">
         Showing the first {previewRows.length} of {totalRows} rows after mapping.
         Review for accuracy before importing.
       </p>
@@ -564,7 +564,7 @@ function ResultStep({
           <button
             type="button"
             onClick={() => setShowSkipped(!showSkipped)}
-            className="text-sm text-zinc-400 hover:text-white"
+            className="text-sm text-zinc-400 font-bold hover:text-white"
           >
             {showSkipped ? "▾" : "▸"} Show details (
             {result.skippedReasons.length + result.errors.length})

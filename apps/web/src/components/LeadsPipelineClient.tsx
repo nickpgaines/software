@@ -100,7 +100,7 @@ export default function LeadsPipelineClient({
     <div className="space-y-6">
       <div>
         <h2 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Pipeline</h2>
-        <p className="text-sm text-zinc-400">
+        <p className="text-sm text-zinc-400 font-bold">
           Track and move leads through the sales pipeline
         </p>
       </div>
@@ -328,7 +328,7 @@ function LeadCard({
 function ListView({ leads }: { leads: Lead[] }) {
   if (leads.length === 0) {
     return (
-      <div className="border border-dashed border-[#1f1f24] rounded-2xl p-12 text-center text-sm text-zinc-400">
+      <div className="border border-dashed border-[#1f1f24] rounded-2xl p-12 text-center text-sm text-zinc-400 font-bold">
         No leads match your filters.
       </div>
     );
@@ -472,7 +472,7 @@ function NewLeadDialog({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm text-zinc-400 hover:text-white"
+              className="px-4 py-2 text-sm text-zinc-400 font-bold hover:text-white"
             >
               Cancel
             </button>
@@ -514,7 +514,7 @@ function Field({
 }) {
   return (
     <label className="block text-sm">
-      <span className="text-xs font-medium text-zinc-400 mb-1 block">
+      <span className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2 block">
         {label}
       </span>
       {children}

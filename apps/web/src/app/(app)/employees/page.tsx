@@ -65,7 +65,7 @@ export default async function EmployeesPage() {
 
       <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
         {employees.length === 0 ? (
-          <div className="p-12 text-center text-sm text-zinc-400">
+          <div className="p-12 text-center text-sm text-zinc-400 font-bold">
             No employees yet. Click &ldquo;Add Employee&rdquo; to add your
             first team member.
           </div>
@@ -74,19 +74,19 @@ export default async function EmployeesPage() {
             <thead>
               <tr className="border-b border-[#1f1f24] text-left">
                 <th className="px-4 py-3 w-14"></th>
-                <th className="px-4 py-3 text-sm font-medium text-zinc-400">
+                <th className="px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
                   Name
                 </th>
-                <th className="px-4 py-3 text-sm font-medium text-zinc-400">
+                <th className="px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
                   Role
                 </th>
-                <th className="px-4 py-3 text-sm font-medium text-zinc-400">
+                <th className="px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
                   Phone
                 </th>
-                <th className="px-4 py-3 text-sm font-medium text-zinc-400">
+                <th className="px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
                   Email
                 </th>
-                <th className="px-4 py-3 text-sm font-medium text-zinc-400">
+                <th className="px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
                   Created
                 </th>
                 <th className="px-4 py-3 w-20"></th>
@@ -121,14 +121,14 @@ export default async function EmployeesPage() {
                     <td className="px-4 py-4 text-sm font-extrabold text-white tracking-tight">
                       {displayName(e)}
                     </td>
-                    <td className="px-4 py-4 text-sm text-zinc-400">{role}</td>
-                    <td className="px-4 py-4 text-sm text-zinc-400">
+                    <td className="px-4 py-4 text-sm text-zinc-400 font-bold">{role}</td>
+                    <td className="px-4 py-4 text-sm text-zinc-400 font-bold">
                       {formatPhone(e.phone)}
                     </td>
-                    <td className="px-4 py-4 text-sm text-zinc-400">
+                    <td className="px-4 py-4 text-sm text-zinc-400 font-bold">
                       {e.email || "—"}
                     </td>
-                    <td className="px-4 py-4 text-sm text-zinc-400">
+                    <td className="px-4 py-4 text-sm text-zinc-400 font-bold">
                       {formatDate(e.created_at)}
                     </td>
                     <td className="px-4 py-4 text-right">

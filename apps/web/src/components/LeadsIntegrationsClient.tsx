@@ -102,7 +102,7 @@ export default function LeadsIntegrationsClient({
     <div className="space-y-6">
       <div>
         <h2 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Integrations</h2>
-        <p className="text-sm text-zinc-400">Connect Meta and other lead sources</p>
+        <p className="text-sm text-zinc-400 font-bold">Connect Meta and other lead sources</p>
       </div>
 
       {banner && (

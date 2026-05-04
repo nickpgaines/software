@@ -490,7 +490,7 @@ function SelectFilter({
 }) {
   return (
     <label className="block">
-      <span className="text-xs font-medium text-zinc-400">{label}</span>
+      <span className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">{label}</span>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
@@ -517,7 +517,7 @@ function Toggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="inline-flex items-center gap-2 text-sm text-zinc-300 cursor-pointer">
+    <label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold cursor-pointer">
       <span>{label}</span>
       <button
         type="button"
@@ -753,7 +753,7 @@ function PayrollPanel({ range }: { range: Range }) {
         </div>
         <button
           onClick={() => setSettingsOpen(true)}
-          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-zinc-300 bg-[#0f0f12] border border-[#1f1f24] rounded-full hover:bg-black shadow-sm"
+          className="inline-flex items-center gap-2 px-3 py-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 bg-[#0f0f12] border border-[#1f1f24] rounded-full hover:bg-black shadow-sm"
           aria-label="Payroll settings"
         >
           <Settings className="w-4 h-4" />

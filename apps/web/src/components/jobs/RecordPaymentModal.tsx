@@ -486,7 +486,7 @@ function CardStep({
 
   return (
     <form onSubmit={charge} className="p-5 space-y-4">
-      <div className="text-sm text-zinc-400">
+      <div className="text-sm text-zinc-400 font-bold">
         Charging{" "}
         <span className="font-extrabold text-white tracking-tight">
           ${(totalCents / 100).toFixed(2)}
@@ -538,7 +538,7 @@ function ReceiptToggle({
   return (
     <div className="border border-[#1f1f24] rounded-2xl px-4 py-3">
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm text-zinc-300">{label}</span>
+        <span className="text-sm text-zinc-300 font-bold">{label}</span>
         <button
           type="button"
           onClick={() => setEnabled(!enabled)}
@@ -562,7 +562,7 @@ function ReceiptToggle({
           value={value || ""}
           readOnly
           placeholder={placeholder}
-          className="mt-2 w-full border border-[#1f1f24] bg-black rounded-full px-3 py-1.5 text-sm text-zinc-400"
+          className="mt-2 w-full border border-[#1f1f24] bg-black rounded-full px-3 py-1.5 text-sm text-zinc-400 font-bold"
         />
       )}
     </div>

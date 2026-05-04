@@ -48,7 +48,7 @@ export default function LeadsFormsClient({
     <div className="space-y-6">
       <div>
         <h2 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Forms</h2>
-        <p className="text-sm text-zinc-400">
+        <p className="text-sm text-zinc-400 font-bold">
           Create web forms that drop new leads into your pipeline
         </p>
       </div>
@@ -154,7 +154,7 @@ export default function LeadsFormsClient({
               <button
                 type="button"
                 onClick={() => setShowNew(false)}
-                className="px-4 py-2 text-sm text-zinc-400 hover:text-white"
+                className="px-4 py-2 text-sm text-zinc-400 font-bold hover:text-white"
               >
                 Cancel
               </button>

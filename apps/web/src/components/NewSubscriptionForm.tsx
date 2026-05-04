@@ -252,7 +252,7 @@ export default function NewSubscriptionForm() {
               <button
                 type="button"
                 onClick={() => setShowNewCustomer(true)}
-                className="text-sm font-medium text-zinc-300 border border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5"
+                className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 border border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5"
               >
                 + Create New Customer
               </button>
@@ -440,7 +440,7 @@ export default function NewSubscriptionForm() {
               </h2>
             </CardHeader>
             {!selectedTemplate ? (
-              <p className="text-sm text-zinc-400 py-6 text-center">
+              <p className="text-sm text-zinc-400 font-bold py-6 text-center">
                 Select a plan template to see included visits.
               </p>
             ) : (
@@ -522,7 +522,7 @@ function Field({
 }) {
   return (
     <div className="mb-3">
-      <label className="block text-xs font-medium text-zinc-400 mb-1.5">
+      <label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
         {label}
       </label>
       {children}
@@ -768,7 +768,7 @@ function NewCustomerModal({
           <button
             type="button"
             onClick={onClose}
-            className="text-sm text-zinc-400 hover:text-white"
+            className="text-sm text-zinc-400 font-bold hover:text-white"
           >
             Cancel
           </button>
@@ -878,7 +878,7 @@ function NewTemplateModal({
             ))}
           </select>
         </Field>
-        <label className="inline-flex items-center gap-2 text-sm text-zinc-300">
+        <label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">
           <input
             type="checkbox"
             checked={requireSignature}
@@ -898,7 +898,7 @@ function NewTemplateModal({
           <button
             type="button"
             onClick={onClose}
-            className="text-sm text-zinc-400 hover:text-white"
+            className="text-sm text-zinc-400 font-bold hover:text-white"
           >
             Cancel
           </button>

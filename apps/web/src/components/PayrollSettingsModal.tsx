@@ -372,7 +372,7 @@ export default function PayrollSettingsModal({
         <div className="sticky bottom-0 bg-[#0f0f12] border-t border-[#1f1f24] px-6 py-4 flex items-center justify-end gap-3">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-zinc-300 hover:text-white"
+            className="px-4 py-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:text-white"
             disabled={saving}
           >
             Cancel
@@ -666,7 +666,7 @@ function TiersEditor({
   return (
     <div className="space-y-2">
       {tiers.length === 0 && (
-        <p className="text-sm text-zinc-400">
+        <p className="text-sm text-zinc-400 font-bold">
           No tiers yet. Add a tier to define a revenue threshold and its rate.
         </p>
       )}
@@ -706,7 +706,7 @@ function TiersEditor({
       <button
         type="button"
         onClick={add}
-        className="inline-flex items-center gap-1 text-sm font-medium text-zinc-300 hover:text-white"
+        className="inline-flex items-center gap-1 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:text-white"
       >
         <Plus className="w-4 h-4" /> Add tier
       </button>
@@ -740,7 +740,7 @@ function BonusTiersEditor({
   return (
     <div className="space-y-2">
       {tiers.length === 0 && (
-        <p className="text-sm text-zinc-400">
+        <p className="text-sm text-zinc-400 font-bold">
           No bonus tiers yet. Add one to pay a bonus when daily revenue
           reaches a threshold.
         </p>
@@ -781,7 +781,7 @@ function BonusTiersEditor({
       <button
         type="button"
         onClick={add}
-        className="inline-flex items-center gap-1 text-sm font-medium text-zinc-300 hover:text-white"
+        className="inline-flex items-center gap-1 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:text-white"
       >
         <Plus className="w-4 h-4" /> Add bonus tier
       </button>

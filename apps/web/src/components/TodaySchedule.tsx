@@ -149,7 +149,7 @@ export default function TodaySchedule({ initialJobs }: { initialJobs: Job[] }) {
             {jobs.map((j) => (
               <li key={j.id}>
                 <div
-                  className="text-sm text-zinc-400 border-b border-[#1f1f24] pb-2 mb-2"
+                  className="text-sm text-zinc-400 font-bold border-b border-[#1f1f24] pb-2 mb-2"
                   suppressHydrationWarning
                 >
                   {mounted ? formatTime(j.scheduled_at) : ""}
@@ -175,7 +175,7 @@ export default function TodaySchedule({ initialJobs }: { initialJobs: Job[] }) {
                     <div className="font-bold text-white tracking-tight truncate">
                       Window Cleaning
                     </div>
-                    <div className="text-sm text-zinc-400 truncate">
+                    <div className="text-sm text-zinc-400 font-bold truncate">
                       {j.customer_name}
                       {j.customer_address ? ` · ${j.customer_address}` : ""}
                     </div>

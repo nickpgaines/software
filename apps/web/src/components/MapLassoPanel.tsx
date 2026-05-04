@@ -267,7 +267,7 @@ export default function MapLassoPanel({
         <button
           onClick={onClose}
           disabled={sending}
-          className="text-sm text-zinc-400 hover:text-white disabled:opacity-50"
+          className="text-sm text-zinc-400 font-bold hover:text-white disabled:opacity-50"
         >
           Cancel
         </button>

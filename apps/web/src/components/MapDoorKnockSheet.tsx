@@ -190,7 +190,7 @@ export default function MapDoorKnockSheet({
             <button
               type="button"
               onClick={() => setObjectionsOpen((o) => !o)}
-              className="w-full flex items-center justify-between px-4 py-3 text-sm font-medium text-zinc-300"
+              className="w-full flex items-center justify-between px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500"
             >
               <span>Objections{objections.length > 0 ? ` (${objections.length})` : ""}</span>
               <svg
@@ -213,7 +213,7 @@ export default function MapDoorKnockSheet({
                 {OBJECTIONS.map((obj) => (
                   <label
                     key={obj}
-                    className="flex items-center gap-2 text-sm text-zinc-300"
+                    className="flex items-center gap-2 text-sm text-zinc-300 font-bold"
                   >
                     <input
                       type="checkbox"

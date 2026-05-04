@@ -237,7 +237,7 @@ export default function JobDetailClient({
         <div>
           <Link
             href="/schedule"
-            className="text-sm text-zinc-400 hover:text-white inline-flex items-center gap-1"
+            className="text-sm text-zinc-400 font-bold hover:text-white inline-flex items-center gap-1"
           >
             ← Back to schedule
           </Link>
@@ -402,7 +402,7 @@ export default function JobDetailClient({
               </button>
               <Link
                 href="/schedule"
-                className="w-full inline-flex items-center justify-between border border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300"
+                className="w-full inline-flex items-center justify-between border border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold"
               >
                 <span>View in Schedule</span>
                 <span className="text-zinc-500">›</span>
@@ -410,7 +410,7 @@ export default function JobDetailClient({
               <button
                 type="button"
                 title="Coming soon"
-                className="w-full inline-flex items-center justify-between border border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300"
+                className="w-full inline-flex items-center justify-between border border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold"
               >
                 <span>Create Invoice</span>
                 <span className="text-zinc-500">›</span>
@@ -418,7 +418,7 @@ export default function JobDetailClient({
               <button
                 type="button"
                 title="Coming soon"
-                className="w-full inline-flex items-center justify-between border border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300"
+                className="w-full inline-flex items-center justify-between border border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold"
               >
                 <span>Send Review Request</span>
                 <span className="text-zinc-500">›</span>
@@ -433,7 +433,7 @@ export default function JobDetailClient({
               <h2 className="font-extrabold text-white tracking-tight">Job Details</h2>
               <Link
                 href={`/schedule/${job.id}/edit`}
-                className="text-sm text-zinc-300 hover:text-white hover:underline"
+                className="text-sm text-zinc-300 font-bold hover:text-white hover:underline"
               >
                 Edit
               </Link>
@@ -506,7 +506,7 @@ export default function JobDetailClient({
                 <div className="text-xs text-zinc-500 uppercase tracking-wide">
                   Notes
                 </div>
-                <p className="text-sm text-zinc-300 mt-1 whitespace-pre-wrap">
+                <p className="text-sm text-zinc-300 font-bold mt-1 whitespace-pre-wrap">
                   {job.notes}
                 </p>
               </div>
