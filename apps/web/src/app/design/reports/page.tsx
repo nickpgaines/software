@@ -3,31 +3,31 @@ import Link from "next/link";
 const VARIANTS = [
   {
     slug: "a",
-    name: "A — Editorial",
-    tagline: "Display serif numbers · single tall area chart · hairline dividers.",
+    name: "A — Donut suite",
+    tagline: "Three donut charts up top · KPI cards below.",
     description:
-      "Magazine-style. Big serif KPIs, sans labels in caps, no card borders. The smooth area chart leads at the top; metric sections stack underneath with hairline blue dividers.",
+      "Donuts lead. Collection Rate as a single ring, Jobs as a multi-segment ring (completed / scheduled / canceled), Customer mix as a third ring. The full Revenue / Jobs / Customers number sets sit beneath as standard rounded cards. No line chart on this one.",
   },
   {
     slug: "b",
-    name: "B — Console",
-    tagline: "Mono numbers · stepped bar chart · dense 1px borders.",
+    name: "B — Chart forward",
+    tagline: "Dashboard-style KPI strip · big revenue chart · numeric sections.",
     description:
-      "Spreadsheet/terminal vibe. JetBrains Mono for every value so columns line up, vertical bars per day instead of a smooth line, heavy 1px borders, no shadows.",
+      "Line chart leads, like the dashboard homepage. Heaviest type (font-black) on the numbers, four-up KPI strip at the top, the existing smooth area chart in the middle, then Jobs and Customers as KPI rows. No donuts here.",
   },
   {
     slug: "c",
-    name: "C — Bento (sparklines)",
-    tagline: "Tight sans · inline sparklines on every revenue card · uniform grid.",
+    name: "C — Balanced mix",
+    tagline: "Line chart + Collection Rate donut hero · jobs split donut.",
     description:
-      "Linear-style modular grid. Every revenue KPI carries its own mini sparkline; jobs/customers stay numeric. A smaller combo chart anchors the bottom.",
+      "Hero row splits 2/3 line chart and 1/3 collection-rate donut. Revenue numbers sit underneath. Jobs section pairs a multi-segment donut with the numeric breakdown. Softer rounded-3xl cards, more whitespace.",
   },
   {
     slug: "d",
-    name: "D — Soft (donuts)",
-    tagline: "Rounded-3xl cards · donut for ratios · gradient area chart.",
+    name: "D — Compact dashboard",
+    tagline: "KPI strip with sparklines · chart · jobs donut + numbers side-by-side.",
     description:
-      "Calmer, consumer-feel. Collection rate becomes a donut ring; jobs split into a multi-segment donut. Big rounded cards, soft shadows, generous padding.",
+      "Densest of the four. Revenue KPI strip carries inline sparklines, the smooth chart sits in the middle at full width, the Jobs section combines a donut with the five numeric cards, Customers stays as a tight three-up. Sharper rounded-xl corners.",
   },
 ];
 
@@ -43,8 +43,9 @@ export default function ReportsIndex() {
             Pick a Reports look.
           </h1>
           <p className="text-neutral-500 mt-3 max-w-xl text-base font-medium">
-            Same data, same colors, same metrics. Four different typography +
-            chart treatments to compare side-by-side.
+            Same data, same blue accent, same modern bold language as the rest
+            of the app. Four mixes of donut charts, line charts, and number
+            cards.
           </p>
         </div>
 
