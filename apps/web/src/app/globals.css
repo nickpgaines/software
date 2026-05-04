@@ -6,6 +6,16 @@ html, body {
   height: 100%;
 }
 
+/* Pulse dark canvas applied at the document root so the browser's
+   overscroll/bounce area (above the top, below the bottom) shows the
+   same color as the dashboard instead of the default white. */
+html {
+  background-color: #000000;
+}
+
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  background-color: #000000;
+  color: #ffffff;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
