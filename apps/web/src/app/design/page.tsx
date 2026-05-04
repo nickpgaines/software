@@ -140,6 +140,41 @@ const bold = [
   },
 ];
 
+const pulseHeroWidths = [
+  {
+    slug: "concept-pulse-17",
+    name: "Pulse 17 — 6xl · tight",
+    tagline: "max-w-6xl (1152px) · most margin · matches P13's width.",
+    description:
+      "Same content as P18–P20 (KPIs at top → chart → 2-up Schedule + Pipeline → 3-up Inbox + Tasks + Activity). Most generous side margins of the four. Reads as a focused, contained dashboard — content has plenty of room around it.",
+    swatches: ["#000000", "#0f0f12", "#8b5cf6", "#22c55e", "#ffffff"],
+  },
+  {
+    slug: "concept-pulse-18",
+    name: "Pulse 18 — 7xl",
+    tagline: "max-w-7xl (1280px) · one step wider than P17.",
+    description:
+      "Same content layout. Container grows by ~128px. The 2-up cards (Schedule + Pipeline) gain breathing room and the 3-up cards (Inbox + Tasks + Activity) feel a bit less cramped. Still has visible margin on each side.",
+    swatches: ["#000000", "#0f0f12", "#8b5cf6", "#22c55e", "#ffffff"],
+  },
+  {
+    slug: "concept-pulse-19",
+    name: "Pulse 19 — Wider",
+    tagline: "max-w-[1440px] · just shy of full bleed.",
+    description:
+      "Same content layout. Container caps at 1440px so on standard laptops it'll behave like full bleed, while on wide displays you still get a small margin. The 2-up cards stretch nicely without feeling stranded.",
+    swatches: ["#000000", "#0f0f12", "#8b5cf6", "#22c55e", "#ffffff"],
+  },
+  {
+    slug: "concept-pulse-20",
+    name: "Pulse 20 — Full",
+    tagline: "Full width · no max-width · matches P16's edge-to-edge feel.",
+    description:
+      "Same content layout. No max-width — content stretches to whatever the viewport allows. Most edge-to-edge of the four; the chart and the 2-up Schedule + Pipeline get the most space.",
+    swatches: ["#000000", "#0f0f12", "#8b5cf6", "#22c55e", "#ffffff"],
+  },
+];
+
 const pulseHeroLayouts = [
   {
     slug: "concept-pulse-13",
@@ -536,23 +571,34 @@ export default function DesignIndexPage() {
               Reports — 4 UI options →
             </Link>
             <Link
-              href="/design/concept-pulse-13"
+              href="/design/concept-pulse-17"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-black text-white text-sm font-bold hover:opacity-80 transition-opacity ring-1 ring-violet-500"
               style={{ boxShadow: "0 0 24px rgba(139,92,246,0.35)" }}
             >
-              Pulse 13–16 — P12 layouts (NEWEST) →
+              Pulse 17–20 — width variations (NEWEST) →
             </Link>
           </div>
         </div>
 
         <div className="mb-3">
           <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
-            Pulse 13–16 — P12 layout variations (NEWEST)
+            Pulse 17–20 — width variations · KPIs · chart · 2-up · 3-up (NEWEST)
+          </h2>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
+          {pulseHeroWidths.map((c) => (
+            <ConceptCard key={c.slug} {...c} highlighted />
+          ))}
+        </div>
+
+        <div className="mb-3">
+          <h2 className="text-sm font-bold tracking-tight uppercase text-neutral-500">
+            Pulse 13–16 — P12 layout variations
           </h2>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mb-16">
           {pulseHeroLayouts.map((c) => (
-            <ConceptCard key={c.slug} {...c} highlighted />
+            <ConceptCard key={c.slug} {...c} />
           ))}
         </div>
 

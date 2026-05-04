@@ -209,6 +209,10 @@ const PULSE_NAMES_BY_KEY: Record<string, string> = {
   "14": "Stack ↓",
   "15": "Wide rail",
   "16": "Wide flat",
+  "17": "6xl · tight",
+  "18": "7xl",
+  "19": "Wider",
+  "20": "Full",
 };
 
 export function PulsePreviewBar({

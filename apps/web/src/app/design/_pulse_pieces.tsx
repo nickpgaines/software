@@ -9,6 +9,7 @@ import { PulseIcon } from "./_pulse_chrome";
 import {
   ActivityFeed,
   BoldScheduleRow,
+  CompactHeroKpi,
   HeroChart,
   LiveBadge,
   PipelineBars,
@@ -248,5 +249,67 @@ export function PulseActivityCard({ jobs }: { jobs: LiveJob[] }) {
       </div>
       <ActivityFeed jobs={jobs} />
     </section>
+  );
+}
+
+// ---------- Hero body composition ---------------------------------------
+// Used by P17–P20: same content (KPIs above chart, chart hero, 2-up of
+// Schedule + Pipeline, then 3-up of Inbox + Tasks + Activity). Each
+// variant renders this inside a different max-width container.
+
+export function PulseHeroBody({
+  jobs,
+  revenue,
+}: {
+  jobs: LiveJob[];
+  revenue: RevenueSummary;
+}) {
+  const completedCount = revenue.jobsCompleted;
+  const closeRate = 0.34;
+  const arrCents = revenue.totalCents * 12;
+  const jobsSold = completedCount + jobs.length;
+
+  return (
+    <>
+      {/* KPIs at the top */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+        <CompactHeroKpi
+          label="Close rate"
+          value={`${(closeRate * 100).toFixed(0)}%`}
+          delta="−1.1%"
+          deltaPositive={false}
+        />
+        <CompactHeroKpi
+          label="ARR"
+          value={formatCentsShort(arrCents)}
+          delta="+8.6%"
+          deltaPositive
+        />
+        <CompactHeroKpi
+          label="Jobs sold"
+          value={String(jobsSold)}
+          delta="+12"
+          deltaPositive
+        />
+      </div>
+
+      {/* Chart hero */}
+      <div className="mb-5">
+        <PulseChartHero revenue={revenue} />
+      </div>
+
+      {/* 2-up larger widgets: Schedule + Pipeline */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+        <PulseScheduleCard jobs={jobs} rows={5} />
+        <PulsePipelineCard />
+      </div>
+
+      {/* 3-up smaller widgets: Inbox + Tasks + Activity */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <PulseInboxCard />
+        <PulseTasksCard />
+        <PulseActivityCard jobs={jobs} />
+      </div>
+    </>
   );
 }
