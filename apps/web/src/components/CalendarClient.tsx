@@ -271,7 +271,7 @@ export default function CalendarClient() {
           </button>
           <Link
             href="/schedule/new"
-            className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 text-sm font-medium shadow-sm"
+            className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 text-sm font-bold shadow-sm"
           >
             <span className="text-base leading-none">+</span> New Job
           </Link>
@@ -310,7 +310,7 @@ export default function CalendarClient() {
           >
             ‹
           </button>
-          <span className="px-3 font-medium">{navLabel}</span>
+          <span className="px-3 font-bold">{navLabel}</span>
           <button
             onClick={() => navigate(1)}
             className="w-8 h-8 rounded-full hover:bg-black flex items-center justify-center"
@@ -650,7 +650,7 @@ function DayView({
           <div
             key={h}
             style={{ height: `${HOUR_PX}px` }}
-            className="text-xs text-zinc-500 pr-3 text-right -translate-y-1.5"
+            className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 pr-3 text-right -translate-y-1.5"
           >
             {formatHour(h)}
           </div>

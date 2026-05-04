@@ -177,7 +177,7 @@ export default function ImportModal({
       <div className="bg-[#0f0f12] rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] flex flex-col">
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#1f1f24] shrink-0">
           <div>
-            <h3 className="font-medium">Import customers</h3>
+            <h3 className="font-bold">Import customers</h3>
             <p className="text-xs text-zinc-500 mt-0.5">
               <Stepper step={step} />
             </p>
@@ -337,7 +337,7 @@ function Stepper({ step }: { step: Step }) {
             className={
               i === activeIdx ||
               (step === "importing" && l.key === "preview")
-                ? "text-zinc-300 font-medium"
+                ? "text-zinc-300 font-bold"
                 : ""
             }
           >
@@ -392,7 +392,7 @@ function UploadStep({
         <p className="mt-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
           Click to choose or drag & drop a CSV file
         </p>
-        <p className="text-xs text-zinc-500">.csv files only</p>
+        <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">.csv files only</p>
       </div>
       <input
         ref={fileInputRef}
@@ -432,9 +432,9 @@ function MappingStep({
         <table className="w-full text-sm">
           <thead className="bg-black text-zinc-400">
             <tr>
-              <th className="text-left px-3 py-2 font-medium">CSV column</th>
-              <th className="text-left px-3 py-2 font-medium">Sample</th>
-              <th className="text-left px-3 py-2 font-medium">
+              <th className="text-left px-3 py-2 font-bold">CSV column</th>
+              <th className="text-left px-3 py-2 font-bold">Sample</th>
+              <th className="text-left px-3 py-2 font-bold">
                 FORGE field
               </th>
             </tr>
@@ -493,7 +493,7 @@ function PreviewStep({
           <thead className="bg-black text-zinc-400">
             <tr>
               {FIELDS.map((f) => (
-                <th key={f} className="text-left px-3 py-2 font-medium">
+                <th key={f} className="text-left px-3 py-2 font-bold">
                   {FIELD_LABELS[f]}
                 </th>
               ))}
@@ -574,10 +574,10 @@ function ResultStep({
               <table className="w-full text-sm">
                 <thead className="bg-black text-zinc-400 sticky top-0">
                   <tr>
-                    <th className="text-left px-3 py-2 font-medium w-16">
+                    <th className="text-left px-3 py-2 font-bold w-16">
                       Row
                     </th>
-                    <th className="text-left px-3 py-2 font-medium">Reason</th>
+                    <th className="text-left px-3 py-2 font-bold">Reason</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#1f1f24]">

@@ -172,7 +172,7 @@ export default function EmailListClient() {
         </div>
         <Link
           href="/email/new"
-          className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 font-medium"
+          className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 font-bold"
         >
           New blast
         </Link>
@@ -194,7 +194,7 @@ export default function EmailListClient() {
           <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
             Automated emails
           </h2>
-          <span className="text-xs text-zinc-500">
+          <span className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
             Toggle on to enable. Edit to customize the message.
           </span>
         </div>
@@ -284,7 +284,7 @@ export default function EmailListClient() {
                   <div className="flex items-center gap-2 pt-1">
                     <Link
                       href={`/email/automations/${a.id}`}
-                      className="text-xs bg-[#0f0f12] border border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5 font-medium"
+                      className="text-xs bg-[#0f0f12] border border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5 font-bold"
                     >
                       Edit
                     </Link>
@@ -293,7 +293,7 @@ export default function EmailListClient() {
                         type="button"
                         onClick={() => runAutomation(a)}
                         disabled={busyId === a.id || a.enabled !== 1}
-                        className="text-xs bg-[#0f0f12] border border-[#1f1f24] hover:bg-black disabled:opacity-50 rounded-full px-3 py-1.5 font-medium"
+                        className="text-xs bg-[#0f0f12] border border-[#1f1f24] hover:bg-black disabled:opacity-50 rounded-full px-3 py-1.5 font-bold"
                         title={
                           a.enabled !== 1
                             ? "Enable this automation to send"
@@ -324,12 +324,12 @@ export default function EmailListClient() {
             <table className="w-full text-sm">
               <thead className="bg-black text-zinc-400">
                 <tr>
-                  <th className="text-left px-4 py-2 font-medium">Sent</th>
-                  <th className="text-left px-4 py-2 font-medium">Subject</th>
-                  <th className="text-left px-4 py-2 font-medium">Audience</th>
-                  <th className="text-left px-4 py-2 font-medium">Recipients</th>
-                  <th className="text-left px-4 py-2 font-medium">Delivered</th>
-                  <th className="text-left px-4 py-2 font-medium">Status</th>
+                  <th className="text-left px-4 py-2 font-bold">Sent</th>
+                  <th className="text-left px-4 py-2 font-bold">Subject</th>
+                  <th className="text-left px-4 py-2 font-bold">Audience</th>
+                  <th className="text-left px-4 py-2 font-bold">Recipients</th>
+                  <th className="text-left px-4 py-2 font-bold">Delivered</th>
+                  <th className="text-left px-4 py-2 font-bold">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#1f1f24]">

@@ -82,7 +82,7 @@ export default function MapPinDropModal({
                 type="button"
                 onClick={() => setStatus(key)}
                 className={
-                  "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition border-2 " +
+                  "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-bold transition border-2 " +
                   (selected ? "border-slate-900" : "border-transparent")
                 }
                 style={{ backgroundColor: meta.color, color: meta.textColor }}
@@ -140,7 +140,7 @@ export default function MapPinDropModal({
                         onChange={() => toggleObjection(o)}
                         className="h-4 w-4 rounded border-[#2a2a32] accent-slate-900"
                       />
-                      <span className="font-medium">{o}</span>
+                      <span className="font-bold">{o}</span>
                     </label>
                   </li>
                 );

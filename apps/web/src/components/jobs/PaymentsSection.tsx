@@ -72,7 +72,7 @@ export default function PaymentsSection({
           <button
             type="button"
             onClick={() => setModalOpen(true)}
-            className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-1.5 font-medium"
+            className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-1.5 font-bold"
           >
             Record payment
           </button>
@@ -85,7 +85,7 @@ export default function PaymentsSection({
           <button
             type="button"
             onClick={() => setModalOpen(true)}
-            className="mt-3 text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 font-medium"
+            className="mt-3 text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 font-bold"
           >
             Record payment
           </button>
@@ -100,7 +100,7 @@ export default function PaymentsSection({
               <div className="min-w-0">
                 <div className="flex items-center gap-2 text-sm text-white">
                   <span
-                    className="font-medium tabular-nums"
+                    className="font-bold tabular-nums"
                     suppressHydrationWarning
                   >
                     {formatDate(p.payment_date, mounted)}
@@ -129,7 +129,7 @@ export default function PaymentsSection({
                 <button
                   type="button"
                   onClick={() => deletePayment(p.id)}
-                  className="text-xs text-zinc-500 hover:text-rose-600"
+                  className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:text-rose-600"
                   aria-label="Delete payment"
                 >
                   Delete

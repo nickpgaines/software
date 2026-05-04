@@ -69,7 +69,7 @@ function SettingsTabsInner({ username }: { username: string }) {
                 key={t.key}
                 onClick={() => changeTab(t.key)}
                 className={
-                  "whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-medium transition " +
+                  "whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-bold transition " +
                   (active
                     ? "border-slate-900 text-white"
                     : "border-transparent text-zinc-400 hover:text-zinc-300")
@@ -289,7 +289,7 @@ function ProfilePanel({ username }: { username: string }) {
                 )}
               </div>
               {isAdminEnv && (
-                <p className="text-xs text-zinc-500">
+                <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
                   This is the built-in admin account. Create an employee record to
                   manage your own profile.
                 </p>
@@ -302,7 +302,7 @@ function ProfilePanel({ username }: { username: string }) {
                   type="button"
                   onClick={save}
                   disabled={saving}
-                  className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-4 py-2 font-medium"
+                  className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-4 py-2 font-bold"
                 >
                   {saving ? "Saving…" : "Save photo"}
                 </button>
@@ -320,9 +320,9 @@ function ProfilePanel({ username }: { username: string }) {
           </dl>
 
           {!isAdminEnv && (
-            <p className="text-xs text-zinc-500">
+            <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
               To change your name, email, or password, edit your record from
-              the <span className="font-medium">Employees</span> page.
+              the <span className="font-bold">Employees</span> page.
             </p>
           )}
         </>
@@ -433,7 +433,7 @@ function CompanyPanel() {
         <button
           type="submit"
           disabled={saving || loading}
-          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
         >
           {saving ? "Saving…" : "Save changes"}
         </button>
@@ -553,7 +553,7 @@ function PaymentsPanel() {
         <p className="text-sm text-zinc-500">Loading…</p>
       ) : !status?.configured ? (
         <div className="border border-amber-200 bg-amber-50 rounded-2xl px-4 py-3">
-          <p className="text-sm text-amber-800 font-medium">
+          <p className="text-sm text-amber-800 font-bold">
             Stripe platform keys aren&apos;t configured.
           </p>
           <p className="text-xs text-amber-700 mt-1">
@@ -579,7 +579,7 @@ function PaymentsPanel() {
               type="button"
               onClick={startConnect}
               disabled={working}
-              className="text-sm bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+              className="text-sm bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
             >
               {working ? "Opening Stripe…" : "Create new Stripe account"}
             </button>
@@ -592,13 +592,13 @@ function PaymentsPanel() {
                   ? undefined
                   : "Set STRIPE_CONNECT_CLIENT_ID to enable sign-in"
               }
-              className="text-sm border border-[#2a2a32] bg-[#0f0f12] hover:bg-black disabled:bg-black disabled:text-zinc-500 disabled:cursor-not-allowed text-zinc-300 rounded-full px-5 py-2 font-medium"
+              className="text-sm border border-[#2a2a32] bg-[#0f0f12] hover:bg-black disabled:bg-black disabled:text-zinc-500 disabled:cursor-not-allowed text-zinc-300 rounded-full px-5 py-2 font-bold"
             >
               Sign in to existing Stripe
             </button>
           </div>
           {!status.oauth_configured && (
-            <p className="text-xs text-zinc-500">
+            <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
               The &ldquo;Sign in&rdquo; option is unavailable until{" "}
               <code>STRIPE_CONNECT_CLIENT_ID</code> is set in the deployment
               environment.
@@ -663,7 +663,7 @@ function PaymentsPanel() {
                 type="button"
                 onClick={startConnect}
                 disabled={working}
-                className="mt-2 text-xs bg-amber-600 hover:bg-amber-500 disabled:bg-slate-400 text-white rounded-full px-3 py-1.5 font-medium"
+                className="mt-2 text-xs bg-amber-600 hover:bg-amber-500 disabled:bg-slate-400 text-white rounded-full px-3 py-1.5 font-bold"
               >
                 {working ? "Opening Stripe…" : "Finish onboarding"}
               </button>
@@ -708,7 +708,7 @@ function Capability({ ok, label }: { ok: boolean; label: string }) {
     >
       <div
         className={
-          "text-xs font-medium " +
+          "text-xs font-bold " +
           (ok ? "text-emerald-700" : "text-zinc-400")
         }
       >
@@ -929,7 +929,7 @@ function SubscriptionsPanel() {
         {editingId === null && (
           <button
             onClick={startNew}
-            className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 font-medium"
+            className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 font-bold"
           >
             New template
           </button>
@@ -1048,7 +1048,7 @@ function SubscriptionsPanel() {
             <button
               type="submit"
               disabled={saving}
-              className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+              className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
             >
               {saving ? "Saving…" : "Save template"}
             </button>
@@ -1104,7 +1104,7 @@ function SubscriptionsPanel() {
                   <button
                     onClick={() => setActionTpl(t)}
                     disabled={t.active === 0}
-                    className="text-xs bg-slate-900 hover:bg-slate-800 disabled:bg-[#2a2a32] text-white rounded-full px-3 py-1.5 font-medium"
+                    className="text-xs bg-slate-900 hover:bg-slate-800 disabled:bg-[#2a2a32] text-white rounded-full px-3 py-1.5 font-bold"
                   >
                     Send / Accept
                   </button>
@@ -1217,7 +1217,7 @@ function RecentSubscriptions({
                   <>
                     <button
                       onClick={() => updateStatus(s.id, "active")}
-                      className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-3 py-1.5 font-medium"
+                      className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-3 py-1.5 font-bold"
                     >
                       Mark accepted
                     </button>
@@ -1443,19 +1443,19 @@ function SendOrAcceptModal({
           <button
             onClick={() => submit("send")}
             disabled={submitting}
-            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-4 py-2 font-medium flex-1"
+            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-4 py-2 font-bold flex-1"
           >
             Send to customer
           </button>
           <button
             onClick={() => submit("accept")}
             disabled={submitting}
-            className="text-sm bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white rounded-full px-4 py-2 font-medium flex-1"
+            className="text-sm bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white rounded-full px-4 py-2 font-bold flex-1"
           >
             Accept on device
           </button>
         </div>
-        <p className="text-xs text-zinc-500">
+        <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
           &quot;Send&quot; messages the customer with the offer.
           &quot;Accept on device&quot; activates it immediately for in-person
           sign-ups.
@@ -1539,7 +1539,7 @@ function CreateTermsModal({
           <button
             type="submit"
             disabled={saving}
-            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
           >
             {saving ? "Saving…" : "Save terms"}
           </button>
@@ -1754,7 +1754,7 @@ function MessagingPanel() {
 
       <div
         className={
-          "flex items-center gap-2 text-xs font-medium rounded-full px-3 py-1 w-fit " +
+          "flex items-center gap-2 text-xs font-bold rounded-full px-3 py-1 w-fit " +
           (status?.configured
             ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
             : "bg-black text-zinc-400 border border-[#1f1f24]")
@@ -1797,7 +1797,7 @@ function MessagingPanel() {
           <li>Paste them below along with the number you bought.</li>
           <li>
             In Twilio, open your number&apos;s settings and set{" "}
-            <span className="font-medium">A message comes in</span> to the
+            <span className="font-bold">A message comes in</span> to the
             webhook URL below (HTTP POST).
           </li>
         </ol>
@@ -1815,7 +1815,7 @@ function MessagingPanel() {
             <button
               type="button"
               onClick={copyWebhook}
-              className="text-sm bg-[#0f0f12] border border-[#1f1f24] hover:bg-black rounded-full px-4 py-2 font-medium"
+              className="text-sm bg-[#0f0f12] border border-[#1f1f24] hover:bg-black rounded-full px-4 py-2 font-bold"
             >
               {copied ? "Copied" : "Copy"}
             </button>
@@ -1863,7 +1863,7 @@ function MessagingPanel() {
         <button
           type="submit"
           disabled={saving || loading}
-          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
         >
           {saving ? "Saving…" : "Save changes"}
         </button>
@@ -1959,7 +1959,7 @@ function CallingPanel() {
 
       <div
         className={
-          "flex items-center gap-2 text-xs font-medium rounded-full px-3 py-1 w-fit " +
+          "flex items-center gap-2 text-xs font-bold rounded-full px-3 py-1 w-fit " +
           (status?.configured
             ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
             : "bg-black text-zinc-400 border border-[#1f1f24]")
@@ -1991,7 +1991,7 @@ function CallingPanel() {
         <ol className="list-decimal list-inside space-y-1 text-zinc-400">
           <li>
             In the Twilio Console, go to{" "}
-            <span className="font-medium">Account → API keys & tokens</span>{" "}
+            <span className="font-bold">Account → API keys & tokens</span>{" "}
             and click <strong>Create API key</strong>. Type:{" "}
             <span className="font-mono">Standard</span>. Copy the{" "}
             <span className="font-mono">SID</span> (starts with{" "}
@@ -2000,9 +2000,9 @@ function CallingPanel() {
             once.
           </li>
           <li>
-            In Twilio, go to <span className="font-medium">Voice → Manage → TwiML Apps</span>{" "}
+            In Twilio, go to <span className="font-bold">Voice → Manage → TwiML Apps</span>{" "}
             and click <strong>Create new TwiML App</strong>. Set the{" "}
-            <span className="font-medium">Voice → Request URL</span> to the
+            <span className="font-bold">Voice → Request URL</span> to the
             URL below (HTTP POST). Save and copy the App SID (starts with{" "}
             <span className="font-mono">AP</span>).
           </li>
@@ -2076,7 +2076,7 @@ function CallingPanel() {
         <button
           type="submit"
           disabled={saving || loading}
-          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
         >
           {saving ? "Saving…" : "Save changes"}
         </button>
@@ -2164,7 +2164,7 @@ function EmailPanel() {
 
       <div
         className={
-          "flex items-center gap-2 text-xs font-medium rounded-full px-3 py-1 w-fit " +
+          "flex items-center gap-2 text-xs font-bold rounded-full px-3 py-1 w-fit " +
           (status?.configured
             ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
             : "bg-black text-zinc-400 border border-[#1f1f24]")
@@ -2263,7 +2263,7 @@ function EmailPanel() {
         <button
           type="submit"
           disabled={saving || loading}
-          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
         >
           {saving ? "Saving…" : "Save changes"}
         </button>
@@ -2354,7 +2354,7 @@ function AiPanel() {
 
       <div
         className={
-          "flex items-center gap-2 text-xs font-medium rounded-full px-3 py-1 w-fit " +
+          "flex items-center gap-2 text-xs font-bold rounded-full px-3 py-1 w-fit " +
           (status?.configured
             ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
             : "bg-black text-zinc-400 border border-[#1f1f24]")
@@ -2435,7 +2435,7 @@ function AiPanel() {
             "e.g. Friendly and concise. Never defensive. If a customer complains, always offer a free re-clean and a callback within 24 hours."
           }
         />
-        <p className="text-xs text-zinc-500 mt-1">
+        <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mt-2">
           Used as part of the prompt for every drafted reply. Describe tone,
           policies, and how you want to handle complaints.
         </p>
@@ -2446,7 +2446,7 @@ function AiPanel() {
         <button
           type="submit"
           disabled={saving || loading}
-          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
         >
           {saving ? "Saving…" : "Save changes"}
         </button>

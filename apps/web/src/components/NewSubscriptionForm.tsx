@@ -229,7 +229,7 @@ export default function NewSubscriptionForm() {
           type="button"
           onClick={submit}
           disabled={!canSubmit}
-          className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2.5 text-sm font-medium shadow-sm"
+          className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2.5 text-sm font-bold shadow-sm"
         >
           <span aria-hidden>⊕</span>
           {submitting ? "Creating…" : "Create Subscription"}
@@ -390,7 +390,7 @@ export default function NewSubscriptionForm() {
                 )}
                 {linkedTerms && (
                   <div className="text-zinc-400">
-                    Terms: <span className="font-medium">{linkedTerms.name}</span>
+                    Terms: <span className="font-bold">{linkedTerms.name}</span>
                   </div>
                 )}
                 {selectedTemplate.require_signature === 1 && (
@@ -761,7 +761,7 @@ function NewCustomerModal({
           <button
             type="submit"
             disabled={saving}
-            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
           >
             {saving ? "Saving…" : "Save customer"}
           </button>
@@ -891,7 +891,7 @@ function NewTemplateModal({
           <button
             type="submit"
             disabled={saving}
-            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
           >
             {saving ? "Saving…" : "Save template"}
           </button>

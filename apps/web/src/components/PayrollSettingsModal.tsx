@@ -563,7 +563,7 @@ function SegmentedControl<T extends string>({
             className={
               "px-4 py-1.5 rounded-full transition " +
               (active
-                ? "bg-[#0f0f12] text-white shadow-sm font-medium"
+                ? "bg-[#0f0f12] text-white shadow-sm font-bold"
                 : "text-zinc-400 hover:text-white")
             }
           >

@@ -157,7 +157,7 @@ export default function LeadsPipelineClient({
           <button
             type="button"
             onClick={() => setShowNew(true)}
-            className="inline-flex items-center gap-1.5 bg-sky-400 hover:bg-sky-500 text-white text-sm font-medium px-4 py-2 rounded-full"
+            className="inline-flex items-center gap-1.5 bg-sky-400 hover:bg-sky-500 text-white text-sm font-bold px-4 py-2 rounded-full"
           >
             <Plus className="w-4 h-4" />
             New Lead
@@ -172,7 +172,7 @@ export default function LeadsPipelineClient({
       </div>
 
       <div>
-        <div className="inline-flex bg-[#0f0f12] border border-sky-200 text-sky-600 px-4 py-1 rounded-full text-sm font-medium">
+        <div className="inline-flex bg-[#0f0f12] border border-sky-200 text-sky-600 px-4 py-1 rounded-full text-sm font-bold">
           Leads
         </div>
       </div>
@@ -209,7 +209,7 @@ export default function LeadsPipelineClient({
                           {stageLeads.length === 0 ? "Empty" : ""}
                         </div>
                       </div>
-                      <div className="text-zinc-500 font-medium">
+                      <div className="text-zinc-500 font-bold">
                         {stageLeads.length}
                       </div>
                     </div>
@@ -220,7 +220,7 @@ export default function LeadsPipelineClient({
                       s.key === "new" ? (
                         <EmptyNewHint />
                       ) : (
-                        <p className="text-xs text-zinc-500 px-2 py-1">
+                        <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 px-2 py-1">
                           No leads in this stage.
                         </p>
                       )
@@ -349,7 +349,7 @@ function ListView({ leads }: { leads: Lead[] }) {
         <tbody>
           {leads.map((l) => (
             <tr key={l.id} className="border-t border-[#1f1f24]">
-              <td className="px-4 py-3 text-white font-medium">
+              <td className="px-4 py-3 text-white font-bold">
                 {leadName(l)}
               </td>
               <td className="px-4 py-3 text-zinc-400">{l.email ?? "—"}</td>

@@ -107,7 +107,7 @@ export default function NavBar() {
               key={href}
               href={href}
               className={
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium mb-0.5 transition-colors " +
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-bold mb-0.5 transition-colors " +
                 (active
                   ? "bg-black text-white"
                   : "text-zinc-400 hover:bg-black hover:text-white")

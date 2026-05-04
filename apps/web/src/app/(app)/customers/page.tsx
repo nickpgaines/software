@@ -127,10 +127,10 @@ function CustomersPage() {
           <table className="w-full text-sm">
             <thead className="bg-black text-zinc-400">
               <tr>
-                <th className="text-left px-4 py-2 font-medium">Name</th>
-                <th className="text-left px-4 py-2 font-medium">Address</th>
-                <th className="text-left px-4 py-2 font-medium">Phone</th>
-                <th className="text-left px-4 py-2 font-medium">Email</th>
+                <th className="text-left px-4 py-2 font-bold">Name</th>
+                <th className="text-left px-4 py-2 font-bold">Address</th>
+                <th className="text-left px-4 py-2 font-bold">Phone</th>
+                <th className="text-left px-4 py-2 font-bold">Email</th>
                 <th className="px-4 py-2" />
               </tr>
             </thead>
@@ -273,7 +273,7 @@ function CustomerForm({
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-[#0f0f12] rounded-lg shadow-lg w-full max-w-md">
         <div className="flex items-center justify-between px-4 py-3 border-b border-[#1f1f24]">
-          <h3 className="font-medium">
+          <h3 className="font-bold">
             {customer ? "Edit customer" : "New customer"}
           </h3>
           <button

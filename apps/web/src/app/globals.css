@@ -44,6 +44,16 @@ select:not([class*="text-"]) {
   color-scheme: dark;
 }
 
+/* Pulse typography on form controls — bold + slightly tight tracking
+   so typed values match the rest of the UI. Inputs that explicitly set
+   their own font-* class via Tailwind override this. */
+input:not([class*="font-"]):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="reset"]):not([type="button"]):not([type="file"]),
+textarea:not([class*="font-"]),
+select:not([class*="font-"]) {
+  font-weight: 700;
+  letter-spacing: -0.005em;
+}
+
 input::placeholder,
 textarea::placeholder {
   color: #52525b; /* zinc-600 */

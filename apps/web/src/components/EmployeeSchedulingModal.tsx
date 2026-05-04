@@ -473,13 +473,13 @@ export default function EmployeeSchedulingModal({
             <div className="flex items-center gap-4">
               <button
                 onClick={selectMonFri}
-                className="text-sky-600 hover:text-sky-800 font-medium"
+                className="text-sky-600 hover:text-sky-800 font-bold"
               >
                 Select Mon–Fri
               </button>
               <button
                 onClick={selectAll}
-                className="text-sky-600 hover:text-sky-800 font-medium"
+                className="text-sky-600 hover:text-sky-800 font-bold"
               >
                 Select All
               </button>
@@ -563,7 +563,7 @@ export default function EmployeeSchedulingModal({
                       }
                     >
                       {sh ? (
-                        <span className="font-medium">
+                        <span className="font-bold">
                           {formatTimeShort(sh.start_minutes)}–
                           {formatTimeShort(sh.end_minutes)}
                         </span>
@@ -683,7 +683,7 @@ export default function EmployeeSchedulingModal({
               <div className="text-center mt-2">
                 <button
                   onClick={removeSelected}
-                  className="text-sm text-rose-600 hover:text-rose-700 font-medium"
+                  className="text-sm text-rose-600 hover:text-rose-700 font-bold"
                 >
                   Remove {selected.size} shift{selected.size === 1 ? "" : "s"}
                 </button>

@@ -182,7 +182,7 @@ export default function TodaySchedule({ initialJobs }: { initialJobs: Job[] }) {
                   </div>
                   <span
                     className={
-                      "text-xs px-2 py-1 rounded-md font-medium " +
+                      "text-xs px-2 py-1 rounded-md font-bold " +
                       statusClasses(j.status)
                     }
                   >

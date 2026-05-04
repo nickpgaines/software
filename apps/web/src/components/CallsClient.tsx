@@ -113,13 +113,13 @@ export default function CallsClient() {
           <table className="w-full text-sm">
             <thead className="bg-black text-zinc-400">
               <tr>
-                <th className="text-left px-4 py-2 font-medium">When</th>
-                <th className="text-left px-4 py-2 font-medium">Direction</th>
-                <th className="text-left px-4 py-2 font-medium">Customer</th>
-                <th className="text-left px-4 py-2 font-medium">Number</th>
-                <th className="text-left px-4 py-2 font-medium">Status</th>
-                <th className="text-left px-4 py-2 font-medium">Duration</th>
-                <th className="text-left px-4 py-2 font-medium">Recording</th>
+                <th className="text-left px-4 py-2 font-bold">When</th>
+                <th className="text-left px-4 py-2 font-bold">Direction</th>
+                <th className="text-left px-4 py-2 font-bold">Customer</th>
+                <th className="text-left px-4 py-2 font-bold">Number</th>
+                <th className="text-left px-4 py-2 font-bold">Status</th>
+                <th className="text-left px-4 py-2 font-bold">Duration</th>
+                <th className="text-left px-4 py-2 font-bold">Recording</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#1f1f24]">
@@ -162,7 +162,7 @@ export default function CallsClient() {
                           className="h-8"
                         />
                       ) : (
-                        <span className="text-xs text-zinc-500">—</span>
+                        <span className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">—</span>
                       )}
                     </td>
                   </tr>

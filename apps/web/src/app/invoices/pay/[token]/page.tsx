@@ -90,7 +90,7 @@ export default async function InvoicePayPage({
         token={params.token}
         cancelled={searchParams.status === "cancel"}
       />
-      <p className="mt-6 text-xs text-zinc-500 text-center">
+      <p className="mt-6 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 text-center">
         Payments are processed securely by Stripe.
       </p>
     </Shell>

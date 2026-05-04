@@ -148,7 +148,7 @@ export default function MapLassoPanel({
         <div className="px-4 py-3 border-t border-[#1f1f24] flex justify-end">
           <button
             onClick={onClose}
-            className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-1.5 font-medium"
+            className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-1.5 font-bold"
           >
             Done
           </button>
@@ -185,7 +185,7 @@ export default function MapLassoPanel({
       <div className="px-4 pb-3">
         <ul className="border border-[#1f1f24] rounded-lg max-h-44 overflow-y-auto divide-y divide-[#1f1f24]">
           {customers.length === 0 ? (
-            <li className="px-3 py-6 text-center text-xs text-zinc-500">
+            <li className="px-3 py-6 text-center text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
               No customers selected.
             </li>
           ) : (
@@ -274,7 +274,7 @@ export default function MapLassoPanel({
         <button
           onClick={send}
           disabled={sending || withPhone.length === 0 || !body.trim()}
-          className="inline-flex items-center gap-1.5 text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-4 py-1.5 font-medium"
+          className="inline-flex items-center gap-1.5 text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-4 py-1.5 font-bold"
         >
           <Send className="h-3.5 w-3.5" />
           {sending

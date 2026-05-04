@@ -406,7 +406,7 @@ export default function JobForm({
           <button
             type="submit"
             disabled={saving}
-            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium shadow-sm"
+            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold shadow-sm"
           >
             {saving
               ? "Saving…"
@@ -700,7 +700,7 @@ export default function JobForm({
         <button
           type="submit"
           disabled={saving}
-          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium shadow-sm"
+          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold shadow-sm"
         >
           {saving
             ? "Saving…"
@@ -1036,7 +1036,7 @@ function StaffMultiPicker({
             >
               <span className="font-bold text-white tracking-tight">{s.name}</span>
               {s.role && (
-                <span className="text-xs text-zinc-500">{s.role}</span>
+                <span className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">{s.role}</span>
               )}
             </button>
           ))}
@@ -1227,7 +1227,7 @@ function Dropzone() {
       <p className="mt-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
         Click to upload or drag and drop
       </p>
-      <p className="text-xs text-zinc-500">PNG, JPG, GIF up to 5MB</p>
+      <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">PNG, JPG, GIF up to 5MB</p>
     </div>
   );
 }

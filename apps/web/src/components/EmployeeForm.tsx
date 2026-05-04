@@ -242,7 +242,7 @@ export default function EmployeeForm({
           <button
             type="submit"
             disabled={saving}
-            className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-lg px-5 py-2 text-sm font-medium"
+            className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-lg px-5 py-2 text-sm font-bold"
           >
             {saving ? "Saving…" : "Save"}
           </button>

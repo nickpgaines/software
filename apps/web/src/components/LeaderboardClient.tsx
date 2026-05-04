@@ -450,16 +450,16 @@ export default function LeaderboardClient({
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-xs uppercase tracking-wider text-zinc-500">
-                  <th className="text-left px-5 py-3 font-medium">Rank</th>
-                  <th className="text-left px-5 py-3 font-medium">
+                <tr className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+                  <th className="text-left px-5 py-3 font-bold">Rank</th>
+                  <th className="text-left px-5 py-3 font-bold">
                     {personColumn}
                   </th>
-                  <th className="text-left px-5 py-3 font-medium">Role</th>
-                  <th className="text-right px-5 py-3 font-medium">Revenue</th>
-                  <th className="text-right px-5 py-3 font-medium">Jobs</th>
-                  <th className="text-right px-5 py-3 font-medium">{avgColumn}</th>
-                  <th className="text-right px-5 py-3 font-medium">{lastColumn}</th>
+                  <th className="text-left px-5 py-3 font-bold">Role</th>
+                  <th className="text-right px-5 py-3 font-bold">Revenue</th>
+                  <th className="text-right px-5 py-3 font-bold">Jobs</th>
+                  <th className="text-right px-5 py-3 font-bold">{avgColumn}</th>
+                  <th className="text-right px-5 py-3 font-bold">{lastColumn}</th>
                 </tr>
               </thead>
               <tbody>
@@ -516,7 +516,7 @@ export default function LeaderboardClient({
                       <td className="px-5 py-3">
                         <span
                           className={
-                            "text-xs px-2.5 py-1 rounded-full font-medium " +
+                            "text-xs px-2.5 py-1 rounded-full font-bold " +
                             roleBadgeClass(r.role)
                           }
                         >

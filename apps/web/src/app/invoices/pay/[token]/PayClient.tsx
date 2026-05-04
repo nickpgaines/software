@@ -44,7 +44,7 @@ export default function PayClient({
         type="button"
         onClick={pay}
         disabled={working}
-        className="w-full bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-3 text-sm font-medium"
+        className="w-full bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-3 text-sm font-bold"
       >
         {working ? "Opening checkout…" : "Pay with card"}
       </button>

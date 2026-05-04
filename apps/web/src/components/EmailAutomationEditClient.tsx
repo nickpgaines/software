@@ -243,7 +243,7 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
       {!emailStatus?.configured && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
           Email isn&apos;t connected yet. Go to{" "}
-          <Link href="/settings?tab=email" className="underline font-medium">
+          <Link href="/settings?tab=email" className="underline font-bold">
             Settings → Email
           </Link>{" "}
           to add your Resend API key and verified sending address before this
@@ -320,7 +320,7 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
                 placeholder="Day"
                 className="border border-[#1f1f24] rounded-full px-3 py-2 text-sm bg-[#0f0f12] w-24"
               />
-              <span className="text-xs text-zinc-500">
+              <span className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
                 Sends once per year on this date when enabled.
               </span>
             </div>
@@ -372,7 +372,7 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
             type="button"
             onClick={handleTestSend}
             disabled={testing || !emailStatus?.configured}
-            className="text-sm bg-[#0f0f12] border border-[#1f1f24] hover:bg-black disabled:opacity-50 rounded-full px-4 py-2 font-medium"
+            className="text-sm bg-[#0f0f12] border border-[#1f1f24] hover:bg-black disabled:opacity-50 rounded-full px-4 py-2 font-bold"
           >
             Send test
           </button>
@@ -381,7 +381,7 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
             type="button"
             onClick={handleSave}
             disabled={saving}
-            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
           >
             {saving ? "Saving…" : "Save"}
           </button>
@@ -392,7 +392,7 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
               disabled={
                 saving || automation.enabled !== 1 || !emailStatus?.configured
               }
-              className="text-sm bg-emerald-600 hover:bg-emerald-700 disabled:bg-[#2a2a32] text-white rounded-full px-5 py-2 font-medium"
+              className="text-sm bg-emerald-600 hover:bg-emerald-700 disabled:bg-[#2a2a32] text-white rounded-full px-5 py-2 font-bold"
               title={
                 automation.enabled !== 1
                   ? "Enable to send"

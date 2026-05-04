@@ -185,7 +185,7 @@ export default function MapTerritoryModal({
                 ))}
               </div>
             )}
-            <p className="text-xs text-zinc-500 mt-1.5">
+            <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mt-2.5">
               The territory will use this employee&apos;s color on the map.
             </p>
           </div>
@@ -216,7 +216,7 @@ export default function MapTerritoryModal({
             type="button"
             onClick={save}
             disabled={saving || staffId == null}
-            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
           >
             {saving ? "Saving…" : draft.id ? "Save" : "Continue"}
           </button>

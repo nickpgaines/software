@@ -278,14 +278,14 @@ function CallWidget() {
           </svg>
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium truncate">
+          <div className="text-sm font-bold truncate">
             {state.target.customerName || state.target.toPhone}
           </div>
-          <div className="text-xs text-zinc-500 truncate">
+          <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 truncate">
             {state.target.customerName ? state.target.toPhone : status}
           </div>
         </div>
-        <div className="text-xs text-zinc-500 tabular-nums">{status}</div>
+        <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 tabular-nums">{status}</div>
       </div>
 
       <div className="flex items-center gap-2 mt-3">
@@ -294,7 +294,7 @@ function CallWidget() {
           onClick={toggleMute}
           disabled={state.kind !== "in_call"}
           className={
-            "flex-1 text-xs rounded-full px-3 py-2 font-medium transition " +
+            "flex-1 text-xs rounded-full px-3 py-2 font-bold transition " +
             (muted
               ? "bg-amber-500 text-white hover:bg-amber-400"
               : "bg-slate-800 hover:bg-slate-700 disabled:opacity-50")
@@ -305,7 +305,7 @@ function CallWidget() {
         <button
           type="button"
           onClick={hangUp}
-          className="flex-1 text-xs rounded-full px-3 py-2 font-medium bg-rose-600 hover:bg-rose-500 transition"
+          className="flex-1 text-xs rounded-full px-3 py-2 font-bold bg-rose-600 hover:bg-rose-500 transition"
         >
           Hang up
         </button>

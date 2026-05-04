@@ -307,7 +307,7 @@ export default function RecordPaymentModal({
                     No Stripe account connected.{" "}
                     <a
                       href="/settings?tab=payments"
-                      className="underline font-medium"
+                      className="underline font-bold"
                     >
                       Connect one in Settings
                     </a>{" "}
@@ -322,7 +322,7 @@ export default function RecordPaymentModal({
                     Stripe is still verifying this account.{" "}
                     <a
                       href="/settings?tab=payments"
-                      className="underline font-medium"
+                      className="underline font-bold"
                     >
                       Finish onboarding
                     </a>{" "}
@@ -372,7 +372,7 @@ export default function RecordPaymentModal({
               <button
                 type="submit"
                 disabled={saving || !amountValid}
-                className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+                className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
               >
                 {saving
                   ? method === "card"
@@ -513,7 +513,7 @@ function CardStep({
         <button
           type="submit"
           disabled={!stripe || !elements || !ready || submitting}
-          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
         >
           {submitting ? "Charging…" : `Charge $${(totalCents / 100).toFixed(2)}`}
         </button>

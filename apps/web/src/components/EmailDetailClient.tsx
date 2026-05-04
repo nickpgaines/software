@@ -117,11 +117,11 @@ export default function EmailDetailClient({ id }: { id: number }) {
         <table className="w-full text-sm">
           <thead className="bg-black text-zinc-400">
             <tr>
-              <th className="text-left px-4 py-2 font-medium">Email</th>
-              <th className="text-left px-4 py-2 font-medium">Name</th>
-              <th className="text-left px-4 py-2 font-medium">Status</th>
-              <th className="text-left px-4 py-2 font-medium">Sent</th>
-              <th className="text-left px-4 py-2 font-medium">Error</th>
+              <th className="text-left px-4 py-2 font-bold">Email</th>
+              <th className="text-left px-4 py-2 font-bold">Name</th>
+              <th className="text-left px-4 py-2 font-bold">Status</th>
+              <th className="text-left px-4 py-2 font-bold">Sent</th>
+              <th className="text-left px-4 py-2 font-bold">Error</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#1f1f24]">

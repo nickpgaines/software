@@ -49,7 +49,7 @@ export default function ReportsClient() {
                 key={t.key}
                 onClick={() => setTab(t.key)}
                 className={
-                  "whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-medium transition " +
+                  "whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-bold transition " +
                   (active
                     ? "border-slate-900 text-white"
                     : "border-transparent text-zinc-400 hover:text-zinc-300")
@@ -240,12 +240,12 @@ function SalesPanel({ range }: { range: Range }) {
           ) : (
             <table className="w-full text-sm">
               <thead>
-                <tr className="text-xs uppercase tracking-wider text-zinc-500">
-                  <th className="text-left px-5 py-3 font-medium">Rep</th>
-                  <th className="text-right px-5 py-3 font-medium">Doors</th>
-                  <th className="text-right px-5 py-3 font-medium">Sales</th>
-                  <th className="text-right px-5 py-3 font-medium">Conv.</th>
-                  <th className="text-right px-5 py-3 font-medium">Revenue</th>
+                <tr className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+                  <th className="text-left px-5 py-3 font-bold">Rep</th>
+                  <th className="text-right px-5 py-3 font-bold">Doors</th>
+                  <th className="text-right px-5 py-3 font-bold">Sales</th>
+                  <th className="text-right px-5 py-3 font-bold">Conv.</th>
+                  <th className="text-right px-5 py-3 font-bold">Revenue</th>
                 </tr>
               </thead>
               <tbody>
@@ -553,15 +553,17 @@ function StatCard({
   return (
     <div
       className={
-        "bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm " +
-        (compact ? "p-4" : "p-5")
+        "bg-[#0f0f12] border border-[#1f1f24] rounded-2xl " +
+        (compact ? "px-4 py-3" : "px-5 py-4")
       }
     >
-      <div className="text-xs text-zinc-500">{label}</div>
+      <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-1.5">
+        {label}
+      </div>
       <div
         className={
-          (compact ? "text-xl" : "text-2xl") +
-          " font-bold mt-1 tabular-nums " +
+          (compact ? "text-[22px]" : "text-[26px]") +
+          " font-black tracking-tight leading-none tabular-nums " +
           (valueClassName || "text-white")
         }
       >
@@ -587,10 +589,10 @@ function BreakdownTable({
       ) : (
         <table className="w-full text-sm">
           <thead>
-            <tr className="text-xs uppercase tracking-wider text-zinc-500 bg-black">
-              <th className="text-left px-5 py-3 font-medium">{header}</th>
-              <th className="text-right px-5 py-3 font-medium">Count</th>
-              <th className="text-right px-5 py-3 font-medium">MRR</th>
+            <tr className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 bg-black">
+              <th className="text-left px-5 py-3 font-bold">{header}</th>
+              <th className="text-right px-5 py-3 font-bold">Count</th>
+              <th className="text-right px-5 py-3 font-bold">MRR</th>
             </tr>
           </thead>
           <tbody>
@@ -646,11 +648,15 @@ function Stats({
       {items.map((it) => (
         <div
           key={it.label}
-          className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5 shadow-sm"
+          className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl px-5 py-4 flex items-center justify-between gap-4"
         >
-          <div className="text-xs text-zinc-500">{it.label}</div>
-          <div className="text-[40px] font-extrabold tracking-tight leading-none text-white mt-1 tabular-nums">
-            {it.value}
+          <div className="min-w-0">
+            <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-1.5">
+              {it.label}
+            </div>
+            <div className="text-[26px] font-black tracking-tight leading-none tabular-nums text-white">
+              {it.value}
+            </div>
           </div>
         </div>
       ))}
@@ -826,20 +832,20 @@ function PayrollTable({
         ) : (
           <table className="w-full text-sm">
             <thead>
-              <tr className="text-xs uppercase tracking-wider text-zinc-500 bg-black">
-                <th className="text-left px-5 py-3 font-medium">Employee</th>
-                <th className="text-left px-5 py-3 font-medium">Email</th>
-                <th className="text-left px-5 py-3 font-medium">Role</th>
-                <th className="text-right px-5 py-3 font-medium">{rateLabel}</th>
-                <th className="text-right px-5 py-3 font-medium">Total</th>
+              <tr className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 bg-black">
+                <th className="text-left px-5 py-3 font-bold">Employee</th>
+                <th className="text-left px-5 py-3 font-bold">Email</th>
+                <th className="text-left px-5 py-3 font-bold">Role</th>
+                <th className="text-right px-5 py-3 font-bold">{rateLabel}</th>
+                <th className="text-right px-5 py-3 font-bold">Total</th>
                 {showTips && (
-                  <th className="text-right px-5 py-3 font-medium">Tips</th>
+                  <th className="text-right px-5 py-3 font-bold">Tips</th>
                 )}
                 {showBonus && (
-                  <th className="text-right px-5 py-3 font-medium">Bonus</th>
+                  <th className="text-right px-5 py-3 font-bold">Bonus</th>
                 )}
-                <th className="text-right px-5 py-3 font-medium">Payout</th>
-                <th className="text-center px-5 py-3 font-medium">Paid</th>
+                <th className="text-right px-5 py-3 font-bold">Payout</th>
+                <th className="text-center px-5 py-3 font-bold">Paid</th>
               </tr>
             </thead>
             <tbody>
@@ -897,7 +903,7 @@ function PayrollRowView({
       <td className="px-5 py-3 font-bold text-white tracking-tight">{row.name}</td>
       <td className="px-5 py-3 text-zinc-400">{row.email || "—"}</td>
       <td className="px-5 py-3">
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 text-xs font-medium capitalize">
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 text-xs font-bold capitalize">
           {row.role.replace(/_/g, " ")}
         </span>
       </td>

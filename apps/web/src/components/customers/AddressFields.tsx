@@ -171,7 +171,7 @@ function AddressFieldsInner({
             required
           />
           {loading && (
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-zinc-500">
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
               …
             </span>
           )}
@@ -193,7 +193,7 @@ function AddressFieldsInner({
                         : "text-zinc-300 hover:bg-black")
                     }
                   >
-                    <div className="font-medium truncate">{p.mainText}</div>
+                    <div className="font-bold truncate">{p.mainText}</div>
                     {p.secondaryText && (
                       <div className="text-xs text-zinc-400 truncate">
                         {p.secondaryText}

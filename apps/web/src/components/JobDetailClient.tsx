@@ -395,7 +395,7 @@ export default function JobDetailClient({
               <button
                 type="button"
                 onClick={() => setPaymentModalOpen(true)}
-                className="w-full inline-flex items-center justify-between border border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-medium"
+                className="w-full inline-flex items-center justify-between border border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold"
               >
                 <span>Record Payment</span>
                 <span className="text-zinc-500">›</span>
@@ -531,7 +531,7 @@ export default function JobDetailClient({
                           {li.description}
                         </div>
                       )}
-                      <div className="text-xs text-zinc-500 mt-1 flex gap-2 flex-wrap">
+                      <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mt-2 flex gap-2 flex-wrap">
                         <span>
                           Qty {li.quantity} · {money(li.price_cents)} ea
                         </span>
@@ -681,7 +681,7 @@ function Row({
 }) {
   return (
     <div className="flex items-baseline justify-between gap-4">
-      <dt className={"text-zinc-400 " + (bold ? "font-medium" : "")}>
+      <dt className={"text-zinc-400 " + (bold ? "font-bold" : "")}>
         {label}
       </dt>
       <dd
@@ -801,7 +801,7 @@ function JobStatusBadge({ status }: { status: UnifiedStatus }) {
   return (
     <span
       className={
-        "inline-flex items-center gap-1.5 text-xs font-medium px-2.5 py-1 rounded-full " +
+        "inline-flex items-center gap-1.5 text-xs font-bold px-2.5 py-1 rounded-full " +
         v.outer
       }
     >

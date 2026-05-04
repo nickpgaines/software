@@ -404,7 +404,7 @@ function Thread({
             onClick={draftReply}
             disabled={drafting}
             title="Draft a reply with Claude"
-            className="shrink-0 inline-flex items-center gap-1 text-xs font-medium bg-violet-50 hover:bg-violet-100 disabled:opacity-50 text-violet-900 border border-violet-200 rounded-full px-3 py-2"
+            className="shrink-0 inline-flex items-center gap-1 text-xs font-bold bg-violet-50 hover:bg-violet-100 disabled:opacity-50 text-violet-900 border border-violet-200 rounded-full px-3 py-2"
           >
             <svg
               className="w-3.5 h-3.5"

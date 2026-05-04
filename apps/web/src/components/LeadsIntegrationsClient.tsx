@@ -159,7 +159,7 @@ export default function LeadsIntegrationsClient({
                 type="button"
                 onClick={disconnect}
                 disabled={busy}
-                className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-sm font-medium px-5 py-2.5 rounded-lg"
+                className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-sm font-bold px-5 py-2.5 rounded-lg"
               >
                 Disconnect
               </button>
@@ -167,7 +167,7 @@ export default function LeadsIntegrationsClient({
               <button
                 type="button"
                 onClick={connect}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg"
+                className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg"
               >
                 Connect Meta
               </button>

@@ -134,7 +134,7 @@ export default function MapFilterPanel({
           </button>
           <div className="flex flex-wrap gap-1.5">
             {staff.length === 0 && (
-              <p className="text-xs text-zinc-500">No employees yet.</p>
+              <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">No employees yet.</p>
             )}
             {staff.map((s) => {
               const active =

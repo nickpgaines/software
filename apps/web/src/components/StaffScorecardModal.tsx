@@ -146,7 +146,7 @@ export default function StaffScorecardModal({
             </div>
             <h2 className="text-[40px] font-extrabold tracking-tight leading-none text-white truncate">
               {staff?.name || "—"}
-              <span className="text-zinc-500 font-medium">
+              <span className="text-zinc-500 font-bold">
                 {" "}
                 · {moneyShort((subs?.arr_cents || 0) + (ot?.revenue_cents || 0))}{" "}
                 this period
@@ -154,7 +154,7 @@ export default function StaffScorecardModal({
             </h2>
             <div className="flex items-center gap-2 mt-1">
               {staff?.role && (
-                <span className="text-xs px-2.5 py-1 rounded-full font-medium bg-rose-100 text-rose-600 capitalize">
+                <span className="text-xs px-2.5 py-1 rounded-full font-bold bg-rose-100 text-rose-600 capitalize">
                   {staff.role}
                 </span>
               )}
@@ -303,7 +303,7 @@ export default function StaffScorecardModal({
                       key={p.key}
                       className="border border-[#1f1f24] rounded-xl px-3 py-2"
                     >
-                      <div className="flex items-center justify-between text-xs text-zinc-500">
+                      <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
                         <span
                           className={"w-2 h-2 rounded-full " + p.color}
                         />
@@ -342,7 +342,7 @@ function Stat({
 }) {
   return (
     <div className="border border-[#1f1f24] rounded-xl px-4 py-3">
-      <div className="text-xs text-zinc-500">{label}</div>
+      <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">{label}</div>
       <div className="text-[40px] font-extrabold tracking-tight leading-none text-white tabular-nums mt-0.5">
         {value}
       </div>
