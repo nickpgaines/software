@@ -70,7 +70,7 @@ export default function NavBar() {
     return () => {
       cancelled = true;
     };
-  }, [pathname]);
+  }, []);
 
   async function logout() {
     await fetch("/api/logout", { method: "POST" });

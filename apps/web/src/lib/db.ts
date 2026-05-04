@@ -44,6 +44,25 @@ function makeClient(): Client {
       "TURSO_AUTH_TOKEN is not set. The app requires a Turso database; configure TURSO_DATABASE_URL and TURSO_AUTH_TOKEN in the environment."
     );
   }
+
+  // Optional embedded-replica mode: reads run against a local SQLite file,
+  // writes are forwarded to the remote primary and the local file syncs
+  // on an interval. Pages that issue several SELECTs collapse from N WAN
+  // round-trips to ~0. Enable by setting TURSO_LOCAL_REPLICA_PATH (e.g.
+  // "/tmp/nick360.db" on Vercel). When unset, falls back to direct remote.
+  const replicaPath = process.env.TURSO_LOCAL_REPLICA_PATH?.trim();
+  if (replicaPath) {
+    const syncIntervalRaw = process.env.TURSO_SYNC_INTERVAL?.trim();
+    const syncInterval = syncIntervalRaw ? Number(syncIntervalRaw) : 60;
+    return createClient({
+      url: `file:${replicaPath}`,
+      syncUrl: url,
+      authToken,
+      syncInterval: Number.isFinite(syncInterval) && syncInterval > 0 ? syncInterval : 60,
+      intMode: "number",
+    });
+  }
+
   return createClient({ url, authToken, intMode: "number" });
 }
 
@@ -296,7 +315,24 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
   );
 }
 
+// Bump when init() gains migrations that must run on existing deploys.
+// First call after deploy runs the full init; subsequent cold starts hit
+// the fast-path below (one SELECT) and skip the ~150 DDL statements.
+const SCHEMA_VERSION = 1;
+
 async function init(): Promise<void> {
+  // Fast path: if the schema is already at the current version, skip the
+  // entire CREATE/ALTER/INDEX block. Costs one SELECT instead of ~150
+  // round-trips per cold start.
+  try {
+    const row = await _db
+      .prepare("SELECT version FROM _schema_version WHERE id = 1 LIMIT 1")
+      .get<{ version: number }>();
+    if (row && row.version >= SCHEMA_VERSION) return;
+  } catch {
+    // Table doesn't exist yet — fall through to full init.
+  }
+
   // Pragmas. Best-effort — Turso ignores some, local file accepts both.
   try {
     await _db.prepare("PRAGMA foreign_keys = ON").run();
@@ -1459,6 +1495,21 @@ async function init(): Promise<void> {
       .prepare(`INSERT OR IGNORE INTO payroll_settings (id) VALUES (1)`)
       .run();
   }
+
+  // Stamp the schema version so subsequent cold starts hit the fast-path
+  // at the top of init().
+  await _db.exec(
+    `CREATE TABLE IF NOT EXISTS _schema_version (
+       id INTEGER PRIMARY KEY,
+       version INTEGER NOT NULL
+     )`
+  );
+  await _db
+    .prepare(
+      `INSERT INTO _schema_version (id, version) VALUES (1, ?)
+       ON CONFLICT(id) DO UPDATE SET version = excluded.version`
+    )
+    .run(SCHEMA_VERSION);
 }
 
 export async function getDb(): Promise<Db> {

@@ -61,13 +61,13 @@ export async function POST(req: Request) {
   const lastName = rest.join(" ");
   const passwordHash = hashPassword(password);
 
-  const companyId = await db.transaction(async (tx) => {
+  const { companyId, staffId } = await db.transaction(async (tx) => {
     const insertCompany = await tx
       .prepare("INSERT INTO company (name) VALUES (?)")
       .run(companyName);
     const newCompanyId = insertCompany.lastInsertRowid;
 
-    await tx
+    const insertStaff = await tx
       .prepare(
         `INSERT INTO staff
            (company_id, name, first_name, last_name, email, password_hash, permission_level)
@@ -81,6 +81,7 @@ export async function POST(req: Request) {
         email,
         passwordHash
       );
+    const newStaffId = insertStaff.lastInsertRowid;
 
     // Seed empty per-tenant settings rows so this company has its own
     // messaging / email / AI / Meta integration / payroll records.
@@ -198,10 +199,13 @@ export async function POST(req: Request) {
         .run(newCompanyId, name);
     }
 
-    return newCompanyId;
+    return { companyId: newCompanyId, staffId: newStaffId };
   });
 
-  const token = createSessionToken(email);
+  const token = createSessionToken(email, {
+    staffId: typeof staffId === "number" ? staffId : null,
+    companyId: typeof companyId === "number" ? companyId : null,
+  });
   const res = NextResponse.json({ ok: true, companyId });
   res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
