@@ -181,13 +181,43 @@ export default function CalendarClient() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
+      <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Schedule</h1>
+          <h1 className="text-3xl sm:text-4xl font-bold text-slate-900">
+            Schedule
+          </h1>
           <p className="text-sm text-slate-400 mt-1">
             Drag, plan, and dispatch your jobs.
           </p>
         </div>
+        <div className="relative">
+          <input
+            type="search"
+            placeholder="Search customers..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="bg-white border border-slate-200 rounded-full pl-10 pr-16 py-2.5 text-sm w-72 max-w-full focus:outline-none focus:ring-2 focus:ring-slate-400"
+          />
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="11" cy="11" r="8" />
+            <path d="m21 21-4.3-4.3" />
+          </svg>
+          <kbd className="absolute right-3 top-1/2 -translate-y-1/2 text-[10px] text-slate-400 bg-slate-100 rounded px-1.5 py-0.5">
+            ⌘K
+          </kbd>
+        </div>
+      </div>
+
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-1 bg-slate-100 rounded-full p-1 text-sm">
           {(["day", "week", "month"] as View[]).map((v) => (
             <button
@@ -203,30 +233,6 @@ export default function CalendarClient() {
               {v}
             </button>
           ))}
-        </div>
-      </div>
-
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="relative w-full sm:w-72">
-          <input
-            type="search"
-            placeholder="Search customers..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-full pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
-          />
-          <svg
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.3-4.3" />
-          </svg>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
           <button
