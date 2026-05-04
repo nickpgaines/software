@@ -93,7 +93,7 @@ function RangePills({
           key={r.key}
           onClick={() => setRange(r.key)}
           className={
-            "px-3 py-1 rounded-full transition whitespace-nowrap " +
+            "px-3 py-1.5 rounded-full transition whitespace-nowrap " +
             (range === r.key
               ? "bg-white text-slate-900 shadow-sm"
               : "text-slate-500 hover:text-slate-900")
@@ -221,7 +221,7 @@ function OverviewPanel({ range }: { range: Range }) {
           ]}
         />
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+          <div className="bg-white border border-slate-200 rounded-2xl p-5">
             <div className="text-xs text-slate-400">ARR Added</div>
             <div className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">
               {money(data.subscriptions.arr_added_cents)}
@@ -284,7 +284,7 @@ function SalesPanel({ range }: { range: Range }) {
       </Section>
 
       <Section title="Top reps">
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
           {data.reps.length === 0 ? (
             <p className="p-8 text-sm text-slate-400 text-center">
               No rep activity in this window.
@@ -472,7 +472,7 @@ function SubscriptionsPanel() {
           />
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-2xl p-5">
           <div className="text-sm font-semibold text-slate-900">
             Monthly Recurring Revenue
           </div>
@@ -615,7 +615,7 @@ function StatCard({
   return (
     <div
       className={
-        "bg-white border border-slate-200 rounded-2xl shadow-sm " +
+        "bg-white border border-slate-200 rounded-2xl " +
         (compact ? "p-4" : "p-5")
       }
     >
@@ -641,7 +641,7 @@ function BreakdownTable({
   rows: { key: string; name: string; count: number; mrr_cents: number }[];
 }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
       {rows.length === 0 ? (
         <p className="p-8 text-sm text-slate-400 text-center">
           No subscriptions yet.
@@ -688,7 +688,7 @@ function ArrAddedChart({
   const totalCount = points.reduce((sum, p) => sum + p.count, 0);
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+    <div className="bg-white border border-slate-200 rounded-2xl p-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="text-sm font-semibold text-slate-900">
@@ -772,7 +772,7 @@ function Stats({
       {items.map((it) => (
         <div
           key={it.label}
-          className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm"
+          className="bg-white border border-slate-200 rounded-2xl p-5"
         >
           <div className="text-xs text-slate-400">{it.label}</div>
           <div className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">
@@ -902,7 +902,7 @@ function EmployeeTable({
   emptyText: string;
 }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
       {rows.length === 0 ? (
         <p className="p-8 text-sm text-slate-400 text-center">{emptyText}</p>
       ) : (
@@ -1114,7 +1114,7 @@ function PayrollTable({
 }) {
   return (
     <Section title={title}>
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
         {rows.length === 0 ? (
           <p className="p-8 text-sm text-slate-400 text-center">
             No employees yet.
@@ -1288,7 +1288,7 @@ function PayrollSummary({
     }
   );
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm divide-y divide-slate-100">
+    <div className="bg-white border border-slate-200 rounded-2xl divide-y divide-slate-100">
       {items.map((it) => (
         <div
           key={it.label}
@@ -1462,7 +1462,7 @@ function ObjectionsBreakdown({
   objections: MapReport["objections"];
 }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
       {objections.breakdown.length === 0 ? (
         <p className="p-8 text-sm text-slate-400 text-center">
           No objections recorded in this window.
