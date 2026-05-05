@@ -101,6 +101,14 @@ export default {
           "11px",
           { lineHeight: "1", letterSpacing: "0.18em", fontWeight: "800" },
         ],
+        // Tighter eyebrow variant for table column headers — same scale and
+        // weight as `text-eyebrow`, but with 0.16em tracking (the §4 "0.16em
+        // micro-caps" tier). Reserved for tightly packed grid contexts where
+        // 0.18em would feel too airy.
+        "eyebrow-tight": [
+          "11px",
+          { lineHeight: "1", letterSpacing: "0.16em", fontWeight: "800" },
+        ],
       },
       borderRadius: {
         pill: "9999px",

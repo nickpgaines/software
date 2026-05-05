@@ -307,11 +307,11 @@ function SalesPanel({ range }: { range: Range }) {
             <Table>
               <TableHeader>
                 <TableRow className="border-0 hover:bg-transparent text-eyebrow uppercase text-zinc-500">
-                  <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Rep</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Doors</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Sales</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Conv.</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Revenue</TableHead>
+                  <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Rep</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Doors</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Sales</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Conv.</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Revenue</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -668,9 +668,9 @@ function BreakdownTable({
         <Table>
           <TableHeader>
             <TableRow className="border-0 hover:bg-transparent text-eyebrow uppercase text-zinc-500 bg-black">
-              <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">{header}</TableHead>
-              <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Count</TableHead>
-              <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">MRR</TableHead>
+              <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">{header}</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Count</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">MRR</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -931,13 +931,13 @@ function EmployeeTable({
         <Table>
           <TableHeader>
             <TableRow className="border-0 hover:bg-transparent bg-black">
-              <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Employee</TableHead>
-              <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Tenure</TableHead>
-              <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Lifetime</TableHead>
-              <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Monthly</TableHead>
-              <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Daily</TableHead>
+              <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Employee</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Tenure</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Lifetime</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Monthly</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Daily</TableHead>
               {variant === "tech" && (
-                <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">$/hr</TableHead>
+                <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">$/hr</TableHead>
               )}
             </TableRow>
           </TableHeader>
@@ -1146,19 +1146,19 @@ function PayrollTable({
           <Table>
             <TableHeader>
               <TableRow className="border-0 hover:bg-transparent text-eyebrow uppercase text-zinc-500 bg-black">
-                <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Employee</TableHead>
-                <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Email</TableHead>
-                <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Role</TableHead>
-                <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">{rateLabel}</TableHead>
-                <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Total</TableHead>
+                <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Employee</TableHead>
+                <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Email</TableHead>
+                <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Role</TableHead>
+                <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">{rateLabel}</TableHead>
+                <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Total</TableHead>
                 {showTips && (
-                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Tips</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Tips</TableHead>
                 )}
                 {showBonus && (
-                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Bonus</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Bonus</TableHead>
                 )}
-                <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Payout</TableHead>
-                <TableHead className="h-auto text-center px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Paid</TableHead>
+                <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Payout</TableHead>
+                <TableHead className="h-auto text-center px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Paid</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1492,7 +1492,7 @@ function ObjectionsBreakdown({
         </p>
       ) : (
         <div className="divide-y divide-line">
-          <div className="px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500 bg-black flex items-center justify-between">
+          <div className="px-5 py-3 text-eyebrow-tight uppercase text-zinc-500 bg-black flex items-center justify-between">
             <span>
               Objection ({objections.pins_with_objections} pin
               {objections.pins_with_objections === 1 ? "" : "s"} with objections)

@@ -470,15 +470,15 @@ export default function LeaderboardClient({
             <Table>
               <TableHeader>
                 <TableRow className="border-0 hover:bg-transparent text-eyebrow uppercase text-zinc-500">
-                  <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Rank</TableHead>
-                  <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">
+                  <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Rank</TableHead>
+                  <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">
                     {personColumn}
                   </TableHead>
-                  <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Role</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Revenue</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Jobs</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">{avgColumn}</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">{lastColumn}</TableHead>
+                  <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Role</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Revenue</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Jobs</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">{avgColumn}</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">{lastColumn}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

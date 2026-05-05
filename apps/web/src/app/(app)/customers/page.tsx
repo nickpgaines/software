@@ -142,10 +142,10 @@ function CustomersPage() {
           <Table>
             <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-line">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="h-auto text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Name</TableHead>
-                <TableHead className="h-auto text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Address</TableHead>
-                <TableHead className="h-auto text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Phone</TableHead>
-                <TableHead className="h-auto text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Email</TableHead>
+                <TableHead className="h-auto text-left px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Name</TableHead>
+                <TableHead className="h-auto text-left px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Address</TableHead>
+                <TableHead className="h-auto text-left px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Phone</TableHead>
+                <TableHead className="h-auto text-left px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Email</TableHead>
                 <TableHead className="h-auto px-4 py-2" />
               </TableRow>
             </TableHeader>

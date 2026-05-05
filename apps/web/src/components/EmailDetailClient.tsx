@@ -125,11 +125,11 @@ export default function EmailDetailClient({ id }: { id: number }) {
         <Table>
           <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-line">
             <TableRow className="hover:bg-transparent">
-              <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Email</TableHead>
-              <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Name</TableHead>
-              <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Status</TableHead>
-              <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Sent</TableHead>
-              <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Error</TableHead>
+              <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Email</TableHead>
+              <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Name</TableHead>
+              <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Status</TableHead>
+              <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Sent</TableHead>
+              <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Error</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-line">
