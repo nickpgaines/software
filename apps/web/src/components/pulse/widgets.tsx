@@ -4,13 +4,7 @@ import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
 import { PULSE } from "./theme";
 import { PulseIcon } from "./Icon";
-import {
-  formatCents,
-  formatCentsShort,
-  formatTime,
-  greeting,
-  dateLabel,
-} from "./format";
+import { formatCents, formatCentsShort, formatTime } from "./format";
 import type {
   LiveJob,
   PipelineEntry,
@@ -32,50 +26,6 @@ function niceCeil(v: number) {
   const norm = v / mag;
   const nice = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
   return nice * mag;
-}
-
-// ---------- Header ------------------------------------------------------
-
-export function PulseHeader({
-  firstName,
-  jobs,
-  completedCount,
-}: {
-  firstName: string;
-  jobs: LiveJob[];
-  completedCount: number;
-}) {
-  return (
-    <div className="flex items-end justify-between gap-4 flex-wrap mb-7">
-      <div>
-        <div
-          className="text-[11px] uppercase tracking-[0.22em] font-extrabold mb-3"
-          style={{ color: PULSE.textDim }}
-        >
-          {dateLabel()}
-        </div>
-        <h1 className="text-[48px] font-extrabold tracking-tight leading-none">
-          {greeting(new Date().getHours())}, {firstName}.
-        </h1>
-        <p className="text-sm mt-3 font-bold" style={{ color: PULSE.textMuted }}>
-          {jobs.length} jobs today · {completedCount} completed this month
-        </p>
-      </div>
-      <div className="flex items-center gap-2">
-        <button
-          className="h-11 rounded-2xl px-4 text-[13px] font-bold flex items-center gap-2 w-72"
-          style={{
-            background: PULSE.bgAlt,
-            color: PULSE.textSubtle,
-            border: `1px solid ${PULSE.cardBorder}`,
-          }}
-        >
-          <PulseIcon name="search" className="w-3.5 h-3.5" />
-          Search anything
-        </button>
-      </div>
-    </div>
-  );
 }
 
 // ---------- Compact KPI card -------------------------------------------
