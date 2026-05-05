@@ -5,6 +5,7 @@ import { X, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 
 type PayPeriodFrequency =
   | "weekly"
@@ -546,40 +547,6 @@ function CommissionConfig({
       ) : (
         <TiersEditor tiers={tiers} onChange={onTiers} />
       )}
-    </div>
-  );
-}
-
-function SegmentedControl<T extends string>({
-  value,
-  onChange,
-  options,
-}: {
-  value: T;
-  onChange: (v: T) => void;
-  options: { value: T; label: string }[];
-}) {
-  return (
-    <div className="inline-flex items-center bg-black rounded-full p-1 text-sm">
-      {options.map((o) => {
-        const active = o.value === value;
-        return (
-          <Button
-            key={o.value}
-            type="button"
-            variant="ghost"
-            onClick={() => onChange(o.value)}
-            className={
-              "h-auto px-4 py-1.5 rounded-full hover:bg-transparent " +
-              (active
-                ? "bg-card text-white shadow-sm font-bold"
-                : "text-zinc-400 hover:text-white font-bold")
-            }
-          >
-            {o.label}
-          </Button>
-        );
-      })}
     </div>
   );
 }

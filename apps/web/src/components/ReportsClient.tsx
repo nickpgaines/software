@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SegmentedControl } from "@/components/ui/segmented-control";
 import {
   Table,
   TableBody,
@@ -79,6 +80,17 @@ function DonutChart({
     </div>
   );
 }
+
+// Income-mix donut chart palette. Documented in DESIGN_SYSTEM.md §3
+// "Chart palette". Five categorical hues for revenue-source segments;
+// callers reference these by role rather than literal hex.
+const CHART_PALETTE = {
+  oneOff: "#3b82f6", // blue-500 — one-off jobs
+  recurring: "#10b981", // emerald-500 — recurring / subscription revenue
+  subscriptions: "#f59e0b", // amber-500 — subscriptions
+  tips: "#a855f7", // purple-500 — tips
+  other: "#64748b", // slate-500 — other / catch-all
+} as const;
 
 type Tab = "overview" | "sales" | "jobs" | "subscriptions" | "map" | "employees" | "payroll";
 type Range = "7d" | "30d" | "90d" | "ytd" | "1y" | "custom";
@@ -221,7 +233,7 @@ function RangePills({
             className={
               "h-auto px-3 py-1 rounded-full whitespace-nowrap font-bold hover:bg-transparent " +
               (range === r.key
-                ? "bg-card text-white shadow-sm"
+                ? "bg-card text-white "
                 : "text-zinc-400 hover:text-white")
             }
           >
@@ -352,19 +364,19 @@ function OverviewPanel({ qs }: { qs: string }) {
   const mixSegments =
     mixMode === "collected"
       ? [
-          { name: "One-off jobs", value: collected.one_off_cents, color: "#3b82f6" },
-          { name: "Recurring jobs", value: collected.recurring_cents, color: "#10b981" },
-          { name: "Subscriptions", value: collected.subscription_cents, color: "#f59e0b" },
-          { name: "Tips", value: collected.tips_cents, color: "#a855f7" },
-          { name: "Other", value: collected.other_cents, color: "#64748b" },
+          { name: "One-off jobs", value: collected.one_off_cents, color: CHART_PALETTE.oneOff },
+          { name: "Recurring jobs", value: collected.recurring_cents, color: CHART_PALETTE.recurring },
+          { name: "Subscriptions", value: collected.subscription_cents, color: CHART_PALETTE.subscriptions },
+          { name: "Tips", value: collected.tips_cents, color: CHART_PALETTE.tips },
+          { name: "Other", value: collected.other_cents, color: CHART_PALETTE.other },
         ].filter((s) => s.value > 0)
       : [
-          { name: "One-off jobs", value: generated.one_off_cents, color: "#3b82f6" },
-          { name: "Recurring jobs", value: generated.recurring_jobs_cents, color: "#10b981" },
+          { name: "One-off jobs", value: generated.one_off_cents, color: CHART_PALETTE.oneOff },
+          { name: "Recurring jobs", value: generated.recurring_jobs_cents, color: CHART_PALETTE.recurring },
           {
             name: "Subscriptions (booked ARR)",
             value: generated.subscriptions_booked_arr_cents,
-            color: "#f59e0b",
+            color: CHART_PALETTE.subscriptions,
           },
         ].filter((s) => s.value > 0);
 
@@ -385,30 +397,15 @@ function OverviewPanel({ qs }: { qs: string }) {
           value={money(arrAdded)}
           sub={`Churn ${money(data.subscriptions.arr_churned_cents)}`}
           action={
-            <div className="flex gap-1 text-[10px] font-extrabold">
-              <button
-                onClick={() => setArrMode("net")}
-                className={
-                  "px-2 py-0.5 rounded-full " +
-                  (arrMode === "net"
-                    ? "bg-white text-black"
-                    : "text-zinc-500 hover:text-zinc-300")
-                }
-              >
-                NET
-              </button>
-              <button
-                onClick={() => setArrMode("gross")}
-                className={
-                  "px-2 py-0.5 rounded-full " +
-                  (arrMode === "gross"
-                    ? "bg-white text-black"
-                    : "text-zinc-500 hover:text-zinc-300")
-                }
-              >
-                GROSS
-              </button>
-            </div>
+            <SegmentedControl
+              size="sm"
+              value={arrMode}
+              onChange={setArrMode}
+              options={[
+                { value: "net", label: "NET" },
+                { value: "gross", label: "GROSS" },
+              ]}
+            />
           }
         />
         <BigStatCard
@@ -425,30 +422,15 @@ function OverviewPanel({ qs }: { qs: string }) {
               {mixMode === "collected" ? "Cash collected" : "Revenue generated"} —{" "}
               {money(mixTotal)}
             </div>
-            <div className="flex gap-1 text-[10px] font-extrabold">
-              <button
-                onClick={() => setMixMode("collected")}
-                className={
-                  "px-2 py-0.5 rounded-full " +
-                  (mixMode === "collected"
-                    ? "bg-white text-black"
-                    : "text-zinc-500 hover:text-zinc-300")
-                }
-              >
-                COLLECTED
-              </button>
-              <button
-                onClick={() => setMixMode("generated")}
-                className={
-                  "px-2 py-0.5 rounded-full " +
-                  (mixMode === "generated"
-                    ? "bg-white text-black"
-                    : "text-zinc-500 hover:text-zinc-300")
-                }
-              >
-                GENERATED
-              </button>
-            </div>
+            <SegmentedControl
+              size="sm"
+              value={mixMode}
+              onChange={setMixMode}
+              options={[
+                { value: "collected", label: "COLLECTED" },
+                { value: "generated", label: "GENERATED" },
+              ]}
+            />
           </div>
           {mixSegments.length === 0 ? (
             <p className="py-10 text-sm text-zinc-500 text-center">
@@ -556,7 +538,7 @@ function IncomeMixDonut({
             >
               <div className="flex items-center gap-2 min-w-0">
                 <span
-                  className="w-3 h-3 rounded-sm shrink-0"
+                  className="w-3 h-3 rounded-md shrink-0"
                   style={{ background: s.color }}
                 />
                 <span className="font-bold text-zinc-300 truncate">{s.name}</span>
@@ -632,7 +614,7 @@ function SalesPanel({ qs }: { qs: string }) {
       </Section>
 
       <Section title="Top reps">
-        <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-card border border-line rounded-2xl overflow-hidden">
           {data.reps.length === 0 ? (
             <p className="p-8 text-sm text-zinc-500 text-center">
               No rep activity in this window.
@@ -828,7 +810,7 @@ function SubscriptionsPanel({ qs: rangeQs }: { qs: string }) {
           <StatCard
             label="Active Subscriptions"
             value={String(data.totals.active)}
-            valueClassName="text-emerald-600"
+            valueClassName="text-green"
           />
           <StatCard
             label={`Current MRR${includeTax ? " (w/ tax)" : ""}`}
@@ -840,7 +822,7 @@ function SubscriptionsPanel({ qs: rangeQs }: { qs: string }) {
           />
         </div>
 
-        <div className="bg-card border border-line rounded-2xl p-5 shadow-sm">
+        <div className="bg-card border border-line rounded-2xl p-5 ">
           <div className="text-sm font-extrabold text-white tracking-tight">
             Monthly Recurring Revenue
           </div>
@@ -859,7 +841,7 @@ function SubscriptionsPanel({ qs: rangeQs }: { qs: string }) {
                     {m.mrr_cents > 0 ? money(m.mrr_cents) : "—"}
                   </div>
                   <div
-                    className="w-full bg-amber-400 rounded-sm"
+                    className="w-full bg-amber-400 rounded-md"
                     style={{ height: `${h}%` }}
                   />
                   <div className="text-[10px] text-zinc-400">{m.label}</div>
@@ -948,13 +930,13 @@ function SelectFilter({
   options: { id: number; name: string }[];
 }) {
   return (
-    <Label className="block font-normal">
+    <Label className="block font-bold">
       <span className="text-eyebrow uppercase text-zinc-500">{label}</span>
       {/* Native <select> kept: Radix Select forbids empty-string item values, which breaks the "All" clear-filter sentinel. Flagged for follow-up. */}
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 block w-full rounded-xl border border-line bg-card px-3 py-2 text-sm text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-line-strong"
+        className="mt-1 block w-full rounded-xl border border-line bg-card px-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-line-strong"
       >
         <option value="">All</option>
         {options.map((o) => (
@@ -985,7 +967,7 @@ function Toggle({
         onClick={() => onChange(!checked)}
         className={
           "relative h-5 w-9 p-0 rounded-full justify-start hover:bg-current " +
-          (checked ? "bg-emerald-500 hover:bg-emerald-500" : "bg-line-strong hover:bg-line-strong")
+          (checked ? "bg-green hover:bg-green" : "bg-line-strong hover:bg-line-strong")
         }
         aria-pressed={checked}
       >
@@ -1042,7 +1024,7 @@ function BreakdownTable({
   rows: { key: string; name: string; count: number; mrr_cents: number }[];
 }) {
   return (
-    <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-card border border-line rounded-2xl overflow-hidden">
       {rows.length === 0 ? (
         <p className="p-8 text-sm text-zinc-500 text-center">
           No subscriptions yet.
@@ -1092,7 +1074,7 @@ function CohortRetentionTable({
     return `rgba(16, 185, 129, ${a})`;
   }
   return (
-    <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-card border border-line rounded-2xl overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow className="border-0 hover:bg-transparent">
@@ -1170,7 +1152,7 @@ function ArrAddedChart({
                   {p.arr_cents > 0 ? money(p.arr_cents) : "—"}
                 </div>
                 <div
-                  className="w-full bg-emerald-500 rounded-sm"
+                  className="w-full bg-green rounded-md"
                   style={{ height: `${h}%` }}
                 />
                 <div className="text-[10px] text-zinc-500 font-bold">{p.label}</div>
@@ -1512,7 +1494,7 @@ function PayrollPanel({
         <Button
           variant="ghost"
           onClick={() => setSettingsOpen(true)}
-          className="h-auto gap-2 px-3 py-2 text-eyebrow uppercase text-zinc-500 bg-card border border-line rounded-full hover:bg-black shadow-sm"
+          className="h-auto gap-2 px-3 py-2 text-eyebrow uppercase text-zinc-500 bg-card border border-line rounded-full hover:bg-black "
           aria-label="Payroll settings"
         >
           <Settings className="w-4 h-4" />
@@ -1577,7 +1559,7 @@ function PayrollTable({
 }) {
   return (
     <Section title={title}>
-      <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-card border border-line rounded-2xl overflow-hidden">
         {rows.length === 0 ? (
           <p className="p-8 text-sm text-zinc-500 text-center">
             No employees yet.
@@ -1656,7 +1638,7 @@ function PayrollRowView({
       <TableCell className="px-5 py-3 font-bold text-white tracking-tight">{row.name}</TableCell>
       <TableCell className="px-5 py-3 text-zinc-400">{row.email || "—"}</TableCell>
       <TableCell className="px-5 py-3">
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 text-xs font-bold capitalize">
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-red/10 text-red border border-red/30 text-xs font-bold capitalize">
           {row.role.replace(/_/g, " ")}
         </span>
       </TableCell>
@@ -1751,7 +1733,7 @@ function PayrollSummary({
     }
   );
   return (
-    <div className="bg-card border border-line rounded-2xl shadow-sm divide-y divide-line">
+    <div className="bg-card border border-line rounded-2xl divide-y divide-line">
       {items.map((it) => (
         <div
           key={it.label}
@@ -1979,7 +1961,7 @@ function ObjectionsBreakdown({
               </div>
               <div className="mt-2 h-2 w-full rounded-full bg-line overflow-hidden">
                 <div
-                  className="h-full bg-rose-500"
+                  className="h-full bg-red"
                   style={{
                     width: `${Math.max(2, Math.round(o.pct * 100))}%`,
                   }}
