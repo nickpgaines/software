@@ -72,7 +72,7 @@ export default async function EmployeesPage() {
         </Link>
       </div>
 
-      <Card className="shadow-sm overflow-hidden">
+      <Card className="overflow-hidden">
         {employees.length === 0 ? (
           <div className="p-12 text-center text-sm text-zinc-400 font-bold">
             No employees yet. Click &ldquo;Add Employee&rdquo; to add your

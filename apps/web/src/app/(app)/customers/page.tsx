@@ -133,7 +133,7 @@ function CustomersPage() {
         </div>
       </div>
 
-      <Card className="rounded-lg overflow-hidden">
+      <Card className="overflow-hidden">
         {customers.length === 0 ? (
           <div className="p-8 text-center text-sm text-zinc-400 font-bold">
             No customers yet.
