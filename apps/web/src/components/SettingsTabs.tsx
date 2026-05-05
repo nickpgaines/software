@@ -916,7 +916,19 @@ function SubscriptionsPanel() {
     });
     setSaving(false);
     if (!res.ok) {
-      setError("Could not save template");
+      const text = await res.text().catch(() => "");
+      let serverMsg = "";
+      try {
+        const j = JSON.parse(text) as { error?: string };
+        serverMsg = j.error || "";
+      } catch {
+        serverMsg = text.slice(0, 240);
+      }
+      setError(
+        serverMsg
+          ? `Could not save template: ${serverMsg}`
+          : `Could not save template (HTTP ${res.status})`
+      );
       return;
     }
     cancelEdit();

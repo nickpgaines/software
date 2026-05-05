@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   getDb,
+  type Db,
   type SubscriptionInterval,
   type SubscriptionTemplate,
 } from "@/lib/db";
@@ -17,6 +18,20 @@ const VALID_INTERVALS: SubscriptionInterval[] = [
   "semiannually",
   "yearly",
 ];
+
+// Per-request safety net: if a long-running server process predates the
+// init-time migration that adds service_interval, add the column on
+// demand so editing/creating a template doesn't 500.
+async function ensureTemplateColumns(db: Db): Promise<void> {
+  const cols = (await db
+    .prepare("PRAGMA table_info(subscription_templates)")
+    .all()) as { name: string }[];
+  if (!cols.some((c) => c.name === "service_interval")) {
+    await db.exec(
+      "ALTER TABLE subscription_templates ADD COLUMN service_interval TEXT NOT NULL DEFAULT 'monthly'"
+    );
+  }
+}
 
 export async function GET() {
   const ctx = await getSessionContext();
@@ -38,6 +53,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const db = await getDb();
+  await ensureTemplateColumns(db);
   const body = (await req.json().catch(() => ({}))) as Partial<{
     name: string;
     description: string;
@@ -70,27 +86,35 @@ export async function POST(req: Request) {
   // but no longer stored on templates — they're set per-customer when a
   // subscription is created. We insert defaults so existing column constraints
   // are satisfied.
-  const result = await db
-    .prepare(
-      `INSERT INTO subscription_templates
-         (company_id, name, description, price_cents, interval, service_interval,
-          active, terms_id, require_signature, tax_rate_bps)
-       VALUES (?, ?, ?, 0, 'monthly', ?, ?, ?, ?, ?)`
-    )
-    .run(
-      ctx.companyId,
-      name,
-      description,
-      serviceInterval,
-      active,
-      termsId,
-      requireSignature,
-      taxRateBps
-    );
+  let lastInsertRowid: number | bigint;
+  try {
+    const result = await db
+      .prepare(
+        `INSERT INTO subscription_templates
+           (company_id, name, description, price_cents, interval, service_interval,
+            active, terms_id, require_signature, tax_rate_bps)
+         VALUES (?, ?, ?, 0, 'monthly', ?, ?, ?, ?, ?)`
+      )
+      .run(
+        ctx.companyId,
+        name,
+        description,
+        serviceInterval,
+        active,
+        termsId,
+        requireSignature,
+        taxRateBps
+      );
+    lastInsertRowid = result.lastInsertRowid;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "database error";
+    console.error("subscription_templates POST failed", e);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
   const row = (await db
     .prepare(
       "SELECT * FROM subscription_templates WHERE id = ? AND company_id = ?"
     )
-    .get(result.lastInsertRowid, ctx.companyId)) as SubscriptionTemplate;
+    .get(lastInsertRowid, ctx.companyId)) as SubscriptionTemplate;
   return NextResponse.json(row, { status: 201 });
 }
