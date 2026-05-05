@@ -2,6 +2,13 @@
 
 import { useEffect, useState } from "react";
 import { Settings } from "lucide-react";
+import {
+  Cell,
+  Pie,
+  PieChart,
+  ResponsiveContainer,
+  Tooltip as RTooltip,
+} from "recharts";
 import PayrollSettingsModal, {
   type PayrollSettingsValue,
 } from "./PayrollSettingsModal";
@@ -18,8 +25,69 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+function DonutChart({
+  segments,
+  total,
+}: {
+  segments: { name: string; value: number; color: string }[];
+  total: number;
+}) {
+  const formatted = `$${(total / 100).toLocaleString(undefined, {
+    maximumFractionDigits: 0,
+  })}`;
+  return (
+    <div className="relative w-full h-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={segments}
+            dataKey="value"
+            nameKey="name"
+            innerRadius="60%"
+            outerRadius="90%"
+            paddingAngle={2}
+            stroke="#0f0f12"
+            strokeWidth={2}
+          >
+            {segments.map((s) => (
+              <Cell key={s.name} fill={s.color} />
+            ))}
+          </Pie>
+          <RTooltip
+            contentStyle={{
+              background: "#0f0f12",
+              border: "1px solid #1f1f24",
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 700,
+            }}
+            formatter={(v) => {
+              const n = typeof v === "number" ? v : Number(v) || 0;
+              return `$${(n / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
+            }}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+        <div className="text-[10px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+          Total
+        </div>
+        <div className="text-lg font-black text-white tabular-nums tracking-tight">
+          {formatted}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 type Tab = "overview" | "sales" | "jobs" | "subscriptions" | "map" | "employees" | "payroll";
-type Range = "1w" | "1m" | "3m" | "1y";
+type Range = "7d" | "30d" | "90d" | "ytd" | "1y" | "custom";
+
+export type RangeQuery = {
+  range: Range;
+  start?: string;
+  end?: string;
+};
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "Overview" },
@@ -32,11 +100,23 @@ const TABS: { key: Tab; label: string }[] = [
 ];
 
 const RANGES: { key: Range; label: string }[] = [
-  { key: "1w", label: "1W" },
-  { key: "1m", label: "1M" },
-  { key: "3m", label: "3M" },
+  { key: "7d", label: "7D" },
+  { key: "30d", label: "30D" },
+  { key: "90d", label: "90D" },
+  { key: "ytd", label: "YTD" },
   { key: "1y", label: "1Y" },
+  { key: "custom", label: "Custom" },
 ];
+
+export function rangeQS(q: RangeQuery): string {
+  const params = new URLSearchParams();
+  params.set("range", q.range);
+  if (q.range === "custom" && q.start && q.end) {
+    params.set("start", q.start);
+    params.set("end", q.end);
+  }
+  return params.toString();
+}
 
 function money(cents: number) {
   return `$${(cents / 100).toLocaleString(undefined, {
@@ -49,9 +129,27 @@ function pct(v: number) {
   return `${(v * 100).toFixed(1)}%`;
 }
 
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function thirtyDaysAgoIso() {
+  const d = new Date();
+  d.setDate(d.getDate() - 30);
+  return d.toISOString().slice(0, 10);
+}
+
 export default function ReportsClient() {
   const [tab, setTab] = useState<Tab>("overview");
-  const [range, setRange] = useState<Range>("1m");
+  const [range, setRange] = useState<Range>("30d");
+  const [customStart, setCustomStart] = useState<string>(thirtyDaysAgoIso());
+  const [customEnd, setCustomEnd] = useState<string>(todayIso());
+
+  const qs = rangeQS({
+    range,
+    start: range === "custom" ? customStart : undefined,
+    end: range === "custom" ? customEnd : undefined,
+  });
 
   return (
     <div className="space-y-6">
@@ -76,18 +174,23 @@ export default function ReportsClient() {
             );
           })}
         </nav>
-        {tab !== "subscriptions" && tab !== "employees" && (
-          <RangePills range={range} setRange={setRange} />
-        )}
+        <RangePills
+          range={range}
+          setRange={setRange}
+          customStart={customStart}
+          customEnd={customEnd}
+          setCustomStart={setCustomStart}
+          setCustomEnd={setCustomEnd}
+        />
       </div>
 
-      {tab === "overview" && <OverviewPanel range={range} />}
-      {tab === "sales" && <SalesPanel range={range} />}
-      {tab === "jobs" && <JobsPanel range={range} />}
-      {tab === "subscriptions" && <SubscriptionsPanel />}
-      {tab === "map" && <MapPanel range={range} />}
-      {tab === "employees" && <EmployeesPanel />}
-      {tab === "payroll" && <PayrollPanel range={range} />}
+      {tab === "overview" && <OverviewPanel qs={qs} />}
+      {tab === "sales" && <SalesPanel qs={qs} />}
+      {tab === "jobs" && <JobsPanel qs={qs} />}
+      {tab === "subscriptions" && <SubscriptionsPanel qs={qs} />}
+      {tab === "map" && <MapPanel qs={qs} />}
+      {tab === "employees" && <EmployeesPanel qs={qs} />}
+      {tab === "payroll" && <PayrollPanel qs={qs} range={range} customStart={customStart} customEnd={customEnd} />}
     </div>
   );
 }
@@ -95,27 +198,54 @@ export default function ReportsClient() {
 function RangePills({
   range,
   setRange,
+  customStart,
+  customEnd,
+  setCustomStart,
+  setCustomEnd,
 }: {
   range: Range;
   setRange: (r: Range) => void;
+  customStart: string;
+  customEnd: string;
+  setCustomStart: (s: string) => void;
+  setCustomEnd: (s: string) => void;
 }) {
   return (
-    <div className="flex items-center gap-1 bg-black rounded-full p-1 text-sm mb-3">
-      {RANGES.map((r) => (
-        <Button
-          key={r.key}
-          variant="ghost"
-          onClick={() => setRange(r.key)}
-          className={
-            "h-auto px-3 py-1 rounded-full whitespace-nowrap font-bold hover:bg-transparent " +
-            (range === r.key
-              ? "bg-[#0f0f12] text-white shadow-sm"
-              : "text-zinc-400 hover:text-white")
-          }
-        >
-          {r.label}
-        </Button>
-      ))}
+    <div className="flex flex-col items-end gap-2 mb-3">
+      <div className="flex items-center gap-1 bg-black rounded-full p-1 text-sm">
+        {RANGES.map((r) => (
+          <Button
+            key={r.key}
+            variant="ghost"
+            onClick={() => setRange(r.key)}
+            className={
+              "h-auto px-3 py-1 rounded-full whitespace-nowrap font-bold hover:bg-transparent " +
+              (range === r.key
+                ? "bg-[#0f0f12] text-white shadow-sm"
+                : "text-zinc-400 hover:text-white")
+            }
+          >
+            {r.label}
+          </Button>
+        ))}
+      </div>
+      {range === "custom" && (
+        <div className="flex items-center gap-2 text-xs">
+          <Input
+            type="date"
+            value={customStart}
+            onChange={(e) => setCustomStart(e.target.value)}
+            className="h-8 w-36"
+          />
+          <span className="text-zinc-500">to</span>
+          <Input
+            type="date"
+            value={customEnd}
+            onChange={(e) => setCustomEnd(e.target.value)}
+            className="h-8 w-36"
+          />
+        </div>
+      )}
     </div>
   );
 }
@@ -127,6 +257,22 @@ type JobBucket = {
   avg_value_cents: number;
 };
 
+type RevenueBuckets = {
+  one_off_cents: number;
+  recurring_cents: number;
+  subscription_cents: number;
+  tips_cents: number;
+  other_cents: number;
+  total_cents: number;
+};
+
+type GeneratedRevenue = {
+  one_off_cents: number;
+  recurring_jobs_cents: number;
+  subscriptions_booked_arr_cents: number;
+  total_cents: number;
+};
+
 type Overview = {
   revenue: {
     total_cents: number;
@@ -134,6 +280,16 @@ type Overview = {
     unpaid_cents: number;
     collection_rate: number;
   };
+  company_revenue: {
+    collected: RevenueBuckets;
+    generated: GeneratedRevenue;
+  };
+  profit: {
+    total_revenue_cents: number;
+    total_payout_cents: number;
+    net_profit_cents: number;
+  };
+  arpc: { paying_customers: number; cents: number };
   jobs: {
     total: number;
     completed: number;
@@ -151,17 +307,22 @@ type Overview = {
     mrr_cents: number;
     arr_cents: number;
     arr_added_cents: number;
+    arr_added_gross_cents: number;
+    arr_added_net_cents: number;
+    arr_churned_cents: number;
   };
 };
 
-function OverviewPanel({ range }: { range: Range }) {
+function OverviewPanel({ qs }: { qs: string }) {
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
+  const [arrMode, setArrMode] = useState<"net" | "gross">("net");
+  const [mixMode, setMixMode] = useState<"collected" | "generated">("collected");
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/reports/overview?range=${range}`)
+    fetch(`/api/reports/overview?${qs}`)
       .then((r) => r.json())
       .then((d: Overview) => {
         if (!cancelled) setData(d);
@@ -172,7 +333,7 @@ function OverviewPanel({ range }: { range: Range }) {
     return () => {
       cancelled = true;
     };
-  }, [range]);
+  }, [qs]);
 
   if (loading && !data)
     return (
@@ -180,9 +341,133 @@ function OverviewPanel({ range }: { range: Range }) {
     );
   if (!data) return null;
 
+  const arrAdded =
+    arrMode === "net"
+      ? data.subscriptions.arr_added_net_cents
+      : data.subscriptions.arr_added_gross_cents;
+
+  const collected = data.company_revenue.collected;
+  const generated = data.company_revenue.generated;
+
+  const mixSegments =
+    mixMode === "collected"
+      ? [
+          { name: "One-off jobs", value: collected.one_off_cents, color: "#3b82f6" },
+          { name: "Recurring jobs", value: collected.recurring_cents, color: "#10b981" },
+          { name: "Subscriptions", value: collected.subscription_cents, color: "#f59e0b" },
+          { name: "Tips", value: collected.tips_cents, color: "#a855f7" },
+          { name: "Other", value: collected.other_cents, color: "#64748b" },
+        ].filter((s) => s.value > 0)
+      : [
+          { name: "One-off jobs", value: generated.one_off_cents, color: "#3b82f6" },
+          { name: "Recurring jobs", value: generated.recurring_jobs_cents, color: "#10b981" },
+          {
+            name: "Subscriptions (booked ARR)",
+            value: generated.subscriptions_booked_arr_cents,
+            color: "#f59e0b",
+          },
+        ].filter((s) => s.value > 0);
+
+  const mixTotal =
+    mixMode === "collected" ? collected.total_cents : generated.total_cents;
+
   return (
     <div className="space-y-6">
-      <Section title="Revenue">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <BigStatCard
+          label="Total Company Revenue"
+          value={money(collected.total_cents)}
+          sub={`Generated ${money(generated.total_cents)}`}
+        />
+        <BigStatCard label="MRR" value={money(data.subscriptions.mrr_cents)} sub={`ARR ${money(data.subscriptions.arr_cents)}`} />
+        <BigStatCard
+          label={`ARR Added (${arrMode === "net" ? "Net" : "Gross"})`}
+          value={money(arrAdded)}
+          sub={`Churn ${money(data.subscriptions.arr_churned_cents)}`}
+          action={
+            <div className="flex gap-1 text-[10px] font-extrabold">
+              <button
+                onClick={() => setArrMode("net")}
+                className={
+                  "px-2 py-0.5 rounded-full " +
+                  (arrMode === "net"
+                    ? "bg-white text-black"
+                    : "text-zinc-500 hover:text-zinc-300")
+                }
+              >
+                NET
+              </button>
+              <button
+                onClick={() => setArrMode("gross")}
+                className={
+                  "px-2 py-0.5 rounded-full " +
+                  (arrMode === "gross"
+                    ? "bg-white text-black"
+                    : "text-zinc-500 hover:text-zinc-300")
+                }
+              >
+                GROSS
+              </button>
+            </div>
+          }
+        />
+        <BigStatCard
+          label="Net Profit"
+          value={money(data.profit.net_profit_cents)}
+          sub={`Payroll ${money(data.profit.total_payout_cents)}`}
+        />
+      </div>
+
+      <Section title="Income Mix">
+        <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl px-5 py-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+              {mixMode === "collected" ? "Cash collected" : "Revenue generated"} —{" "}
+              {money(mixTotal)}
+            </div>
+            <div className="flex gap-1 text-[10px] font-extrabold">
+              <button
+                onClick={() => setMixMode("collected")}
+                className={
+                  "px-2 py-0.5 rounded-full " +
+                  (mixMode === "collected"
+                    ? "bg-white text-black"
+                    : "text-zinc-500 hover:text-zinc-300")
+                }
+              >
+                COLLECTED
+              </button>
+              <button
+                onClick={() => setMixMode("generated")}
+                className={
+                  "px-2 py-0.5 rounded-full " +
+                  (mixMode === "generated"
+                    ? "bg-white text-black"
+                    : "text-zinc-500 hover:text-zinc-300")
+                }
+              >
+                GENERATED
+              </button>
+            </div>
+          </div>
+          {mixSegments.length === 0 ? (
+            <p className="py-10 text-sm text-zinc-500 text-center">
+              No revenue in this window.
+            </p>
+          ) : (
+            <IncomeMixDonut segments={mixSegments} total={mixTotal} />
+          )}
+        </div>
+      </Section>
+
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Avg Revenue / Customer" value={money(data.arpc.cents)} />
+        <StatCard label="Paying Customers" value={String(data.arpc.paying_customers)} />
+        <StatCard label="Active Subscriptions" value={String(data.subscriptions.active)} />
+        <StatCard label="New Customers" value={String(data.customers.new)} />
+      </div>
+
+      <Section title="Revenue (jobs)">
         <Stats
           items={[
             { label: "Total Revenue", value: money(data.revenue.total_cents) },
@@ -214,41 +499,88 @@ function OverviewPanel({ range }: { range: Range }) {
           ]}
         />
       </Section>
+    </div>
+  );
+}
 
-      <Section title="Subscriptions">
-        <Stats
-          items={[
-            {
-              label: "Active Subscriptions",
-              value: String(data.subscriptions.active),
-            },
-            {
-              label: "New Subscriptions",
-              value: String(data.subscriptions.new),
-            },
-            {
-              label: "Canceled",
-              value: String(data.subscriptions.canceled),
-            },
-            { label: "Total MRR", value: money(data.subscriptions.mrr_cents) },
-            { label: "Total ARR", value: money(data.subscriptions.arr_cents) },
-          ]}
-        />
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl px-5 py-4">
-            <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-1.5">ARR Added</div>
-            <div className="text-[26px] font-black tracking-tight leading-none tabular-nums text-white">
-              {money(data.subscriptions.arr_added_cents)}
-            </div>
-          </div>
+function BigStatCard({
+  label,
+  value,
+  sub,
+  action,
+}: {
+  label: string;
+  value: string;
+  sub?: string;
+  action?: React.ReactNode;
+}) {
+  return (
+    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl px-5 py-4">
+      <div className="flex items-start justify-between gap-2 mb-1.5">
+        <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+          {label}
         </div>
-      </Section>
+        {action}
+      </div>
+      <div className="text-[26px] font-black tracking-tight leading-none tabular-nums text-white">
+        {value}
+      </div>
+      {sub && (
+        <div className="mt-1.5 text-xs font-bold text-zinc-500 tabular-nums">
+          {sub}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function IncomeMixDonut({
+  segments,
+  total,
+}: {
+  segments: { name: string; value: number; color: string }[];
+  total: number;
+}) {
+  return (
+    <div className="grid gap-4 lg:grid-cols-[260px_1fr] items-center">
+      <div className="h-[220px]">
+        <DonutChart segments={segments} total={total} />
+      </div>
+      <div className="space-y-1.5">
+        {segments.map((s) => {
+          const p = total > 0 ? s.value / total : 0;
+          return (
+            <div
+              key={s.name}
+              className="flex items-center justify-between gap-3 text-sm"
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                <span
+                  className="w-3 h-3 rounded-sm shrink-0"
+                  style={{ background: s.color }}
+                />
+                <span className="font-bold text-zinc-300 truncate">{s.name}</span>
+              </div>
+              <div className="flex items-center gap-3 tabular-nums">
+                <span className="text-zinc-500 font-bold">{(p * 100).toFixed(1)}%</span>
+                <span className="text-white font-extrabold tracking-tight">{money(s.value)}</span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 type Sales = {
-  doors: { total: number; sales: number; conversion_rate: number };
+  doors: {
+    total: number;
+    sales: number;
+    conversion_rate: number;
+    revenue_cents: number;
+    revenue_per_door_cents: number;
+  };
   reps: {
     id: number;
     name: string;
@@ -259,14 +591,14 @@ type Sales = {
   }[];
 };
 
-function SalesPanel({ range }: { range: Range }) {
+function SalesPanel({ qs }: { qs: string }) {
   const [data, setData] = useState<Sales | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/reports/sales?range=${range}`)
+    fetch(`/api/reports/sales?${qs}`)
       .then((r) => r.json())
       .then((d: Sales) => {
         if (!cancelled) setData(d);
@@ -277,7 +609,7 @@ function SalesPanel({ range }: { range: Range }) {
     return () => {
       cancelled = true;
     };
-  }, [range]);
+  }, [qs]);
 
   if (loading && !data)
     return (
@@ -293,6 +625,8 @@ function SalesPanel({ range }: { range: Range }) {
             { label: "Total Doors Knocked", value: String(data.doors.total) },
             { label: "Sales Made", value: String(data.doors.sales) },
             { label: "Conversion Rate", value: pct(data.doors.conversion_rate) },
+            { label: "Revenue / Door", value: money(data.doors.revenue_per_door_cents) },
+            { label: "Total Sales Revenue", value: money(data.doors.revenue_cents) },
           ]}
         />
       </Section>
@@ -361,6 +695,26 @@ type SubscriptionsReport = {
     declined: number;
   };
   revenue: { mrr_cents: number; arr_cents: number };
+  churn: {
+    churned_dollars_cents: number;
+    logo_churn_pct: number;
+    canceled_in_range: number;
+    active_at_start: number;
+  };
+  nrr: {
+    pct: number;
+    mrr_at_start_cents: number;
+    retained_mrr_cents: number;
+  };
+  forecast: { mrr_30d_cents: number };
+  cohort_retention: {
+    label: string;
+    iso: string;
+    started: number;
+    retention_30d: number;
+    retention_90d: number;
+    retention_180d: number;
+  }[];
   monthly: { label: string; iso: string; mrr_cents: number }[];
   arr_added: {
     label: string;
@@ -384,7 +738,7 @@ type SubscriptionsReport = {
   };
 };
 
-function SubscriptionsPanel() {
+function SubscriptionsPanel({ qs: rangeQs }: { qs: string }) {
   const [data, setData] = useState<SubscriptionsReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [customerId, setCustomerId] = useState<string>("");
@@ -396,14 +750,14 @@ function SubscriptionsPanel() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(rangeQs);
     if (customerId) params.set("customers", customerId);
     if (templateId) params.set("templates", templateId);
     if (soldById) params.set("sold_by", soldById);
     if (!includeTax) params.set("include_tax", "0");
     if (!includeCanceled) params.set("include_paid_cancellations", "0");
-    const qs = params.toString();
-    fetch(`/api/reports/subscriptions${qs ? `?${qs}` : ""}`)
+    const fullQs = params.toString();
+    fetch(`/api/reports/subscriptions${fullQs ? `?${fullQs}` : ""}`)
       .then((r) => r.json())
       .then((d: SubscriptionsReport) => {
         if (!cancelled) setData(d);
@@ -414,7 +768,7 @@ function SubscriptionsPanel() {
     return () => {
       cancelled = true;
     };
-  }, [customerId, templateId, soldById, includeTax, includeCanceled]);
+  }, [rangeQs, customerId, templateId, soldById, includeTax, includeCanceled]);
 
   if (loading && !data)
     return (
@@ -521,6 +875,35 @@ function SubscriptionsPanel() {
         <StatCard label="Canceled" value={String(data.totals.canceled)} compact />
         <StatCard label="Declined" value={String(data.totals.declined)} compact />
       </div>
+
+      <Section title="Retention">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <BigStatCard
+            label="NRR"
+            value={pct(data.nrr.pct)}
+            sub={`Retained ${money(data.nrr.retained_mrr_cents)} / ${money(data.nrr.mrr_at_start_cents)}`}
+          />
+          <BigStatCard
+            label="Churn $"
+            value={money(data.churn.churned_dollars_cents)}
+            sub={`${data.churn.canceled_in_range} canceled in range`}
+          />
+          <BigStatCard
+            label="Logo Churn"
+            value={pct(data.churn.logo_churn_pct)}
+            sub={`${data.churn.canceled_in_range} of ${data.churn.active_at_start} active at start`}
+          />
+          <BigStatCard
+            label="Forecast MRR (30d)"
+            value={money(data.forecast.mrr_30d_cents)}
+            sub="From currently-active subs"
+          />
+        </div>
+      </Section>
+
+      <Section title="Cohort retention">
+        <CohortRetentionTable rows={data.cohort_retention} />
+      </Section>
 
       <Section title="ARR added over time">
         <ArrAddedChart points={data.arr_added} includeTax={includeTax} />
@@ -694,6 +1077,48 @@ function BreakdownTable({
   );
 }
 
+function CohortRetentionTable({
+  rows,
+}: {
+  rows: SubscriptionsReport["cohort_retention"];
+}) {
+  function fmt(v: number) {
+    if (v < 0) return "—";
+    return `${(v * 100).toFixed(0)}%`;
+  }
+  function bg(v: number) {
+    if (v < 0) return "transparent";
+    const a = Math.max(0.08, Math.min(0.85, v));
+    return `rgba(16, 185, 129, ${a})`;
+  }
+  return (
+    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
+      <Table>
+        <TableHeader>
+          <TableRow className="border-0 hover:bg-transparent">
+            <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Cohort</TableHead>
+            <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Started</TableHead>
+            <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">+30d</TableHead>
+            <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">+90d</TableHead>
+            <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">+180d</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {rows.map((r) => (
+            <TableRow key={r.iso} className="border-t border-b-0 border-[#1f1f24] hover:bg-transparent">
+              <TableCell className="px-5 py-3 font-bold text-white tracking-tight">{r.label} {r.iso}</TableCell>
+              <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">{r.started}</TableCell>
+              <TableCell className="px-5 py-3 text-right font-extrabold text-white tabular-nums" style={{ background: bg(r.retention_30d) }}>{fmt(r.retention_30d)}</TableCell>
+              <TableCell className="px-5 py-3 text-right font-extrabold text-white tabular-nums" style={{ background: bg(r.retention_90d) }}>{fmt(r.retention_90d)}</TableCell>
+              <TableCell className="px-5 py-3 text-right font-extrabold text-white tabular-nums" style={{ background: bg(r.retention_180d) }}>{fmt(r.retention_180d)}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
+  );
+}
+
 function ArrAddedChart({
   points,
   includeTax,
@@ -835,14 +1260,14 @@ type EmployeesReport = {
   };
 };
 
-function EmployeesPanel() {
+function EmployeesPanel({ qs }: { qs: string }) {
   const [data, setData] = useState<EmployeesReport | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/reports/employees`)
+    fetch(`/api/reports/employees?${qs}`)
       .then((r) => r.json())
       .then((d: EmployeesReport) => {
         if (!cancelled) setData(d);
@@ -853,7 +1278,7 @@ function EmployeesPanel() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [qs]);
 
   if (loading && !data)
     return (
@@ -990,7 +1415,7 @@ type PayrollRow = {
 };
 
 type PayrollData = {
-  range: Range;
+  range: string;
   period: { start: string; end: string };
   sales: PayrollRow[];
   tech: PayrollRow[];
@@ -1007,7 +1432,17 @@ type PayrollData = {
   settings: PayrollSettingsValue | null;
 };
 
-function PayrollPanel({ range }: { range: Range }) {
+function PayrollPanel({
+  qs,
+  range,
+  customStart,
+  customEnd,
+}: {
+  qs: string;
+  range: Range;
+  customStart: string;
+  customEnd: string;
+}) {
   const [data, setData] = useState<PayrollData | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloadKey, setReloadKey] = useState(0);
@@ -1016,7 +1451,7 @@ function PayrollPanel({ range }: { range: Range }) {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/reports/payroll?range=${range}`)
+    fetch(`/api/reports/payroll?${qs}`)
       .then((r) => r.json())
       .then((d: PayrollData) => {
         if (!cancelled) setData(d);
@@ -1027,7 +1462,7 @@ function PayrollPanel({ range }: { range: Range }) {
     return () => {
       cancelled = true;
     };
-  }, [range, reloadKey]);
+  }, [qs, reloadKey]);
 
   async function updateRate(staffId: number, role: "sales" | "tech", rate: number) {
     await fetch(`/api/reports/payroll/rate`, {
@@ -1043,10 +1478,15 @@ function PayrollPanel({ range }: { range: Range }) {
     role: "sales" | "tech",
     paid: boolean
   ) {
+    const body: Record<string, unknown> = { staff_id: staffId, role, paid, range };
+    if (range === "custom") {
+      body.start = customStart;
+      body.end = customEnd;
+    }
     await fetch(`/api/reports/payroll/paid`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ staff_id: staffId, role, paid, range }),
+      body: JSON.stringify(body),
     });
     setReloadKey((k) => k + 1);
   }
@@ -1344,22 +1784,28 @@ function PayrollSummary({
 }
 
 type JobsReport = {
-  range: Range;
+  range: string;
   start: string;
   end: string;
   service_plan: JobBucket;
   one_off: JobBucket;
   all: JobBucket;
+  cash_collected_cents: number;
+  avg_collection_lag_days: number;
+  customer_split: {
+    first_time_cents: number;
+    repeat_cents: number;
+  };
 };
 
-function JobsPanel({ range }: { range: Range }) {
+function JobsPanel({ qs }: { qs: string }) {
   const [data, setData] = useState<JobsReport | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/reports/jobs?range=${range}`)
+    fetch(`/api/reports/jobs?${qs}`)
       .then((r) => r.json())
       .then((d: JobsReport) => {
         if (!cancelled) setData(d);
@@ -1370,13 +1816,17 @@ function JobsPanel({ range }: { range: Range }) {
     return () => {
       cancelled = true;
     };
-  }, [range]);
+  }, [qs]);
 
   if (loading && !data)
     return (
       <p className="text-sm text-zinc-500 py-10 text-center font-bold">Loading…</p>
     );
   if (!data) return null;
+
+  const split = data.customer_split;
+  const splitTotal = split.first_time_cents + split.repeat_cents;
+  const firstTimePct = splitTotal > 0 ? split.first_time_cents / splitTotal : 0;
 
   return (
     <div className="space-y-6">
@@ -1389,7 +1839,7 @@ function JobsPanel({ range }: { range: Range }) {
               value: money(data.all.expected_cents),
             },
             {
-              label: "Collected Revenue",
+              label: "Completed Job Value",
               value: money(data.all.collected_cents),
             },
             {
@@ -1398,6 +1848,26 @@ function JobsPanel({ range }: { range: Range }) {
             },
           ]}
         />
+      </Section>
+
+      <Section title="Cash flow">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <BigStatCard
+            label="Cash Collected"
+            value={money(data.cash_collected_cents)}
+            sub="From payments table"
+          />
+          <BigStatCard
+            label="Avg Collection Lag"
+            value={`${data.avg_collection_lag_days.toFixed(1)} days`}
+            sub="Completion → first payment"
+          />
+          <BigStatCard
+            label="First-time vs Repeat"
+            value={pct(firstTimePct)}
+            sub={`${money(split.first_time_cents)} new · ${money(split.repeat_cents)} repeat`}
+          />
+        </div>
       </Section>
     </div>
   );
@@ -1426,14 +1896,14 @@ type MapReport = {
   };
 };
 
-function MapPanel({ range }: { range: Range }) {
+function MapPanel({ qs }: { qs: string }) {
   const [data, setData] = useState<MapReport | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/reports/map?range=${range}`)
+    fetch(`/api/reports/map?${qs}`)
       .then((r) => r.json())
       .then((d: MapReport) => {
         if (!cancelled) setData(d);
@@ -1444,7 +1914,7 @@ function MapPanel({ range }: { range: Range }) {
     return () => {
       cancelled = true;
     };
-  }, [range]);
+  }, [qs]);
 
   if (loading && !data)
     return (

@@ -12,11 +12,13 @@ export async function POST(req: Request) {
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
-  const { staff_id, role, paid, range } = (body || {}) as {
+  const { staff_id, role, paid, range, start: bodyStart, end: bodyEnd } = (body || {}) as {
     staff_id?: number;
     role?: "sales" | "tech";
     paid?: boolean;
     range?: string;
+    start?: string;
+    end?: string;
   };
   if (typeof staff_id !== "number" || !Number.isFinite(staff_id)) {
     return NextResponse.json({ error: "staff_id required" }, { status: 400 });
@@ -28,7 +30,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "paid must be boolean" }, { status: 400 });
   }
 
-  const { start, end } = resolveReportRange(range);
+  const { start, end } = resolveReportRange(range, bodyStart, bodyEnd);
   const startIso = start.toISOString();
   const endIso = end.toISOString();
 

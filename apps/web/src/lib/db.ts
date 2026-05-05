@@ -522,6 +522,12 @@ async function init(): Promise<void> {
       "TEXT",
       paymentCols
     );
+    await alterAddColumn(
+      "payments",
+      "source",
+      "TEXT NOT NULL DEFAULT 'job'",
+      paymentCols
+    );
   }
 
   const companyCols = await _db
@@ -2117,6 +2123,8 @@ export type StaffDefaultShift = {
   updated_at: string;
 };
 
+export type PaymentSource = "job" | "subscription" | "tip" | "other";
+
 export type Payment = {
   id: number;
   company_id: number;
@@ -2129,6 +2137,7 @@ export type Payment = {
   send_email: number;
   send_sms: number;
   stripe_payment_intent_id: string | null;
+  source: PaymentSource;
   created_at: string;
 };
 

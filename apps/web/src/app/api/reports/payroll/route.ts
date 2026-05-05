@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { getDb, type PayrollSettings, type CommissionTier } from "@/lib/db";
-import { resolveReportRange } from "@/lib/report-range";
+import { getDb, type PayrollSettings } from "@/lib/db";
+import { resolveReportRangeFromUrl } from "@/lib/report-range";
 import { requireCompanyId } from "@/lib/auth";
+import { parseTiers, tieredPayout } from "@/lib/payroll-calc";
 
 export const dynamic = "force-dynamic";
 
@@ -28,47 +29,11 @@ function displayName(s: StaffRow): string {
   return joined || (s.name || "").trim() || `Staff #${s.id}`;
 }
 
-function parseTiers(s: string): CommissionTier[] {
-  try {
-    const arr = JSON.parse(s);
-    if (!Array.isArray(arr)) return [];
-    const out: CommissionTier[] = [];
-    for (const t of arr) {
-      const threshold = Number(t?.threshold_cents);
-      const rate = Number(t?.rate);
-      if (Number.isFinite(threshold) && threshold >= 0 && Number.isFinite(rate) && rate >= 0 && rate <= 1) {
-        out.push({ threshold_cents: Math.round(threshold), rate });
-      }
-    }
-    out.sort((a, b) => a.threshold_cents - b.threshold_cents);
-    return out;
-  } catch {
-    return [];
-  }
-}
-
-// Progressive-tier commission: each portion of revenue between consecutive
-// thresholds is paid at that tier's rate. If no tier with threshold 0 exists,
-// revenue below the lowest threshold pays nothing.
-function tieredPayout(revenueCents: number, tiers: CommissionTier[]): number {
-  if (revenueCents <= 0 || tiers.length === 0) return 0;
-  let payout = 0;
-  for (let i = 0; i < tiers.length; i++) {
-    const tier = tiers[i];
-    const next = tiers[i + 1];
-    if (revenueCents <= tier.threshold_cents) break;
-    const upper = next ? next.threshold_cents : revenueCents;
-    const portion = Math.min(revenueCents, upper) - tier.threshold_cents;
-    if (portion > 0) payout += portion * tier.rate;
-  }
-  return Math.round(payout);
-}
-
 export async function GET(req: Request) {
   const companyId = await requireCompanyId();
   const db = await getDb();
   const url = new URL(req.url);
-  const { range, start, end } = resolveReportRange(url.searchParams.get("range"));
+  const { range, start, end } = resolveReportRangeFromUrl(url);
   const startIso = start.toISOString();
   const endIso = end.toISOString();
 

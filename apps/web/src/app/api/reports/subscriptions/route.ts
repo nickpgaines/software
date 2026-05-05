@@ -5,29 +5,12 @@ import {
   type SubscriptionInterval,
 } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
+import { monthlyCents, withTax } from "@/lib/revenue";
+import { resolveReportRangeFromUrl } from "@/lib/report-range";
 
 export const dynamic = "force-dynamic";
 
 type SubRow = CustomerSubscription;
-
-const INTERVALS_PER_YEAR: Record<SubscriptionInterval, number> = {
-  weekly: 52,
-  biweekly: 26,
-  monthly: 12,
-  quarterly: 4,
-  triannually: 3,
-  semiannually: 2,
-  yearly: 1,
-};
-
-function monthlyCents(price_cents: number, interval: SubscriptionInterval) {
-  return (price_cents * INTERVALS_PER_YEAR[interval]) / 12;
-}
-
-function withTax(cents: number, taxBps: number, includeTax: boolean) {
-  if (!includeTax || !taxBps) return cents;
-  return cents * (1 + taxBps / 10000);
-}
 
 function startOfMonth(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -82,6 +65,9 @@ export async function GET(req: Request) {
   const templateIds = numbersFromCsv(url.searchParams.get("templates"));
   const soldByIds = numbersFromCsv(url.searchParams.get("sold_by"));
   const intervals = intervalsToList(url.searchParams.get("intervals"));
+  const { start: rangeStart, end: rangeEnd } = resolveReportRangeFromUrl(url);
+  const rangeStartIso = rangeStart.toISOString();
+  const rangeEndIso = rangeEnd.toISOString();
 
   const rows = (await db
     .prepare(
@@ -260,6 +246,129 @@ export async function GET(req: Request) {
 
   const currentMrrCents = Math.round(currentMrr);
 
+  // -------- Churn & retention metrics for the selected range --------
+
+  // Subs canceled inside the range.
+  const canceledInRange = filtered.filter(
+    (r) =>
+      r.status === "canceled" &&
+      r.canceled_at &&
+      r.canceled_at >= rangeStartIso &&
+      r.canceled_at < rangeEndIso,
+  );
+  const churnedDollarsCents = Math.round(
+    canceledInRange.reduce(
+      (sum, r) =>
+        sum +
+        withTax(
+          monthlyCents(r.price_cents, r.interval) * 12,
+          r.tax_rate_bps,
+          includeTax,
+        ),
+      0,
+    ),
+  );
+
+  // Active at start of range = subs whose start <= rangeStart and that were
+  // not canceled before rangeStart.
+  const activeAtStart = filtered.filter((r) => {
+    if (r.status === "pending" || r.status === "declined") return false;
+    const start = activeStartIso(r);
+    if (!start || start > rangeStartIso) return false;
+    if (r.canceled_at && r.canceled_at < rangeStartIso) return false;
+    return true;
+  });
+  const activeAtStartCount = activeAtStart.length;
+  const mrrAtStartCents = Math.round(
+    activeAtStart.reduce(
+      (sum, r) =>
+        sum + withTax(monthlyCents(r.price_cents, r.interval), r.tax_rate_bps, includeTax),
+      0,
+    ),
+  );
+  const logoChurnPct =
+    activeAtStartCount > 0
+      ? canceledInRange.length / activeAtStartCount
+      : 0;
+
+  // NRR: MRR from the start-of-period cohort that's still recurring.
+  const startCohortIds = new Set(activeAtStart.map((r) => r.id));
+  const retainedMrrCents = Math.round(
+    filtered
+      .filter((r) => startCohortIds.has(r.id) && r.status === "active")
+      .reduce(
+        (sum, r) =>
+          sum +
+          withTax(
+            monthlyCents(r.price_cents, r.interval),
+            r.tax_rate_bps,
+            includeTax,
+          ),
+        0,
+      ),
+  );
+  const nrr = mrrAtStartCents > 0 ? retainedMrrCents / mrrAtStartCents : 0;
+
+  // Forecast MRR (next 30 days) — sum of monthly value for currently-active
+  // subscriptions, billed-for view. Conservative proxy: count any active sub
+  // with a known start date that has billed at least once.
+  const thirtyDayForecastMrrCents = Math.round(
+    filtered
+      .filter((r) => r.status === "active")
+      .reduce(
+        (sum, r) =>
+          sum +
+          withTax(
+            monthlyCents(r.price_cents, r.interval),
+            r.tax_rate_bps,
+            includeTax,
+          ),
+        0,
+      ),
+  );
+
+  // Cohort retention: for each of the last 6 monthly cohorts (subscriptions
+  // that started in that month), report % still active at +1, +3, +6 months
+  // after the cohort start.
+  const cohortRetention: {
+    label: string;
+    iso: string;
+    started: number;
+    retention_30d: number;
+    retention_90d: number;
+    retention_180d: number;
+  }[] = [];
+  for (let i = 5; i >= 0; i--) {
+    const ref = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const cStart = startOfMonth(ref);
+    const cEnd = endOfMonth(ref);
+    const cStartIso = cStart.toISOString();
+    const cEndIso = cEnd.toISOString();
+    const cohort = filtered.filter((r) => {
+      if (r.status === "pending" || r.status === "declined") return false;
+      const s = activeStartIso(r);
+      return !!s && s >= cStartIso && s < cEndIso;
+    });
+    const checkpoints = [30, 90, 180];
+    const survival = checkpoints.map((days) => {
+      const checkpointDate = new Date(cStart.getTime() + days * 86400000);
+      if (checkpointDate > now) return -1; // not yet measurable
+      const survivors = cohort.filter((r) => {
+        if (!r.canceled_at) return true;
+        return new Date(r.canceled_at).getTime() >= checkpointDate.getTime();
+      }).length;
+      return cohort.length > 0 ? survivors / cohort.length : 0;
+    });
+    cohortRetention.push({
+      label: ref.toLocaleString("en-US", { month: "short" }),
+      iso: ref.toISOString().slice(0, 7),
+      started: cohort.length,
+      retention_30d: survival[0],
+      retention_90d: survival[1],
+      retention_180d: survival[2],
+    });
+  }
+
   return NextResponse.json({
     filters: {
       customers: customerRows.map((c) => ({
@@ -291,6 +400,21 @@ export async function GET(req: Request) {
       mrr_cents: currentMrrCents,
       arr_cents: currentMrrCents * 12,
     },
+    churn: {
+      churned_dollars_cents: churnedDollarsCents,
+      logo_churn_pct: logoChurnPct,
+      canceled_in_range: canceledInRange.length,
+      active_at_start: activeAtStartCount,
+    },
+    nrr: {
+      pct: nrr,
+      mrr_at_start_cents: mrrAtStartCents,
+      retained_mrr_cents: retainedMrrCents,
+    },
+    forecast: {
+      mrr_30d_cents: thirtyDayForecastMrrCents,
+    },
+    cohort_retention: cohortRetention,
     monthly: months,
     arr_added: arrAdded,
     breakdowns: {

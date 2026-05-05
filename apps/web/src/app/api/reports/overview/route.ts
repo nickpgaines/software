@@ -1,41 +1,35 @@
 import { NextResponse } from "next/server";
-import {
-  getDb,
-  type CustomerSubscription,
-  type SubscriptionInterval,
-} from "@/lib/db";
-import { resolveReportRange } from "@/lib/report-range";
+import { getDb } from "@/lib/db";
+import { resolveReportRangeFromUrl } from "@/lib/report-range";
 import { requireCompanyId } from "@/lib/auth";
+import {
+  getCollectedRevenue,
+  getGeneratedRevenue,
+  getMRRSnapshot,
+  getARRAdded,
+} from "@/lib/revenue";
+import { getPayrollSummary } from "@/lib/payroll-calc";
 
 export const dynamic = "force-dynamic";
-
-const INTERVALS_PER_YEAR: Record<SubscriptionInterval, number> = {
-  weekly: 52,
-  biweekly: 26,
-  monthly: 12,
-  quarterly: 4,
-  triannually: 3,
-  semiannually: 2,
-  yearly: 1,
-};
-
-function monthlyCents(price_cents: number, interval: SubscriptionInterval) {
-  return (price_cents * INTERVALS_PER_YEAR[interval]) / 12;
-}
-
-function withTax(cents: number, taxBps: number) {
-  if (!taxBps) return cents;
-  return cents * (1 + taxBps / 10000);
-}
 
 export async function GET(req: Request) {
   const companyId = await requireCompanyId();
   const db = await getDb();
   const url = new URL(req.url);
-  const { range, start, end } = resolveReportRange(url.searchParams.get("range"));
+  const { range, start, end } = resolveReportRangeFromUrl(url);
   const startIso = start.toISOString();
   const endIso = end.toISOString();
 
+  const [collected, generated, mrrCents, arrAdded, payroll] = await Promise.all([
+    getCollectedRevenue(companyId, startIso, endIso),
+    getGeneratedRevenue(companyId, startIso, endIso),
+    getMRRSnapshot(companyId),
+    getARRAdded(companyId, startIso, endIso),
+    getPayrollSummary(companyId, startIso, endIso),
+  ]);
+
+  // Legacy "revenue" block — kept for backwards compatibility with the
+  // existing Overview UI. Sourced from jobs.scheduled_at + status.
   const revenue = (await db
     .prepare(
       `SELECT
@@ -90,18 +84,18 @@ export async function GET(req: Request) {
   function jobBucket(rs: typeof jobBreakdownRows) {
     let count = 0;
     let expected = 0;
-    let collected = 0;
+    let collectedSum = 0;
     for (const r of rs) {
       if (r.status === "cancelled") continue;
       const price = r.price_cents || 0;
       count += 1;
       expected += price;
-      if (r.status === "completed") collected += price;
+      if (r.status === "completed") collectedSum += price;
     }
     return {
       count,
       expected_cents: expected,
-      collected_cents: collected,
+      collected_cents: collectedSum,
       avg_value_cents: count > 0 ? Math.round(expected / count) : 0,
     };
   }
@@ -137,48 +131,29 @@ export async function GET(req: Request) {
       .get(companyId)) as { n: number }
   ).n;
 
-  const subRows = (await db
+  // Active subscription counts for this period.
+  const subTotals = (await db
     .prepare(
-      `SELECT * FROM customer_subscriptions WHERE company_id = ?`
+      `SELECT
+         COALESCE(SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END), 0) AS active
+       FROM customer_subscriptions
+       WHERE company_id = ?`
     )
-    .all(companyId)) as CustomerSubscription[];
+    .get(companyId)) as { active: number };
 
-  let mrrCents = 0;
-  let activeSubs = 0;
-  let newSubs = 0;
-  let canceledSubs = 0;
-  let arrAddedCents = 0;
-  for (const r of subRows) {
-    if (r.status === "active") {
-      activeSubs += 1;
-      mrrCents += withTax(
-        monthlyCents(r.price_cents, r.interval),
-        r.tax_rate_bps
-      );
-    }
-    const start = r.start_date || r.accepted_at || r.created_at;
-    const startedInRange =
-      !!start &&
-      start >= startIso &&
-      start < endIso &&
-      r.status !== "declined" &&
-      r.status !== "pending";
-    if (startedInRange) {
-      newSubs += 1;
-      arrAddedCents += withTax(
-        monthlyCents(r.price_cents, r.interval) * 12,
-        r.tax_rate_bps
-      );
-    }
-    if (
-      r.canceled_at &&
-      r.canceled_at >= startIso &&
-      r.canceled_at < endIso
-    ) {
-      canceledSubs += 1;
-    }
-  }
-  const mrrCentsRounded = Math.round(mrrCents);
+  // ARPC: collected revenue / unique paying customers in range.
+  const payingRow = (await db
+    .prepare(
+      `SELECT COUNT(DISTINCT j.customer_id) AS n
+         FROM payments p
+         JOIN jobs j ON j.id = p.job_id
+        WHERE p.company_id = ?
+          AND p.payment_date >= ? AND p.payment_date < ?`
+    )
+    .get(companyId, startIso, endIso)) as { n: number };
+  const payingCustomers = payingRow?.n || 0;
+  const arpcCents =
+    payingCustomers > 0 ? Math.round(collected.total_cents / payingCustomers) : 0;
 
   return NextResponse.json({
     range,
@@ -189,6 +164,19 @@ export async function GET(req: Request) {
       collected_cents: revenue.collected,
       unpaid_cents: revenue.unpaid,
       collection_rate: collectionRate,
+    },
+    company_revenue: {
+      collected: collected,
+      generated: generated,
+    },
+    profit: {
+      total_revenue_cents: payroll.total_revenue_cents,
+      total_payout_cents: payroll.total_payout_cents,
+      net_profit_cents: payroll.net_profit_cents,
+    },
+    arpc: {
+      paying_customers: payingCustomers,
+      cents: arpcCents,
     },
     jobs: {
       total: jobs.total,
@@ -205,12 +193,15 @@ export async function GET(req: Request) {
       repeat: repeatCustomers,
     },
     subscriptions: {
-      active: activeSubs,
-      new: newSubs,
-      canceled: canceledSubs,
-      mrr_cents: mrrCentsRounded,
-      arr_cents: mrrCentsRounded * 12,
-      arr_added_cents: Math.round(arrAddedCents),
+      active: subTotals.active,
+      new: arrAdded.count_started,
+      canceled: arrAdded.count_canceled,
+      mrr_cents: mrrCents,
+      arr_cents: mrrCents * 12,
+      arr_added_cents: arrAdded.gross_added_cents,
+      arr_added_gross_cents: arrAdded.gross_added_cents,
+      arr_added_net_cents: arrAdded.net_added_cents,
+      arr_churned_cents: arrAdded.churned_cents,
     },
   });
 }
