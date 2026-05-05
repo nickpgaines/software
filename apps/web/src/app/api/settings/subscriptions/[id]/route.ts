@@ -1,6 +1,20 @@
 import { NextResponse } from "next/server";
-import { getDb, type SubscriptionTemplate } from "@/lib/db";
+import {
+  getDb,
+  type SubscriptionInterval,
+  type SubscriptionTemplate,
+} from "@/lib/db";
 import { getSessionContext } from "@/lib/auth";
+
+const VALID_INTERVALS: SubscriptionInterval[] = [
+  "weekly",
+  "biweekly",
+  "monthly",
+  "quarterly",
+  "triannually",
+  "semiannually",
+  "yearly",
+];
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +63,7 @@ export async function PUT(
     terms_id: number | null;
     require_signature: boolean | number;
     tax_rate_bps: number;
+    service_interval: SubscriptionInterval;
   }>;
 
   const name =
@@ -83,12 +98,19 @@ export async function PUT(
     body.tax_rate_bps === undefined
       ? existing.tax_rate_bps
       : Math.max(0, Math.round(Number(body.tax_rate_bps) || 0));
+  const serviceInterval: SubscriptionInterval =
+    body.service_interval === undefined
+      ? existing.service_interval
+      : VALID_INTERVALS.includes(body.service_interval)
+        ? body.service_interval
+        : existing.service_interval;
 
   await db
     .prepare(
       `UPDATE subscription_templates
          SET name = ?, description = ?, active = ?,
              terms_id = ?, require_signature = ?, tax_rate_bps = ?,
+             service_interval = ?,
              updated_at = datetime('now')
        WHERE id = ? AND company_id = ?`
     )
@@ -99,6 +121,7 @@ export async function PUT(
       termsId,
       requireSignature,
       taxRateBps,
+      serviceInterval,
       id,
       ctx.companyId
     );
