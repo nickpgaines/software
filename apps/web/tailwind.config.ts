@@ -38,12 +38,8 @@ export default {
         violet: "var(--color-violet)",
         "violet-soft": "var(--color-violet-soft)",
         green: "var(--color-green)",
-        "green-soft": "var(--color-green-soft)",
         red: "var(--color-red)",
         cyan: "var(--color-cyan)",
-        amber: "var(--color-amber)",
-        pink: "var(--color-pink)",
-        "pink-soft": "var(--color-pink-soft)",
       },
       fontFamily: {
         sans: ["var(--font-sans)"],

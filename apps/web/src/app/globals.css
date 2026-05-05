@@ -30,12 +30,8 @@
   --color-violet-soft: #a78bfa;
   --color-violet-glow: rgba(139, 92, 246, 0.35);
   --color-green: #22c55e;
-  --color-green-soft: #4ade80;
   --color-red: #ef4444;
   --color-cyan: #22d3ee;
-  --color-amber: #f59e0b;
-  --color-pink: #ec4899;
-  --color-pink-soft: #f472b6;
 
   /* Layout ------------------------------------------------------------------ */
   --layout-sidebar-width: 15rem;   /* 240px */

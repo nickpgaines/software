@@ -42,10 +42,6 @@ export const PULSE = {
   violetSoft: "#a78bfa",
   violetGlow: "rgba(139, 92, 246, 0.35)",
   green: "#22c55e",
-  greenSoft: "#4ade80",
   red: "#ef4444",
   cyan: "#22d3ee",
-  amber: "#f59e0b",
-  pink: "#ec4899",
-  pinkSoft: "#f472b6",
 };
