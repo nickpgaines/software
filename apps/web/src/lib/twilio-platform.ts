@@ -2,13 +2,20 @@ import twilio from "twilio";
 import { getDb, type Company } from "@/lib/db";
 
 // Platform-managed Twilio. The platform owns a single master account
-// (TWILIO_MASTER_ACCOUNT_SID / TWILIO_MASTER_AUTH_TOKEN) and creates one
-// subaccount per tenant company. Each subaccount owns the company's
-// purchased phone number(s).
+// (TWILIO_MASTER_ACCOUNT_SID / TWILIO_MASTER_AUTH_TOKEN) and a single
+// Messaging Service tied to one A2P brand + campaign. All tenant numbers
+// live in the master account and are added to the Messaging Service so they
+// inherit campaign approval and carrier compliance.
+//
+// Subaccount-per-tenant was the original plan but is incompatible with one
+// shared A2P campaign — Messaging Services and the numbers in them must
+// belong to the same Twilio account. Per-tenant billing isolation is now
+// metered inside our own app rather than at the Twilio account boundary.
 
 export type PlatformConfig = {
   masterAccountSid: string;
   masterAuthToken: string;
+  messagingServiceSid: string | null;
   defaultAreaCode: string | null;
   inboundSmsWebhookUrl: string | null;
   inboundVoiceWebhookUrl: string | null;
@@ -22,6 +29,7 @@ export function getPlatformConfig(): PlatformConfig | null {
   return {
     masterAccountSid,
     masterAuthToken,
+    messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID || null,
     defaultAreaCode: process.env.TWILIO_DEFAULT_AREA_CODE || null,
     inboundSmsWebhookUrl: process.env.TWILIO_INBOUND_SMS_WEBHOOK_URL || null,
     inboundVoiceWebhookUrl:
@@ -30,24 +38,19 @@ export function getPlatformConfig(): PlatformConfig | null {
   };
 }
 
-// Master switch: when off, signup will not auto-provision and sendSms falls
-// back to BYO. Flip to "1" once A2P campaign approval clears.
+// Master switch: when off, signup will not auto-provision and sendCompanySms
+// falls back to BYO. Flip to "1" once A2P campaign approval clears.
 export function isPlatformSmsEnabled(): boolean {
   return process.env.PLATFORM_SMS_ENABLED === "1";
 }
 
 export type ProvisionResult =
-  | {
-      ok: true;
-      subaccountSid: string;
-      subaccountAuthToken: string;
-      phoneNumber: string;
-      phoneSid: string;
-    }
+  | { ok: true; phoneNumber: string; phoneSid: string }
   | { ok: false; error: string };
 
-// Create a Twilio subaccount for the company and purchase a local number in
-// the requested area code. Persists the result onto the company row.
+// Buy a local number in the requested area code under the master account
+// and attach it to the platform Messaging Service so it inherits the A2P
+// campaign. Persists the result onto the company row.
 export async function provisionTwilioForCompany(args: {
   companyId: number;
   companyName: string;
@@ -56,31 +59,26 @@ export async function provisionTwilioForCompany(args: {
   const { companyId, companyName, areaCode } = args;
   const cfg = getPlatformConfig();
   if (!cfg) return { ok: false, error: "Platform Twilio is not configured" };
+  if (!cfg.messagingServiceSid) {
+    return {
+      ok: false,
+      error: "TWILIO_MESSAGING_SERVICE_SID is not configured",
+    };
+  }
   if (!/^\d{3}$/.test(areaCode)) {
     return { ok: false, error: "Area code must be 3 digits" };
   }
 
-  const master = twilio(cfg.masterAccountSid, cfg.masterAuthToken);
-
-  let subaccountSid: string;
-  let subaccountAuthToken: string;
-  try {
-    const subaccount = await master.api.v2010.accounts.create({
-      friendlyName: `nick360:${companyId}:${companyName}`.slice(0, 64),
-    });
-    subaccountSid = subaccount.sid;
-    subaccountAuthToken = subaccount.authToken;
-  } catch (e) {
-    return { ok: false, error: `Subaccount create failed: ${asMsg(e)}` };
-  }
-
-  const sub = twilio(subaccountSid, subaccountAuthToken);
+  const client = twilio(cfg.masterAccountSid, cfg.masterAuthToken);
 
   let chosenNumber: string;
   try {
-    const available = await sub
-      .availablePhoneNumbers("US")
-      .local.list({ areaCode: Number(areaCode), smsEnabled: true, limit: 1 });
+    const available = await client.availablePhoneNumbers("US").local.list({
+      areaCode: Number(areaCode),
+      smsEnabled: true,
+      voiceEnabled: true,
+      limit: 1,
+    });
     if (available.length === 0) {
       return {
         ok: false,
@@ -94,8 +92,9 @@ export async function provisionTwilioForCompany(args: {
 
   let phoneSid: string;
   try {
-    const purchased = await sub.incomingPhoneNumbers.create({
+    const purchased = await client.incomingPhoneNumbers.create({
       phoneNumber: chosenNumber,
+      friendlyName: `nick360:${companyId}:${companyName}`.slice(0, 64),
       smsUrl: cfg.inboundSmsWebhookUrl ?? undefined,
       smsMethod: cfg.inboundSmsWebhookUrl ? "POST" : undefined,
       voiceUrl: cfg.inboundVoiceWebhookUrl ?? undefined,
@@ -106,65 +105,77 @@ export async function provisionTwilioForCompany(args: {
     return { ok: false, error: `Number purchase failed: ${asMsg(e)}` };
   }
 
+  // Attach the new number to the Messaging Service so the A2P campaign
+  // covers it. Without this step, outbound traffic from the number would
+  // be unregistered and carrier-throttled.
+  try {
+    await client.messaging.v1
+      .services(cfg.messagingServiceSid)
+      .phoneNumbers.create({ phoneNumberSid: phoneSid });
+  } catch (e) {
+    return {
+      ok: false,
+      error: `Messaging Service attach failed: ${asMsg(e)}`,
+    };
+  }
+
   const db = await getDb();
   await db
     .prepare(
       `UPDATE company
-         SET twilio_subaccount_sid = ?,
-             twilio_subaccount_auth_token = ?,
-             platform_phone_number = ?,
+         SET platform_phone_number = ?,
              platform_phone_sid = ?,
-             a2p_campaign_status = 'pending',
+             a2p_campaign_status = 'active',
              updated_at = datetime('now')
        WHERE id = ?`
     )
-    .run(subaccountSid, subaccountAuthToken, chosenNumber, phoneSid, companyId);
+    .run(chosenNumber, phoneSid, companyId);
 
-  return {
-    ok: true,
-    subaccountSid,
-    subaccountAuthToken,
-    phoneNumber: chosenNumber,
-    phoneSid,
-  };
+  return { ok: true, phoneNumber: chosenNumber, phoneSid };
 }
 
-export function hasPlatformSms(c: Pick<Company, "twilio_subaccount_sid" | "twilio_subaccount_auth_token" | "platform_phone_number">): boolean {
-  return !!(
-    c.twilio_subaccount_sid &&
-    c.twilio_subaccount_auth_token &&
-    c.platform_phone_number
-  );
+export function hasPlatformSms(
+  c: Pick<Company, "platform_phone_number">
+): boolean {
+  return !!c.platform_phone_number;
 }
 
 export type PlatformSmsResult =
   | { ok: true; sid: string; status: string }
   | { ok: false; error: string; code?: number };
 
-// Send an SMS using the company's subaccount credentials and platform-issued
-// phone number. Caller must verify hasPlatformSms() first.
+// Send via the master account. We pass both From (the tenant's platform
+// number, so the recipient sees the right caller ID) and MessagingServiceSid
+// (so the message is attributed to the A2P campaign and inherits compliance
+// routing).
 export async function sendPlatformSms(args: {
-  company: Pick<
-    Company,
-    "twilio_subaccount_sid" | "twilio_subaccount_auth_token" | "platform_phone_number"
-  >;
+  company: Pick<Company, "platform_phone_number">;
   to: string;
   body: string;
 }): Promise<PlatformSmsResult> {
   const { company, to, body } = args;
-  if (!hasPlatformSms(company)) {
-    return { ok: false, error: "Platform SMS not provisioned for this company" };
+  const cfg = getPlatformConfig();
+  if (!cfg || !cfg.messagingServiceSid) {
+    return { ok: false, error: "Platform messaging is not configured" };
   }
+  if (!company.platform_phone_number) {
+    return {
+      ok: false,
+      error: "Company has no platform phone number provisioned",
+    };
+  }
+
   const url = `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(
-    company.twilio_subaccount_sid!
+    cfg.masterAccountSid
   )}/Messages.json`;
   const form = new URLSearchParams();
   form.set("To", to);
-  form.set("From", company.platform_phone_number!);
+  form.set("From", company.platform_phone_number);
+  form.set("MessagingServiceSid", cfg.messagingServiceSid);
   form.set("Body", body);
 
   const auth = Buffer.from(
-    `${company.twilio_subaccount_sid}:${company.twilio_subaccount_auth_token}`
+    `${cfg.masterAccountSid}:${cfg.masterAuthToken}`
   ).toString("base64");
 
   let res: Response;
@@ -197,9 +208,8 @@ export async function sendPlatformSms(args: {
   return { ok: true, sid: data.sid || "", status: data.status || "queued" };
 }
 
-// Look up the company that owns a given platform-issued phone number. Used by
-// the inbound-SMS / inbound-voice webhooks to route the event to the right
-// tenant.
+// Look up the company that owns a given platform-issued phone number. Used
+// by the inbound webhooks to route the event to the right tenant.
 export async function findCompanyByPlatformNumber(
   toNumber: string
 ): Promise<Company | null> {

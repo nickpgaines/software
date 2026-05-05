@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, type MessagingSettings } from "@/lib/db";
+import { getDb, type Company, type MessagingSettings } from "@/lib/db";
 import { normalizeUSPhone } from "@/lib/sms";
 import { requireCompanyId } from "@/lib/auth";
 
@@ -12,19 +12,49 @@ type PublicSettings = {
   from_number: string | null;
   configured: boolean;
   updated_at: string;
+  // Platform-managed fields. When platform_phone_number is set, the company
+  // has been auto-provisioned a number from the platform Twilio account and
+  // BYO credentials are not used.
+  platform_phone_number: string | null;
+  platform_a2p_status: string | null;
 };
 
-function toPublic(s: MessagingSettings): PublicSettings {
+function toPublic(
+  s: MessagingSettings,
+  platform: { phone: string | null; a2pStatus: string | null }
+): PublicSettings {
   const sid = s.account_sid;
   const masked =
     sid && sid.length >= 6 ? `${sid.slice(0, 4)}…${sid.slice(-4)}` : sid;
+  const platformConfigured = !!platform.phone;
+  const byoConfigured = !!(s.account_sid && s.auth_token && s.from_number);
   return {
     provider: s.provider,
     account_sid_masked: masked,
     auth_token_set: !!s.auth_token,
     from_number: s.from_number,
-    configured: !!(s.account_sid && s.auth_token && s.from_number),
+    configured: platformConfigured || byoConfigured,
     updated_at: s.updated_at,
+    platform_phone_number: platform.phone,
+    platform_a2p_status: platform.a2pStatus,
+  };
+}
+
+async function readPlatformFields(companyId: number): Promise<{
+  phone: string | null;
+  a2pStatus: string | null;
+}> {
+  const db = await getDb();
+  const row = await db
+    .prepare(
+      "SELECT platform_phone_number, a2p_campaign_status FROM company WHERE id = ? LIMIT 1"
+    )
+    .get<Pick<Company, "platform_phone_number" | "a2p_campaign_status">>(
+      companyId
+    );
+  return {
+    phone: row?.platform_phone_number ?? null,
+    a2pStatus: row?.a2p_campaign_status ?? null,
   };
 }
 
@@ -64,7 +94,10 @@ const NO_CACHE_HEADERS = {
 export async function GET() {
   const companyId = await requireCompanyId();
   const s = await readSettings(companyId);
-  return NextResponse.json(toPublic(s), { headers: NO_CACHE_HEADERS });
+  const platform = await readPlatformFields(companyId);
+  return NextResponse.json(toPublic(s, platform), {
+    headers: NO_CACHE_HEADERS,
+  });
 }
 
 export async function PUT(req: Request) {
@@ -150,5 +183,8 @@ export async function PUT(req: Request) {
     from_number: nextFrom,
     updated_at: new Date().toISOString(),
   };
-  return NextResponse.json(toPublic(updated), { headers: NO_CACHE_HEADERS });
+  const platform = await readPlatformFields(companyId);
+  return NextResponse.json(toPublic(updated, platform), {
+    headers: NO_CACHE_HEADERS,
+  });
 }

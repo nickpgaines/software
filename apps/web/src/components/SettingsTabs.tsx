@@ -1670,7 +1670,16 @@ type MessagingStatus = {
   from_number: string | null;
   configured: boolean;
   updated_at: string;
+  platform_phone_number: string | null;
+  platform_a2p_status: string | null;
 };
+
+function formatUSPhone(e164: string): string {
+  const digits = e164.replace(/\D/g, "");
+  const ten = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
+  if (ten.length !== 10) return e164;
+  return `(${ten.slice(0, 3)}) ${ten.slice(3, 6)}-${ten.slice(6)}`;
+}
 
 function MessagingPanel() {
   const [status, setStatus] = useState<MessagingStatus | null>(null);
@@ -1684,6 +1693,7 @@ function MessagingPanel() {
   const [fromNumber, setFromNumber] = useState("");
   const [webhookUrl, setWebhookUrl] = useState("");
   const [copied, setCopied] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   async function load() {
     const res = await fetch("/api/settings/messaging", { cache: "no-store" });
@@ -1742,15 +1752,33 @@ function MessagingPanel() {
     }
   }
 
+  const platformPhone = status?.platform_phone_number ?? null;
+  const onPlatform = !!platformPhone;
+
   return (
     <form onSubmit={save} className="space-y-5">
       <div>
         <h2 className="text-lg font-semibold text-slate-900">Messaging</h2>
         <p className="text-sm text-slate-500 mt-1">
-          Connect your Twilio account to send and receive SMS from the Messages
-          tab. Each business uses its own Twilio number.
+          {onPlatform
+            ? "Your business has a phone number for texting and calling customers. It's ready to use from the Messages tab."
+            : "Connect your Twilio account to send and receive SMS from the Messages tab."}
         </p>
       </div>
+
+      {onPlatform && (
+        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+          <div className="text-xs uppercase tracking-wide text-emerald-700 font-semibold">
+            Your number
+          </div>
+          <div className="mt-1 text-2xl font-semibold text-slate-900 font-mono">
+            {formatUSPhone(platformPhone!)}
+          </div>
+          <div className="mt-2 text-xs text-emerald-700">
+            Active. SMS and voice routed through this number.
+          </div>
+        </div>
+      )}
 
       <div
         className={
@@ -1767,62 +1795,78 @@ function MessagingPanel() {
           }
         />
         {status?.configured ? "Connected" : "Not connected"}
-        {status?.from_number && (
+        {!onPlatform && status?.from_number && (
           <span className="text-slate-500 font-normal">
             · {status.from_number}
           </span>
         )}
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3 text-sm">
-        <div className="font-medium text-slate-900">Setup steps</div>
-        <ol className="list-decimal list-inside space-y-1 text-slate-600">
-          <li>
-            Sign up at{" "}
-            <a
-              href="https://www.twilio.com/try-twilio"
-              target="_blank"
-              rel="noreferrer"
-              className="text-slate-900 underline"
-            >
-              twilio.com
-            </a>{" "}
-            and buy a local number with SMS enabled.
-          </li>
-          <li>
-            Copy your <span className="font-mono">Account SID</span> and{" "}
-            <span className="font-mono">Auth Token</span> from the Twilio
-            Console dashboard.
-          </li>
-          <li>Paste them below along with the number you bought.</li>
-          <li>
-            In Twilio, open your number&apos;s settings and set{" "}
-            <span className="font-medium">A message comes in</span> to the
-            webhook URL below (HTTP POST).
-          </li>
-        </ol>
-        <div>
-          <div className="text-xs uppercase tracking-wide text-slate-400 mb-1.5">
-            Inbound webhook URL
-          </div>
-          <div className="flex gap-2">
-            <input
-              type="text"
-              readOnly
-              value={webhookUrl}
-              className="flex-1 border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono text-xs"
-            />
-            <button
-              type="button"
-              onClick={copyWebhook}
-              className="text-sm bg-white border border-slate-200 hover:bg-slate-100 rounded-full px-4 py-2 font-medium"
-            >
-              {copied ? "Copied" : "Copy"}
-            </button>
+      {!onPlatform && (
+        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3 text-sm">
+          <div className="font-medium text-slate-900">Setup steps</div>
+          <ol className="list-decimal list-inside space-y-1 text-slate-600">
+            <li>
+              Sign up at{" "}
+              <a
+                href="https://www.twilio.com/try-twilio"
+                target="_blank"
+                rel="noreferrer"
+                className="text-slate-900 underline"
+              >
+                twilio.com
+              </a>{" "}
+              and buy a local number with SMS enabled.
+            </li>
+            <li>
+              Copy your <span className="font-mono">Account SID</span> and{" "}
+              <span className="font-mono">Auth Token</span> from the Twilio
+              Console dashboard.
+            </li>
+            <li>Paste them below along with the number you bought.</li>
+            <li>
+              In Twilio, open your number&apos;s settings and set{" "}
+              <span className="font-medium">A message comes in</span> to the
+              webhook URL below (HTTP POST).
+            </li>
+          </ol>
+          <div>
+            <div className="text-xs uppercase tracking-wide text-slate-400 mb-1.5">
+              Inbound webhook URL
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="text"
+                readOnly
+                value={webhookUrl}
+                className="flex-1 border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono text-xs"
+              />
+              <button
+                type="button"
+                onClick={copyWebhook}
+                className="text-sm bg-white border border-slate-200 hover:bg-slate-100 rounded-full px-4 py-2 font-medium"
+              >
+                {copied ? "Copied" : "Copy"}
+              </button>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
+      {onPlatform && (
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((v) => !v)}
+          className="text-xs text-slate-500 hover:text-slate-700 underline"
+        >
+          {showAdvanced
+            ? "Hide advanced options"
+            : "Advanced: bring your own Twilio account"}
+        </button>
+      )}
+
+      {(!onPlatform || showAdvanced) && (
+        <>
       <Field label="Account SID">
         <input
           type="text"
@@ -1857,20 +1901,24 @@ function MessagingPanel() {
           placeholder="e.g. +18435551234 (your Twilio number)"
         />
       </Field>
+        </>
+      )}
 
       {error && <p className="text-sm text-rose-600">{error}</p>}
-      <div className="flex items-center gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={saving || loading}
-          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
-        >
-          {saving ? "Saving…" : "Save changes"}
-        </button>
-        {savedAt && !saving && (
-          <span className="text-xs text-emerald-600">Saved</span>
-        )}
-      </div>
+      {(!onPlatform || showAdvanced) && (
+        <div className="flex items-center gap-3 pt-2">
+          <button
+            type="submit"
+            disabled={saving || loading}
+            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+          >
+            {saving ? "Saving…" : "Save changes"}
+          </button>
+          {savedAt && !saving && (
+            <span className="text-xs text-emerald-600">Saved</span>
+          )}
+        </div>
+      )}
     </form>
   );
 }
