@@ -11,7 +11,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       >
         <PulseSidebar />
         <main className="ml-60">
-          <div className="max-w-[1440px] mx-auto px-10 py-10">{children}</div>
+          <div className="max-w-app mx-auto px-10 py-10">{children}</div>
         </main>
       </div>
     </PhoneClientProvider>

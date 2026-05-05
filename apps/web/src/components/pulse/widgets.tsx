@@ -302,7 +302,7 @@ export function HeroChart({
         {/* Hover tooltip — date + dollar value, follows the dot horizontally */}
         {hovered && (
           <div
-            className="absolute rounded-lg px-2.5 py-1.5 text-[12px] whitespace-nowrap"
+            className="absolute rounded-lg px-2.5 py-1.5 text-[12px] whitespace-nowrap shadow-tooltip"
             style={{
               left: `${hoverXPct}%`,
               top: 0,
@@ -310,7 +310,6 @@ export function HeroChart({
               marginTop: -36,
               background: PULSE.card,
               border: `1px solid ${PULSE.cardBorderHi}`,
-              boxShadow: "0 8px 24px -8px rgba(0,0,0,0.6)",
               color: PULSE.text,
             }}
           >
@@ -683,11 +682,10 @@ export function PulseTasksCard() {
       <div className="flex items-baseline justify-between mb-4">
         <h2 className="text-[15px] font-extrabold tracking-tight">Tasks</h2>
         <button
-          className="w-7 h-7 rounded-full flex items-center justify-center"
+          className="w-7 h-7 rounded-full flex items-center justify-center shadow-glow-violet-sm"
           style={{
             background: PULSE.violet,
             color: "#fff",
-            boxShadow: `0 0 12px ${PULSE.violetGlow}`,
           }}
         >
           <PulseIcon name="plus" className="w-3.5 h-3.5" />
@@ -709,8 +707,8 @@ export function LiveBadge() {
       style={{ color: PULSE.green }}
     >
       <span
-        className="w-1.5 h-1.5 rounded-full"
-        style={{ background: PULSE.green, boxShadow: `0 0 8px ${PULSE.green}` }}
+        className="w-1.5 h-1.5 rounded-full shadow-glow-green"
+        style={{ background: PULSE.green }}
       />
       Live
     </span>

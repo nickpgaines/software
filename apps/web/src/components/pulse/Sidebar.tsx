@@ -124,11 +124,10 @@ export function PulseSidebar() {
         <button
           type="button"
           onClick={() => setNewOpen((v) => !v)}
-          className="w-full h-10 rounded-xl flex items-center justify-center gap-2 text-[13px] font-extrabold transition-colors"
+          className="w-full h-10 rounded-xl flex items-center justify-center gap-2 text-[13px] font-extrabold transition-colors shadow-glow-violet"
           style={{
             background: PULSE.violet,
             color: "#fff",
-            boxShadow: `0 0 16px ${PULSE.violetGlow}`,
           }}
         >
           <PulseIcon name="plus" className="w-3.5 h-3.5" />
@@ -136,11 +135,10 @@ export function PulseSidebar() {
         </button>
         {newOpen && (
           <div
-            className="absolute top-full left-1 right-1 mt-1.5 z-50 rounded-xl overflow-hidden"
+            className="absolute top-full left-1 right-1 mt-1.5 z-50 rounded-xl overflow-hidden shadow-menu"
             style={{
               background: PULSE.card,
               border: `1px solid ${PULSE.cardBorder}`,
-              boxShadow: "0 12px 28px -8px rgba(0,0,0,0.5)",
             }}
           >
             {NEW_ITEMS.map((item) => (

@@ -262,7 +262,7 @@ function CallWidget() {
       : formatDuration(elapsed);
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-72 bg-slate-900 text-white rounded-2xl shadow-2xl p-4">
+    <div className="fixed bottom-6 right-6 z-50 w-72 bg-slate-900 text-fg rounded-2xl shadow-2xl p-4">
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center">
           <svg
@@ -281,11 +281,11 @@ function CallWidget() {
           <div className="text-sm font-bold truncate">
             {state.target.customerName || state.target.toPhone}
           </div>
-          <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 truncate">
+          <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-fg-subtle truncate">
             {state.target.customerName ? state.target.toPhone : status}
           </div>
         </div>
-        <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 tabular-nums">{status}</div>
+        <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-fg-subtle tabular-nums">{status}</div>
       </div>
 
       <div className="flex items-center gap-2 mt-3">
