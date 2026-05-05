@@ -201,7 +201,7 @@ export default function EmailListClient() {
 
       <section className="space-y-3">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
+          <h2 className="text-eyebrow-tight uppercase text-zinc-300">
             Automated emails
           </h2>
           <span className="text-eyebrow uppercase text-zinc-500">
@@ -322,7 +322,7 @@ export default function EmailListClient() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
+        <h2 className="text-eyebrow-tight uppercase text-zinc-300">
           Blast history
         </h2>
         <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
@@ -376,7 +376,7 @@ export default function EmailListClient() {
                       <Badge
                         variant="outline"
                         className={
-                          "text-[11px] rounded-full px-2 py-0.5 border capitalize font-normal " +
+                          "text-[11px] rounded-full px-2 py-0.5 border capitalize font-bold " +
                           statusBadge(b.status)
                         }
                       >

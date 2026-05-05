@@ -512,7 +512,7 @@ export default function EmployeeSchedulingModal({
                     key={d.toISOString()}
                     className={
                       "px-2 py-3 text-center " +
-                      (isToday ? "text-sky-600 font-semibold" : "")
+                      (isToday ? "text-violet font-bold" : "")
                     }
                   >
                     <div>
@@ -543,7 +543,7 @@ export default function EmployeeSchedulingModal({
                 >
                   <span
                     className={
-                      "w-7 h-7 rounded-full text-white text-xs font-semibold flex items-center justify-center " +
+                      "w-7 h-7 rounded-full text-white text-xs font-extrabold flex items-center justify-center " +
                       colorClass(s)
                     }
                   >
@@ -593,7 +593,7 @@ export default function EmployeeSchedulingModal({
           </div>
 
           <div>
-            <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-zinc-400 mb-2">
+            <div className="flex items-center gap-2 text-eyebrow-tight uppercase text-zinc-400 mb-2">
               <Users className="w-3.5 h-3.5" /> Add employees
             </div>
             <div className="relative mb-2">
@@ -627,7 +627,7 @@ export default function EmployeeSchedulingModal({
                     >
                       <span
                         className={
-                          "w-6 h-6 rounded-full text-white text-[10px] font-semibold flex items-center justify-center " +
+                          "w-6 h-6 rounded-full text-white text-[10px] font-extrabold flex items-center justify-center " +
                           colorClass(s)
                         }
                       >
@@ -647,7 +647,7 @@ export default function EmployeeSchedulingModal({
                 >
                   <span
                     className={
-                      "w-5 h-5 rounded-full text-white text-[10px] font-semibold flex items-center justify-center " +
+                      "w-5 h-5 rounded-full text-white text-[10px] font-extrabold flex items-center justify-center " +
                       colorClass(s)
                     }
                   >
@@ -670,7 +670,7 @@ export default function EmployeeSchedulingModal({
 
           {selected.size > 0 && (
             <div className="bg-sky-50 border border-sky-100 rounded-2xl p-4">
-              <div className="text-center text-xs uppercase tracking-wider text-sky-700 font-semibold">
+              <div className="text-center text-eyebrow-tight uppercase text-violet">
                 Edit {selected.size} selected shift{selected.size === 1 ? "" : "s"}
               </div>
               <div className="flex items-center justify-center gap-3 mt-3">
@@ -708,7 +708,7 @@ export default function EmployeeSchedulingModal({
             </div>
           )}
 
-          <Label className="flex items-center justify-between gap-4 bg-black border border-line rounded-2xl px-4 py-3 cursor-pointer font-normal">
+          <Label className="flex items-center justify-between gap-4 bg-black border border-line rounded-2xl px-4 py-3 cursor-pointer font-bold">
             <div>
               <div className="text-sm font-extrabold text-white tracking-tight">
                 Set as default schedule

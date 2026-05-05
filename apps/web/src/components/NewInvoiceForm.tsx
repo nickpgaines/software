@@ -422,7 +422,7 @@ export default function NewInvoiceForm() {
                   />
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <Label className="block text-[10px] font-normal uppercase tracking-wide text-zinc-500 mb-1">
+                      <Label className="block text-[10px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-1">
                         Qty
                       </Label>
                       <Input
@@ -437,7 +437,7 @@ export default function NewInvoiceForm() {
                       />
                     </div>
                     <div>
-                      <Label className="block text-[10px] font-normal uppercase tracking-wide text-zinc-500 mb-1">
+                      <Label className="block text-[10px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-1">
                         Price (USD)
                       </Label>
                       <Input
@@ -453,7 +453,7 @@ export default function NewInvoiceForm() {
                       />
                     </div>
                     <div>
-                      <Label className="block text-[10px] font-normal uppercase tracking-wide text-zinc-500 mb-1">
+                      <Label className="block text-[10px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-1">
                         Line total
                       </Label>
                       <div className="text-sm font-bold text-white tracking-tight px-3 py-2 bg-black rounded-lg">
@@ -461,7 +461,7 @@ export default function NewInvoiceForm() {
                       </div>
                     </div>
                   </div>
-                  <Label className="inline-flex items-center gap-2 text-xs font-normal text-zinc-300">
+                  <Label className="inline-flex items-center gap-2 text-xs font-bold text-zinc-300">
                     <Checkbox
                       checked={it.taxable}
                       onCheckedChange={(c) =>

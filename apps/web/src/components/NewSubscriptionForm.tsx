@@ -375,7 +375,7 @@ export default function NewSubscriptionForm() {
                   <Button
                     type="button"
                     variant="ghost"
-                    className="w-full justify-start text-left font-normal h-auto border border-line rounded-xl px-4 py-2 text-sm bg-card text-white hover:bg-black"
+                    className="w-full justify-start text-left font-bold h-auto border border-line rounded-xl px-4 py-2 text-sm bg-card text-white hover:bg-black"
                   >
                     {formatDateLabel(startDate)}
                   </Button>
@@ -477,7 +477,7 @@ export default function NewSubscriptionForm() {
               type="button"
               variant="ghost"
               onClick={() => setShowNewTemplate(true)}
-              className="mt-2 text-sm font-medium text-amber-600 hover:text-amber-700 h-auto p-0"
+              className="mt-2 text-sm font-bold text-amber-600 hover:text-amber-700 h-auto p-0"
             >
               + Create new template
             </Button>

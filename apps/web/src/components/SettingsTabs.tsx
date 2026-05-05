@@ -1053,7 +1053,7 @@ function SubscriptionsPanel() {
                 variant="ghost"
                 type="button"
                 onClick={() => setShowTermsModal(true)}
-                className="h-auto mt-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-transparent"
+                className="h-auto mt-2 text-sm font-bold text-indigo-600 hover:text-indigo-700 hover:bg-transparent"
               >
                 Create new terms +
               </Button>
@@ -2029,7 +2029,7 @@ function MessagingPanel() {
         />
         {status?.configured ? "Connected" : "Not connected"}
         {!onPlatform && status?.from_number && (
-          <span className="text-zinc-400 font-normal">
+          <span className="text-zinc-400 font-bold">
             · {status.from_number}
           </span>
         )}
@@ -2257,7 +2257,7 @@ function CallingPanel() {
         />
         {status?.configured ? "Connected" : "Not connected"}
         {status?.business_number && (
-          <span className="text-zinc-400 font-normal">
+          <span className="text-zinc-400 font-bold">
             · {status.business_number}
           </span>
         )}
@@ -2462,7 +2462,7 @@ function EmailPanel() {
         />
         {status?.configured ? "Connected" : "Not connected"}
         {status?.from_address && (
-          <span className="text-zinc-400 font-normal">
+          <span className="text-zinc-400 font-bold">
             · {status.from_address}
           </span>
         )}
@@ -2667,7 +2667,7 @@ function AiPanel() {
         />
         {status?.configured ? "Active" : "Unavailable"}
         {status?.configured && status?.model && (
-          <span className="text-zinc-400 font-normal">· {status.model}</span>
+          <span className="text-zinc-400 font-bold">· {status.model}</span>
         )}
       </div>
 
@@ -2776,7 +2776,7 @@ function Field({
 }) {
   return (
     <div>
-      <Label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1.5 font-normal">
+      <Label className="block text-eyebrow-tight uppercase text-zinc-500 mb-1.5">
         {label}
       </Label>
       {children}

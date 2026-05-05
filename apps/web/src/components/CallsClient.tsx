@@ -107,7 +107,7 @@ export default function CallsClient() {
         {!phone.configured && (
           <Badge
             variant="outline"
-            className="text-xs text-zinc-400 bg-black border border-line rounded-full px-3 py-1 font-normal"
+            className="text-xs text-zinc-400 bg-black border border-line rounded-full px-3 py-1 font-bold"
           >
             Calling not configured. Connect Twilio Voice in Settings → Calling.
           </Badge>
@@ -156,7 +156,7 @@ export default function CallsClient() {
                       <Badge
                         variant="outline"
                         className={
-                          "text-[11px] rounded-full px-2 py-0.5 border font-normal " +
+                          "text-[11px] rounded-full px-2 py-0.5 border font-bold " +
                           statusColor(c.status)
                         }
                       >

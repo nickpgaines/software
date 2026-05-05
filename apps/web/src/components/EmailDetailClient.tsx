@@ -169,7 +169,7 @@ function Stat({
       <div className="text-xs uppercase tracking-wide text-zinc-500 mb-1">
         {label}
       </div>
-      <div className="text-xl font-semibold capitalize">{value}</div>
+      <div className="text-xl font-extrabold capitalize">{value}</div>
     </div>
   );
 }

@@ -128,7 +128,7 @@ export default function MapTerritoryModal({
 
         <div className="p-5 space-y-4">
           <div ref={ref} className="relative">
-            <Label className="block text-xs font-normal uppercase tracking-wide text-zinc-500 mb-1.5">
+            <Label className="block text-eyebrow-tight uppercase text-zinc-500 mb-1.5">
               Assign to Employee
             </Label>
             <div className="min-h-[42px] flex flex-wrap items-center gap-1.5 border border-line rounded-2xl px-2 py-1.5 bg-card">
@@ -137,7 +137,7 @@ export default function MapTerritoryModal({
                   className="inline-flex items-center gap-1.5 rounded-full pl-1 pr-2 py-0.5 text-xs text-white"
                   style={{ backgroundColor: staffColorHex(picked.color) }}
                 >
-                  <span className="w-5 h-5 rounded-full bg-card/30 flex items-center justify-center text-[10px] font-semibold">
+                  <span className="w-5 h-5 rounded-full bg-card/30 flex items-center justify-center text-[10px] font-extrabold">
                     {initials(picked.name)}
                   </span>
                   {picked.name}

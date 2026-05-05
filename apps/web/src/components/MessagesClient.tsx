@@ -147,7 +147,7 @@ export default function MessagesClient() {
           </div>
         </div>
         <div className="px-4 pb-3 flex items-center justify-between">
-          <Label className="text-xs font-normal text-zinc-400 flex items-center gap-2">
+          <Label className="text-xs font-bold text-zinc-400 flex items-center gap-2">
             <Checkbox
               checked={unreadOnly}
               onCheckedChange={(checked) => setUnreadOnly(checked === true)}
@@ -177,7 +177,7 @@ export default function MessagesClient() {
                       (selectedId === c.id ? "bg-black" : "")
                     }
                   >
-                    <div className="w-9 h-9 rounded-full bg-line text-zinc-300 flex items-center justify-center text-xs font-semibold shrink-0">
+                    <div className="w-9 h-9 rounded-full bg-line text-zinc-300 flex items-center justify-center text-xs font-extrabold shrink-0">
                       {initials(c.name)}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -207,7 +207,7 @@ export default function MessagesClient() {
                         {c.unread_count > 0 && (
                           <Badge
                             variant="default"
-                            className="text-[10px] bg-slate-900 text-white rounded-full px-1.5 py-0.5 shrink-0 border-transparent font-normal hover:bg-slate-900"
+                            className="text-[10px] bg-slate-900 text-white rounded-full px-1.5 py-0.5 shrink-0 border-transparent font-bold hover:bg-slate-900"
                           >
                             {c.unread_count}
                           </Badge>
@@ -321,7 +321,7 @@ function Thread({
   return (
     <>
       <header className="px-5 py-3 border-b border-line flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full bg-line text-zinc-300 flex items-center justify-center text-xs font-semibold">
+        <div className="w-9 h-9 rounded-full bg-line text-zinc-300 flex items-center justify-center text-xs font-extrabold">
           {initials(conversation.name)}
         </div>
         <div className="flex-1 min-w-0">

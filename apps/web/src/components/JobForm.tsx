@@ -778,7 +778,7 @@ function Total({
       </div>
       <div
         className={
-          (bold ? "font-bold text-lg " : "font-semibold ") +
+          (bold ? "font-bold text-lg " : "font-bold ") +
           "tabular-nums " +
           (className || "text-white")
         }
@@ -1166,7 +1166,7 @@ function LineItemCard({
             </Field>
           </div>
           <div className="flex flex-wrap items-center gap-4 text-sm">
-            <Label className="inline-flex items-center gap-2 font-normal">
+            <Label className="inline-flex items-center gap-2 font-bold">
               <Checkbox
                 checked={item.taxable}
                 onCheckedChange={(c) => onChange({ taxable: c === true })}
@@ -1174,7 +1174,7 @@ function LineItemCard({
               />
               Taxable
             </Label>
-            <Label className="inline-flex items-center gap-2 font-normal">
+            <Label className="inline-flex items-center gap-2 font-bold">
               <Checkbox
                 checked={item.upsell}
                 onCheckedChange={(c) => onChange({ upsell: c === true })}

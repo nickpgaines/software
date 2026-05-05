@@ -139,7 +139,7 @@ export default function MapPinDropModal({
                     key={o}
                     className="border-b border-line last:border-b-0"
                   >
-                    <Label className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-black font-normal">
+                    <Label className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-black font-bold">
                       <Checkbox
                         checked={checked}
                         onCheckedChange={() => toggleObjection(o)}

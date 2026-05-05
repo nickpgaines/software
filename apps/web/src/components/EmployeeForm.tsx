@@ -432,7 +432,7 @@ export default function EmployeeForm({
             return (
               <Label
                 key={p.key}
-                className={`flex items-start gap-3 px-3 py-3 rounded-lg cursor-pointer font-normal ${
+                className={`flex items-start gap-3 px-3 py-3 rounded-lg cursor-pointer font-bold ${
                   checked ? "bg-black" : "hover:bg-black"
                 }`}
               >

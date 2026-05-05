@@ -359,7 +359,7 @@ function NowLine({ now }: { now: Date }) {
       style={{ top: `${top}px` }}
     >
       <div className="flex items-center">
-        <span className="-ml-12 w-12 text-right pr-2 text-[10px] font-medium text-zinc-400">
+        <span className="-ml-12 w-12 text-right pr-2 text-[10px] font-bold text-zinc-400">
           {now.toLocaleTimeString(undefined, {
             hour: "numeric",
             minute: "2-digit",
@@ -514,10 +514,10 @@ function JobBlock({
         width: stacked ? `${widthPct}%` : undefined,
       }}
     >
-      <div className="font-semibold truncate">{job.customer_name}</div>
+      <div className="font-bold truncate">{job.customer_name}</div>
       <div className="opacity-75 truncate">Window Cleaning</div>
       {!stacked && <div className="opacity-75 truncate">{titleTime}</div>}
-      <div className="opacity-90 font-semibold">{money(job.price_cents)}</div>
+      <div className="opacity-90 font-bold">{money(job.price_cents)}</div>
     </Link>
   );
 }
@@ -528,7 +528,7 @@ function AnytimeBlock({ job }: { job: Job }) {
       href={`/schedule/${job.id}`}
       className="block rounded-lg border border-dashed border-cyan-300 bg-cyan-50/40 px-2 py-1 text-xs text-cyan-900 mb-1"
     >
-      <span className="font-semibold">{job.customer_name}</span>
+      <span className="font-bold">{job.customer_name}</span>
       <span className="opacity-75"> · Anytime · {money(job.price_cents)}</span>
     </Link>
   );
@@ -735,7 +735,7 @@ function MonthView({
             >
               <div
                 className={
-                  "text-sm font-semibold mb-1 " +
+                  "text-sm font-bold mb-1 " +
                   (isToday ? "text-white" : "")
                 }
               >

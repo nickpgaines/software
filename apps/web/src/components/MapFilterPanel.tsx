@@ -108,7 +108,7 @@ export default function MapFilterPanel({
             {DATE_RANGES.map((r) => (
               <Label
                 key={r.key}
-                className="flex items-center gap-2 text-sm cursor-pointer py-1 font-normal"
+                className="flex items-center gap-2 text-sm cursor-pointer py-1 font-bold"
               >
                 {/* Native <input type="radio"> kept: no Radio primitive in components/ui yet. */}
                 <input
@@ -207,7 +207,7 @@ function CheckRow({
   swatch: string;
 }) {
   return (
-    <Label className="flex items-center gap-2 text-sm cursor-pointer py-1 font-normal">
+    <Label className="flex items-center gap-2 text-sm cursor-pointer py-1 font-bold">
       <Checkbox
         checked={checked}
         onCheckedChange={(c) => onChange(c === true)}

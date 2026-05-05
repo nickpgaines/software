@@ -199,7 +199,7 @@ function AddressFieldsInner({
                   >
                     <div className="font-bold truncate w-full">{p.mainText}</div>
                     {p.secondaryText && (
-                      <div className="text-xs text-zinc-400 truncate w-full font-normal">
+                      <div className="text-xs text-zinc-400 truncate w-full font-bold">
                         {p.secondaryText}
                       </div>
                     )}

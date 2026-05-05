@@ -234,7 +234,7 @@ export default function RecordPaymentModal({
           <form onSubmit={submit} className="p-5 space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <Label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1 font-normal">
+                <Label className="block text-eyebrow-tight uppercase text-zinc-500 mb-1">
                   Amount
                 </Label>
                 <div className="relative">
@@ -254,7 +254,7 @@ export default function RecordPaymentModal({
                 </div>
               </div>
               <div>
-                <Label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1 font-normal">
+                <Label className="block text-eyebrow-tight uppercase text-zinc-500 mb-1">
                   Tip
                 </Label>
                 <div className="relative">
@@ -274,7 +274,7 @@ export default function RecordPaymentModal({
             </div>
 
             <div>
-              <Label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1.5 font-normal">
+              <Label className="block text-eyebrow-tight uppercase text-zinc-500 mb-1.5">
                 Payment method
               </Label>
               <div className="flex flex-wrap gap-1.5">
@@ -337,7 +337,7 @@ export default function RecordPaymentModal({
             </div>
 
             <div>
-              <Label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1 font-normal">
+              <Label className="block text-eyebrow-tight uppercase text-zinc-500 mb-1">
                 Notes
               </Label>
               <Input

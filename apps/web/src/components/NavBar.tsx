@@ -127,7 +127,7 @@ export default function NavBar() {
       {/* Footer */}
       <div className="mt-auto shrink-0 px-3 pb-4 pt-3 border-t border-line/60">
         <div className="flex items-center gap-3 px-3 py-2">
-          <div className="w-8 h-8 rounded-full bg-line flex items-center justify-center text-zinc-300 text-sm font-semibold shrink-0 overflow-hidden">
+          <div className="w-8 h-8 rounded-full bg-line flex items-center justify-center text-zinc-300 text-sm font-extrabold shrink-0 overflow-hidden">
             {photo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img

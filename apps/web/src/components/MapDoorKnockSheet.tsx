@@ -183,7 +183,7 @@ export default function MapDoorKnockSheet({
                       }}
                       dangerouslySetInnerHTML={{ __html: iconSvg(s.iconKey, 18) }}
                     />
-                    <span className="text-[11px] font-medium text-zinc-300 text-center leading-tight">
+                    <span className="text-[11px] font-bold text-zinc-300 text-center leading-tight">
                       {s.label}
                     </span>
                   </Button>
@@ -276,7 +276,7 @@ export default function MapDoorKnockSheet({
               type="button"
               variant="ghost"
               onClick={() => save(false)}
-              className="h-auto p-0 hover:text-white hover:bg-transparent underline font-normal"
+              className="h-auto p-0 hover:text-white hover:bg-transparent underline font-bold"
             >
               Save as door knock without creating customer
             </Button>
@@ -296,7 +296,7 @@ function Field({
 }) {
   return (
     <div>
-      <Label className="block text-xs font-normal uppercase tracking-wide text-zinc-500 mb-1.5">
+      <Label className="block text-eyebrow-tight uppercase text-zinc-500 mb-1.5">
         {label}
       </Label>
       {children}

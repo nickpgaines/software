@@ -751,7 +751,7 @@ function Row({
       <dd
         className={
           "tabular-nums " +
-          (bold ? "font-bold " : "font-semibold ") +
+          (bold ? "font-extrabold " : "font-bold ") +
           (valueClass || "text-white")
         }
       >

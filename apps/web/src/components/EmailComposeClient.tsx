@@ -155,7 +155,7 @@ export default function EmailComposeClient() {
 
       <div className="bg-card border border-line rounded-2xl shadow-sm p-6 space-y-5">
         <div>
-          <Label className="block text-xs font-normal uppercase tracking-wide text-zinc-500 mb-2">
+          <Label className="block text-eyebrow-tight uppercase text-zinc-500 mb-2">
             Audience
           </Label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -178,7 +178,7 @@ export default function EmailComposeClient() {
                     {a.count}
                   </span>
                 </div>
-                <p className="text-xs text-zinc-400 mt-0.5 font-normal">
+                <p className="text-xs text-zinc-400 mt-0.5 font-bold">
                   {AUDIENCE_DESCRIPTIONS[a.audience] || ""}
                 </p>
               </Button>
@@ -187,7 +187,7 @@ export default function EmailComposeClient() {
         </div>
 
         <div>
-          <Label className="block text-xs font-normal uppercase tracking-wide text-zinc-500 mb-1.5">
+          <Label className="block text-eyebrow-tight uppercase text-zinc-500 mb-1.5">
             Subject
           </Label>
           <Input
@@ -200,7 +200,7 @@ export default function EmailComposeClient() {
         </div>
 
         <div>
-          <Label className="block text-xs font-normal uppercase tracking-wide text-zinc-500 mb-1.5">
+          <Label className="block text-eyebrow-tight uppercase text-zinc-500 mb-1.5">
             Message (HTML or plain text)
           </Label>
           <Textarea

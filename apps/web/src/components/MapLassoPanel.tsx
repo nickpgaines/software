@@ -315,7 +315,7 @@ function Stat({
   return (
     <div className="flex items-center justify-between">
       <span className="text-zinc-400">{label}</span>
-      <span className={"font-semibold " + cls}>{value}</span>
+      <span className={"font-bold " + cls}>{value}</span>
     </div>
   );
 }

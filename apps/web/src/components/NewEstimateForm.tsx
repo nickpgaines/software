@@ -454,7 +454,7 @@ export default function NewEstimateForm() {
                   />
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <Label className="block text-[10px] uppercase tracking-wide text-zinc-500 mb-1 font-normal">
+                      <Label className="block text-[10px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-1">
                         Qty
                       </Label>
                       <Input
@@ -469,7 +469,7 @@ export default function NewEstimateForm() {
                       />
                     </div>
                     <div>
-                      <Label className="block text-[10px] uppercase tracking-wide text-zinc-500 mb-1 font-normal">
+                      <Label className="block text-[10px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-1">
                         Price (USD)
                       </Label>
                       <Input
@@ -485,7 +485,7 @@ export default function NewEstimateForm() {
                       />
                     </div>
                     <div>
-                      <Label className="block text-[10px] uppercase tracking-wide text-zinc-500 mb-1 font-normal">
+                      <Label className="block text-[10px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-1">
                         Line total
                       </Label>
                       <div className="text-sm font-bold text-white tracking-tight px-3 py-2 bg-black rounded-lg">
@@ -493,7 +493,7 @@ export default function NewEstimateForm() {
                       </div>
                     </div>
                   </div>
-                  <Label className="inline-flex items-center gap-2 text-xs text-zinc-300 font-normal">
+                  <Label className="inline-flex items-center gap-2 text-xs text-zinc-300 font-bold">
                     <Checkbox
                       checked={it.taxable}
                       onCheckedChange={(c) =>
