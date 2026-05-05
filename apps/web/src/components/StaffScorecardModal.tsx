@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 type Range = "today" | "week" | "month" | "year" | "custom";
 type View = "sales" | "tech";
@@ -162,32 +163,35 @@ export default function StaffScorecardModal({
           </div>
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 bg-black rounded-full p-1 text-xs">
-              <button
+              <Button
+                variant="ghost"
                 onClick={() => setView("sales")}
                 className={
-                  "px-3 py-1 rounded-full transition " +
+                  "h-auto px-3 py-1 rounded-full hover:bg-transparent font-bold " +
                   (view === "sales"
                     ? "bg-[#0f0f12] text-white shadow-sm"
                     : "text-zinc-400 hover:text-white")
                 }
               >
                 Sales
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
                 onClick={() => setView("tech")}
                 className={
-                  "px-3 py-1 rounded-full transition " +
+                  "h-auto px-3 py-1 rounded-full hover:bg-transparent font-bold " +
                   (view === "tech"
                     ? "bg-[#0f0f12] text-white shadow-sm"
                     : "text-zinc-400 hover:text-white")
                 }
               >
                 Tech
-              </button>
+              </Button>
             </div>
-            <button
+            <Button
+              variant="ghost"
               onClick={onClose}
-              className="w-8 h-8 rounded-full hover:bg-black text-zinc-400 flex items-center justify-center"
+              className="w-8 h-8 p-0 rounded-full hover:bg-black text-zinc-400"
               aria-label="Close"
             >
               <svg
@@ -202,25 +206,26 @@ export default function StaffScorecardModal({
                 <line x1="6" y1="6" x2="18" y2="18" />
                 <line x1="18" y1="6" x2="6" y2="18" />
               </svg>
-            </button>
+            </Button>
           </div>
         </div>
 
         <div className="px-6 py-4 border-b border-[#1f1f24] flex justify-end">
           <div className="flex items-center gap-1 bg-black border border-[#1f1f24] rounded-full p-1 text-xs">
             {PRESETS.map((p) => (
-              <button
+              <Button
                 key={p.key}
+                variant="ghost"
                 onClick={() => setRange(p.key)}
                 className={
-                  "px-3 py-1 rounded-full transition whitespace-nowrap " +
+                  "h-auto px-3 py-1 rounded-full whitespace-nowrap font-bold hover:bg-transparent " +
                   (range === p.key
                     ? "bg-[#0f0f12] text-white shadow-sm"
                     : "text-zinc-400 hover:text-white")
                 }
               >
                 {p.label}
-              </button>
+              </Button>
             ))}
           </div>
         </div>

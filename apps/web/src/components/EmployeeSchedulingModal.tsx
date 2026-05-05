@@ -2,6 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { X, Users, Plus, Minus, Check } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type StaffRow = {
   id: number;
@@ -439,57 +443,63 @@ export default function EmployeeSchedulingModal({
               </p>
             </div>
           </div>
-          <button
+          <Button
+            variant="ghost"
             onClick={onClose}
-            className="text-zinc-500 hover:text-zinc-300 p-1 -m-1"
+            className="h-auto w-auto text-zinc-500 hover:text-zinc-300 hover:bg-transparent p-1 -m-1"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
-          </button>
+          </Button>
         </div>
 
         <div className="px-6 py-5 space-y-5">
           <div className="flex items-center justify-center gap-3">
-            <button
+            <Button
+              variant="ghost"
               onClick={() => setWeekStart(addDays(weekStart, -7))}
-              className="w-8 h-8 rounded-full hover:bg-black flex items-center justify-center text-zinc-400"
+              className="w-8 h-8 p-0 rounded-full hover:bg-black text-zinc-400"
               aria-label="Previous week"
             >
               ‹
-            </button>
+            </Button>
             <div className="text-base font-bold text-white tracking-tight">
               {formatRange(weekStart, addDays(weekStart, 6))}
             </div>
-            <button
+            <Button
+              variant="ghost"
               onClick={() => setWeekStart(addDays(weekStart, 7))}
-              className="w-8 h-8 rounded-full hover:bg-black flex items-center justify-center text-zinc-400"
+              className="w-8 h-8 p-0 rounded-full hover:bg-black text-zinc-400"
               aria-label="Next week"
             >
               ›
-            </button>
+            </Button>
           </div>
 
           <div className="flex items-center justify-between text-sm">
             <div className="flex items-center gap-4">
-              <button
+              <Button
+                variant="ghost"
                 onClick={selectMonFri}
-                className="text-sky-600 hover:text-sky-800 font-bold"
+                className="h-auto p-0 text-sky-600 hover:text-sky-800 hover:bg-transparent font-bold"
               >
                 Select Mon–Fri
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
                 onClick={selectAll}
-                className="text-sky-600 hover:text-sky-800 font-bold"
+                className="h-auto p-0 text-sky-600 hover:text-sky-800 hover:bg-transparent font-bold"
               >
                 Select All
-              </button>
+              </Button>
             </div>
-            <button
+            <Button
+              variant="ghost"
               onClick={clearSelection}
-              className="text-zinc-400 hover:text-zinc-300"
+              className="h-auto p-0 text-zinc-400 hover:text-zinc-300 hover:bg-transparent font-bold"
             >
               Clear
-            </button>
+            </Button>
           </div>
 
           <div className="border border-[#1f1f24] rounded-2xl overflow-hidden">
@@ -587,11 +597,11 @@ export default function EmployeeSchedulingModal({
               <Users className="w-3.5 h-3.5" /> Add employees
             </div>
             <div className="relative mb-2">
-              <input
+              <Input
                 value={staffSearch}
                 onChange={(e) => setStaffSearch(e.target.value)}
                 placeholder="Search employees…"
-                className="w-full bg-[#0f0f12] border border-[#1f1f24] rounded-full pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2a2a32]"
+                className="w-full h-auto bg-[#0f0f12] border-[#1f1f24] rounded-full pl-10 pr-4 py-2.5 text-sm focus-visible:ring-[#2a2a32]"
               />
               <svg
                 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500"
@@ -608,11 +618,12 @@ export default function EmployeeSchedulingModal({
               {staffSearch && candidateStaff.length > 0 && (
                 <div className="absolute z-20 left-0 right-0 mt-1 bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-lg max-h-60 overflow-y-auto">
                   {candidateStaff.slice(0, 12).map((s) => (
-                    <button
+                    <Button
                       key={s.id}
                       type="button"
+                      variant="ghost"
                       onClick={() => addEmployee(s.id)}
-                      className="w-full flex items-center gap-2 px-4 py-2 text-sm text-left hover:bg-black"
+                      className="w-full h-auto justify-start gap-2 px-4 py-2 text-sm text-left hover:bg-black rounded-none"
                     >
                       <span
                         className={
@@ -623,7 +634,7 @@ export default function EmployeeSchedulingModal({
                         {staffInitial(s)}
                       </span>
                       <span>{staffName(s)}</span>
-                    </button>
+                    </Button>
                   ))}
                 </div>
               )}
@@ -643,14 +654,15 @@ export default function EmployeeSchedulingModal({
                     {staffInitial(s)}
                   </span>
                   <span>{staffName(s)}</span>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
                     onClick={() => removeEmployee(s.id)}
-                    className="text-zinc-500 hover:text-rose-600"
+                    className="h-auto w-auto p-0 text-zinc-500 hover:text-rose-600 hover:bg-transparent"
                     aria-label={`Remove ${staffName(s)}`}
                   >
                     <X className="w-3 h-3" />
-                  </button>
+                  </Button>
                 </span>
               ))}
             </div>
@@ -681,12 +693,13 @@ export default function EmployeeSchedulingModal({
                 />
               </div>
               <div className="text-center mt-2">
-                <button
+                <Button
+                  variant="ghost"
                   onClick={removeSelected}
-                  className="text-sm text-rose-600 hover:text-rose-700 font-bold"
+                  className="h-auto p-0 text-sm text-rose-600 hover:text-rose-700 hover:bg-transparent font-bold"
                 >
                   Remove {selected.size} shift{selected.size === 1 ? "" : "s"}
-                </button>
+                </Button>
               </div>
               <p className="text-center text-xs text-zinc-400 mt-2">
                 Tap cells to select &middot; tap again to deselect &middot; click an
@@ -695,7 +708,7 @@ export default function EmployeeSchedulingModal({
             </div>
           )}
 
-          <label className="flex items-center justify-between gap-4 bg-black border border-[#1f1f24] rounded-2xl px-4 py-3 cursor-pointer">
+          <Label className="flex items-center justify-between gap-4 bg-black border border-[#1f1f24] rounded-2xl px-4 py-3 cursor-pointer font-normal">
             <div>
               <div className="text-sm font-extrabold text-white tracking-tight">
                 Set as default schedule
@@ -705,13 +718,12 @@ export default function EmployeeSchedulingModal({
                 modified again.
               </p>
             </div>
-            <input
-              type="checkbox"
+            <Checkbox
               checked={asDefault}
-              onChange={(e) => setAsDefault(e.target.checked)}
+              onCheckedChange={(c) => setAsDefault(c === true)}
               className="w-5 h-5 cursor-pointer"
             />
-          </label>
+          </Label>
 
           {error && (
             <div className="text-sm text-rose-600 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
@@ -726,20 +738,22 @@ export default function EmployeeSchedulingModal({
             {totalShifts} shift{totalShifts === 1 ? "" : "s"}
           </div>
           <div className="flex items-center gap-3">
-            <button
+            <Button
+              variant="ghost"
               onClick={onClose}
-              className="px-4 py-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 bg-[#0f0f12] border border-[#1f1f24] rounded-full hover:bg-black"
+              className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 bg-[#0f0f12] border border-[#1f1f24] rounded-full hover:bg-black"
               disabled={saving}
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
               onClick={save}
               disabled={saving || loading}
-              className="px-5 py-2 text-sm font-bold text-white tracking-tight bg-sky-500 hover:bg-sky-600 rounded-full shadow-sm disabled:opacity-50"
+              className="h-auto px-5 py-2 text-sm font-bold text-white tracking-tight bg-sky-500 hover:bg-sky-600 rounded-full shadow-sm"
             >
               {saving ? "Saving…" : "Apply to Schedule"}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
@@ -758,29 +772,32 @@ function TimeStepper({
 }) {
   return (
     <div className="inline-flex items-center gap-1">
-      <button
+      <Button
         type="button"
+        variant="ghost"
         onClick={() => onAdjust(-1)}
-        className="w-8 h-8 rounded-full bg-[#0f0f12] border border-[#1f1f24] hover:bg-black flex items-center justify-center text-zinc-400"
+        className="w-8 h-8 p-0 rounded-full bg-[#0f0f12] border border-[#1f1f24] hover:bg-black text-zinc-400"
         aria-label="Earlier"
       >
         <Minus className="w-3.5 h-3.5" />
-      </button>
-      <button
+      </Button>
+      <Button
         type="button"
+        variant="ghost"
         onClick={() => onChange(value)}
-        className="min-w-[64px] px-2 py-1 text-[15px] font-extrabold tracking-tight text-sky-700"
+        className="h-auto min-w-[64px] px-2 py-1 text-[15px] font-extrabold tracking-tight text-sky-700 hover:bg-transparent"
       >
         {formatTimeLong(value)}
-      </button>
-      <button
+      </Button>
+      <Button
         type="button"
+        variant="ghost"
         onClick={() => onAdjust(1)}
-        className="w-8 h-8 rounded-full bg-[#0f0f12] border border-[#1f1f24] hover:bg-black flex items-center justify-center text-zinc-400"
+        className="w-8 h-8 p-0 rounded-full bg-[#0f0f12] border border-[#1f1f24] hover:bg-black text-zinc-400"
         aria-label="Later"
       >
         <Plus className="w-3.5 h-3.5" />
-      </button>
+      </Button>
     </div>
   );
 }

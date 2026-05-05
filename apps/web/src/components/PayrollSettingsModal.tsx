@@ -2,6 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { X, Plus, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type PayPeriodFrequency =
   | "weekly"
@@ -192,13 +195,14 @@ export default function PayrollSettingsModal({
               Configure pay periods and commission rules.
             </p>
           </div>
-          <button
+          <Button
+            variant="ghost"
             onClick={onClose}
-            className="text-zinc-500 hover:text-zinc-300 p-1 -m-1"
+            className="h-auto w-auto text-zinc-500 hover:text-zinc-300 hover:bg-transparent p-1 -m-1"
             aria-label="Close"
           >
             <X className="w-5 h-5" />
-          </button>
+          </Button>
         </div>
 
         <div className="px-6 py-5 space-y-7">
@@ -370,20 +374,22 @@ export default function PayrollSettingsModal({
         </div>
 
         <div className="sticky bottom-0 bg-[#0f0f12] border-t border-[#1f1f24] px-6 py-4 flex items-center justify-end gap-3">
-          <button
+          <Button
+            variant="ghost"
             onClick={onClose}
-            className="px-4 py-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:text-white"
+            className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:text-white hover:bg-transparent"
             disabled={saving}
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             onClick={save}
             disabled={saving}
-            className="px-4 py-2 text-sm font-bold text-white tracking-tight bg-slate-900 hover:bg-slate-800 rounded-full disabled:opacity-50"
+            className="h-auto px-4 py-2 text-sm font-bold text-white tracking-tight bg-slate-900 hover:bg-slate-800 rounded-full"
           >
             {saving ? "Saving…" : "Save changes"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
@@ -427,9 +433,9 @@ function Field({
 }) {
   return (
     <div className="space-y-1.5">
-      <label className="block text-sm font-extrabold text-white tracking-tight">
+      <Label className="block text-sm font-extrabold text-white tracking-tight">
         {label}
-      </label>
+      </Label>
       {children}
       {help && <p className="text-xs text-zinc-400">{help}</p>}
     </div>
@@ -445,6 +451,7 @@ function Select<T extends string>({
   onChange: (v: T) => void;
   options: { value: T; label: string }[];
 }) {
+  // Native <select> kept: deferred Select migration (custom chevron via background-image, and consistency with other deferred selects).
   return (
     <select
       value={value}
@@ -482,14 +489,15 @@ function ToggleRow({
         <div className="text-sm font-extrabold text-white tracking-tight">{title}</div>
         <p className="text-sm text-zinc-400 mt-2 font-bold max-w-md">{description}</p>
       </div>
-      <button
+      <Button
         type="button"
+        variant="ghost"
         role="switch"
         aria-checked={checked}
         onClick={() => onChange(!checked)}
         className={
-          "relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition " +
-          (checked ? "bg-slate-900" : "bg-[#1f1f24]")
+          "relative h-6 w-11 p-0 shrink-0 rounded-full justify-start hover:bg-current " +
+          (checked ? "bg-slate-900 hover:bg-slate-900" : "bg-[#1f1f24] hover:bg-[#1f1f24]")
         }
       >
         <span
@@ -498,7 +506,7 @@ function ToggleRow({
             (checked ? "translate-x-5" : "translate-x-0.5")
           }
         />
-      </button>
+      </Button>
     </div>
   );
 }
@@ -556,19 +564,20 @@ function SegmentedControl<T extends string>({
       {options.map((o) => {
         const active = o.value === value;
         return (
-          <button
+          <Button
             key={o.value}
             type="button"
+            variant="ghost"
             onClick={() => onChange(o.value)}
             className={
-              "px-4 py-1.5 rounded-full transition " +
+              "h-auto px-4 py-1.5 rounded-full hover:bg-transparent " +
               (active
                 ? "bg-[#0f0f12] text-white shadow-sm font-bold"
-                : "text-zinc-400 hover:text-white")
+                : "text-zinc-400 hover:text-white font-bold")
             }
           >
             {o.label}
-          </button>
+          </Button>
         );
       })}
     </div>
@@ -601,13 +610,13 @@ function PctInput({
 
   return (
     <div className="relative w-full">
-      <input
+      <Input
         value={text}
         onChange={(e) => setText(e.target.value)}
         onBlur={(e) => commit(e.target.value)}
         placeholder={placeholder}
         inputMode="decimal"
-        className="w-full border border-[#2a2a32] rounded-full px-4 py-2.5 pr-10 text-sm"
+        className="w-full h-auto border-[#2a2a32] rounded-full px-4 py-2.5 pr-10 text-sm"
       />
       <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-zinc-500">
         %
@@ -632,13 +641,13 @@ function DollarInput({
       <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-zinc-500">
         $
       </span>
-      <input
+      <Input
         value={text}
         onChange={(e) => setText(e.target.value)}
         onBlur={() => onChange(dollarsToCents(text))}
         placeholder="0.00"
         inputMode="decimal"
-        className="w-full border border-[#2a2a32] rounded-full pl-8 pr-4 py-2.5 text-sm"
+        className="w-full h-auto border-[#2a2a32] rounded-full pl-8 pr-4 py-2.5 text-sm"
       />
     </div>
   );
@@ -676,40 +685,42 @@ function TiersEditor({
           className="flex items-center gap-2 bg-black rounded-2xl p-2"
         >
           <div className="flex-1">
-            <label className="block text-[11px] uppercase tracking-wider text-zinc-400 px-2">
+            <Label className="block text-[11px] uppercase tracking-wider text-zinc-400 px-2 font-normal">
               From ($)
-            </label>
+            </Label>
             <DollarInput
               cents={t.threshold_cents}
               onChange={(c) => update(idx, { threshold_cents: c })}
             />
           </div>
           <div className="flex-1">
-            <label className="block text-[11px] uppercase tracking-wider text-zinc-400 px-2">
+            <Label className="block text-[11px] uppercase tracking-wider text-zinc-400 px-2 font-normal">
               Rate (%)
-            </label>
+            </Label>
             <PctInput
               rate={t.rate}
               onChange={(r) => update(idx, { rate: r })}
             />
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => remove(idx)}
-            className="text-zinc-500 hover:text-rose-600 p-2"
+            className="h-auto w-auto text-zinc-500 hover:text-rose-600 hover:bg-transparent p-2"
             aria-label="Remove tier"
           >
             <Trash2 className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
       ))}
-      <button
+      <Button
         type="button"
+        variant="ghost"
         onClick={add}
-        className="inline-flex items-center gap-1 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:text-white"
+        className="h-auto p-0 gap-1 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:text-white hover:bg-transparent"
       >
         <Plus className="w-4 h-4" /> Add tier
-      </button>
+      </Button>
     </div>
   );
 }
@@ -751,40 +762,42 @@ function BonusTiersEditor({
           className="flex items-center gap-2 bg-black rounded-2xl p-2"
         >
           <div className="flex-1">
-            <label className="block text-[11px] uppercase tracking-wider text-zinc-400 px-2">
+            <Label className="block text-[11px] uppercase tracking-wider text-zinc-400 px-2 font-normal">
               Daily revenue ≥ ($)
-            </label>
+            </Label>
             <DollarInput
               cents={t.threshold_cents}
               onChange={(c) => update(idx, { threshold_cents: c })}
             />
           </div>
           <div className="flex-1">
-            <label className="block text-[11px] uppercase tracking-wider text-zinc-400 px-2">
+            <Label className="block text-[11px] uppercase tracking-wider text-zinc-400 px-2 font-normal">
               Bonus ($)
-            </label>
+            </Label>
             <DollarInput
               cents={t.amount_cents}
               onChange={(c) => update(idx, { amount_cents: c })}
             />
           </div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => remove(idx)}
-            className="text-zinc-500 hover:text-rose-600 p-2"
+            className="h-auto w-auto text-zinc-500 hover:text-rose-600 hover:bg-transparent p-2"
             aria-label="Remove bonus tier"
           >
             <Trash2 className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
       ))}
-      <button
+      <Button
         type="button"
+        variant="ghost"
         onClick={add}
-        className="inline-flex items-center gap-1 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:text-white"
+        className="h-auto p-0 gap-1 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:text-white hover:bg-transparent"
       >
         <Plus className="w-4 h-4" /> Add bonus tier
-      </button>
+      </Button>
     </div>
   );
 }

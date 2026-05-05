@@ -4,6 +4,9 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ChevronLeft, Eye, EyeOff, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type PermissionLevel =
   | "admin"
@@ -239,13 +242,14 @@ export default function EmployeeForm({
           <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
             {isEdit ? "Edit Employee" : "Add Employee"}
           </h1>
-          <button
+          <Button
             type="submit"
+            variant="ghost"
             disabled={saving}
-            className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-lg px-5 py-2 text-sm font-bold"
+            className="h-auto gap-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-lg px-5 py-2 text-sm font-bold"
           >
             {saving ? "Saving…" : "Save"}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -280,33 +284,35 @@ export default function EmployeeForm({
                 />
               )}
             </div>
-            <input
+            <Input
               ref={fileInputRef}
               type="file"
               accept="image/*"
               onChange={onPickFile}
               className="hidden"
             />
-            <button
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => fileInputRef.current?.click()}
               disabled={photoBusy}
-              className="w-[140px] text-sm border border-[#2a2a32] hover:border-slate-400 rounded-lg px-3 py-2 text-zinc-300 disabled:opacity-60"
+              className="w-[140px] h-auto text-sm border border-[#2a2a32] hover:border-slate-400 rounded-lg px-3 py-2 text-zinc-300 hover:bg-transparent font-bold"
             >
               {photoBusy
                 ? "Loading…"
                 : photoUrl
                 ? "Change Photo"
                 : "Add Photo"}
-            </button>
+            </Button>
             {photoUrl && (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => setPhotoUrl(null)}
-                className="w-[140px] text-xs text-zinc-400 hover:text-white"
+                className="w-[140px] h-auto text-xs text-zinc-400 hover:text-white hover:bg-transparent font-bold"
               >
                 Remove
-              </button>
+              </Button>
             )}
             {photoError && (
               <p className="w-[140px] text-xs text-rose-600">{photoError}</p>
@@ -316,50 +322,51 @@ export default function EmployeeForm({
           {/* Fields */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <Field label="First Name" required>
-              <input
+              <Input
                 type="text"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="w-full border border-[#2a2a32] rounded-lg px-3 py-2 text-sm bg-[#0f0f12]"
+                className="w-full h-auto border-[#2a2a32] rounded-lg px-3 py-2 text-sm bg-[#0f0f12]"
               />
             </Field>
             <Field label="Last Name" required>
-              <input
+              <Input
                 type="text"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className="w-full border border-[#2a2a32] rounded-lg px-3 py-2 text-sm bg-[#0f0f12]"
+                className="w-full h-auto border-[#2a2a32] rounded-lg px-3 py-2 text-sm bg-[#0f0f12]"
               />
             </Field>
             <Field label="Phone">
-              <input
+              <Input
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full border border-[#2a2a32] rounded-lg px-3 py-2 text-sm bg-[#0f0f12]"
+                className="w-full h-auto border-[#2a2a32] rounded-lg px-3 py-2 text-sm bg-[#0f0f12]"
               />
             </Field>
             <Field label="Email" required>
-              <input
+              <Input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full border border-[#2a2a32] rounded-lg px-3 py-2 text-sm bg-[#0f0f12]"
+                className="w-full h-auto border-[#2a2a32] rounded-lg px-3 py-2 text-sm bg-[#0f0f12]"
               />
             </Field>
             <Field label="Password" required={!isEdit}>
               <div className="relative">
-                <input
+                <Input
                   type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={isEdit ? "Leave blank to keep current" : ""}
-                  className="w-full border border-[#2a2a32] rounded-lg pl-3 pr-10 py-2 text-sm bg-[#0f0f12]"
+                  className="w-full h-auto border-[#2a2a32] rounded-lg pl-3 pr-10 py-2 text-sm bg-[#0f0f12]"
                 />
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   onClick={() => setShowPassword((v) => !v)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-auto w-auto p-0 text-zinc-500 hover:text-zinc-300 hover:bg-transparent"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? (
@@ -367,32 +374,34 @@ export default function EmployeeForm({
                   ) : (
                     <Eye className="w-4 h-4" />
                   )}
-                </button>
+                </Button>
               </div>
             </Field>
             <Field label="Color">
               <div ref={colorRef} className="relative">
-                <button
+                <Button
                   type="button"
+                  variant="ghost"
                   onClick={() => setColorOpen((v) => !v)}
-                  className="w-full flex items-center gap-2 border border-[#2a2a32] rounded-lg px-3 py-2 text-sm bg-[#0f0f12] hover:border-slate-400"
+                  className="w-full h-auto justify-start gap-2 border border-[#2a2a32] rounded-lg px-3 py-2 text-sm bg-[#0f0f12] hover:border-slate-400 hover:bg-transparent"
                 >
                   <span
                     className={`w-4 h-4 rounded-full ${selectedColor.swatch}`}
                   />
                   <span className="text-zinc-300">{selectedColor.label}</span>
-                </button>
+                </Button>
                 {colorOpen && (
                   <div className="absolute z-10 left-0 top-full mt-1 bg-[#0f0f12] border border-[#1f1f24] rounded-lg shadow-lg p-2 grid grid-cols-3 gap-1 w-48">
                     {COLORS.map((c) => (
-                      <button
+                      <Button
                         key={c.key}
                         type="button"
+                        variant="ghost"
                         onClick={() => {
                           setColor(c.key);
                           setColorOpen(false);
                         }}
-                        className={`flex items-center gap-2 px-2 py-1.5 rounded hover:bg-black text-sm ${
+                        className={`h-auto justify-start gap-2 px-2 py-1.5 rounded hover:bg-black text-sm font-bold ${
                           c.key === color ? "bg-black" : ""
                         }`}
                       >
@@ -402,7 +411,7 @@ export default function EmployeeForm({
                         <span className="text-zinc-300 text-xs">
                           {c.label}
                         </span>
-                      </button>
+                      </Button>
                     ))}
                   </div>
                 )}
@@ -421,12 +430,13 @@ export default function EmployeeForm({
           {PERMISSIONS.map((p) => {
             const checked = permission === p.key;
             return (
-              <label
+              <Label
                 key={p.key}
-                className={`flex items-start gap-3 px-3 py-3 rounded-lg cursor-pointer ${
+                className={`flex items-start gap-3 px-3 py-3 rounded-lg cursor-pointer font-normal ${
                   checked ? "bg-black" : "hover:bg-black"
                 }`}
               >
+                {/* Native <input type="radio"> kept: no Radio primitive in components/ui yet. */}
                 <input
                   type="radio"
                   name="permission"
@@ -443,7 +453,7 @@ export default function EmployeeForm({
                     {p.description}
                   </div>
                 </div>
-              </label>
+              </Label>
             );
           })}
 
@@ -469,10 +479,10 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
+      <Label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
         {label}
         {required && <span className="text-rose-500 ml-0.5">*</span>}
-      </label>
+      </Label>
       {children}
     </div>
   );
