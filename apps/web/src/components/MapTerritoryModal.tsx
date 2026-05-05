@@ -191,7 +191,7 @@ export default function MapTerritoryModal({
                 ))}
               </div>
             )}
-            <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mt-2.5">
+            <p className="text-eyebrow uppercase text-zinc-500 mt-2.5">
               The territory will use this employee&apos;s color on the map.
             </p>
           </div>

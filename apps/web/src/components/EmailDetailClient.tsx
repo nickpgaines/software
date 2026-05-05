@@ -92,7 +92,7 @@ export default function EmailDetailClient({ id }: { id: number }) {
         <Link href="/email" className="text-xs text-zinc-400 hover:text-white">
           ← All blasts
         </Link>
-        <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white mt-2">
+        <h1 className="text-page-title text-white mt-2">
           {blast.subject}
         </h1>
         <p className="text-sm text-zinc-400 mt-3 font-bold" suppressHydrationWarning>

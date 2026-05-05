@@ -244,7 +244,7 @@ export default function JobDetailClient({
             ← Back to schedule
           </Link>
           <div className="flex items-center gap-3 flex-wrap mt-1">
-            <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
+            <h1 className="text-page-title text-white">
               {job.customer_name}
             </h1>
             <JobStatusBadge status={job.job_status} />
@@ -537,7 +537,7 @@ export default function JobDetailClient({
                           {li.description}
                         </div>
                       )}
-                      <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mt-2 flex gap-2 flex-wrap">
+                      <div className="text-eyebrow uppercase text-zinc-500 mt-2 flex gap-2 flex-wrap">
                         <span>
                           Qty {li.quantity} · {money(li.price_cents)} ea
                         </span>

@@ -185,7 +185,7 @@ export default function CalendarClient() {
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Schedule</h1>
+          <h1 className="text-page-title text-white">Schedule</h1>
           <p className="text-sm text-zinc-500 mt-1">
             Drag, plan, and dispatch your jobs.
           </p>
@@ -658,7 +658,7 @@ function DayView({
           <div
             key={h}
             style={{ height: `${HOUR_PX}px` }}
-            className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 pr-3 text-right -translate-y-1.5"
+            className="text-eyebrow uppercase text-zinc-500 pr-3 text-right -translate-y-1.5"
           >
             {formatHour(h)}
           </div>
@@ -712,7 +712,7 @@ function MonthView({
         {weekDayHeaders.map((d) => (
           <div
             key={d}
-            className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 uppercase tracking-wide text-center py-2"
+            className="text-eyebrow uppercase text-zinc-500 uppercase tracking-wide text-center py-2"
           >
             {d}
           </div>

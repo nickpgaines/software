@@ -188,7 +188,7 @@ export default function PayrollSettingsModal({
       <div className="relative bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-[#0f0f12] border-b border-[#1f1f24] px-6 py-5 flex items-start justify-between">
           <div>
-            <h2 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
+            <h2 className="text-page-title text-white">
               Payroll Settings
             </h2>
             <p className="text-sm text-zinc-400 mt-3 font-bold">
@@ -377,7 +377,7 @@ export default function PayrollSettingsModal({
           <Button
             variant="ghost"
             onClick={onClose}
-            className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:text-white hover:bg-transparent"
+            className="h-auto px-4 py-2 text-eyebrow uppercase text-zinc-500 hover:text-white hover:bg-transparent"
             disabled={saving}
           >
             Cancel
@@ -717,7 +717,7 @@ function TiersEditor({
         type="button"
         variant="ghost"
         onClick={add}
-        className="h-auto p-0 gap-1 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:text-white hover:bg-transparent"
+        className="h-auto p-0 gap-1 text-eyebrow uppercase text-zinc-500 hover:text-white hover:bg-transparent"
       >
         <Plus className="w-4 h-4" /> Add tier
       </Button>
@@ -794,7 +794,7 @@ function BonusTiersEditor({
         type="button"
         variant="ghost"
         onClick={add}
-        className="h-auto p-0 gap-1 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:text-white hover:bg-transparent"
+        className="h-auto p-0 gap-1 text-eyebrow uppercase text-zinc-500 hover:text-white hover:bg-transparent"
       >
         <Plus className="w-4 h-4" /> Add bonus tier
       </Button>

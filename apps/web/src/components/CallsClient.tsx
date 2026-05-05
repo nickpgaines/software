@@ -99,7 +99,7 @@ export default function CallsClient() {
     <div className="space-y-6">
       <div className="flex items-baseline justify-between">
         <div>
-          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Calls</h1>
+          <h1 className="text-page-title text-white">Calls</h1>
           <p className="text-sm text-zinc-400 mt-3 font-bold">
             All calls made and received through your business number.
           </p>
@@ -175,7 +175,7 @@ export default function CallsClient() {
                           className="h-8"
                         />
                       ) : (
-                        <span className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">—</span>
+                        <span className="text-eyebrow uppercase text-zinc-500">—</span>
                       )}
                     </TableCell>
                   </TableRow>

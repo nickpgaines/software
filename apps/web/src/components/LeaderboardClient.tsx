@@ -221,7 +221,7 @@ export default function LeaderboardClient({
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">{title}</h1>
+        <h1 className="text-page-title text-white">{title}</h1>
         <div className="flex items-center gap-1 bg-black rounded-full p-1 text-sm">
           <Button
             variant="ghost"
@@ -469,7 +469,7 @@ export default function LeaderboardClient({
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="border-0 hover:bg-transparent text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+                <TableRow className="border-0 hover:bg-transparent text-eyebrow uppercase text-zinc-500">
                   <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Rank</TableHead>
                   <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">
                     {personColumn}

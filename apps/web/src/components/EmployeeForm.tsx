@@ -239,7 +239,7 @@ export default function EmployeeForm({
           Employees
         </Link>
         <div className="mt-2 flex items-center justify-between">
-          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
+          <h1 className="text-page-title text-white">
             {isEdit ? "Edit Employee" : "Add Employee"}
           </h1>
           <Button
@@ -479,7 +479,7 @@ function Field({
 }) {
   return (
     <div>
-      <Label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
+      <Label className="block text-eyebrow uppercase text-zinc-500 mb-2">
         {label}
         {required && <span className="text-rose-500 ml-0.5">*</span>}
       </Label>

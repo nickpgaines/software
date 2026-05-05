@@ -81,6 +81,27 @@ export default {
       fontFamily: {
         sans: ["var(--font-sans)"],
       },
+      fontSize: {
+        // Page-level H1 used on standard app pages (Customers, Employees,
+        // Settings, Reports, Leads, login/signup, modals, etc.). Distinct
+        // from the Pulse hero greeting (`text-[48px]`) and chart headline
+        // (`text-[52px]`) — those stay as-is. Bakes in the four properties
+        // that always travel together: 40px / extrabold / tracking-tight /
+        // leading-none. Pair with `text-white` and (for numerics) `tabular-nums`.
+        "page-title": [
+          "40px",
+          { lineHeight: "1", letterSpacing: "-0.025em", fontWeight: "800" },
+        ],
+        // Widget-internal uppercase label — KPI labels, form labels, table
+        // column headers, status indicators. Encodes the §4 "0.18em tier" of
+        // the uppercase tracking scale: 11px / extrabold / tracking 0.18em.
+        // Apply alongside `uppercase` and a color utility (`text-fg-subtle`
+        // / `text-zinc-500`).
+        eyebrow: [
+          "11px",
+          { lineHeight: "1", letterSpacing: "0.18em", fontWeight: "800" },
+        ],
+      },
       borderRadius: {
         pill: "9999px",
       },

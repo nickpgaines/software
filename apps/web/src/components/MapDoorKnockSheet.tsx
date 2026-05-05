@@ -197,7 +197,7 @@ export default function MapDoorKnockSheet({
               type="button"
               variant="ghost"
               onClick={() => setObjectionsOpen((o) => !o)}
-              className="w-full h-auto justify-between px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 rounded-b-none hover:bg-transparent"
+              className="w-full h-auto justify-between px-4 py-3 text-eyebrow uppercase text-zinc-500 rounded-b-none hover:bg-transparent"
             >
               <span>Objections{objections.length > 0 ? ` (${objections.length})` : ""}</span>
               <svg

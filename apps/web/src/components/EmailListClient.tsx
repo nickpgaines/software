@@ -175,7 +175,7 @@ export default function EmailListClient() {
     <div className="space-y-8">
       <div className="flex items-baseline justify-between">
         <div>
-          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Email</h1>
+          <h1 className="text-page-title text-white">Email</h1>
           <p className="text-sm text-zinc-400 mt-3 font-bold">
             Send one-off blasts or turn on automated emails that go out on their own.
           </p>
@@ -204,7 +204,7 @@ export default function EmailListClient() {
           <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
             Automated emails
           </h2>
-          <span className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+          <span className="text-eyebrow uppercase text-zinc-500">
             Toggle on to enable. Edit to customize the message.
           </span>
         </div>

@@ -134,7 +134,7 @@ export default function EmailComposeClient() {
         >
           ← All blasts
         </Link>
-        <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white mt-2">
+        <h1 className="text-page-title text-white mt-2">
           New email blast
         </h1>
       </div>

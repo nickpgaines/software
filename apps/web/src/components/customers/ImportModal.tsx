@@ -407,10 +407,10 @@ function UploadStep({
         }
       >
         <div className="text-3xl text-zinc-500">⤴</div>
-        <p className="mt-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+        <p className="mt-2 text-eyebrow uppercase text-zinc-500">
           Click to choose or drag & drop a CSV file
         </p>
-        <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">.csv files only</p>
+        <p className="text-eyebrow uppercase text-zinc-500">.csv files only</p>
       </div>
       <Input
         ref={fileInputRef}
@@ -555,7 +555,7 @@ function ResultStep({
   return (
     <div className="space-y-4">
       <div className="bg-black border border-[#1f1f24] rounded-lg p-4 text-center">
-        <div className="text-[40px] font-extrabold tracking-tight leading-none text-white">
+        <div className="text-page-title text-white">
           Imported {result.inserted} {result.inserted === 1 ? "customer" : "customers"}
         </div>
         <div className="text-sm text-zinc-400 mt-3 font-bold">

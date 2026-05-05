@@ -236,7 +236,7 @@ function OverviewPanel({ range }: { range: Range }) {
         />
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl px-5 py-4">
-            <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-1.5">ARR Added</div>
+            <div className="text-eyebrow uppercase text-zinc-500 mb-1.5">ARR Added</div>
             <div className="text-[26px] font-black tracking-tight leading-none tabular-nums text-white">
               {money(data.subscriptions.arr_added_cents)}
             </div>
@@ -306,7 +306,7 @@ function SalesPanel({ range }: { range: Range }) {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-0 hover:bg-transparent text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+                <TableRow className="border-0 hover:bg-transparent text-eyebrow uppercase text-zinc-500">
                   <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Rep</TableHead>
                   <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Doors</TableHead>
                   <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Sales</TableHead>
@@ -566,7 +566,7 @@ function SelectFilter({
 }) {
   return (
     <Label className="block font-normal">
-      <span className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">{label}</span>
+      <span className="text-eyebrow uppercase text-zinc-500">{label}</span>
       {/* Native <select> kept: Radix Select forbids empty-string item values, which breaks the "All" clear-filter sentinel. Flagged for follow-up. */}
       <select
         value={value}
@@ -635,7 +635,7 @@ function StatCard({
         (compact ? "px-4 py-3" : "px-5 py-4")
       }
     >
-      <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-1.5">
+      <div className="text-eyebrow uppercase text-zinc-500 mb-1.5">
         {label}
       </div>
       <div
@@ -667,7 +667,7 @@ function BreakdownTable({
       ) : (
         <Table>
           <TableHeader>
-            <TableRow className="border-0 hover:bg-transparent text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 bg-black">
+            <TableRow className="border-0 hover:bg-transparent text-eyebrow uppercase text-zinc-500 bg-black">
               <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">{header}</TableHead>
               <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Count</TableHead>
               <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">MRR</TableHead>
@@ -717,7 +717,7 @@ function ArrAddedChart({
           </div>
         </div>
         <div className="text-right">
-          <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+          <div className="text-eyebrow uppercase text-zinc-500">
             Total added ({totalCount} subs)
           </div>
           <div className="text-xl font-black text-white tracking-tight tabular-nums mt-1">
@@ -793,7 +793,7 @@ function Stats({
           className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl px-5 py-4 flex items-center justify-between gap-4"
         >
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-1.5">
+            <div className="text-eyebrow uppercase text-zinc-500 mb-1.5">
               {it.label}
             </div>
             <div className="text-[26px] font-black tracking-tight leading-none tabular-nums text-white">
@@ -1072,7 +1072,7 @@ function PayrollPanel({ range }: { range: Range }) {
         <Button
           variant="ghost"
           onClick={() => setSettingsOpen(true)}
-          className="h-auto gap-2 px-3 py-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 bg-[#0f0f12] border border-[#1f1f24] rounded-full hover:bg-black shadow-sm"
+          className="h-auto gap-2 px-3 py-2 text-eyebrow uppercase text-zinc-500 bg-[#0f0f12] border border-[#1f1f24] rounded-full hover:bg-black shadow-sm"
           aria-label="Payroll settings"
         >
           <Settings className="w-4 h-4" />
@@ -1145,7 +1145,7 @@ function PayrollTable({
         ) : (
           <Table>
             <TableHeader>
-              <TableRow className="border-0 hover:bg-transparent text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 bg-black">
+              <TableRow className="border-0 hover:bg-transparent text-eyebrow uppercase text-zinc-500 bg-black">
                 <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Employee</TableHead>
                 <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Email</TableHead>
                 <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Role</TableHead>

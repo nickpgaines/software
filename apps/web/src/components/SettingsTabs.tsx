@@ -297,7 +297,7 @@ function ProfilePanel({ username }: { username: string }) {
                 )}
               </div>
               {isAdminEnv && (
-                <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+                <p className="text-eyebrow uppercase text-zinc-500">
                   This is the built-in admin account. Create an employee record to
                   manage your own profile.
                 </p>
@@ -329,7 +329,7 @@ function ProfilePanel({ username }: { username: string }) {
           </dl>
 
           {!isAdminEnv && (
-            <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+            <p className="text-eyebrow uppercase text-zinc-500">
               To change your name, email, or password, edit your record from
               the <span className="font-bold">Employees</span> page.
             </p>
@@ -610,7 +610,7 @@ function PaymentsPanel() {
             </Button>
           </div>
           {!status.oauth_configured && (
-            <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+            <p className="text-eyebrow uppercase text-zinc-500">
               The &ldquo;Sign in&rdquo; option is unavailable until{" "}
               <code>STRIPE_CONNECT_CLIENT_ID</code> is set in the deployment
               environment.
@@ -1488,7 +1488,7 @@ function SendOrAcceptModal({
             Accept on device
           </Button>
         </div>
-        <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+        <p className="text-eyebrow uppercase text-zinc-500">
           &quot;Send&quot; messages the customer with the offer.
           &quot;Accept on device&quot; activates it immediately for in-person
           sign-ups.
@@ -1805,7 +1805,7 @@ function MessagingPanel() {
 
       {onPlatform && (
         <div className="rounded-xl border border-[#1f1f24] bg-black p-4">
-          <div className="text-[11px] uppercase tracking-[0.18em] text-zinc-500 font-extrabold">
+          <div className="text-eyebrow uppercase text-zinc-500">
             Your number
           </div>
           <div className="mt-1 text-2xl font-black text-white font-mono tabular-nums tracking-tight">
@@ -2524,7 +2524,7 @@ function AiPanel() {
             "e.g. Friendly and concise. Never defensive. If a customer complains, always offer a free re-clean and a callback within 24 hours."
           }
         />
-        <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mt-2">
+        <p className="text-eyebrow uppercase text-zinc-500 mt-2">
           Used as part of the prompt for every drafted reply. Describe tone,
           policies, and how you want to handle complaints.
         </p>

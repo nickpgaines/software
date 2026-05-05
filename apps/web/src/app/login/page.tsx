@@ -60,7 +60,7 @@ function LoginPageInner() {
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
+          <h1 className="text-page-title text-white">
             Forge CRM
           </h1>
           <p className="text-sm text-zinc-400 mt-3 font-bold">
@@ -108,7 +108,7 @@ function LoginPageInner() {
           className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-6 space-y-5"
         >
           <div>
-            <Label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
+            <Label className="block text-eyebrow uppercase text-zinc-500 mb-2">
               Email or username
             </Label>
             <Input
@@ -122,7 +122,7 @@ function LoginPageInner() {
             />
           </div>
           <div>
-            <Label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
+            <Label className="block text-eyebrow uppercase text-zinc-500 mb-2">
               Password
             </Label>
             <Input

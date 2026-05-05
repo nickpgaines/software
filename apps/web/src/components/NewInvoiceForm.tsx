@@ -199,7 +199,7 @@ export default function NewInvoiceForm() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
+          <h1 className="text-page-title text-white">
             New Invoice
           </h1>
           <p className="text-sm text-zinc-400 mt-3 font-bold">
@@ -241,7 +241,7 @@ export default function NewInvoiceForm() {
                 type="button"
                 variant="ghost"
                 onClick={() => setShowNewCustomer(true)}
-                className="h-auto text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5"
+                className="h-auto text-eyebrow uppercase text-zinc-500 border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5"
               >
                 + Create New Customer
               </Button>
@@ -363,7 +363,7 @@ export default function NewInvoiceForm() {
                 type="button"
                 variant="ghost"
                 onClick={() => addItem()}
-                className="h-auto text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5"
+                className="h-auto text-eyebrow uppercase text-zinc-500 border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5"
               >
                 + Add item
               </Button>
@@ -557,7 +557,7 @@ function Field({
 }) {
   return (
     <div className="mb-3">
-      <Label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
+      <Label className="block text-eyebrow uppercase text-zinc-500 mb-2">
         {label}
       </Label>
       {children}

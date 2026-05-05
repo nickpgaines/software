@@ -211,7 +211,7 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
           ← All email
         </Link>
         <div className="flex items-baseline justify-between mt-2">
-          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
+          <h1 className="text-page-title text-white">
             {automation.name}
           </h1>
           <Label className="flex items-center gap-2 text-sm text-zinc-300 font-bold">
@@ -327,7 +327,7 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
                 placeholder="Day"
                 className="h-auto border-[#1f1f24] rounded-full px-3 py-2 text-sm bg-[#0f0f12] w-24"
               />
-              <span className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+              <span className="text-eyebrow uppercase text-zinc-500">
                 Sends once per year on this date when enabled.
               </span>
             </div>

@@ -190,7 +190,7 @@ export default function MapLassoPanel({
       <div className="px-4 pb-3">
         <ul className="border border-[#1f1f24] rounded-lg max-h-44 overflow-y-auto divide-y divide-[#1f1f24]">
           {customers.length === 0 ? (
-            <li className="px-3 py-6 text-center text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+            <li className="px-3 py-6 text-center text-eyebrow uppercase text-zinc-500">
               No customers selected.
             </li>
           ) : (

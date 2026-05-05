@@ -59,7 +59,7 @@ export default async function EmployeesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Employees</h1>
+        <h1 className="text-page-title text-white">Employees</h1>
         <Link
           href="/employees/new"
           className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-md px-4 py-2 text-sm font-bold"
@@ -82,19 +82,19 @@ export default async function EmployeesPage() {
             <TableHeader>
               <TableRow className="border-b border-[#1f1f24] text-left hover:bg-transparent">
                 <TableHead className="h-auto px-4 py-3 w-14"></TableHead>
-                <TableHead className="h-auto px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+                <TableHead className="h-auto px-4 py-3 text-eyebrow uppercase text-zinc-500">
                   Name
                 </TableHead>
-                <TableHead className="h-auto px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+                <TableHead className="h-auto px-4 py-3 text-eyebrow uppercase text-zinc-500">
                   Role
                 </TableHead>
-                <TableHead className="h-auto px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+                <TableHead className="h-auto px-4 py-3 text-eyebrow uppercase text-zinc-500">
                   Phone
                 </TableHead>
-                <TableHead className="h-auto px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+                <TableHead className="h-auto px-4 py-3 text-eyebrow uppercase text-zinc-500">
                   Email
                 </TableHead>
-                <TableHead className="h-auto px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+                <TableHead className="h-auto px-4 py-3 text-eyebrow uppercase text-zinc-500">
                   Created
                 </TableHead>
                 <TableHead className="h-auto px-4 py-3 w-20"></TableHead>

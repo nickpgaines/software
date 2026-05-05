@@ -435,7 +435,7 @@ export default function EmployeeSchedulingModal({
               <Users className="w-4 h-4" />
             </div>
             <div>
-              <h2 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
+              <h2 className="text-page-title text-white">
                 Employee Scheduling
               </h2>
               <p className="text-sm text-zinc-400 mt-3 font-bold">
@@ -741,7 +741,7 @@ export default function EmployeeSchedulingModal({
             <Button
               variant="ghost"
               onClick={onClose}
-              className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 bg-[#0f0f12] border border-[#1f1f24] rounded-full hover:bg-black"
+              className="h-auto px-4 py-2 text-eyebrow uppercase text-zinc-500 bg-[#0f0f12] border border-[#1f1f24] rounded-full hover:bg-black"
               disabled={saving}
             >
               Cancel

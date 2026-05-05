@@ -109,7 +109,7 @@ function CustomersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Customers</h1>
+          <h1 className="text-page-title text-white">Customers</h1>
           <p className="text-sm text-zinc-400 mt-3 font-bold">
             People you clean windows for.
           </p>
@@ -386,7 +386,7 @@ function Field({
 }) {
   return (
     <div>
-      <Label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
+      <Label className="block text-eyebrow uppercase text-zinc-500 mb-2">
         {label}
         {required && <span className="text-red-500 ml-0.5">*</span>}
       </Label>

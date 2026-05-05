@@ -102,7 +102,7 @@ export default function LeadsIntegrationsClient({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Integrations</h2>
+        <h2 className="text-page-title text-white">Integrations</h2>
         <p className="text-sm text-zinc-400 font-bold">Connect Meta and other lead sources</p>
       </div>
 
@@ -126,7 +126,7 @@ export default function LeadsIntegrationsClient({
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
+              <h3 className="text-page-title text-white">
                 Meta Lead Ads
               </h3>
               <span

@@ -110,7 +110,7 @@ export default function LeadsPipelineClient({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Pipeline</h2>
+        <h2 className="text-page-title text-white">Pipeline</h2>
         <p className="text-sm text-zinc-400 font-bold">
           Track and move leads through the sales pipeline
         </p>
@@ -236,7 +236,7 @@ export default function LeadsPipelineClient({
                       s.key === "new" ? (
                         <EmptyNewHint />
                       ) : (
-                        <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 px-2 py-1">
+                        <p className="text-eyebrow uppercase text-zinc-500 px-2 py-1">
                           No leads in this stage.
                         </p>
                       )
@@ -513,7 +513,7 @@ function Field({
 }) {
   return (
     <Label className="block text-sm font-normal">
-      <span className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2 block">
+      <span className="text-eyebrow uppercase text-zinc-500 mb-2 block">
         {label}
       </span>
       {children}

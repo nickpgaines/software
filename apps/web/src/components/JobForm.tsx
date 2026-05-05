@@ -394,7 +394,7 @@ export default function JobForm({
     <form onSubmit={submit} className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
+          <h1 className="text-page-title text-white">
             {mode === "edit" ? "Edit Job" : "Create Job"}
           </h1>
           <p className="text-sm text-zinc-500 mt-1">
@@ -484,7 +484,7 @@ export default function JobForm({
       <Section title="Scheduling">
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-[80px_1fr_1fr] items-center gap-3">
-            <Label className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">Start</Label>
+            <Label className="text-eyebrow uppercase text-zinc-500">Start</Label>
             <Input
               type="date"
               value={startDate}
@@ -501,7 +501,7 @@ export default function JobForm({
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-[80px_1fr_1fr] items-center gap-3">
-            <Label className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">End</Label>
+            <Label className="text-eyebrow uppercase text-zinc-500">End</Label>
             <Input
               type="date"
               value={endDate}
@@ -750,7 +750,7 @@ function Field({
 }) {
   return (
     <div>
-      <Label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
+      <Label className="block text-eyebrow uppercase text-zinc-500 mb-2">
         {label}
       </Label>
       {children}
@@ -1049,7 +1049,7 @@ function StaffMultiPicker({
             >
               <span className="font-bold text-white tracking-tight">{s.name}</span>
               {s.role && (
-                <span className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">{s.role}</span>
+                <span className="text-eyebrow uppercase text-zinc-500">{s.role}</span>
               )}
             </Button>
           ))}
@@ -1238,10 +1238,10 @@ function Dropzone() {
       }
     >
       <div className="text-3xl text-zinc-500">⤴</div>
-      <p className="mt-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+      <p className="mt-2 text-eyebrow uppercase text-zinc-500">
         Click to upload or drag and drop
       </p>
-      <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">PNG, JPG, GIF up to 5MB</p>
+      <p className="text-eyebrow uppercase text-zinc-500">PNG, JPG, GIF up to 5MB</p>
     </div>
   );
 }
