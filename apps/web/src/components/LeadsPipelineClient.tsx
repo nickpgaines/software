@@ -15,25 +15,29 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+// Pipeline stage signal palette — see DESIGN_SYSTEM.md §3.
+// Maps the four lead-funnel stages onto existing accent tokens
+// (cyan / violet / violet-soft / green). Colors carry only as
+// visual rhythm; the label text is the canonical signal.
 const STAGES: { key: LeadStage; label: string; accent: string; text: string }[] = [
-  { key: "new", label: "NEW", accent: "bg-blue-500", text: "text-blue-600" },
+  { key: "new", label: "NEW", accent: "bg-cyan", text: "text-cyan" },
   {
     key: "contacted",
     label: "CONTACTED",
-    accent: "bg-indigo-500",
-    text: "text-indigo-600",
+    accent: "bg-violet",
+    text: "text-violet",
   },
   {
     key: "responded",
     label: "RESPONDED",
-    accent: "bg-purple-500",
-    text: "text-purple-600",
+    accent: "bg-violet-soft",
+    text: "text-violet-soft",
   },
   {
     key: "estimate_sent",
     label: "ESTIMATE SENT",
-    accent: "bg-amber-500",
-    text: "text-amber-600",
+    accent: "bg-green",
+    text: "text-green",
   },
 ];
 
@@ -145,7 +149,7 @@ export default function LeadsPipelineClient({
             className={
               "h-auto rounded-none px-3 py-2 hover:bg-transparent " +
               (view === "board"
-                ? "text-sky-500"
+                ? "text-violet"
                 : "text-zinc-500 hover:text-zinc-300")
             }
             aria-label="Board view"
@@ -159,7 +163,7 @@ export default function LeadsPipelineClient({
             className={
               "h-auto rounded-none px-3 py-2 border-l border-line hover:bg-transparent " +
               (view === "list"
-                ? "text-sky-500"
+                ? "text-violet"
                 : "text-zinc-500 hover:text-zinc-300")
             }
             aria-label="List view"
@@ -172,7 +176,7 @@ export default function LeadsPipelineClient({
             type="button"
             variant="ghost"
             onClick={() => setShowNew(true)}
-            className="h-auto gap-1.5 bg-sky-400 hover:bg-sky-500 text-white text-sm font-bold px-4 py-2 rounded-full"
+            className="h-auto gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold px-4 py-2 rounded-full"
           >
             <Plus className="w-4 h-4" />
             New Lead
@@ -188,7 +192,7 @@ export default function LeadsPipelineClient({
       </div>
 
       <div>
-        <div className="inline-flex bg-card border border-sky-200 text-sky-600 px-4 py-1 rounded-full text-sm font-bold">
+        <div className="inline-flex bg-card border border-line text-fg-muted px-4 py-1 rounded-full text-sm font-bold">
           Leads
         </div>
       </div>
@@ -218,7 +222,7 @@ export default function LeadsPipelineClient({
                         className={`w-1 h-8 rounded-full ${s.accent} shrink-0`}
                       />
                       <div className="flex-1">
-                        <div className={`text-xs font-semibold ${s.text}`}>
+                        <div className={`text-xs font-bold ${s.text}`}>
                           {s.label}
                         </div>
                         <div className="text-xs text-zinc-400">
@@ -289,7 +293,7 @@ export default function LeadsPipelineClient({
 function EmptyNewHint() {
   return (
     <div className="flex flex-col items-start gap-2 p-2">
-      <div className="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center text-sky-500">
+      <div className="w-8 h-8 rounded-lg bg-elevated flex items-center justify-center text-violet">
         <Sparkles className="w-4 h-4" />
       </div>
       <div>
@@ -323,7 +327,7 @@ function LeadCard({
         (isDragging ? "opacity-50" : "")
       }
     >
-      <div className="font-medium text-sm text-white truncate">
+      <div className="font-bold text-sm text-white truncate">
         {leadName(lead)}
       </div>
       {lead.email && (
@@ -333,7 +337,7 @@ function LeadCard({
         <div className="text-xs text-zinc-400 truncate">{lead.phone}</div>
       )}
       {lead.source_page_name && (
-        <div className="text-[10px] uppercase tracking-wide text-zinc-500 mt-2">
+        <div className="text-[10px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mt-2">
           {lead.source_page_name}
         </div>
       )}
@@ -493,7 +497,7 @@ function NewLeadDialog({
               type="submit"
               variant="ghost"
               disabled={submitting}
-              className="h-auto px-4 py-2 text-sm bg-sky-400 hover:bg-sky-500 text-white rounded-full font-bold"
+              className="h-auto px-4 py-2 text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full font-bold"
             >
               {submitting ? "Saving…" : "Create"}
             </Button>
@@ -512,7 +516,7 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <Label className="block text-sm font-normal">
+    <Label className="block text-sm font-bold">
       <span className="text-eyebrow uppercase text-zinc-500 mb-2 block">
         {label}
       </span>
