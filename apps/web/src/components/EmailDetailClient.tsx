@@ -2,6 +2,14 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type Blast = {
   id: number;
@@ -114,30 +122,30 @@ export default function EmailDetailClient({ id }: { id: number }) {
         <div className="px-6 py-4 border-b border-[#1f1f24] text-sm font-bold text-white tracking-tight">
           Recipients
         </div>
-        <table className="w-full text-sm">
-          <thead className="bg-black border-b border-[#1f1f24]">
-            <tr>
-              <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Email</th>
-              <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Name</th>
-              <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Status</th>
-              <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Sent</th>
-              <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Error</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#1f1f24]">
+        <Table>
+          <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-[#1f1f24]">
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Email</TableHead>
+              <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Name</TableHead>
+              <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Status</TableHead>
+              <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Sent</TableHead>
+              <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Error</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody className="divide-y divide-[#1f1f24]">
             {recipients.map((r) => (
-              <tr key={r.id}>
-                <td className="px-4 py-2 text-zinc-300 font-bold">{r.email}</td>
-                <td className="px-4 py-2 text-zinc-300 font-bold">{r.name || "—"}</td>
-                <td className="px-4 py-2 text-zinc-300 capitalize">{r.status}</td>
-                <td className="px-4 py-2 text-zinc-400" suppressHydrationWarning>
+              <TableRow key={r.id} className="border-0 hover:bg-transparent">
+                <TableCell className="px-4 py-2 text-zinc-300 font-bold">{r.email}</TableCell>
+                <TableCell className="px-4 py-2 text-zinc-300 font-bold">{r.name || "—"}</TableCell>
+                <TableCell className="px-4 py-2 text-zinc-300 capitalize">{r.status}</TableCell>
+                <TableCell className="px-4 py-2 text-zinc-400" suppressHydrationWarning>
                   {mounted ? fmtTime(r.sent_at) : ""}
-                </td>
-                <td className="px-4 py-2 text-rose-600">{r.error || "—"}</td>
-              </tr>
+                </TableCell>
+                <TableCell className="px-4 py-2 text-rose-600">{r.error || "—"}</TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );

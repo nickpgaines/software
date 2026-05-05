@@ -3,6 +3,10 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 type AudienceCount = {
   audience: "all_customers" | "active_subscribers" | "non_subscribers" | "prospects";
@@ -151,59 +155,60 @@ export default function EmailComposeClient() {
 
       <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm p-6 space-y-5">
         <div>
-          <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-2">
+          <Label className="block text-xs font-normal uppercase tracking-wide text-zinc-500 mb-2">
             Audience
-          </label>
+          </Label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {audiences.map((a) => (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 key={a.audience}
                 onClick={() => setAudience(a.audience)}
                 className={
-                  "text-left p-3 rounded-xl border transition " +
+                  "h-auto text-left p-3 rounded-xl border transition flex-col items-stretch justify-start whitespace-normal hover:bg-transparent " +
                   (audience === a.audience
                     ? "border-slate-900 bg-black"
                     : "border-[#1f1f24] hover:border-slate-400")
                 }
               >
-                <div className="flex items-baseline justify-between">
+                <div className="flex items-baseline justify-between w-full">
                   <span className="font-bold text-white tracking-tight">{a.label}</span>
                   <span className="text-xs text-zinc-400 tabular-nums">
                     {a.count}
                   </span>
                 </div>
-                <p className="text-xs text-zinc-400 mt-0.5">
+                <p className="text-xs text-zinc-400 mt-0.5 font-normal">
                   {AUDIENCE_DESCRIPTIONS[a.audience] || ""}
                 </p>
-              </button>
+              </Button>
             ))}
           </div>
         </div>
 
         <div>
-          <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
+          <Label className="block text-xs font-normal uppercase tracking-wide text-zinc-500 mb-1.5">
             Subject
-          </label>
-          <input
+          </Label>
+          <Input
             type="text"
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             placeholder="Spring window cleaning special — 15% off this month"
-            className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+            className="w-full h-auto border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
           />
         </div>
 
         <div>
-          <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
+          <Label className="block text-xs font-normal uppercase tracking-wide text-zinc-500 mb-1.5">
             Message (HTML or plain text)
-          </label>
-          <textarea
+          </Label>
+          <Textarea
             value={bodyHtml}
             onChange={(e) => setBodyHtml(e.target.value)}
             rows={12}
             placeholder={"Hi there,\n\nWe're running a 15% off special on..."}
-            className="w-full border border-[#1f1f24] rounded-2xl px-4 py-3 text-sm bg-[#0f0f12] font-mono"
+            className="w-full border-[#1f1f24] rounded-2xl px-4 py-3 text-sm bg-[#0f0f12] font-mono"
           />
           <p className="text-xs text-zinc-500 mt-2">
             An unsubscribe link and your business address are appended to every
@@ -215,32 +220,34 @@ export default function EmailComposeClient() {
         {info && <p className="text-sm text-emerald-700">{info}</p>}
 
         <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-[#1f1f24]">
-          <input
+          <Input
             type="email"
             value={testEmail}
             onChange={(e) => setTestEmail(e.target.value)}
             placeholder="you@example.com"
-            className="border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] w-64"
+            className="h-auto border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] w-64"
           />
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={handleTestSend}
             disabled={sending || !emailStatus?.configured}
-            className="text-sm bg-[#0f0f12] border border-[#1f1f24] hover:bg-black disabled:opacity-50 rounded-full px-4 py-2 font-bold"
+            className="h-auto text-sm bg-[#0f0f12] border border-[#1f1f24] hover:bg-black rounded-full px-4 py-2 font-bold"
           >
             Send test
-          </button>
+          </Button>
           <div className="flex-1" />
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={handleSend}
             disabled={sending || !emailStatus?.configured}
-            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
+            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
           >
             {sending
               ? "Sending…"
               : `Send to ${selectedCount} recipient${selectedCount === 1 ? "" : "s"}`}
-          </button>
+          </Button>
         </div>
       </div>
     </div>

@@ -2,6 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type Blast = {
   id: number;
@@ -230,15 +240,16 @@ export default function EmailListClient() {
                         </p>
                       )}
                     </div>
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
                       role="switch"
                       aria-checked={a.enabled === 1}
                       disabled={busyId === a.id}
                       onClick={() => toggleAutomation(a, a.enabled !== 1)}
                       className={
-                        "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition disabled:opacity-50 " +
-                        (a.enabled === 1 ? "bg-emerald-500" : "bg-[#1f1f24]")
+                        "relative h-6 w-11 p-0 shrink-0 cursor-pointer rounded-full justify-start hover:bg-current " +
+                        (a.enabled === 1 ? "bg-emerald-500 hover:bg-emerald-500" : "bg-[#1f1f24] hover:bg-[#1f1f24]")
                       }
                     >
                       <span
@@ -247,7 +258,7 @@ export default function EmailListClient() {
                           (a.enabled === 1 ? "translate-x-5" : "translate-x-0.5")
                         }
                       />
-                    </button>
+                    </Button>
                   </div>
 
                   <div className="text-xs text-zinc-400 grid grid-cols-2 gap-y-1 gap-x-4">
@@ -289,11 +300,12 @@ export default function EmailListClient() {
                       Edit
                     </Link>
                     {a.kind === "seasonal" && (
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
                         onClick={() => runAutomation(a)}
                         disabled={busyId === a.id || a.enabled !== 1}
-                        className="text-xs bg-[#0f0f12] border border-[#1f1f24] hover:bg-black disabled:opacity-50 rounded-full px-3 py-1.5 font-bold"
+                        className="h-auto text-xs bg-[#0f0f12] border border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5 font-bold"
                         title={
                           a.enabled !== 1
                             ? "Enable this automation to send"
@@ -301,7 +313,7 @@ export default function EmailListClient() {
                         }
                       >
                         Send now
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -321,59 +333,60 @@ export default function EmailListClient() {
               No blasts yet. Click <strong>New blast</strong> to send your first.
             </div>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-black border-b border-[#1f1f24]">
-                <tr>
-                  <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Sent</th>
-                  <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Subject</th>
-                  <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Audience</th>
-                  <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Recipients</th>
-                  <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Delivered</th>
-                  <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#1f1f24]">
+            <Table>
+              <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-[#1f1f24]">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Sent</TableHead>
+                  <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Subject</TableHead>
+                  <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Audience</TableHead>
+                  <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Recipients</TableHead>
+                  <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Delivered</TableHead>
+                  <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-[#1f1f24]">
                 {blasts.map((b) => (
-                  <tr key={b.id} className="hover:bg-black">
-                    <td
+                  <TableRow key={b.id} className="border-0 hover:bg-black">
+                    <TableCell
                       className="px-4 py-2 text-zinc-300 whitespace-nowrap"
                       suppressHydrationWarning
                     >
                       {mounted ? fmtTime(b.sent_at || b.created_at) : ""}
-                    </td>
-                    <td className="px-4 py-2 font-bold text-white tracking-tight">
+                    </TableCell>
+                    <TableCell className="px-4 py-2 font-bold text-white tracking-tight">
                       <Link href={`/email/${b.id}`} className="hover:underline">
                         {b.subject}
                       </Link>
-                    </td>
-                    <td className="px-4 py-2 text-zinc-300 font-bold">
+                    </TableCell>
+                    <TableCell className="px-4 py-2 text-zinc-300 font-bold">
                       {AUDIENCE_LABELS[b.audience] || b.audience}
-                    </td>
-                    <td className="px-4 py-2 text-zinc-300 tabular-nums">
+                    </TableCell>
+                    <TableCell className="px-4 py-2 text-zinc-300 tabular-nums">
                       {b.recipient_count}
-                    </td>
-                    <td className="px-4 py-2 text-zinc-300 tabular-nums">
+                    </TableCell>
+                    <TableCell className="px-4 py-2 text-zinc-300 tabular-nums">
                       {b.sent_count}
                       {b.failed_count > 0 && (
                         <span className="text-rose-600">
                           {" "}· {b.failed_count} failed
                         </span>
                       )}
-                    </td>
-                    <td className="px-4 py-2">
-                      <span
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
+                      <Badge
+                        variant="outline"
                         className={
-                          "text-[11px] rounded-full px-2 py-0.5 border capitalize " +
+                          "text-[11px] rounded-full px-2 py-0.5 border capitalize font-normal " +
                           statusBadge(b.status)
                         }
                       >
                         {b.status}
-                      </span>
-                    </td>
-                  </tr>
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           )}
         </div>
       </section>
