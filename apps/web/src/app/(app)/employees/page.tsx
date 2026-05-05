@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Plus, User } from "lucide-react";
 import { getDb, type Staff } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
+import { Card } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -59,19 +60,19 @@ export default async function EmployeesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Employees</h1>
+        <h1 className="text-page-title text-white">Employees</h1>
         <Link
           href="/employees/new"
           className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-md px-4 py-2 text-sm font-bold"
         >
-          <span className="w-5 h-5 rounded-full bg-[#0f0f12]/15 flex items-center justify-center">
+          <span className="w-5 h-5 rounded-full bg-card/15 flex items-center justify-center">
             <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
           </span>
           Add Employee
         </Link>
       </div>
 
-      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
+      <Card className="overflow-hidden">
         {employees.length === 0 ? (
           <div className="p-12 text-center text-sm text-zinc-400 font-bold">
             No employees yet. Click &ldquo;Add Employee&rdquo; to add your
@@ -80,21 +81,21 @@ export default async function EmployeesPage() {
         ) : (
           <Table>
             <TableHeader>
-              <TableRow className="border-b border-[#1f1f24] text-left hover:bg-transparent">
+              <TableRow className="border-b border-line text-left hover:bg-transparent">
                 <TableHead className="h-auto px-4 py-3 w-14"></TableHead>
-                <TableHead className="h-auto px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+                <TableHead className="h-auto px-4 py-3 text-eyebrow uppercase text-zinc-500">
                   Name
                 </TableHead>
-                <TableHead className="h-auto px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+                <TableHead className="h-auto px-4 py-3 text-eyebrow uppercase text-zinc-500">
                   Role
                 </TableHead>
-                <TableHead className="h-auto px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+                <TableHead className="h-auto px-4 py-3 text-eyebrow uppercase text-zinc-500">
                   Phone
                 </TableHead>
-                <TableHead className="h-auto px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+                <TableHead className="h-auto px-4 py-3 text-eyebrow uppercase text-zinc-500">
                   Email
                 </TableHead>
-                <TableHead className="h-auto px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+                <TableHead className="h-auto px-4 py-3 text-eyebrow uppercase text-zinc-500">
                   Created
                 </TableHead>
                 <TableHead className="h-auto px-4 py-3 w-20"></TableHead>
@@ -107,10 +108,10 @@ export default async function EmployeesPage() {
                 return (
                   <TableRow
                     key={e.id}
-                    className="border-b border-[#1f1f24] last:border-0 hover:bg-black"
+                    className="border-b border-line last:border-0 hover:bg-black"
                   >
                     <TableCell className="px-4 py-4">
-                      <div className="w-10 h-10 rounded-full bg-black border border-[#1f1f24] flex items-center justify-center overflow-hidden">
+                      <div className="w-10 h-10 rounded-full bg-black border border-line flex items-center justify-center overflow-hidden">
                         {e.photo_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -153,7 +154,7 @@ export default async function EmployeesPage() {
             </TableBody>
           </Table>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

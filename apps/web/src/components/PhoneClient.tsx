@@ -277,11 +277,11 @@ function CallWidget() {
           <div className="text-sm font-bold truncate">
             {state.target.customerName || state.target.toPhone}
           </div>
-          <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-fg-subtle truncate">
+          <div className="text-eyebrow uppercase text-fg-subtle truncate">
             {state.target.customerName ? state.target.toPhone : status}
           </div>
         </div>
-        <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-fg-subtle tabular-nums">{status}</div>
+        <div className="text-eyebrow uppercase text-fg-subtle tabular-nums">{status}</div>
       </div>
 
       <div className="flex items-center gap-2 mt-3">

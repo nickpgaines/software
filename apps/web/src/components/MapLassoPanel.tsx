@@ -123,8 +123,8 @@ export default function MapLassoPanel({
 
   if (result) {
     return (
-      <div className="absolute top-4 right-16 z-10 w-80 bg-[#0f0f12] border border-[#1f1f24] rounded-lg shadow-md">
-        <div className="px-4 py-3 border-b border-[#1f1f24] flex items-center justify-between">
+      <div className="absolute top-4 right-16 z-10 w-80 bg-card border border-line rounded-lg shadow-md">
+        <div className="px-4 py-3 border-b border-line flex items-center justify-between">
           <h3 className="font-extrabold text-white tracking-tight text-sm">Blast sent</h3>
           <Button
             variant="ghost"
@@ -148,7 +148,7 @@ export default function MapLassoPanel({
             <Stat label="Failed" value={result.failed} tone="bad" />
           )}
         </div>
-        <div className="px-4 py-3 border-t border-[#1f1f24] flex justify-end">
+        <div className="px-4 py-3 border-t border-line flex justify-end">
           <Button
             variant="ghost"
             onClick={onClose}
@@ -162,8 +162,8 @@ export default function MapLassoPanel({
   }
 
   return (
-    <div className="absolute top-4 right-16 z-10 w-80 bg-[#0f0f12] border border-[#1f1f24] rounded-lg shadow-md flex flex-col max-h-[80vh]">
-      <div className="px-4 py-3 border-b border-[#1f1f24] flex items-center justify-between">
+    <div className="absolute top-4 right-16 z-10 w-80 bg-card border border-line rounded-lg shadow-md flex flex-col max-h-[80vh]">
+      <div className="px-4 py-3 border-b border-line flex items-center justify-between">
         <h3 className="font-extrabold text-white tracking-tight text-sm">
           Selected customers
         </h3>
@@ -188,9 +188,9 @@ export default function MapLassoPanel({
       </div>
 
       <div className="px-4 pb-3">
-        <ul className="border border-[#1f1f24] rounded-lg max-h-44 overflow-y-auto divide-y divide-[#1f1f24]">
+        <ul className="border border-line rounded-lg max-h-44 overflow-y-auto divide-y divide-line">
           {customers.length === 0 ? (
-            <li className="px-3 py-6 text-center text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+            <li className="px-3 py-6 text-center text-eyebrow uppercase text-zinc-500">
               No customers selected.
             </li>
           ) : (
@@ -246,7 +246,7 @@ export default function MapLassoPanel({
           maxLength={MAX_LEN}
           placeholder="Hey {first_name}, we're running a special this month — interested?"
           disabled={sending}
-          className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm bg-[#0f0f12] resize-y"
+          className="w-full border-line rounded-xl px-3 py-2 text-sm bg-card resize-y"
         />
         <div className="flex flex-wrap items-center gap-1.5 mt-2">
           {MERGE_TAGS.map((t) => (
@@ -270,7 +270,7 @@ export default function MapLassoPanel({
         {error && <p className="text-sm text-rose-600 mt-2">{error}</p>}
       </div>
 
-      <div className="px-4 py-3 border-t border-[#1f1f24] flex justify-end gap-2">
+      <div className="px-4 py-3 border-t border-line flex justify-end gap-2">
         <Button
           variant="ghost"
           onClick={onClose}

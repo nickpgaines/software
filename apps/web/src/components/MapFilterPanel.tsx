@@ -74,8 +74,8 @@ export default function MapFilterPanel({
   }
 
   return (
-    <div className="absolute top-4 right-16 z-10 w-72 max-h-[80vh] flex flex-col rounded-lg border border-[#1f1f24] bg-[#0f0f12] shadow-md">
-      <div className="px-4 py-3 border-b border-[#1f1f24] flex items-center justify-between">
+    <div className="absolute top-4 right-16 z-10 w-72 max-h-[80vh] flex flex-col rounded-lg border border-line bg-card shadow-md">
+      <div className="px-4 py-3 border-b border-line flex items-center justify-between">
         <h3 className="font-extrabold text-white tracking-tight text-sm">Filters</h3>
         <Button
           variant="ghost"
@@ -133,14 +133,14 @@ export default function MapFilterPanel({
               "h-auto text-xs px-2 py-1 rounded-full mb-2 font-bold " +
               (allEmployees
                 ? "bg-slate-900 text-white hover:bg-slate-900"
-                : "bg-black text-zinc-400 hover:bg-[#1f1f24]")
+                : "bg-black text-zinc-400 hover:bg-line")
             }
           >
             All employees
           </Button>
           <div className="flex flex-wrap gap-1.5">
             {staff.length === 0 && (
-              <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">No employees yet.</p>
+              <p className="text-eyebrow uppercase text-zinc-500">No employees yet.</p>
             )}
             {staff.map((s) => {
               const active =
@@ -155,7 +155,7 @@ export default function MapFilterPanel({
                     "h-auto gap-1.5 rounded-full pl-1 pr-2 py-0.5 text-xs border font-bold " +
                     (active
                       ? "border-transparent text-white hover:bg-current"
-                      : "border-[#1f1f24] text-zinc-300 hover:bg-black")
+                      : "border-line text-zinc-300 hover:bg-black")
                   }
                   style={
                     active ? { backgroundColor: staffColorHex(s.color) } : {}

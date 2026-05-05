@@ -46,7 +46,7 @@ export default function NewMenu({ fullWidth }: { fullWidth?: boolean }) {
 
       <DropdownMenuContent
         align={fullWidth ? "start" : "end"}
-        className="w-48 bg-[#0f0f12] border-[#1f1f24] rounded-2xl shadow-lg p-1"
+        className="w-48 bg-card border-line rounded-2xl shadow-lg p-1"
       >
         {ITEMS.map((it) => (
           <DropdownMenuItem

@@ -60,7 +60,7 @@ function LoginPageInner() {
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
+          <h1 className="text-page-title text-white">
             Forge CRM
           </h1>
           <p className="text-sm text-zinc-400 mt-3 font-bold">
@@ -70,7 +70,7 @@ function LoginPageInner() {
         <div className="space-y-3 mb-4">
           <a
             href="/api/auth/google/start"
-            className="flex items-center justify-center gap-3 w-full bg-[#0f0f12] border border-[#1f1f24] rounded-lg py-2.5 text-sm font-extrabold text-white tracking-tight hover:bg-black"
+            className="flex items-center justify-center gap-3 w-full bg-card border border-line rounded-lg py-2.5 text-sm font-extrabold text-white tracking-tight hover:bg-black"
           >
             <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
               <path
@@ -93,9 +93,9 @@ function LoginPageInner() {
             Sign in with Google
           </a>
           <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.22em] font-extrabold text-zinc-500">
-            <div className="flex-1 h-px bg-[#1f1f24]" />
+            <div className="flex-1 h-px bg-line" />
             <span>or</span>
-            <div className="flex-1 h-px bg-[#1f1f24]" />
+            <div className="flex-1 h-px bg-line" />
           </div>
         </div>
         {oauthError && (
@@ -105,10 +105,10 @@ function LoginPageInner() {
         )}
         <form
           onSubmit={onSubmit}
-          className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-6 space-y-5"
+          className="bg-card border border-line rounded-2xl p-6 space-y-5"
         >
           <div>
-            <Label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
+            <Label className="block text-eyebrow uppercase text-zinc-500 mb-2">
               Email or username
             </Label>
             <Input
@@ -117,19 +117,19 @@ function LoginPageInner() {
               onChange={(e) => setUsername(e.target.value)}
               placeholder="employee@example.com"
               autoComplete="username"
-              className="w-full h-auto bg-black border-[#2a2a32] rounded-lg px-3 py-2.5 text-sm font-bold text-white placeholder-zinc-600 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50"
+              className="w-full h-auto bg-black border-line-strong rounded-lg px-3 py-2.5 text-sm font-bold text-white placeholder-zinc-600 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50"
               autoFocus
             />
           </div>
           <div>
-            <Label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
+            <Label className="block text-eyebrow uppercase text-zinc-500 mb-2">
               Password
             </Label>
             <Input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full h-auto bg-black border-[#2a2a32] rounded-lg px-3 py-2.5 text-sm font-bold text-white placeholder-zinc-600 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50"
+              className="w-full h-auto bg-black border-line-strong rounded-lg px-3 py-2.5 text-sm font-bold text-white placeholder-zinc-600 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50"
             />
           </div>
           {error && (

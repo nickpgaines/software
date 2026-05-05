@@ -153,7 +153,7 @@ export default function ReportsClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between gap-4 flex-wrap border-b border-[#1f1f24]">
+      <div className="flex items-end justify-between gap-4 flex-wrap border-b border-line">
         <nav className="-mb-px flex gap-6">
           {TABS.map((t) => {
             const active = tab === t.key;
@@ -221,7 +221,7 @@ function RangePills({
             className={
               "h-auto px-3 py-1 rounded-full whitespace-nowrap font-bold hover:bg-transparent " +
               (range === r.key
-                ? "bg-[#0f0f12] text-white shadow-sm"
+                ? "bg-card text-white shadow-sm"
                 : "text-zinc-400 hover:text-white")
             }
           >
@@ -419,9 +419,9 @@ function OverviewPanel({ qs }: { qs: string }) {
       </div>
 
       <Section title="Income Mix">
-        <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl px-5 py-5">
+        <div className="bg-card border border-line rounded-2xl px-5 py-5">
           <div className="flex items-center justify-between mb-3">
-            <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+            <div className="text-eyebrow uppercase text-zinc-500">
               {mixMode === "collected" ? "Cash collected" : "Revenue generated"} —{" "}
               {money(mixTotal)}
             </div>
@@ -515,9 +515,9 @@ function BigStatCard({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl px-5 py-4">
+    <div className="bg-card border border-line rounded-2xl px-5 py-4">
       <div className="flex items-start justify-between gap-2 mb-1.5">
-        <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+        <div className="text-eyebrow uppercase text-zinc-500">
           {label}
         </div>
         {action}
@@ -632,7 +632,7 @@ function SalesPanel({ qs }: { qs: string }) {
       </Section>
 
       <Section title="Top reps">
-        <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
           {data.reps.length === 0 ? (
             <p className="p-8 text-sm text-zinc-500 text-center">
               No rep activity in this window.
@@ -640,17 +640,17 @@ function SalesPanel({ qs }: { qs: string }) {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-0 hover:bg-transparent text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
-                  <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Rep</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Doors</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Sales</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Conv.</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Revenue</TableHead>
+                <TableRow className="border-0 hover:bg-transparent text-eyebrow uppercase text-zinc-500">
+                  <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Rep</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Doors</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Sales</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Conv.</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Revenue</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data.reps.map((r) => (
-                  <TableRow key={r.id} className="border-t border-b-0 border-[#1f1f24] hover:bg-transparent">
+                  <TableRow key={r.id} className="border-t border-b-0 border-line hover:bg-transparent">
                     <TableCell className="px-5 py-3 font-bold text-white tracking-tight">
                       {r.name}
                     </TableCell>
@@ -840,7 +840,7 @@ function SubscriptionsPanel({ qs: rangeQs }: { qs: string }) {
           />
         </div>
 
-        <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5 shadow-sm">
+        <div className="bg-card border border-line rounded-2xl p-5 shadow-sm">
           <div className="text-sm font-extrabold text-white tracking-tight">
             Monthly Recurring Revenue
           </div>
@@ -949,12 +949,12 @@ function SelectFilter({
 }) {
   return (
     <Label className="block font-normal">
-      <span className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">{label}</span>
+      <span className="text-eyebrow uppercase text-zinc-500">{label}</span>
       {/* Native <select> kept: Radix Select forbids empty-string item values, which breaks the "All" clear-filter sentinel. Flagged for follow-up. */}
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 block w-full rounded-xl border border-[#1f1f24] bg-[#0f0f12] px-3 py-2 text-sm text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2a2a32]"
+        className="mt-1 block w-full rounded-xl border border-line bg-card px-3 py-2 text-sm text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-line-strong"
       >
         <option value="">All</option>
         {options.map((o) => (
@@ -985,13 +985,13 @@ function Toggle({
         onClick={() => onChange(!checked)}
         className={
           "relative h-5 w-9 p-0 rounded-full justify-start hover:bg-current " +
-          (checked ? "bg-emerald-500 hover:bg-emerald-500" : "bg-[#2a2a32] hover:bg-[#2a2a32]")
+          (checked ? "bg-emerald-500 hover:bg-emerald-500" : "bg-line-strong hover:bg-line-strong")
         }
         aria-pressed={checked}
       >
         <span
           className={
-            "inline-block h-4 w-4 transform rounded-full bg-[#0f0f12] shadow transition " +
+            "inline-block h-4 w-4 transform rounded-full bg-card shadow transition " +
             (checked ? "translate-x-4" : "translate-x-0.5")
           }
         />
@@ -1014,11 +1014,11 @@ function StatCard({
   return (
     <div
       className={
-        "bg-[#0f0f12] border border-[#1f1f24] rounded-2xl " +
+        "bg-card border border-line rounded-2xl " +
         (compact ? "px-4 py-3" : "px-5 py-4")
       }
     >
-      <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-1.5">
+      <div className="text-eyebrow uppercase text-zinc-500 mb-1.5">
         {label}
       </div>
       <div
@@ -1042,7 +1042,7 @@ function BreakdownTable({
   rows: { key: string; name: string; count: number; mrr_cents: number }[];
 }) {
   return (
-    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
       {rows.length === 0 ? (
         <p className="p-8 text-sm text-zinc-500 text-center">
           No subscriptions yet.
@@ -1050,15 +1050,15 @@ function BreakdownTable({
       ) : (
         <Table>
           <TableHeader>
-            <TableRow className="border-0 hover:bg-transparent text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 bg-black">
-              <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">{header}</TableHead>
-              <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Count</TableHead>
-              <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">MRR</TableHead>
+            <TableRow className="border-0 hover:bg-transparent text-eyebrow uppercase text-zinc-500 bg-black">
+              <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">{header}</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Count</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">MRR</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((r) => (
-              <TableRow key={r.key} className="border-t border-b-0 border-[#1f1f24] hover:bg-transparent">
+              <TableRow key={r.key} className="border-t border-b-0 border-line hover:bg-transparent">
                 <TableCell className="px-5 py-3 font-bold text-white tracking-tight">
                   {r.name}
                 </TableCell>
@@ -1092,20 +1092,20 @@ function CohortRetentionTable({
     return `rgba(16, 185, 129, ${a})`;
   }
   return (
-    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
       <Table>
         <TableHeader>
           <TableRow className="border-0 hover:bg-transparent">
-            <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Cohort</TableHead>
-            <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Started</TableHead>
-            <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">+30d</TableHead>
-            <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">+90d</TableHead>
-            <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">+180d</TableHead>
+            <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Cohort</TableHead>
+            <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Started</TableHead>
+            <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">+30d</TableHead>
+            <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">+90d</TableHead>
+            <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">+180d</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {rows.map((r) => (
-            <TableRow key={r.iso} className="border-t border-b-0 border-[#1f1f24] hover:bg-transparent">
+            <TableRow key={r.iso} className="border-t border-b-0 border-line hover:bg-transparent">
               <TableCell className="px-5 py-3 font-bold text-white tracking-tight">{r.label} {r.iso}</TableCell>
               <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">{r.started}</TableCell>
               <TableCell className="px-5 py-3 text-right font-extrabold text-white tabular-nums" style={{ background: bg(r.retention_30d) }}>{fmt(r.retention_30d)}</TableCell>
@@ -1131,7 +1131,7 @@ function ArrAddedChart({
   const totalCount = points.reduce((sum, p) => sum + p.count, 0);
 
   return (
-    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
+    <div className="bg-card border border-line rounded-2xl p-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="text-sm font-extrabold text-white tracking-tight">
@@ -1142,7 +1142,7 @@ function ArrAddedChart({
           </div>
         </div>
         <div className="text-right">
-          <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+          <div className="text-eyebrow uppercase text-zinc-500">
             Total added ({totalCount} subs)
           </div>
           <div className="text-xl font-black text-white tracking-tight tabular-nums mt-1">
@@ -1215,10 +1215,10 @@ function Stats({
       {items.map((it) => (
         <div
           key={it.label}
-          className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl px-5 py-4 flex items-center justify-between gap-4"
+          className="bg-card border border-line rounded-2xl px-5 py-4 flex items-center justify-between gap-4"
         >
           <div className="min-w-0">
-            <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-1.5">
+            <div className="text-eyebrow uppercase text-zinc-500 mb-1.5">
               {it.label}
             </div>
             <div className="text-[26px] font-black tracking-tight leading-none tabular-nums text-white">
@@ -1349,26 +1349,26 @@ function EmployeeTable({
   emptyText: string;
 }) {
   return (
-    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl overflow-hidden">
+    <div className="bg-card border border-line rounded-2xl overflow-hidden">
       {rows.length === 0 ? (
         <p className="p-8 text-sm text-zinc-500 text-center font-bold">{emptyText}</p>
       ) : (
         <Table>
           <TableHeader>
             <TableRow className="border-0 hover:bg-transparent bg-black">
-              <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Employee</TableHead>
-              <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Tenure</TableHead>
-              <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Lifetime</TableHead>
-              <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Monthly</TableHead>
-              <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Daily</TableHead>
+              <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Employee</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Tenure</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Lifetime</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Monthly</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Daily</TableHead>
               {variant === "tech" && (
-                <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">$/hr</TableHead>
+                <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">$/hr</TableHead>
               )}
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((r) => (
-              <TableRow key={r.id} className="border-t border-b-0 border-[#1f1f24] hover:bg-transparent">
+              <TableRow key={r.id} className="border-t border-b-0 border-line hover:bg-transparent">
                 <TableCell className="px-5 py-3">
                   <div className="font-bold text-white tracking-tight">{r.name}</div>
                   {r.email && (
@@ -1512,7 +1512,7 @@ function PayrollPanel({
         <Button
           variant="ghost"
           onClick={() => setSettingsOpen(true)}
-          className="h-auto gap-2 px-3 py-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 bg-[#0f0f12] border border-[#1f1f24] rounded-full hover:bg-black shadow-sm"
+          className="h-auto gap-2 px-3 py-2 text-eyebrow uppercase text-zinc-500 bg-card border border-line rounded-full hover:bg-black shadow-sm"
           aria-label="Payroll settings"
         >
           <Settings className="w-4 h-4" />
@@ -1577,7 +1577,7 @@ function PayrollTable({
 }) {
   return (
     <Section title={title}>
-      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
         {rows.length === 0 ? (
           <p className="p-8 text-sm text-zinc-500 text-center">
             No employees yet.
@@ -1585,20 +1585,20 @@ function PayrollTable({
         ) : (
           <Table>
             <TableHeader>
-              <TableRow className="border-0 hover:bg-transparent text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 bg-black">
-                <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Employee</TableHead>
-                <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Email</TableHead>
-                <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Role</TableHead>
-                <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">{rateLabel}</TableHead>
-                <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Total</TableHead>
+              <TableRow className="border-0 hover:bg-transparent text-eyebrow uppercase text-zinc-500 bg-black">
+                <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Employee</TableHead>
+                <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Email</TableHead>
+                <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Role</TableHead>
+                <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">{rateLabel}</TableHead>
+                <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Total</TableHead>
                 {showTips && (
-                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Tips</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Tips</TableHead>
                 )}
                 {showBonus && (
-                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Bonus</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Bonus</TableHead>
                 )}
-                <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Payout</TableHead>
-                <TableHead className="h-auto text-center px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Paid</TableHead>
+                <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Payout</TableHead>
+                <TableHead className="h-auto text-center px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Paid</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -1652,7 +1652,7 @@ function PayrollRowView({
   }
 
   return (
-    <TableRow className="border-t border-b-0 border-[#1f1f24] hover:bg-transparent">
+    <TableRow className="border-t border-b-0 border-line hover:bg-transparent">
       <TableCell className="px-5 py-3 font-bold text-white tracking-tight">{row.name}</TableCell>
       <TableCell className="px-5 py-3 text-zinc-400">{row.email || "—"}</TableCell>
       <TableCell className="px-5 py-3">
@@ -1675,7 +1675,7 @@ function PayrollRowView({
                   setEditing(false);
                 }
               }}
-              className="w-20 h-auto text-right border-[#2a2a32] rounded px-2 py-1"
+              className="w-20 h-auto text-right border-line-strong rounded px-2 py-1"
             />
           ) : (
             <Button
@@ -1751,7 +1751,7 @@ function PayrollSummary({
     }
   );
   return (
-    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm divide-y divide-[#1f1f24]">
+    <div className="bg-card border border-line rounded-2xl shadow-sm divide-y divide-line">
       {items.map((it) => (
         <div
           key={it.label}
@@ -1955,14 +1955,14 @@ function ObjectionsBreakdown({
   objections: MapReport["objections"];
 }) {
   return (
-    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl overflow-hidden">
+    <div className="bg-card border border-line rounded-2xl overflow-hidden">
       {objections.breakdown.length === 0 ? (
         <p className="p-8 text-sm text-zinc-500 text-center font-bold">
           No objections recorded in this window.
         </p>
       ) : (
-        <div className="divide-y divide-[#1f1f24]">
-          <div className="px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500 bg-black flex items-center justify-between">
+        <div className="divide-y divide-line">
+          <div className="px-5 py-3 text-eyebrow-tight uppercase text-zinc-500 bg-black flex items-center justify-between">
             <span>
               Objection ({objections.pins_with_objections} pin
               {objections.pins_with_objections === 1 ? "" : "s"} with objections)
@@ -1977,7 +1977,7 @@ function ObjectionsBreakdown({
                   {o.count} · {pct(o.pct)}
                 </span>
               </div>
-              <div className="mt-2 h-2 w-full rounded-full bg-[#1f1f24] overflow-hidden">
+              <div className="mt-2 h-2 w-full rounded-full bg-line overflow-hidden">
                 <div
                   className="h-full bg-rose-500"
                   style={{

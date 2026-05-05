@@ -101,7 +101,7 @@ export default function AcceptClient({
     <main className="min-h-screen bg-black text-white px-4 py-10">
       <div className="mx-auto max-w-xl space-y-6">
         <header className="space-y-1">
-          <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+          <p className="text-eyebrow uppercase text-zinc-500">
             {companyName}
           </p>
           <h1 className="text-3xl font-extrabold tracking-tight">
@@ -114,18 +114,18 @@ export default function AcceptClient({
         </header>
 
         {subscription.description && (
-          <section className="rounded-2xl border border-[#1f1f24] bg-[#0f0f12] p-5">
+          <section className="rounded-2xl border border-line bg-card p-5">
             <p className="text-sm text-zinc-300 whitespace-pre-wrap">
               {subscription.description}
             </p>
           </section>
         )}
 
-        <section className="rounded-2xl border border-[#1f1f24] bg-[#0f0f12] p-5 space-y-3">
+        <section className="rounded-2xl border border-line bg-card p-5 space-y-3">
           <h2 className="text-base font-extrabold tracking-tight">
             Plan summary
           </h2>
-          <dl className="divide-y divide-[#1f1f24] rounded-xl border border-[#1f1f24] text-sm">
+          <dl className="divide-y divide-line rounded-xl border border-line text-sm">
             <SummaryRow
               label="Service"
               value={`${intervalLabel} (${visitsPerYear} visits per year)`}
@@ -151,7 +151,7 @@ export default function AcceptClient({
         </section>
 
         {subscription.terms_snapshot && (
-          <section className="rounded-2xl border border-[#1f1f24] bg-[#0f0f12] p-5">
+          <section className="rounded-2xl border border-line bg-card p-5">
             <h2 className="text-base font-extrabold tracking-tight mb-2">
               Terms
             </h2>
@@ -162,12 +162,12 @@ export default function AcceptClient({
         )}
 
         {requireSignature && !done && (
-          <section className="rounded-2xl border border-[#1f1f24] bg-[#0f0f12] p-5 space-y-3">
+          <section className="rounded-2xl border border-line bg-card p-5 space-y-3">
             <h2 className="text-base font-extrabold tracking-tight">
               Signature
             </h2>
             <SignaturePad value={signatureData} onChange={setSignatureData} />
-            <Label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+            <Label className="block text-eyebrow uppercase text-zinc-500">
               Printed name
             </Label>
             <Input
@@ -175,7 +175,7 @@ export default function AcceptClient({
               value={signatureName}
               onChange={(e) => setSignatureName(e.target.value)}
               placeholder={customerName}
-              className="w-full border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12] h-auto"
+              className="w-full border-line rounded-xl px-4 py-2 text-sm bg-card h-auto"
             />
           </section>
         )}
@@ -224,7 +224,7 @@ export default function AcceptClient({
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4 px-4 py-2.5">
-      <dt className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 shrink-0">
+      <dt className="text-eyebrow uppercase text-zinc-500 shrink-0">
         {label}
       </dt>
       <dd className="text-xs text-zinc-300 text-right">{value}</dd>
@@ -312,7 +312,7 @@ function SignaturePad({
 
   return (
     <div className="space-y-2">
-      <div className="border border-[#2a2a32] rounded-xl bg-[#0f0f12]">
+      <div className="border border-line-strong rounded-xl bg-card">
         <canvas
           ref={canvasRef}
           onPointerDown={start}

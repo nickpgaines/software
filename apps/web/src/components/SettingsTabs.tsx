@@ -65,7 +65,7 @@ function SettingsTabsInner({ username }: { username: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="border-b border-[#1f1f24]">
+      <div className="border-b border-line">
         <nav className="-mb-px flex gap-6 overflow-x-auto">
           {TABS.map((t) => {
             const active = tab === t.key;
@@ -88,7 +88,7 @@ function SettingsTabsInner({ username }: { username: string }) {
         </nav>
       </div>
 
-      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5 sm:p-6 shadow-sm">
+      <div className="bg-card border border-line rounded-2xl p-5 sm:p-6 shadow-sm">
         {tab === "profile" && <ProfilePanel username={username} />}
         {tab === "company" && <CompanyPanel />}
         {tab === "payments" && <PaymentsPanel />}
@@ -249,7 +249,7 @@ function ProfilePanel({ username }: { username: string }) {
       ) : (
         <>
           <div className="flex items-start gap-5">
-            <div className="w-[120px] h-[120px] rounded-2xl bg-black border border-[#1f1f24] flex items-center justify-center overflow-hidden shrink-0">
+            <div className="w-[120px] h-[120px] rounded-2xl bg-black border border-line flex items-center justify-center overflow-hidden shrink-0">
               {photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -277,7 +277,7 @@ function ProfilePanel({ username }: { username: string }) {
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={photoBusy || isAdminEnv}
-                  className="h-auto text-sm border border-[#2a2a32] hover:border-slate-400 rounded-full px-4 py-2 text-zinc-300 hover:bg-transparent"
+                  className="h-auto text-sm border border-line-strong hover:border-slate-400 rounded-full px-4 py-2 text-zinc-300 hover:bg-transparent"
                 >
                   {photoBusy
                     ? "Loading…"
@@ -297,7 +297,7 @@ function ProfilePanel({ username }: { username: string }) {
                 )}
               </div>
               {isAdminEnv && (
-                <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+                <p className="text-eyebrow uppercase text-zinc-500">
                   This is the built-in admin account. Create an employee record to
                   manage your own profile.
                 </p>
@@ -329,7 +329,7 @@ function ProfilePanel({ username }: { username: string }) {
           </dl>
 
           {!isAdminEnv && (
-            <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+            <p className="text-eyebrow uppercase text-zinc-500">
               To change your name, email, or password, edit your record from
               the <span className="font-bold">Employees</span> page.
             </p>
@@ -346,7 +346,7 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
       <dt className="text-xs uppercase tracking-wide text-zinc-500 mb-1">
         {label}
       </dt>
-      <dd className="text-sm font-bold text-white tracking-tight bg-black border border-[#1f1f24] rounded-full px-4 py-2">
+      <dd className="text-sm font-bold text-white tracking-tight bg-black border border-line rounded-full px-4 py-2">
         {value}
       </dd>
     </div>
@@ -413,7 +413,7 @@ function CompanyPanel() {
           value={name}
           disabled={loading}
           onChange={(e) => setName(e.target.value)}
-          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card"
           placeholder="Acme Window Cleaning"
         />
       </Field>
@@ -423,7 +423,7 @@ function CompanyPanel() {
           value={address}
           disabled={loading}
           onChange={(e) => setAddress(e.target.value)}
-          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card"
           placeholder="123 Main St, Springfield, IL"
         />
       </Field>
@@ -433,7 +433,7 @@ function CompanyPanel() {
           value={phone}
           disabled={loading}
           onChange={(e) => setPhone(e.target.value)}
-          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card"
           placeholder="(555) 555-5555"
         />
       </Field>
@@ -573,7 +573,7 @@ function PaymentsPanel() {
           </p>
         </div>
       ) : !status.connected ? (
-        <div className="border border-[#1f1f24] rounded-2xl px-4 py-4 space-y-4">
+        <div className="border border-line rounded-2xl px-4 py-4 space-y-4">
           <div>
             <p className="text-sm font-bold text-white tracking-tight">
               No Stripe account connected
@@ -604,13 +604,13 @@ function PaymentsPanel() {
                   ? undefined
                   : "Set STRIPE_CONNECT_CLIENT_ID to enable sign-in"
               }
-              className="h-auto text-sm border border-[#2a2a32] bg-[#0f0f12] hover:bg-black disabled:bg-black disabled:text-zinc-500 disabled:cursor-not-allowed text-zinc-300 rounded-full px-5 py-2 font-bold"
+              className="h-auto text-sm border border-line-strong bg-card hover:bg-black disabled:bg-black disabled:text-zinc-500 disabled:cursor-not-allowed text-zinc-300 rounded-full px-5 py-2 font-bold"
             >
               Sign in to existing Stripe
             </Button>
           </div>
           {!status.oauth_configured && (
-            <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+            <p className="text-eyebrow uppercase text-zinc-500">
               The &ldquo;Sign in&rdquo; option is unavailable until{" "}
               <code>STRIPE_CONNECT_CLIENT_ID</code> is set in the deployment
               environment.
@@ -618,7 +618,7 @@ function PaymentsPanel() {
           )}
         </div>
       ) : (
-        <div className="border border-[#1f1f24] rounded-2xl px-4 py-4 space-y-3">
+        <div className="border border-line rounded-2xl px-4 py-4 space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
@@ -718,7 +718,7 @@ function Capability({ ok, label }: { ok: boolean; label: string }) {
         "rounded-xl px-3 py-2 text-center " +
         (ok
           ? "bg-emerald-50 border border-emerald-200"
-          : "bg-black border border-[#1f1f24]")
+          : "bg-black border border-line")
       }
     >
       <div
@@ -967,7 +967,7 @@ function SubscriptionsPanel() {
       {editingId !== null && (
         <form
           onSubmit={saveTemplate}
-          className="space-y-4 rounded-xl border border-[#1f1f24] bg-black p-4"
+          className="space-y-4 rounded-xl border border-line bg-black p-4"
         >
           <h3 className="text-sm font-extrabold text-white tracking-tight">
             {editingId === "new" ? "New template" : "Edit template"}
@@ -977,7 +977,7 @@ function SubscriptionsPanel() {
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+              className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card"
               placeholder="Monthly Window Cleaning"
               autoFocus
             />
@@ -989,7 +989,7 @@ function SubscriptionsPanel() {
                 setForm({ ...form, description: e.target.value })
               }
               rows={2}
-              className="w-full border-[#1f1f24] rounded-2xl px-4 py-2 text-sm bg-[#0f0f12]"
+              className="w-full border-line rounded-2xl px-4 py-2 text-sm bg-card"
               placeholder="Includes interior + exterior windows…"
             />
           </Field>
@@ -1003,7 +1003,7 @@ function SubscriptionsPanel() {
                   service_interval: e.target.value as SubscriptionInterval,
                 })
               }
-              className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+              className="w-full border border-line rounded-full px-4 py-2 text-sm bg-card"
             >
               {(
                 Object.entries(INTERVAL_LABELS) as [
@@ -1022,7 +1022,7 @@ function SubscriptionsPanel() {
             are set per customer when you create a subscription from this
             template.
           </p>
-          <div className="space-y-3 pt-2 border-t border-[#1f1f24]">
+          <div className="space-y-3 pt-2 border-t border-line">
             <div>
               <Label className="block mb-1 text-white tracking-tight">
                 Terms
@@ -1040,7 +1040,7 @@ function SubscriptionsPanel() {
                     terms_id: e.target.value ? Number(e.target.value) : null,
                   })
                 }
-                className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+                className="w-full border border-line rounded-full px-4 py-2 text-sm bg-card"
               >
                 <option value="">Select terms (optional)</option>
                 {terms.map((t) => (
@@ -1075,12 +1075,12 @@ function SubscriptionsPanel() {
                   "relative h-5 w-9 shrink-0 items-center rounded-full p-0 " +
                   (form.require_signature
                     ? "bg-indigo-600 hover:bg-indigo-600"
-                    : "bg-[#2a2a32] hover:bg-[#2a2a32]")
+                    : "bg-line-strong hover:bg-line-strong")
                 }
               >
                 <span
                   className={
-                    "inline-block h-4 w-4 transform rounded-full bg-[#0f0f12] transition " +
+                    "inline-block h-4 w-4 transform rounded-full bg-card transition " +
                     (form.require_signature ? "translate-x-4" : "translate-x-0.5")
                   }
                 />
@@ -1126,7 +1126,7 @@ function SubscriptionsPanel() {
             No templates yet. Create one to get started.
           </p>
         ) : (
-          <ul className="divide-y divide-[#1f1f24] rounded-xl border border-[#1f1f24]">
+          <ul className="divide-y divide-line rounded-xl border border-line">
             {templates.map((t) => (
               <li
                 key={t.id}
@@ -1158,7 +1158,7 @@ function SubscriptionsPanel() {
                     variant="ghost"
                     onClick={() => setActionTpl(t)}
                     disabled={t.active === 0}
-                    className="h-auto text-xs bg-slate-900 hover:bg-slate-800 disabled:bg-[#2a2a32] text-white rounded-full px-3 py-1.5 font-bold"
+                    className="h-auto text-xs bg-slate-900 hover:bg-slate-800 disabled:bg-line-strong text-white rounded-full px-3 py-1.5 font-bold"
                   >
                     Send / Accept
                   </Button>
@@ -1269,7 +1269,7 @@ function RecentSubscriptions({
       <h3 className="text-sm font-extrabold text-white tracking-tight mb-3">
         Recent subscriptions
       </h3>
-      <ul className="divide-y divide-[#1f1f24] rounded-xl border border-[#1f1f24]">
+      <ul className="divide-y divide-line rounded-xl border border-line">
         {subscriptions.slice(0, 10).map((s) => {
           const cust = customerMap.get(s.customer_id);
           return (
@@ -1351,7 +1351,7 @@ function CancelSubscriptionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4">
+      <div className="bg-card rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="text-base font-extrabold text-white tracking-tight">
@@ -1375,7 +1375,7 @@ function CancelSubscriptionModal({
           handle the upcoming visits already on the schedule.
         </p>
         <div className="space-y-2">
-          <Label className="block w-full rounded-xl border border-[#1f1f24] hover:border-[#2a2a32] p-3 cursor-pointer">
+          <Label className="block w-full rounded-xl border border-line hover:border-line-strong p-3 cursor-pointer">
             {/* Native <input type="radio"> kept: no Radio primitive in design system. */}
             <input
               type="radio"
@@ -1390,7 +1390,7 @@ function CancelSubscriptionModal({
                   "mt-0.5 inline-flex h-4 w-4 shrink-0 rounded-full border-2 " +
                   (mode === "all_future"
                     ? "border-slate-200"
-                    : "border-[#2a2a32]")
+                    : "border-line-strong")
                 }
               >
                 {mode === "all_future" && (
@@ -1408,7 +1408,7 @@ function CancelSubscriptionModal({
               </div>
             </div>
           </Label>
-          <Label className="block w-full rounded-xl border border-[#1f1f24] hover:border-[#2a2a32] p-3 cursor-pointer">
+          <Label className="block w-full rounded-xl border border-line hover:border-line-strong p-3 cursor-pointer">
             <input
               type="radio"
               name="cancel-mode"
@@ -1422,7 +1422,7 @@ function CancelSubscriptionModal({
                   "mt-0.5 inline-flex h-4 w-4 shrink-0 rounded-full border-2 " +
                   (mode === "keep_next"
                     ? "border-slate-200"
-                    : "border-[#2a2a32]")
+                    : "border-line-strong")
                 }
               >
                 {mode === "keep_next" && (
@@ -1551,7 +1551,7 @@ function SendOrAcceptModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-card rounded-2xl shadow-xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="text-base font-extrabold text-white tracking-tight">
@@ -1587,7 +1587,7 @@ function SendOrAcceptModal({
             onChange={(e) =>
               setCustomerId(e.target.value ? Number(e.target.value) : "")
             }
-            className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+            className="w-full border border-line rounded-full px-4 py-2 text-sm bg-card"
           >
             <option value="">Select customer…</option>
             {customers.map((c) => (
@@ -1607,7 +1607,7 @@ function SendOrAcceptModal({
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               placeholder="49.00"
-              className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+              className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card"
             />
           </Field>
           <Field label="Billing interval">
@@ -1617,7 +1617,7 @@ function SendOrAcceptModal({
               onChange={(e) =>
                 setInterval(e.target.value as SubscriptionInterval)
               }
-              className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+              className="w-full border border-line rounded-full px-4 py-2 text-sm bg-card"
             >
               {(
                 Object.entries(INTERVAL_LABELS) as [
@@ -1638,7 +1638,7 @@ function SendOrAcceptModal({
             <div className="text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
               Terms — {linkedTerms.name}
             </div>
-            <div className="text-xs text-zinc-300 bg-black border border-[#1f1f24] rounded-xl p-3 max-h-40 overflow-y-auto whitespace-pre-wrap">
+            <div className="text-xs text-zinc-300 bg-black border border-line rounded-xl p-3 max-h-40 overflow-y-auto whitespace-pre-wrap">
               {linkedTerms.body}
             </div>
           </div>
@@ -1655,7 +1655,7 @@ function SendOrAcceptModal({
               value={signatureName}
               onChange={(e) => setSignatureName(e.target.value)}
               placeholder="Printed name"
-              className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+              className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card"
             />
             <p className="text-[11px] text-zinc-500">
               Required for &quot;Accept on device&quot;. Not needed for
@@ -1684,7 +1684,7 @@ function SendOrAcceptModal({
             Accept on device
           </Button>
         </div>
-        <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+        <p className="text-eyebrow uppercase text-zinc-500">
           &quot;Send&quot; messages the customer with the offer.
           &quot;Accept on device&quot; activates it immediately for in-person
           sign-ups.
@@ -1732,7 +1732,7 @@ function CreateTermsModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <form
         onSubmit={save}
-        className="bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto"
+        className="bg-card rounded-2xl shadow-xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-base font-extrabold text-white tracking-tight">New terms</h3>
@@ -1751,7 +1751,7 @@ function CreateTermsModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Standard subscription terms"
-            className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+            className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card"
             autoFocus
           />
         </Field>
@@ -1761,7 +1761,7 @@ function CreateTermsModal({
             onChange={(e) => setBody(e.target.value)}
             rows={10}
             placeholder="Enter the full terms the customer will see and sign…"
-            className="w-full border-[#1f1f24] rounded-2xl px-4 py-2 text-sm bg-[#0f0f12] font-mono"
+            className="w-full border-line rounded-2xl px-4 py-2 text-sm bg-card font-mono"
           />
         </Field>
         {err && <p className="text-sm text-rose-600">{err}</p>}
@@ -1868,7 +1868,7 @@ function SignaturePad({
 
   return (
     <div className="space-y-2">
-      <div className="border border-[#2a2a32] rounded-xl bg-[#0f0f12]">
+      <div className="border border-line-strong rounded-xl bg-card">
         <canvas
           ref={canvasRef}
           onPointerDown={start}
@@ -2000,8 +2000,8 @@ function MessagingPanel() {
       </div>
 
       {onPlatform && (
-        <div className="rounded-xl border border-[#1f1f24] bg-black p-4">
-          <div className="text-[11px] uppercase tracking-[0.18em] text-zinc-500 font-extrabold">
+        <div className="rounded-xl border border-line bg-black p-4">
+          <div className="text-eyebrow uppercase text-zinc-500">
             Your number
           </div>
           <div className="mt-1 text-2xl font-black text-white font-mono tabular-nums tracking-tight">
@@ -2018,7 +2018,7 @@ function MessagingPanel() {
           "flex items-center gap-2 text-xs font-bold rounded-full px-3 py-1 w-fit " +
           (status?.configured
             ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-            : "bg-black text-zinc-400 border border-[#1f1f24]")
+            : "bg-black text-zinc-400 border border-line")
         }
       >
         <span
@@ -2036,7 +2036,7 @@ function MessagingPanel() {
       </div>
 
       {!onPlatform && (
-        <div className="rounded-xl border border-[#1f1f24] bg-black p-4 space-y-3 text-sm">
+        <div className="rounded-xl border border-line bg-black p-4 space-y-3 text-sm">
           <div className="font-bold text-white tracking-tight">Setup steps</div>
           <ol className="list-decimal list-inside space-y-1 text-zinc-400">
             <li>
@@ -2072,13 +2072,13 @@ function MessagingPanel() {
                 type="text"
                 readOnly
                 value={webhookUrl}
-                className="h-auto flex-1 border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono text-xs"
+                className="h-auto flex-1 border-line rounded-full px-4 py-2 text-sm bg-card font-mono text-xs"
               />
               <Button
                 variant="ghost"
                 type="button"
                 onClick={copyWebhook}
-                className="h-auto text-sm bg-[#0f0f12] border border-[#1f1f24] hover:bg-black rounded-full px-4 py-2 font-bold"
+                className="h-auto text-sm bg-card border border-line hover:bg-black rounded-full px-4 py-2 font-bold"
               >
                 {copied ? "Copied" : "Copy"}
               </Button>
@@ -2108,7 +2108,7 @@ function MessagingPanel() {
           value={accountSid}
           disabled={loading}
           onChange={(e) => setAccountSid(e.target.value)}
-          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
+          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card font-mono"
           placeholder={
             status?.account_sid_masked || "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
           }
@@ -2120,7 +2120,7 @@ function MessagingPanel() {
           value={authToken}
           disabled={loading}
           onChange={(e) => setAuthToken(e.target.value)}
-          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
+          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card font-mono"
           placeholder={
             status?.auth_token_set ? "•••••••••••••••• (saved)" : "Auth Token"
           }
@@ -2132,7 +2132,7 @@ function MessagingPanel() {
           value={fromNumber}
           disabled={loading}
           onChange={(e) => setFromNumber(e.target.value)}
-          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card"
           placeholder="e.g. +18435551234 (your Twilio number)"
         />
       </Field>
@@ -2246,7 +2246,7 @@ function CallingPanel() {
           "flex items-center gap-2 text-xs font-bold rounded-full px-3 py-1 w-fit " +
           (status?.configured
             ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-            : "bg-black text-zinc-400 border border-[#1f1f24]")
+            : "bg-black text-zinc-400 border border-line")
         }
       >
         <span
@@ -2270,7 +2270,7 @@ function CallingPanel() {
         </div>
       )}
 
-      <div className="rounded-xl border border-[#1f1f24] bg-black p-4 space-y-3 text-sm">
+      <div className="rounded-xl border border-line bg-black p-4 space-y-3 text-sm">
         <div className="font-bold text-white tracking-tight">Setup steps</div>
         <ol className="list-decimal list-inside space-y-1 text-zinc-400">
           <li>
@@ -2301,7 +2301,7 @@ function CallingPanel() {
             readOnly
             value={twimlVoiceUrl}
             onFocus={(e) => e.currentTarget.select()}
-            className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono text-xs"
+            className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card font-mono text-xs"
           />
         </div>
       </div>
@@ -2312,7 +2312,7 @@ function CallingPanel() {
           value={apiKeySid}
           disabled={loading}
           onChange={(e) => setApiKeySid(e.target.value)}
-          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
+          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card font-mono"
           placeholder={
             status?.api_key_sid_masked || "SKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
           }
@@ -2324,7 +2324,7 @@ function CallingPanel() {
           value={apiKeySecret}
           disabled={loading}
           onChange={(e) => setApiKeySecret(e.target.value)}
-          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
+          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card font-mono"
           placeholder={
             status?.api_key_secret_set
               ? "•••••••••••••••• (saved)"
@@ -2338,7 +2338,7 @@ function CallingPanel() {
           value={twimlAppSid}
           disabled={loading}
           onChange={(e) => setTwimlAppSid(e.target.value)}
-          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
+          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card font-mono"
           placeholder={
             status?.twiml_app_sid_masked || "APxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
           }
@@ -2349,7 +2349,7 @@ function CallingPanel() {
         <Checkbox
           checked={recordCalls}
           onCheckedChange={(c) => setRecordCalls(c === true)}
-          className="rounded border-[#2a2a32] text-white focus:ring-zinc-500"
+          className="rounded border-line-strong text-white focus:ring-zinc-500"
         />
         Record calls
       </Label>
@@ -2451,7 +2451,7 @@ function EmailPanel() {
           "flex items-center gap-2 text-xs font-bold rounded-full px-3 py-1 w-fit " +
           (status?.configured
             ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-            : "bg-black text-zinc-400 border border-[#1f1f24]")
+            : "bg-black text-zinc-400 border border-line")
         }
       >
         <span
@@ -2468,7 +2468,7 @@ function EmailPanel() {
         )}
       </div>
 
-      <div className="rounded-xl border border-[#1f1f24] bg-black p-4 space-y-3 text-sm">
+      <div className="rounded-xl border border-line bg-black p-4 space-y-3 text-sm">
         <div className="font-bold text-white tracking-tight">Setup steps</div>
         <ol className="list-decimal list-inside space-y-1 text-zinc-400">
           <li>
@@ -2503,7 +2503,7 @@ function EmailPanel() {
           value={apiKey}
           disabled={loading}
           onChange={(e) => setApiKey(e.target.value)}
-          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
+          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card font-mono"
           placeholder={
             status?.api_key_set
               ? `${status.api_key_prefix || "re_"}…  (saved)`
@@ -2517,7 +2517,7 @@ function EmailPanel() {
           value={fromAddress}
           disabled={loading}
           onChange={(e) => setFromAddress(e.target.value)}
-          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card"
           placeholder="hello@yourcompany.com"
         />
       </Field>
@@ -2527,7 +2527,7 @@ function EmailPanel() {
           value={fromName}
           disabled={loading}
           onChange={(e) => setFromName(e.target.value)}
-          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card"
           placeholder="Acme Window Cleaning"
         />
       </Field>
@@ -2537,7 +2537,7 @@ function EmailPanel() {
           value={replyTo}
           disabled={loading}
           onChange={(e) => setReplyTo(e.target.value)}
-          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card"
           placeholder="support@yourcompany.com"
         />
       </Field>
@@ -2656,7 +2656,7 @@ function AiPanel() {
           "flex items-center gap-2 text-xs font-bold rounded-full px-3 py-1 w-fit " +
           (status?.configured
             ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-            : "bg-black text-zinc-400 border border-[#1f1f24]")
+            : "bg-black text-zinc-400 border border-line")
         }
       >
         <span
@@ -2672,7 +2672,7 @@ function AiPanel() {
       </div>
 
       {usage && (
-        <div className="rounded-xl border border-[#1f1f24] bg-black p-4 space-y-2">
+        <div className="rounded-xl border border-line bg-black p-4 space-y-2">
           <div className="flex items-baseline justify-between">
             <div className="text-sm font-bold text-white tracking-tight">
               Drafts this month
@@ -2682,7 +2682,7 @@ function AiPanel() {
               <span className="text-zinc-500"> / {usage.limit}</span>
             </div>
           </div>
-          <div className="h-2 w-full rounded-full bg-[#1f1f24] overflow-hidden">
+          <div className="h-2 w-full rounded-full bg-line overflow-hidden">
             <div
               className={`h-full ${usageBarColor} transition-all`}
               style={{ width: `${usagePct}%` }}
@@ -2700,7 +2700,7 @@ function AiPanel() {
           value={model}
           disabled={loading}
           onChange={(e) => setModel(e.target.value)}
-          className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+          className="w-full border border-line rounded-full px-4 py-2 text-sm bg-card"
         >
           {Object.entries(AI_MODEL_LABELS).map(([id, label]) => (
             <option key={id} value={id}>
@@ -2715,12 +2715,12 @@ function AiPanel() {
           disabled={loading}
           onChange={(e) => setVoice(e.target.value)}
           rows={4}
-          className="w-full border-[#1f1f24] rounded-2xl px-4 py-2 text-sm bg-[#0f0f12]"
+          className="w-full border-line rounded-2xl px-4 py-2 text-sm bg-card"
           placeholder={
             "e.g. Friendly and concise. Never defensive. If a customer complains, always offer a free re-clean and a callback within 24 hours."
           }
         />
-        <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mt-2">
+        <p className="text-eyebrow uppercase text-zinc-500 mt-2">
           Used as part of the prompt for every drafted reply. Describe tone,
           policies, and how you want to handle complaints.
         </p>

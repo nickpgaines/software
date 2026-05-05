@@ -66,7 +66,7 @@ export default function PaymentsSection({
   }
 
   return (
-    <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
+    <section className="bg-card border border-line rounded-2xl p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-extrabold text-white tracking-tight">Payments</h2>
         {payments.length > 0 && (
@@ -94,7 +94,7 @@ export default function PaymentsSection({
           </Button>
         </div>
       ) : (
-        <ul className="divide-y divide-[#1f1f24]">
+        <ul className="divide-y divide-line">
           {payments.map((p) => (
             <li
               key={p.id}
@@ -133,7 +133,7 @@ export default function PaymentsSection({
                   variant="ghost"
                   type="button"
                   onClick={() => deletePayment(p.id)}
-                  className="h-auto p-0 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:text-rose-600 hover:bg-transparent"
+                  className="h-auto p-0 text-eyebrow uppercase text-zinc-500 hover:text-rose-600 hover:bg-transparent"
                   aria-label="Delete payment"
                 >
                   Delete

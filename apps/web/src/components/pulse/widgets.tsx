@@ -68,7 +68,7 @@ export function CompactHeroKpi({
     >
       <div className="min-w-0">
         <div
-          className="text-[11px] uppercase tracking-[0.18em] font-extrabold mb-1.5"
+          className="text-eyebrow uppercase mb-1.5"
           style={{ color: PULSE.textSubtle }}
         >
           {label}

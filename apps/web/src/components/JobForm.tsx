@@ -394,7 +394,7 @@ export default function JobForm({
     <form onSubmit={submit} className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
+          <h1 className="text-page-title text-white">
             {mode === "edit" ? "Edit Job" : "Create Job"}
           </h1>
           <p className="text-sm text-zinc-500 mt-1">
@@ -404,7 +404,7 @@ export default function JobForm({
         <div className="flex items-center gap-2">
           <Link
             href="/schedule"
-            className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-zinc-300"
+            className="text-sm border border-line bg-card hover:bg-black rounded-full px-4 py-2 text-zinc-300"
           >
             Cancel
           </Link>
@@ -461,7 +461,7 @@ export default function JobForm({
                 type="button"
                 onClick={() => setShowNewCustomer(true)}
                 variant="ghost"
-                className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-zinc-300 whitespace-nowrap h-auto"
+                className="text-sm border border-line bg-card hover:bg-black rounded-full px-4 py-2 text-zinc-300 whitespace-nowrap h-auto"
               >
                 + New Customer
               </Button>
@@ -484,37 +484,37 @@ export default function JobForm({
       <Section title="Scheduling">
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-[80px_1fr_1fr] items-center gap-3">
-            <Label className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">Start</Label>
+            <Label className="text-eyebrow uppercase text-zinc-500">Start</Label>
             <Input
               type="date"
               value={startDate}
               onChange={(e) => applyNewStart(e.target.value, startTime)}
               disabled={scheduleLater}
-              className="border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] disabled:bg-black h-auto"
+              className="border-line rounded-full px-4 py-2 text-sm bg-card disabled:bg-black h-auto"
             />
             <Input
               type="time"
               value={startTime}
               onChange={(e) => applyNewStart(startDate, e.target.value)}
               disabled={scheduleLater || anytime}
-              className="border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] disabled:bg-black h-auto"
+              className="border-line rounded-full px-4 py-2 text-sm bg-card disabled:bg-black h-auto"
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-[80px_1fr_1fr] items-center gap-3">
-            <Label className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">End</Label>
+            <Label className="text-eyebrow uppercase text-zinc-500">End</Label>
             <Input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               disabled={scheduleLater}
-              className="border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] disabled:bg-black h-auto"
+              className="border-line rounded-full px-4 py-2 text-sm bg-card disabled:bg-black h-auto"
             />
             <Input
               type="time"
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
               disabled={scheduleLater || anytime}
-              className="border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] disabled:bg-black h-auto"
+              className="border-line rounded-full px-4 py-2 text-sm bg-card disabled:bg-black h-auto"
             />
           </div>
           <div className="flex flex-wrap gap-4 pt-1">
@@ -522,7 +522,7 @@ export default function JobForm({
               <Checkbox
                 checked={anytime}
                 onCheckedChange={(c) => setAnytime(c === true)}
-                className="rounded border-[#2a2a32] text-white focus:ring-zinc-500"
+                className="rounded border-line-strong text-white focus:ring-zinc-500"
               />
               Anytime (no specific time of day)
             </Label>
@@ -530,7 +530,7 @@ export default function JobForm({
               <Checkbox
                 checked={scheduleLater}
                 onCheckedChange={(c) => setScheduleLater(c === true)}
-                className="rounded border-[#2a2a32] text-white focus:ring-zinc-500"
+                className="rounded border-line-strong text-white focus:ring-zinc-500"
               />
               Schedule later
             </Label>
@@ -545,7 +545,7 @@ export default function JobForm({
             <select
               value={leadSource}
               onChange={(e) => setLeadSource(e.target.value)}
-              className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+              className="w-full border border-line rounded-full px-4 py-2 text-sm bg-card"
             >
               <option value="">Select source…</option>
               {LEAD_SOURCES.map((s) => (
@@ -586,7 +586,7 @@ export default function JobForm({
             type="button"
             onClick={addItem}
             variant="ghost"
-            className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-3 py-1.5 h-auto"
+            className="text-sm border border-line bg-card hover:bg-black rounded-full px-3 py-1.5 h-auto"
           >
             + Add Item
           </Button>
@@ -602,7 +602,7 @@ export default function JobForm({
             />
           ))}
         </div>
-        <div className="border-t border-[#1f1f24] mt-4 pt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+        <div className="border-t border-line mt-4 pt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
           <Total label="Subtotal" value={money(subtotal)} />
           <Total label="Total" value={money(total)} bold />
           <Total label="Total Paid" value={money(Math.round(paid * 100))} className="text-emerald-600">
@@ -612,7 +612,7 @@ export default function JobForm({
               step="0.01"
               value={paid}
               onChange={(e) => setPaid(Number(e.target.value))}
-              className="mt-1 border-[#1f1f24] rounded-full px-3 py-1 text-sm w-full h-auto"
+              className="mt-1 border-line rounded-full px-3 py-1 text-sm w-full h-auto"
             />
           </Total>
           <Total
@@ -631,7 +631,7 @@ export default function JobForm({
             type="button"
             onClick={addChecklist}
             variant="ghost"
-            className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-3 py-1.5 h-auto"
+            className="text-sm border border-line bg-card hover:bg-black rounded-full px-3 py-1.5 h-auto"
           >
             + Add Item
           </Button>
@@ -648,14 +648,14 @@ export default function JobForm({
                   onCheckedChange={(ch) =>
                     updateCheck(c.key, { completed: ch === true })
                   }
-                  className="rounded border-[#2a2a32] text-white focus:ring-zinc-500"
+                  className="rounded border-line-strong text-white focus:ring-zinc-500"
                 />
                 <Input
                   type="text"
                   value={c.text}
                   onChange={(e) => updateCheck(c.key, { text: e.target.value })}
                   placeholder="Task description"
-                  className="flex-1 border-[#1f1f24] rounded-full px-4 py-2 text-sm h-auto"
+                  className="flex-1 border-line rounded-full px-4 py-2 text-sm h-auto"
                 />
                 <Button
                   type="button"
@@ -678,7 +678,7 @@ export default function JobForm({
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
           placeholder="Add any additional notes..."
-          className="w-full border-[#1f1f24] rounded-2xl px-4 py-3 text-sm bg-[#0f0f12] h-auto"
+          className="w-full border-line rounded-2xl px-4 py-3 text-sm bg-card h-auto"
         />
       </Section>
 
@@ -691,7 +691,7 @@ export default function JobForm({
           <Checkbox
             checked={recurring}
             onCheckedChange={(c) => setRecurring(c === true)}
-            className="rounded border-[#2a2a32] text-white focus:ring-zinc-500"
+            className="rounded border-line-strong text-white focus:ring-zinc-500"
           />
           Make this a recurring service
         </Label>
@@ -700,7 +700,7 @@ export default function JobForm({
       <div className="flex justify-end gap-2">
         <Link
           href="/schedule"
-          className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-5 py-2 text-zinc-300"
+          className="text-sm border border-line bg-card hover:bg-black rounded-full px-5 py-2 text-zinc-300"
         >
           Cancel
         </Link>
@@ -731,7 +731,7 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5 sm:p-6">
+    <section className="bg-card border border-line rounded-2xl p-5 sm:p-6">
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-extrabold text-white tracking-tight">{title}</h2>
         {action}
@@ -750,7 +750,7 @@ function Field({
 }) {
   return (
     <div>
-      <Label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
+      <Label className="block text-eyebrow uppercase text-zinc-500 mb-2">
         {label}
       </Label>
       {children}
@@ -828,10 +828,10 @@ function CustomerSearch({
         }}
         onFocus={() => setOpen(true)}
         placeholder="Search customer by name…"
-        className="w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] h-auto"
+        className="w-full border-line rounded-full px-4 py-2 text-sm bg-card h-auto"
       />
       {open && suggestions.length > 0 && !selectedId && (
-        <div className="absolute z-30 left-0 right-0 mt-1 bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-lg overflow-hidden">
+        <div className="absolute z-30 left-0 right-0 mt-1 bg-card border border-line rounded-2xl shadow-lg overflow-hidden">
           {suggestions.map((c) => (
             <Button
               key={c.id}
@@ -906,10 +906,10 @@ function NewCustomerInline({
   }
 
   const pillCls =
-    "border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]";
+    "border border-line rounded-full px-4 py-2 text-sm bg-card";
 
   return (
-    <div className="mt-3 border border-[#1f1f24] rounded-2xl p-4 space-y-3 bg-black">
+    <div className="mt-3 border border-line rounded-2xl p-4 space-y-3 bg-black">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Input
           type="text"
@@ -952,7 +952,7 @@ function NewCustomerInline({
           type="button"
           onClick={onClose}
           variant="ghost"
-          className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-1.5 h-auto"
+          className="text-sm border border-line bg-card hover:bg-black rounded-full px-4 py-1.5 h-auto"
         >
           Cancel
         </Button>
@@ -1004,7 +1004,7 @@ function StaffMultiPicker({
 
   return (
     <div ref={ref} className="relative">
-      <div className="min-h-[42px] flex flex-wrap items-center gap-1.5 border border-[#1f1f24] rounded-2xl px-2 py-1.5 bg-[#0f0f12]">
+      <div className="min-h-[42px] flex flex-wrap items-center gap-1.5 border border-line rounded-2xl px-2 py-1.5 bg-card">
         {picked.map((s) => (
           <span
             key={s.id}
@@ -1035,7 +1035,7 @@ function StaffMultiPicker({
         />
       </div>
       {open && suggestions.length > 0 && (
-        <div className="absolute z-20 left-0 right-0 mt-1 bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-lg overflow-hidden">
+        <div className="absolute z-20 left-0 right-0 mt-1 bg-card border border-line rounded-2xl shadow-lg overflow-hidden">
           {suggestions.map((s) => (
             <Button
               key={s.id}
@@ -1049,7 +1049,7 @@ function StaffMultiPicker({
             >
               <span className="font-bold text-white tracking-tight">{s.name}</span>
               {s.role && (
-                <span className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">{s.role}</span>
+                <span className="text-eyebrow uppercase text-zinc-500">{s.role}</span>
               )}
             </Button>
           ))}
@@ -1082,7 +1082,7 @@ function LineItemCard({
   const lineTotal = Math.round(item.quantity * item.price_cents);
 
   return (
-    <div className="border border-[#1f1f24] rounded-2xl p-4 space-y-3 bg-[#0f0f12]">
+    <div className="border border-line rounded-2xl p-4 space-y-3 bg-card">
       <div className="flex items-start gap-3">
         <div className="flex-1 space-y-3">
           <div ref={titleRef} className="relative">
@@ -1095,10 +1095,10 @@ function LineItemCard({
               }}
               onFocus={() => setTitleOpen(true)}
               placeholder="Service title"
-              className="w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm h-auto"
+              className="w-full border-line rounded-full px-4 py-2 text-sm h-auto"
             />
             {titleOpen && (
-              <div className="absolute z-20 left-0 right-0 mt-1 bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-lg overflow-hidden">
+              <div className="absolute z-20 left-0 right-0 mt-1 bg-card border border-line rounded-2xl shadow-lg overflow-hidden">
                 {SERVICE_PRESETS.filter(
                   (p) =>
                     !item.title ||
@@ -1126,7 +1126,7 @@ function LineItemCard({
               onChange={(e) => onChange({ description: e.target.value })}
               rows={2}
               placeholder="Description (optional)"
-              className="w-full border-[#1f1f24] rounded-2xl px-4 py-2 text-sm h-auto"
+              className="w-full border-line rounded-2xl px-4 py-2 text-sm h-auto"
             />
             <Button
               type="button"
@@ -1147,7 +1147,7 @@ function LineItemCard({
                 onChange={(e) =>
                   onChange({ quantity: Number(e.target.value) || 0 })
                 }
-                className="w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm h-auto"
+                className="w-full border-line rounded-full px-4 py-2 text-sm h-auto"
               />
             </Field>
             <Field label="Price ($)">
@@ -1161,7 +1161,7 @@ function LineItemCard({
                     price_cents: Math.round(Number(e.target.value) * 100) || 0,
                   })
                 }
-                className="w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm h-auto"
+                className="w-full border-line rounded-full px-4 py-2 text-sm h-auto"
               />
             </Field>
           </div>
@@ -1170,7 +1170,7 @@ function LineItemCard({
               <Checkbox
                 checked={item.taxable}
                 onCheckedChange={(c) => onChange({ taxable: c === true })}
-                className="rounded border-[#2a2a32] text-white focus:ring-zinc-500"
+                className="rounded border-line-strong text-white focus:ring-zinc-500"
               />
               Taxable
             </Label>
@@ -1178,7 +1178,7 @@ function LineItemCard({
               <Checkbox
                 checked={item.upsell}
                 onCheckedChange={(c) => onChange({ upsell: c === true })}
-                className="rounded border-[#2a2a32] text-white focus:ring-zinc-500"
+                className="rounded border-line-strong text-white focus:ring-zinc-500"
               />
               Upsell
             </Label>
@@ -1234,14 +1234,14 @@ function Dropzone() {
         "border-2 border-dashed rounded-2xl py-10 text-center transition " +
         (isOver
           ? "border-slate-400 bg-black"
-          : "border-[#1f1f24] bg-black/40")
+          : "border-line bg-black/40")
       }
     >
       <div className="text-3xl text-zinc-500">⤴</div>
-      <p className="mt-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+      <p className="mt-2 text-eyebrow uppercase text-zinc-500">
         Click to upload or drag and drop
       </p>
-      <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">PNG, JPG, GIF up to 5MB</p>
+      <p className="text-eyebrow uppercase text-zinc-500">PNG, JPG, GIF up to 5MB</p>
     </div>
   );
 }

@@ -38,15 +38,15 @@ export default function SignupPage() {
   }
 
   const inputCls =
-    "w-full h-auto bg-black border-[#2a2a32] rounded-lg px-3 py-2.5 text-sm font-bold text-white placeholder-zinc-600 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50";
+    "w-full h-auto bg-black border-line-strong rounded-lg px-3 py-2.5 text-sm font-bold text-white placeholder-zinc-600 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50";
   const labelCls =
-    "block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2";
+    "block text-eyebrow uppercase text-zinc-500 mb-2";
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
+          <h1 className="text-page-title text-white">
             Forge CRM
           </h1>
           <p className="text-sm text-zinc-400 mt-3 font-bold">
@@ -55,7 +55,7 @@ export default function SignupPage() {
         </div>
         <form
           onSubmit={onSubmit}
-          className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-6 space-y-5"
+          className="bg-card border border-line rounded-2xl p-6 space-y-5"
         >
           <div>
             <Label className={labelCls}>Company name</Label>

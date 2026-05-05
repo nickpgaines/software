@@ -144,10 +144,10 @@ export default function NewSprintModal({
       onClick={onClose}
     >
       <div
-        className="bg-[#0f0f12] rounded-2xl w-full max-w-lg my-4 shadow-xl"
+        className="bg-card rounded-2xl w-full max-w-lg my-4 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-6 py-4 border-b border-[#1f1f24] flex items-center justify-between">
+        <div className="px-6 py-4 border-b border-line flex items-center justify-between">
           <h3 className="text-xl font-bold text-white">New Sprint</h3>
           <Button
             variant="ghost"
@@ -179,7 +179,7 @@ export default function NewSprintModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Q1 Sales Competition"
-              className="w-full border-[#1f1f24] rounded-full px-4 py-2 h-auto text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200"
+              className="w-full border-line rounded-full px-4 py-2 h-auto text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200"
             />
           </div>
           <div>
@@ -191,14 +191,14 @@ export default function NewSprintModal({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional description of the sprint…"
               rows={3}
-              className="w-full border-[#1f1f24] rounded-2xl px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200"
+              className="w-full border-line rounded-2xl px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200"
             />
           </div>
           <div>
             <Label className="block text-sm font-extrabold text-white tracking-tight mb-2">
               Sprint Duration <span className="text-rose-500">*</span>
             </Label>
-            <div className="flex flex-wrap items-center gap-1 bg-black border border-[#1f1f24] rounded-full p-1 text-sm w-fit">
+            <div className="flex flex-wrap items-center gap-1 bg-black border border-line rounded-full p-1 text-sm w-fit">
               {DURATIONS.map((d) => (
                 <Button
                   key={d.key}
@@ -207,7 +207,7 @@ export default function NewSprintModal({
                   className={
                     "px-3 py-1 h-auto rounded-full whitespace-nowrap " +
                     (duration === d.key
-                      ? "bg-[#0f0f12] text-white shadow-sm"
+                      ? "bg-card text-white shadow-sm"
                       : "text-zinc-400 hover:text-white")
                   }
                 >
@@ -226,7 +226,7 @@ export default function NewSprintModal({
                     value={start}
                     max={end}
                     onChange={(e) => setStart(e.target.value)}
-                    className="w-full border-[#1f1f24] rounded-full px-3 py-1.5 h-auto text-sm"
+                    className="w-full border-line rounded-full px-3 py-1.5 h-auto text-sm"
                   />
                 </div>
                 <div>
@@ -238,7 +238,7 @@ export default function NewSprintModal({
                     value={end}
                     min={start}
                     onChange={(e) => setEnd(e.target.value)}
-                    className="w-full border-[#1f1f24] rounded-full px-3 py-1.5 h-auto text-sm"
+                    className="w-full border-line rounded-full px-3 py-1.5 h-auto text-sm"
                   />
                 </div>
               </div>
@@ -275,7 +275,7 @@ export default function NewSprintModal({
                         ? "bg-slate-400"
                         : p.place === 3
                         ? "bg-orange-400"
-                        : "bg-[#2a2a32]")
+                        : "bg-line-strong")
                     }
                   >
                     {p.place}
@@ -286,7 +286,7 @@ export default function NewSprintModal({
                     onChange={(e) =>
                       updatePrize(i, { place: Number(e.target.value) })
                     }
-                    className="border border-[#1f1f24] rounded-full px-3 py-1.5 text-sm bg-[#0f0f12]"
+                    className="border border-line rounded-full px-3 py-1.5 text-sm bg-card"
                   >
                     {PLACE_OPTIONS.map((o) => (
                       <option key={o.value} value={o.value}>
@@ -298,7 +298,7 @@ export default function NewSprintModal({
                     value={p.title}
                     onChange={(e) => updatePrize(i, { title: e.target.value })}
                     placeholder="Prize title (e.g., $500 Bonus)"
-                    className="flex-1 border-[#1f1f24] rounded-full px-3 py-1.5 h-auto text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200"
+                    className="flex-1 border-line rounded-full px-3 py-1.5 h-auto text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200"
                   />
                   {prizes.length > 1 && (
                     <Button
@@ -323,12 +323,12 @@ export default function NewSprintModal({
           )}
         </div>
 
-        <div className="px-6 py-4 border-t border-[#1f1f24] flex justify-end gap-2">
+        <div className="px-6 py-4 border-t border-line flex justify-end gap-2">
           <Button
             variant="ghost"
             onClick={onClose}
             disabled={submitting}
-            className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 h-auto text-zinc-300"
+            className="text-sm border border-line bg-card hover:bg-black rounded-full px-4 py-2 h-auto text-zinc-300"
           >
             Cancel
           </Button>
