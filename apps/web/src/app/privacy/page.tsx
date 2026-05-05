@@ -186,10 +186,10 @@ export default function PrivacyPolicyPage() {
             <br />
             Email:{" "}
             <a
-              href="mailto:support@nick360.app"
+              href="mailto:nick@homeserviceascension.com"
               className="text-amber-600 hover:text-amber-700"
             >
-              support@nick360.app
+              nick@homeserviceascension.com
             </a>
           </p>
         </div>

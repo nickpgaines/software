@@ -78,10 +78,10 @@ export default function TermsOfServicePage() {
             contact the business that originated the message directly using
             the phone number or email they provided you. You may also email{" "}
             <a
-              href="mailto:support@nick360.app"
+              href="mailto:nick@homeserviceascension.com"
               className="text-amber-600 hover:text-amber-700"
             >
-              support@nick360.app
+              nick@homeserviceascension.com
             </a>
             .
           </p>
@@ -234,10 +234,10 @@ export default function TermsOfServicePage() {
             <br />
             Email:{" "}
             <a
-              href="mailto:support@nick360.app"
+              href="mailto:nick@homeserviceascension.com"
               className="text-amber-600 hover:text-amber-700"
             >
-              support@nick360.app
+              nick@homeserviceascension.com
             </a>
           </p>
         </div>
