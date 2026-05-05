@@ -20,6 +20,8 @@
     "@twilio/voice-sdk": "^2.18.2",
     "@vis.gl/react-google-maps": "^1.8.3",
     "better-sqlite3": "^11.3.0",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
     "lucide-react": "^1.14.0",
     "mapbox-gl": "^3.22.0",
     "next": "^14.2.35",
@@ -27,6 +29,7 @@
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "stripe": "^22.1.0",
+    "tailwind-merge": "^3.5.0",
     "twilio": "^5.13.1"
   },
   "devDependencies": {
