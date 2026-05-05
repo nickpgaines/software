@@ -542,23 +542,250 @@ navigates somewhere.
 and color `PULSE.violetSoft`. New cards that need the same affordance
 should import this rather than re-deriving the styling.
 
-### 8.14 What does NOT exist as a primitive (yet)
+### 8.14 Primitive coverage map
 
-The following primitives are **not yet** in `components/pulse/`. Per §10 #10
-they will be generated proactively (e.g. via shadcn/ui in a separate
-step). Until they exist, current call sites use inline markup:
+The following table summarizes whether each primitive role exists, and
+where. Pulse-specific primitives live in `components/pulse/` (the
+hand-tuned widgets composed on the dashboard). General-purpose form,
+overlay, and structural primitives — sourced from shadcn/ui canonical
+templates and adapted to Pulse tokens — live in `components/ui/`
+(see §8.15).
 
-| Primitive               | Current state                                                                                                 |
-| ----------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `Button` (general)      | **Inline only.** Sidebar `+ New`; dashboard search button; range pill; Tasks card `+`; each is hand-built.   |
-| `Input`                 | **Not on dashboard.** Auth pages have inline-styled inputs.                                                   |
-| `Select`                | Inline elsewhere.                                                                                            |
-| `Tabs`                  | Reports has inline tabs.                                                                                     |
-| `Table`                 | Inline `<table>` markup — see §9.4.                                                                          |
-| `Dialog` / `Modal`      | Inline modals across pages (settings, payroll, scheduling).                                                  |
-| `Badge`                 | **Partial.** `PulseStatusChip` is the only badge-shaped primitive. Delta chips and "0 unread" pills are inline. |
-| `Stat card`             | **Yes — `CompactHeroKpi`** is the canonical KPI card.                                                        |
-| `PageHeader`            | **Yes — `PageHeader`** (§8.2). The previous dashboard-specific `PulseHeader` was removed.                    |
+| Primitive               | State                                                                                                                                |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------ |
+| `Button` (general)      | **`components/ui/button.tsx`** (§8.15.1). Existing inline buttons (Sidebar `+ New`, range pill, Tasks `+`, search button) not yet migrated. |
+| `Input`                 | **`components/ui/input.tsx`** (§8.15.2). Auth pages still inline-styled.                                                              |
+| `Label`                 | **`components/ui/label.tsx`** (§8.15.3).                                                                                              |
+| `Textarea`              | **`components/ui/textarea.tsx`** (§8.15.4).                                                                                           |
+| `Card`                  | **`components/ui/card.tsx`** (§8.15.5). Existing dashboard cards (Schedule / Pipeline / Inbox / Tasks / Activity / Chart) not yet migrated. |
+| `Separator`             | **`components/ui/separator.tsx`** (§8.15.6).                                                                                          |
+| `Badge` (general)       | **`components/ui/badge.tsx`** (§8.15.7). `PulseStatusChip` (§8.6) remains the Pulse-specific status pill.                              |
+| `Dialog` / `Modal`      | **`components/ui/dialog.tsx`** (§8.15.8). Inline modals across pages (settings, payroll, scheduling) not yet migrated.                |
+| `DropdownMenu`          | **`components/ui/dropdown-menu.tsx`** (§8.15.9). Sidebar new-menu still inline.                                                       |
+| `Tooltip`               | **`components/ui/tooltip.tsx`** (§8.15.10). Chart hover tooltip remains inline (it's a positioned overlay, not a hover affordance).   |
+| `Select`                | **`components/ui/select.tsx`** (§8.15.11).                                                                                            |
+| `Checkbox`              | **`components/ui/checkbox.tsx`** (§8.15.12).                                                                                          |
+| `Tabs`                  | **`components/ui/tabs.tsx`** (§8.15.13). Reports inline tabs not yet migrated.                                                        |
+| `Table`                 | **`components/ui/table.tsx`** (§8.15.14). Inline `<table>` markup (§9.4) not yet migrated.                                            |
+| `Stat card`             | **`CompactHeroKpi`** (§8.3). Pulse-specific.                                                                                          |
+| `PageHeader`            | **`PageHeader`** (§8.2). Pulse-specific.                                                                                              |
+
+### 8.15 shadcn/ui primitives (`components/ui/`)
+
+Hand-authored from the canonical shadcn/ui templates and adapted to
+Pulse tokens (per §10 #21). Each primitive references the bridge CSS
+variables in `globals.css` (`--background`, `--primary`, …) which alias
+onto our `--color-*` tokens, plus Pulse token utility classes (`bg-card`,
+`text-fg`, `border-line`, …). The `hsl(var(--*))` wrappers shadcn
+generates by default are **not** used — our tokens are full color
+values, not HSL channels.
+
+Style decisions overridden globally vs. shadcn defaults (per
+`DESIGN_SYSTEM.md`):
+
+- `font-medium` / `font-semibold` → `font-bold` or `font-extrabold`
+  per role (§10 #1: 600 and 500 weights are not used on Pulse).
+- `rounded-md` form-control radius → `rounded-xl` (§6).
+- Card `rounded-xl` → `rounded-2xl` (§6 default card radius).
+- Card `shadow` → no shadow (§7 cards are flat surfaces with borders).
+- Tooltip `bg-primary` pill → `bg-card` border surface (§8.4 chart
+  tooltip pattern).
+
+#### 8.15.1 `Button`
+
+Defined: `components/ui/button.tsx`. Built on `class-variance-authority`
++ `@radix-ui/react-slot`.
+
+**Variants**: `default` (violet primary), `destructive` (red),
+`outline`, `secondary`, `ghost`, `link`. **Sizes**: `default` (h-10),
+`sm` (h-9), `lg` (h-11), `icon` (10×10 square).
+
+**Canonical visual**: `default` is `h-10 px-4 py-2 rounded-xl
+bg-primary text-primary-foreground font-extrabold` — matches the
+Sidebar `+ New` shape (§8.1) without the inline violet glow. Apply
+`shadow-glow-violet` (§7) at the call site if needed.
+
+**Props**: extends `<button>` HTML attributes plus
+`{ variant, size, asChild }`. `asChild` swaps the rendered tag for the
+child element via `Slot`, so wrapping a `<Link>` keeps the styling.
+
+#### 8.15.2 `Input`
+
+Defined: `components/ui/input.tsx`.
+
+**Canonical visual**: `h-10 rounded-xl border border-line-strong
+bg-canvas px-3 py-2 text-sm text-fg`. The global cascade in
+`globals.css` already forces `font-weight: 700` and `bg-canvas` on
+unstyled inputs, so font weight isn't repeated on the class.
+
+**Props**: extends `<input>` HTML attributes; no extras.
+
+#### 8.15.3 `Label`
+
+Defined: `components/ui/label.tsx`. Built on `@radix-ui/react-label`.
+
+**Canonical visual**: `text-sm font-bold leading-none`. `font-bold`
+overrides shadcn's default `font-medium` per §10 #1.
+
+**Props**: extends `LabelPrimitive.Root` props.
+
+#### 8.15.4 `Textarea`
+
+Defined: `components/ui/textarea.tsx`.
+
+**Canonical visual**: `min-h-[80px] rounded-xl border border-line-strong
+bg-canvas px-3 py-2 text-sm text-fg`. Same global font/bg cascade as
+`Input`.
+
+**Props**: extends `<textarea>` HTML attributes.
+
+#### 8.15.5 `Card`
+
+Defined: `components/ui/card.tsx`. Exports `Card`, `CardHeader`,
+`CardTitle`, `CardDescription`, `CardContent`, `CardFooter`.
+
+**Canonical visual**: `rounded-2xl border border-line bg-card text-fg`.
+No shadow (§7). The wrapper carries no padding; `CardHeader` /
+`CardContent` / `CardFooter` each apply `p-6` (the §5 mid-tier card
+padding). Override at the call site for `px-5 py-4` (CompactHeroKpi
+tier) or `p-7` (chart hero tier).
+
+`CardTitle` is `text-[15px] font-extrabold tracking-tight leading-none`,
+matching the §4 H2 token.
+
+**Props**: each part extends `<div>` HTML attributes.
+
+#### 8.15.6 `Separator`
+
+Defined: `components/ui/separator.tsx`. Built on
+`@radix-ui/react-separator`.
+
+**Canonical visual**: `bg-line` (§3), `h-[1px]` horizontal or
+`w-[1px]` vertical.
+
+**Props**: extends `SeparatorPrimitive.Root` (`orientation`,
+`decorative`).
+
+#### 8.15.7 `Badge`
+
+Defined: `components/ui/badge.tsx`. Built on
+`class-variance-authority`.
+
+**Variants**: `default` (violet), `secondary`, `destructive`, `outline`.
+**Canonical visual**: `rounded-full border px-2.5 py-1 text-[11px]
+font-extrabold`. Shape and weight match `PulseStatusChip` (§8.6); this
+primitive is the broader form for general-purpose accent chips.
+`PulseStatusChip` remains as-is for the dashboard schedule rows.
+
+**Props**: extends `<div>` HTML attributes plus `{ variant }`.
+
+#### 8.15.8 `Dialog`
+
+Defined: `components/ui/dialog.tsx`. Built on
+`@radix-ui/react-dialog`. Exports `Dialog`, `DialogTrigger`,
+`DialogContent`, `DialogHeader`, `DialogFooter`, `DialogTitle`,
+`DialogDescription`, `DialogClose`, `DialogOverlay`, `DialogPortal`.
+
+**Canonical visual**: centered card — `bg-card border border-line
+shadow-menu p-6 sm:rounded-2xl max-w-lg`. Overlay `bg-black/80`.
+`DialogTitle` is `text-lg font-extrabold` (§10 #1 override of
+shadcn's `font-semibold`).
+
+A dismiss button (lucide `X`) is auto-rendered in the top-right of
+`DialogContent` per shadcn convention.
+
+**Props**: each part extends the matching Radix primitive props.
+
+#### 8.15.9 `DropdownMenu`
+
+Defined: `components/ui/dropdown-menu.tsx`. Built on
+`@radix-ui/react-dropdown-menu`. Exports the full Radix set
+(`DropdownMenu`, `Trigger`, `Content`, `Item`, `CheckboxItem`,
+`RadioItem`, `Label`, `Separator`, `Shortcut`, `Group`, `Sub*`).
+
+**Canonical visual**: content surface is `rounded-xl border
+border-line bg-popover shadow-menu p-1`, matching the Sidebar new-menu
+container (§8.1, §7). Items are `rounded-lg px-2 py-1.5 text-sm
+font-bold` with `focus:bg-accent` highlight.
+
+**Props**: each part extends the matching Radix primitive props.
+`Item`, `SubTrigger`, `Label` accept an extra `inset?: boolean` for
+icon-aligned padding.
+
+#### 8.15.10 `Tooltip`
+
+Defined: `components/ui/tooltip.tsx`. Built on
+`@radix-ui/react-tooltip`. Exports `TooltipProvider`, `Tooltip`,
+`TooltipTrigger`, `TooltipContent`.
+
+**Canonical visual**: `rounded-xl border border-line-strong bg-card
+px-2.5 py-1.5 text-xs font-bold text-fg shadow-tooltip`. Mirrors the
+chart hover tooltip pattern (§8.4) instead of shadcn's default
+`bg-primary` pill — the Pulse vocabulary is bordered card surfaces,
+not violet pills.
+
+`TooltipProvider` must wrap the page (or a parent) for tooltips to
+render.
+
+**Props**: each part extends the matching Radix primitive props.
+
+#### 8.15.11 `Select`
+
+Defined: `components/ui/select.tsx`. Built on
+`@radix-ui/react-select`. Exports `Select`, `SelectGroup`,
+`SelectValue`, `SelectTrigger`, `SelectContent`, `SelectLabel`,
+`SelectItem`, `SelectSeparator`, scroll buttons.
+
+**Canonical visual**: trigger is `h-10 rounded-xl border
+border-line-strong bg-canvas px-3 py-2 text-sm font-bold text-fg`
+(form-control shape from §6 + §10 #1). Content surface matches
+`DropdownMenu` (rounded-xl + shadow-menu + bg-popover).
+
+**Props**: each part extends the matching Radix primitive props.
+
+#### 8.15.12 `Checkbox`
+
+Defined: `components/ui/checkbox.tsx`. Built on
+`@radix-ui/react-checkbox`.
+
+**Canonical visual**: `h-4 w-4 rounded-sm border border-line-strong`,
+flipping to `bg-primary text-primary-foreground border-primary` when
+checked. The checked-state violet matches the native `accent-color:
+var(--color-violet)` rule already in `globals.css` for unstyled
+checkboxes.
+
+`rounded-sm` is not enumerated in §6 (no checkbox primitive existed
+before this commit) — it's the canonical checkbox shape, retained
+from shadcn defaults.
+
+**Props**: extends `CheckboxPrimitive.Root` props.
+
+#### 8.15.13 `Tabs`
+
+Defined: `components/ui/tabs.tsx`. Built on `@radix-ui/react-tabs`.
+Exports `Tabs`, `TabsList`, `TabsTrigger`, `TabsContent`.
+
+**Canonical visual**: `TabsList` is `h-10 rounded-xl bg-elevated p-1`,
+matching the §8.4 range-pill bar. `TabsTrigger` is `rounded-lg px-3
+py-1.5 text-sm font-bold`; the active state flips to `bg-canvas
+text-fg`.
+
+**Props**: each part extends the matching Radix primitive props.
+
+#### 8.15.14 `Table`
+
+Defined: `components/ui/table.tsx`. Exports `Table`, `TableHeader`,
+`TableBody`, `TableFooter`, `TableRow`, `TableHead`, `TableCell`,
+`TableCaption`.
+
+**Canonical visual**: structural primitive — no inherent radius or
+background. Compose inside a `Card` (§8.15.5) for the standard
+rounded-2xl card surface. Row borders use `border-line` (§3); hover
+state is `bg-elevated/50`. `TableHead` text is `text-fg-subtle
+font-bold` (§3 muted-label role + §10 #1).
+
+**Props**: each part extends the corresponding HTML table-element
+attributes.
 
 ---
 
@@ -659,6 +886,7 @@ those pages move onto Pulse primitives.
 | 18  | `globals.css` no longer applies a cosmetic `letter-spacing: -0.005em` to bare inputs/textareas/selects. Body cascade tracking is the canonical default; tighter tracking remains scoped to display-weight roles (H1, KPI value) via `tracking-tight`.                              | §4               | `59fd322`  |
 | 19  | CallWidget (`PhoneClient.tsx`) brought onto Pulse tokens: `bg-slate-900` → `bg-card`, `shadow-2xl` → `shadow-menu`, mute idle `bg-slate-800` / `hover:bg-slate-700` → `bg-line-strong` / `hover:bg-line-strong/80`, hang-up `bg-rose-600` / `hover:bg-rose-500` → `bg-red` / `hover:bg-red/90`. The avatar chip uses the canonical accent-chip pattern (`${PULSE.green}1F` bg + `PULSE.green` text). The inline phone `<svg>` was replaced with `<PulseIcon name="phone" />`. **Mute state** no longer reads from color: both states share `bg-line-strong`; `mic` ↔ `mic-off` icons (added to `PulseIcon`, §8.11) plus the `Mute` / `Unmute` label communicate state. The hang-up button gained a `phone-off` icon (also added to §8.11) for symmetry. Override on the original audit recommendation: no amber/warning token was introduced. | §3, §8.11        | `59fd322`, `252eb22` |
 | 20  | Tailwind theme cleanup: the unused compound text tokens (`text-h1`, `text-h1-hero`, `text-h1-display`, `text-h2`, `text-h3`, `text-subtitle`, `text-body`, `text-body-sm`, `text-kpi-value`, `text-kpi-value-lg`, `text-label-page`, `text-label`, `text-label-table`, `text-micro`) and the unused `rounded-card` border-radius alias were removed from `tailwind.config.ts`. None had call sites in `src/`, and a couple (h2 `lineHeight`, h3 size) had drifted from §4. The §4 arbitrary-class form remains canonical.                                                                                          | §4, §6           | `042f0b5`  |
+| 21  | shadcn/ui primitives generated under `components/ui/`: `Button`, `Input`, `Label`, `Textarea`, `Card`, `Separator`, `Badge`, `Dialog`, `DropdownMenu`, `Tooltip`, `Select`, `Checkbox`, `Tabs`, `Table`. Hand-authored from canonical shadcn templates (the registry was unreachable from the sandbox); adapted to Pulse tokens with the per-primitive overrides documented in §8.15. Global overrides vs. shadcn defaults: `font-medium`/`font-semibold` → `font-bold`/`font-extrabold` per role (§10 #1); form-control `rounded-md` → `rounded-xl` (§6); Card `rounded-xl` → `rounded-2xl` and shadow dropped (§6, §7); Tooltip `bg-primary` pill → `bg-card` border surface (§8.4). Added `tailwindcss-animate` plugin so shadcn data-state animation utilities resolve. `tailwind.config.ts` gains a "shadcn bridge color aliases" block exposing `primary` / `primary-foreground` / `secondary` / `secondary-foreground` / `muted` / `muted-foreground` / `accent` / `accent-foreground` / `destructive` / `destructive-foreground` / `popover` / `popover-foreground` / `input` / `ring` as Tailwind utility classes pointing at the bridge CSS variables defined in `globals.css` — values reference `var(--*)` directly, no `hsl()` wrapper, since our tokens are full color values, not HSL channels. Existing pages not migrated; that's a separate step. | §8.14, §8.15     | `365ee30`, `e5e87b3`, `a04c16e`, `a8dedae` |
 
 ### Ongoing drift policy
 
