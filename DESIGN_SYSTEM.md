@@ -1,20 +1,18 @@
 # Forge CRM — DESIGN_SYSTEM
 
-> **What this is.** A factual record of the visual language currently in
-> use on the Forge CRM dashboard. Every value here is taken directly from
-> code, with `file:line` citations. Nothing here is aspirational — if a
-> design choice isn't actually present in the dashboard, it isn't in this
-> doc.
+> **What this is.** A factual record of the visual language in use on
+> the Forge CRM dashboard, plus the canonical rules that govern it.
+> Every value reflects shipping code; nothing here is aspirational.
 >
-> **What this is NOT.** A wishlist or improvement plan. Where the code
-> contains inconsistencies, they're flagged in the **"Inconsistencies"**
-> section at the bottom with a proposed canonical version, but the spec
-> *currently* reflects the inconsistency.
+> **Source of truth rule.** When the code and this doc disagree, this
+> doc is wrong — file an update. When two parts of the code disagree,
+> §10 names the canonical version and links to the commit that resolved
+> the drift; new work follows the canonical version.
 >
-> **Source of truth rule.** When the code and this doc disagree, this doc
-> is wrong — file an update. When two parts of the code disagree, the
-> "Inconsistencies" section names the canonical version; new work follows
-> that.
+> **Drift policy.** If you discover a new inconsistency, either bring
+> the call site into line with the canonical rules in §3–§9 or open a
+> PR that adds a row to §10's resolutions table alongside the call-site
+> change. Don't leave silent drift.
 
 ---
 
@@ -43,31 +41,40 @@ apps/web/tailwind.config.ts                       # Tailwind config
 
 ## 2. Font family
 
-**No custom font is loaded anywhere in the production app.**
+**Inter is the canonical sans face.** Loaded via `next/font/google` and
+self-hosted by Next (no Google Fonts CDN request).
 
-- `apps/web/src/app/layout.tsx` does not import `next/font` —
-  see `apps/web/src/app/layout.tsx:1-12` (only `Metadata`, no font).
-- `apps/web/tailwind.config.ts:1-9` extends nothing
-  (`theme: { extend: {} }`), so no `fontFamily` override.
-- `apps/web/src/app/globals.css:1-83` has no `@font-face` and no
-  `font-family` on `body`.
+- `apps/web/src/app/layout.tsx` imports `Inter` from `next/font/google`
+  with `subsets: ["latin"]`, `display: "swap"`, and
+  `variable: "--font-sans"`. `inter.variable` is applied to the `<html>`
+  element so the CSS variable cascades app-wide.
+- `apps/web/src/app/globals.css` declares a fallback `--font-sans` on
+  `:root` (covers SSR before the variable class lands) and sets
+  `body { font-family: var(--font-sans) }`.
+- `apps/web/tailwind.config.ts` extends `theme.fontFamily.sans` to
+  `["var(--font-sans)"]`, so the Tailwind `font-sans` utility also
+  resolves to Inter.
 
-**Effective stack** (Tailwind preflight default):
-`ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
-"Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"`
+**Effective stack** at runtime:
+`"Inter", <metric-adjusted Arial fallback>, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"`.
 
-Practically that renders as **San Francisco** on macOS / iOS, **Segoe UI**
-on Windows, **Roboto** on Android, **Helvetica/Arial** as final fallback.
+`next/font` generates an `ascent-override` / `descent-override` /
+`size-adjust` Arial fallback so the swap from system Arial to loaded
+Inter produces no measurable layout shift (CLS-free).
 
-There is no use of `font-mono` or `font-serif` anywhere in the dashboard
-or its imports. (One `font-mono` exists in `app/login/page.tsx:147` for
-the `admin / admin` hint, but the dashboard doesn't use mono.)
+`font-mono` is allowed only for **literal code-shaped tokens** —
+API keys, IDs, credentials being copy-pasted. Never for prose, labels,
+or numbers. There are no `font-mono` usages on the Pulse surfaces
+themselves; the only Pulse-adjacent occurrence is
+`app/login/page.tsx:147` for the dev-mode `admin / admin` hint.
+
+`font-serif` is not used anywhere.
 
 ---
 
 ## 3. Color tokens
 
-All tokens are defined in `apps/web/src/components/pulse/theme.ts:5-28`
+All tokens are defined in `apps/web/src/components/pulse/theme.ts:25-47`
 on the exported `PULSE` constant.
 
 ### Surfaces
@@ -94,16 +101,19 @@ on the exported `PULSE` constant.
 
 | Token                | Hex         | Defined at  | Use                                                                                |
 | -------------------- | ----------- | ----------- | ---------------------------------------------------------------------------------- |
-| `PULSE.violet`       | `#8b5cf6`   | theme.ts:22 | Sidebar `+ New` button (`Sidebar.tsx:129`); inline `+` buttons (`widgets.tsx:724`); pipeline gradient start (`widgets.tsx:642`); activity dot color (`widgets.tsx:768`) |
-| `PULSE.violetSoft`   | `#a78bfa`   | theme.ts:23 | "View all →" link (`widgets.tsx:572`); pipeline gradient end (`widgets.tsx:642`)   |
-| `PULSE.violetGlow`   | `rgba(139,92,246,0.35)` | theme.ts:24 | Glow on `+ New` (`Sidebar.tsx:131`); on inline `+` (`widgets.tsx:726`) |
-| `PULSE.green`        | `#22c55e`   | theme.ts:25 | Positive delta chip bg/text (`widgets.tsx:113-114`); LiveBadge dot (`widgets.tsx:749`); first activity item (`widgets.tsx:760`) |
-| `PULSE.greenSoft`    | `#4ade80`   | theme.ts:26 | (Defined but **not used** on the dashboard.)                                       |
-| `PULSE.pink`         | `#ec4899`   | theme.ts:27 | (Defined but **not used** on the dashboard.)                                       |
-| `PULSE.pinkSoft`     | `#f472b6`   | theme.ts:28 | (Defined but **not used** on the dashboard.)                                       |
-| `PULSE.cyan`         | `#22d3ee`   | theme.ts:29 | Third activity item dot (`widgets.tsx:776`)                                        |
-| `PULSE.amber`        | `#f59e0b`   | theme.ts:30 | (Defined but **not used** on the dashboard.)                                       |
-| `PULSE.red`          | `#ef4444`   | theme.ts:31 | Negative delta chip bg/text (`widgets.tsx:113-114`); used in dashboard's Close rate KPI (`(app)/page.tsx:42-44`) |
+| `PULSE.violet`       | `#8b5cf6`   | theme.ts:41 | Sidebar `+ New` button; inline `+` buttons; pipeline gradient start; activity dot color |
+| `PULSE.violetSoft`   | `#a78bfa`   | theme.ts:42 | `CardHeaderLink` ("View all →") color; pipeline gradient end                       |
+| `PULSE.violetGlow`   | `rgba(139,92,246,0.35)` | theme.ts:43 | Glow on violet primary buttons (see §7 for the 16px / 12px rule)        |
+| `PULSE.green`        | `#22c55e`   | theme.ts:44 | Positive delta chip bg/text; LiveBadge dot; first activity item                    |
+| `PULSE.red`          | `#ef4444`   | theme.ts:45 | Negative delta chip bg/text; dashboard's Close rate KPI                            |
+| `PULSE.cyan`         | `#22d3ee`   | theme.ts:46 | Third activity item dot                                                            |
+
+**Removed tokens** (`greenSoft`, `pink`, `pinkSoft`, `amber`) were
+defined but had zero call sites across the Pulse surfaces. They were
+removed from `theme.ts`, `globals.css`, and `tailwind.config.ts` rather
+than reserved — see §10 #13. When a future feature actually needs a
+warning / alert / highlight color, that commit introduces a properly-
+named role token tied to a real call site.
 
 ### Conventions for accents
 
@@ -112,9 +122,12 @@ on the exported `PULSE` constant.
   `widgets.tsx:805-807` (activity avatar), `widgets.tsx:806`.
 - **Outlined ring** for chips that need a border: `${color}33` (20% opacity)
   for the border. See `widgets.tsx:807` (activity avatar border).
-- **Glow shadow** for primary CTA buttons: `0 0 16px rgba(139,92,246,0.35)`
-  on full-width buttons (`Sidebar.tsx:131`), `0 0 12px ...` on icon
-  buttons (`widgets.tsx:726`). Slight inconsistency — see §10.
+- **Glow shadow** for violet primary CTA buttons (locked):
+  - **`0 0 16px ${PULSE.violetGlow}`** on full-width / pill-shaped
+    buttons (e.g. Sidebar `+ New`).
+  - **`0 0 12px ${PULSE.violetGlow}`** on compact icon buttons (≤32px,
+    e.g. Tasks card `+`).
+  - No third value. Glow size scales with button footprint.
 
 ---
 
@@ -129,23 +142,23 @@ Every value below is taken from running code. The dashboard does not use
 | **H1 — dashboard greeting**  | `text-[48px] font-extrabold tracking-tight leading-none`                              | 48px / weight 800 / lh 1 / tracking -0.025em              | `widgets.tsx:57`                            |
 | **H1 — chart card headline** | `text-[52px] font-black tracking-tight leading-none`                                  | 52px / weight 900 / lh 1 / tracking -0.025em              | `widgets.tsx:431`                           |
 | **H2 — card title**          | `text-[15px] font-extrabold tracking-tight`                                           | 15px / weight 800 / lh 1.5 (default) / tracking -0.025em  | `widgets.tsx:566` (Schedule), :617 (Pipeline), :696 (Inbox), :720 (Tasks), :788 (Activity) |
-| **H3 — empty-state title**   | `text-[13.5px] font-extrabold`                                                        | 13.5px / weight 800 / lh ~1.4 / tracking 0                 | `widgets.tsx:676`                           |
-| **Subtitle (under H1)**      | `text-[14.5px] font-bold`                                                             | 14.5px / weight 700                                       | `widgets.tsx:60`                            |
-| **Body — small subtitle**    | `text-[12px] font-bold`                                                               | 12px / weight 700                                         | `widgets.tsx:618` (Pipeline "35 active")    |
-| **Body — activity item**     | `text-[12.5px] font-semibold leading-snug`                                            | 12.5px / weight 600 / lh 1.375                            | `widgets.tsx:814`                           |
-| **Body — schedule row name** | `text-[14px] font-bold`                                                               | 14px / weight 700                                         | `widgets.tsx:498`                           |
-| **Body — schedule row addr** | `text-[12px] font-semibold`                                                           | 12px / weight 600                                         | `widgets.tsx:501`                           |
-| **Date / hero section label**| `text-[11px] uppercase tracking-[0.22em] font-extrabold`                              | 11px / weight 800 / tracking 0.22em                       | `widgets.tsx:52` (date), :425 (Revenue · Last 12 weeks) |
+| **H3 — empty-state title**   | `text-sm font-extrabold`                                                              | 14px / weight 800 / lh 1.25                               | `widgets.tsx` empty-state                   |
+| **Subtitle (under H1)**      | `text-sm font-bold`                                                                   | 14px / weight 700 / lh 1.25                               | `PageHeader.tsx` subtitle slot              |
+| **Body — small subtitle**    | `text-[12px] font-bold`                                                               | 12px / weight 700                                         | `widgets.tsx` Pipeline "35 active"          |
+| **Body — activity item**     | `text-[12.5px] font-bold leading-snug`                                                | 12.5px / weight 700 / lh 1.375                            | `widgets.tsx` activity body                 |
+| **Body — schedule row name** | `text-[14px] font-bold`                                                               | 14px / weight 700                                         | `widgets.tsx` schedule row                  |
+| **Body — schedule row addr** | `text-[12px] font-bold`                                                               | 12px / weight 700                                         | `widgets.tsx` schedule row                  |
+| **Page-level / hero kicker** | `text-[11px] uppercase tracking-[0.22em] font-extrabold`                              | 11px / weight 800 / tracking 0.22em                       | `PageHeader.tsx` kicker; chart card kicker  |
 | **KPI label**                | `text-[11px] uppercase tracking-[0.18em] font-extrabold`                              | 11px / weight 800 / tracking 0.18em                       | `widgets.tsx:101`                           |
 | **Inbox indicator label**    | `text-[10.5px] uppercase tracking-[0.18em] font-extrabold`                            | 10.5px / weight 800 / tracking 0.18em                     | `widgets.tsx:698-699`                       |
 | **LiveBadge label**          | `text-[10px] uppercase tracking-[0.18em] font-bold`                                   | 10px / weight 700 / tracking 0.18em                       | `widgets.tsx:744`                           |
 | **Schedule AM/PM**           | `text-[10px] font-bold tracking-[0.18em]`                                             | 10px / weight 700 / tracking 0.18em                       | `widgets.tsx:491`                           |
 | **Activity item time**       | `text-[10.5px] font-bold uppercase tracking-[0.16em]`                                 | 10.5px / weight 700 / tracking 0.16em                     | `widgets.tsx:823`                           |
 | **Tooltip date**             | `text-[10px] font-extrabold uppercase tracking-[0.16em]`                              | 10px / weight 800 / tracking 0.16em                       | `widgets.tsx:348`                           |
-| **KPI value — chart hero**   | `text-[52px] font-black tracking-tight leading-none`                                  | 52px / weight 900                                         | `widgets.tsx:431`                           |
-| **KPI value — Compact**      | `text-[26px] font-black tracking-tight leading-none`                                  | 26px / weight 900                                         | `widgets.tsx:106`                           |
+| **KPI value — chart hero**   | `text-[52px] font-black tracking-tight leading-none tabular-nums`                     | 52px / weight 900                                         | `widgets.tsx` chart headline                |
+| **KPI value — Compact**      | `text-[26px] font-black tracking-tight leading-none tabular-nums`                     | 26px / weight 900                                         | `widgets.tsx` CompactHeroKpi                |
 | **Range pill label**         | `text-[11.5px] font-extrabold`                                                        | 11.5px / weight 800                                       | `widgets.tsx:446`                           |
-| **"View all →" link**        | `text-[11.5px] font-extrabold` (color = `PULSE.violetSoft`)                          | 11.5px / weight 800                                       | `widgets.tsx:571-573`                       |
+| **`CardHeaderLink`**         | `text-[11.5px] font-extrabold` (color = `PULSE.violetSoft`)                          | 11.5px / weight 800                                       | `CardHeaderLink` in `widgets.tsx`           |
 | **Sidebar nav row**          | `text-[13.5px] font-bold` (idle) / `font-extrabold` (active)                          | 13.5px                                                    | `Sidebar.tsx:226`                           |
 | **Sidebar section header**   | `text-[10px] uppercase tracking-[0.2em] font-bold`                                    | 10px / weight 700 / tracking 0.2em                        | `Sidebar.tsx:169`                           |
 | **Sidebar `+ New` button**   | `text-[13px] font-extrabold`                                                          | 13px / weight 800                                         | `Sidebar.tsx:127`                           |
@@ -153,25 +166,41 @@ Every value below is taken from running code. The dashboard does not use
 | **Sidebar profile name**     | `text-[12.5px] font-bold`                                                             | 12.5px / weight 700                                       | `Sidebar.tsx:203`                           |
 | **Sidebar sign-out button**  | `text-[12.5px] font-bold`                                                             | 12.5px / weight 700                                       | `Sidebar.tsx:212`                           |
 | **Sidebar brand name**       | `text-[15px] font-extrabold tracking-tight`                                           | 15px / weight 800                                         | `Sidebar.tsx:114`                           |
-| **Schedule price column**    | `text-[14px] font-bold`                                                               | 14px / weight 700                                         | `widgets.tsx:518`                           |
-| **Pipeline stage label**     | `text-[12.5px] font-bold`                                                             | 12.5px / weight 700                                       | `widgets.tsx:626`                           |
-| **Pipeline count/value**     | `text-[11px] font-bold`                                                               | 11px / weight 700                                         | `widgets.tsx:628`                           |
+| **Schedule price column**    | `text-[14px] font-bold tabular-nums`                                                  | 14px / weight 700                                         | `widgets.tsx` schedule row                  |
+| **Pipeline stage label**     | `text-[12.5px] font-bold`                                                             | 12.5px / weight 700                                       | `widgets.tsx` Pipeline                      |
+| **Pipeline count/value**     | `text-[11px] font-bold tabular-nums`                                                  | 11px / weight 700                                         | `widgets.tsx` Pipeline                      |
 | **Search input placeholder** | `text-[13px] font-bold` (text style on search button)                                 | 13px / weight 700                                         | `widgets.tsx:66`                            |
 | **Chart axis Y label**       | `text-[11px] font-extrabold`                                                          | 11px / weight 800 / no uppercase                          | `widgets.tsx:282`                           |
 | **Chart axis X label (day)** | `text-[11px] font-extrabold`                                                          | 11px / weight 800                                         | `widgets.tsx:301`                           |
 | **Chart "no data" / loading**| `text-[13px] font-extrabold`                                                          | 13px / weight 800                                         | `widgets.tsx:163`                           |
 
-### Tabular numbers
+### Uppercase tracking scale
 
-`tabular-nums` is applied in three places: chart headline (`widgets.tsx:431`),
-chart tooltip value (`widgets.tsx:353`), KPI value (`widgets.tsx:106` is missing it but is used for narrative text — short %/$ — so visible drift is small). Nothing else explicitly opts in. Schedule price (`widgets.tsx:518`) and pipeline count (`widgets.tsx:628`) **lack** `tabular-nums` even though they're numeric. Flagged in §10.
+Three tiers, locked. No fourth value.
 
-### Weights actually used on the dashboard
+| Tracking  | Role                                                                          | Pairs with                                  |
+| --------- | ----------------------------------------------------------------------------- | ------------------------------------------- |
+| `0.22em`  | **Page-level / hero section kicker** — above an H1 or hero number             | `text-[11px] uppercase font-extrabold`      |
+| `0.18em`  | **Widget-internal label** — KPI label, status indicator, badge                | `text-[10–11px] uppercase font-extrabold`   |
+| `0.16em`  | **Micro caps** — chip text, table column header, tiny caption                 | `text-[10–10.5px] uppercase font-bold`      |
 
-- `font-bold` (700) — body, schedule rows, profile, sign-out, sidebar nav, view-all, "0 unread", LiveBadge label, tooltip date prefix
-- `font-extrabold` (800) — every uppercase label, card titles (H2), CompactHeroKpi label, range pills, view-all, sidebar `+ New`, empty-state title, chart axis labels
-- `font-black` (900) — only used on the **two big numbers** (KPI value `widgets.tsx:106` and chart headline `widgets.tsx:431`) and the chart tooltip dollar value (`widgets.tsx:353`)
-- `font-semibold` (600) — used in **only three places**: schedule row address (`widgets.tsx:501`), schedule technician name (`widgets.tsx:511`), activity item body (`widgets.tsx:814`). Inconsistent; see §10.
+### Numeric weight scale
+
+- **`font-black tabular-nums`** for "hero" numbers ≥ 24px (KPI value,
+  chart headline). Big numbers earn black weight; small numbers don't.
+- **`font-bold tabular-nums`** for inline / row-level numbers (prices in
+  table rows, pill counts, pipeline counts).
+- `font-extrabold` is reserved for headings and uppercase labels —
+  **never used on numbers**.
+- Anything that's a money / count value gets `tabular-nums` to prevent
+  digit-width jitter on live updates.
+
+### Weights actually used on the Pulse surfaces
+
+- `font-bold` (700) — body, schedule rows, profile, sign-out, sidebar nav, "0 unread", LiveBadge label, tooltip date prefix, all row-level numerics, `CardHeaderLink`'s siblings
+- `font-extrabold` (800) — every uppercase label, card titles (H2), CompactHeroKpi label, range pills, sidebar `+ New`, empty-state title, chart axis labels, `CardHeaderLink`
+- `font-black` (900) — hero numbers ≥ 24px (KPI value, chart headline, chart tooltip dollar value)
+- `font-semibold` (600) — **not used on Pulse surfaces.** The previous three call sites (schedule row address, schedule technician name, activity item body) are now `font-bold`. Non-Pulse pages still use `font-semibold` and will be migrated when those pages move onto Pulse primitives.
 
 ---
 
@@ -256,17 +285,26 @@ elevation shadows on cards. The only shadows in the component tree:
 
 There is **no** systematic elevation scale (e.g. `shadow-sm` / `shadow-md`).
 Each shadow is hand-tuned for its widget. New work should pull from one of
-the four patterns above; don't introduce new shadow values.
+the patterns above; don't introduce new shadow values. The two violet
+glows are governed by the size rule in §3 (16px on full-width / pill
+buttons, 12px on compact icon buttons).
 
 ---
 
 ## 8. Component primitives
 
 The dashboard imports these primitives from `components/pulse/widgets.tsx`,
-`components/pulse/Sidebar.tsx`, and `components/pulse/Icon.tsx`. **There
-are no separate `Button.tsx` / `Input.tsx` / `Tabs.tsx` / `Table.tsx` /
-`Modal.tsx` / `Badge.tsx` files.** Existing buttons / inputs / chips on
-the dashboard are inline-styled. See §10 for the gap analysis.
+`components/pulse/Sidebar.tsx`, `components/pulse/Icon.tsx`, and
+`components/pulse/PageHeader.tsx`.
+
+**Primitive policy** (per §10 #10): primitives are generated proactively
+(e.g. via shadcn/ui in a separate step) rather than gated on per-feature
+need. **Any new primitive must land with a §8 sub-entry in this document
+in the same commit that introduces it** — no exceptions.
+
+The list of canonical primitives in `components/pulse/` will grow over
+time. Inline buttons / inputs / chips that pre-date a primitive's
+introduction get migrated as their files are touched.
 
 ### 8.1 `PulseSidebar`
 
@@ -284,29 +322,40 @@ Defined: `Sidebar.tsx:63-235`. Used: `(app)/layout.tsx:12`.
 - Color: `PULSE.text` (#fff)
 - Weight: `font-extrabold`
 
-**Idle nav row** — `Sidebar.tsx:259-263`:
+**Idle nav row**:
 - Color: `PULSE.textMuted` (#a1a1aa)
 - Weight: `font-bold`
-- No hover state.
+- Hover: `bg-[#0a0a0a]` (`PULSE.bgAlt`).
 
-**Note (inconsistency):** there is no defined hover bg for nav rows.
-Active rows have `bg-cardBorderHi`; idle rows on hover currently do nothing.
-See §10.
+Active rows have `bg-cardBorderHi`; idle rows pick up `PULSE.bgAlt` on
+hover for affordance.
 
-### 8.2 `PulseHeader`
+### 8.2 `PageHeader`
 
-Defined: `widgets.tsx:39-79`. Used: `(app)/page.tsx:33-37`.
+Defined: `components/pulse/PageHeader.tsx`. Used: `(app)/page.tsx`
+(dashboard composes the kicker / title / subtitle / actions itself).
 
-**Structure:**
-- **Date label** — `widgets.tsx:51-56` — small uppercase tracked
-  (`text-[11px] uppercase tracking-[0.22em] font-extrabold`,
-  color `PULSE.textDim`, `mb-3`)
-- **Greeting H1** — `widgets.tsx:57-59` — `text-[48px] font-extrabold tracking-tight leading-none`
-- **Subtitle** — `widgets.tsx:60-62` — `text-[14.5px] mt-3 font-bold`,
-  color `PULSE.textMuted`
-- **Right-side button** — `widgets.tsx:64-76` — single "Search anything"
-  button, h-11, rounded-2xl, bg `PULSE.bgAlt` with 1px border `PULSE.cardBorder`,
-  width `w-72` (288px). **Decorative — not wired to a search**.
+**Props:**
+
+```ts
+{
+  kicker?: React.ReactNode;     // small uppercase label above title
+  title: React.ReactNode;       // H1 content
+  subtitle?: React.ReactNode;   // body line below title
+  actions?: React.ReactNode;    // right-aligned slot (buttons, badges)
+}
+```
+
+**Internal structure:**
+- Wrapper: `flex items-end justify-between gap-4 flex-wrap mb-7`
+- **Kicker** (when provided): `text-[11px] uppercase tracking-[0.22em] font-extrabold mb-3`, color `PULSE.textDim` — the §4 page-level / hero kicker token.
+- **Title (H1)**: `text-[48px] font-extrabold tracking-tight leading-none`.
+- **Subtitle** (when provided): `text-sm mt-3 font-bold`, color `PULSE.textMuted`.
+- **Actions** (when provided): right-aligned `flex items-center gap-2` slot.
+
+The dashboard composes its greeting + "Search anything" button at the
+call site, which means future pages can reuse the same primitive without
+inheriting any dashboard-only chrome.
 
 ### 8.3 `CompactHeroKpi`
 
@@ -316,7 +365,7 @@ Defined: `widgets.tsx:83-121`. Used: `(app)/page.tsx:40-57`.
 - Card: `rounded-2xl px-5 py-4`, bg `PULSE.card`, border `PULSE.cardBorder`
 - Layout: `flex items-center justify-between gap-4`
 - **Label** (`widgets.tsx:100-105`): `text-[11px] uppercase tracking-[0.18em] font-extrabold mb-1.5`, color `PULSE.textSubtle`
-- **Value** (`widgets.tsx:106-108`): `text-[26px] font-black tracking-tight leading-none`. **Missing `tabular-nums`** — see §10.
+- **Value** (`widgets.tsx:106-108`): `text-[26px] font-black tracking-tight leading-none tabular-nums`.
 - **Delta chip** (`widgets.tsx:110-118`): `text-[11px] px-2 py-0.5 rounded-md font-extrabold`,
   bg `${color}1F`, text `${color}` where color is `PULSE.green` (positive)
   or `PULSE.red` (negative)
@@ -331,10 +380,7 @@ Defined: `widgets.tsx:386-468` (PulseChartHero), `widgets.tsx:147-361` (HeroChar
 border `PULSE.cardBorder`.
 
 **Header** (`widgets.tsx:422-457`):
-- Section label (`widgets.tsx:423-429`): `text-[12px] uppercase tracking-[0.22em] font-extrabold mb-3`, color `PULSE.textSubtle`. Format: `Revenue · {titleLabel}` where `titleLabel` is one of "Last 7 days" / "This month" / "Last 3 months".
-  > Note: this label is `text-[12px]`, but the date label in `PulseHeader`
-  > is `text-[11px]` (both with `tracking-[0.22em]` and uppercase). Slight
-  > inconsistency — see §10.
+- Section label: `text-[11px] uppercase tracking-[0.22em] font-extrabold mb-3`, color `PULSE.textSubtle`. Format: `Revenue · {titleLabel}` where `titleLabel` is one of "Last 7 days" / "This month" / "Last 3 months". Same kicker token as the page-level kicker — see §4 tracking scale.
 - Headline (`widgets.tsx:430-433`): `text-[52px] font-black tracking-tight leading-none`. Shows `formatCentsShort(total_cents)` from API, or `—` while loading.
 - Range pills (`widgets.tsx:436-456`): pill bar `flex items-center gap-1 p-1 rounded-full`, bg `PULSE.bgAlt`. Each pill `px-3.5 py-1 rounded-full text-[11.5px] font-extrabold`. Active pill bg = `PULSE.text` (#fff) with text `PULSE.bg` (#000); idle text = `PULSE.textMuted`.
 
@@ -366,9 +412,9 @@ Defined: `widgets.tsx:553-592`. Used: `(app)/page.tsx:65`.
 **Card** (`widgets.tsx:561-563`): `rounded-2xl p-6`, bg `PULSE.card`,
 border `PULSE.cardBorder`.
 
-**Header** (`widgets.tsx:565-576`):
-- H2 (`widgets.tsx:566-568`): `text-[15px] font-extrabold tracking-tight`, content "Today's schedule"
-- "View all →" link (`widgets.tsx:569-575`): `text-[11.5px] font-extrabold`, color `PULSE.violetSoft`, links to `/schedule`
+**Header**:
+- H2: `text-[15px] font-extrabold tracking-tight`, content "Today's schedule"
+- "View all →" affordance: `<CardHeaderLink label="View all →" href="/schedule" />` — see §8.13.
 
 **Empty state** (`widgets.tsx:577-583`): `PulseEmptyState` with calendar icon, "Nothing on the calendar", "Today's jobs will appear here once scheduled."
 
@@ -376,10 +422,10 @@ border `PULSE.cardBorder`.
 - Container: `flex items-center gap-4 px-3 py-3 rounded-xl`, bg `PULSE.bgAlt`, 1px border `PULSE.cardBorder`
 - Time block (w-12, centered): `text-[18px] font-bold leading-none` (HH:MM) over `text-[10px] font-bold tracking-[0.18em]` color `PULSE.textDim` (AM/PM)
 - Customer name (flex-1, truncate): `text-[14px] font-bold`
-- Customer address (truncate, optional): `text-[12px] truncate font-semibold`, color `PULSE.textSubtle` *(font-semibold here is inconsistent with the rest — see §10)*
+- Customer address (truncate, optional): `text-[12px] truncate font-bold`, color `PULSE.textSubtle`
 - Status chip: see `PulseStatusChip`
-- Technician (w-24, optional, hidden below `xl`): `text-[12px] font-semibold`, color `PULSE.textMuted` *(font-semibold inconsistent — see §10)*
-- Price column (w-20, right): `text-[14px] font-bold`, color `PULSE.text`. **Missing `tabular-nums`** — see §10.
+- Technician (w-24, optional, hidden below `xl`): `text-[12px] font-bold`, color `PULSE.textMuted`
+- Price column (w-20, right): `text-[14px] font-bold tabular-nums`, color `PULSE.text`.
 
 ### 8.6 `PulseStatusChip`
 
@@ -412,7 +458,7 @@ border `PULSE.cardBorder`.
 **Row** (`widgets.tsx:622-650`):
 - Layout: stacked `space-y-4`
 - Stage name (`widgets.tsx:626`): `text-[12.5px] font-bold`
-- Count + value (`widgets.tsx:627-632`): `text-[11px] font-bold`, color `PULSE.textSubtle`. **Missing `tabular-nums`**.
+- Count + value: `text-[11px] font-bold tabular-nums`, color `PULSE.textSubtle`.
 - Progress track: `h-1.5 rounded-full overflow-hidden`, bg `PULSE.cardBorder`
 - Progress fill: `linear-gradient(90deg, ${PULSE.violet}, ${PULSE.violetSoft})`, width = `pct * 100%`
 
@@ -435,7 +481,7 @@ All three: `rounded-2xl p-6`, bg `PULSE.card`, border `PULSE.cardBorder`.
 **`PulseActivityCard`** — `widgets.tsx:756-835`:
 - H2 "Activity"
 - Right-side `LiveBadge` (`widgets.tsx:741-754`): green dot with green glow + green uppercase "Live" label
-- Items (synthetic from `jobs`): up to 3, each with a 7×7 avatar circle (tinted bg `${color}1F`, color `${color}`, 1px border `${color}33`) showing the first letter, a body line `text-[12.5px] font-semibold leading-snug` *(font-semibold inconsistent — see §10)*, and an uppercase time label below `text-[10.5px] font-bold uppercase tracking-[0.16em]`.
+- Items (synthetic from `jobs`): up to 3, each with a 7×7 avatar circle (tinted bg `${color}1F`, color `${color}`, 1px border `${color}33`) showing the first letter, a body line `text-[12.5px] font-bold leading-snug`, and an uppercase time label below `text-[10.5px] font-bold uppercase tracking-[0.16em]`.
 - Empty state inline: `text-[12.5px] font-bold`, color `PULSE.textSubtle`, "No recent activity."
 
 ### 8.9 `PulseEmptyState`
@@ -444,7 +490,7 @@ Defined: `widgets.tsx:655-685`. Used by Schedule, Inbox, Tasks cards.
 
 - Wrapper: `py-10 flex flex-col items-center text-center`
 - Icon chip: `w-12 h-12 rounded-full`, bg `PULSE.bgAlt`, color `PULSE.textSubtle`, 1px border `PULSE.cardBorder`. Renders any `PulseIcon` by name.
-- Title: `mt-3 text-[13.5px] font-extrabold`
+- Title: `mt-3 text-sm font-extrabold`
 - Sub: `text-[11.5px] mt-1 font-bold max-w-[20ch]`, color `PULSE.textSubtle`
 
 ### 8.10 `LiveBadge`
@@ -461,22 +507,42 @@ Defined: `Icon.tsx:1-43`. SVG icon set with `viewBox="0 0 24 24"`, `fill="none"`
 
 Available names: `home`, `calendar`, `map`, `inbox`, `doc`, `check`, `wallet`, `message`, `phone`, `mail`, `chart`, `trophy`, `user`, `users`, `settings`, `plus`, `search`, `bell`, `chevron`, `logout`, `cart`. Unknown name → empty circle (`Icon.tsx:35`).
 
-### 8.12 What does NOT exist as a primitive
+### 8.13 `CardHeaderLink`
 
-The dashboard does **not** import or use any of the following — they exist
-as inline markup or do not exist at all on the dashboard:
+Defined: `widgets.tsx`. Used in `PulseScheduleCard` ("View all →"). The
+canonical helper for any card-header right-side affordance that
+navigates somewhere.
 
-| Primitive               | Status on dashboard                                                                                          |
+**Props:**
+
+```ts
+{
+  label: string;
+  href: string;
+}
+```
+
+**Internal:** `<Link href={href}>` with `text-[11.5px] font-extrabold`
+and color `PULSE.violetSoft`. New cards that need the same affordance
+should import this rather than re-deriving the styling.
+
+### 8.14 What does NOT exist as a primitive (yet)
+
+The following primitives are **not yet** in `components/pulse/`. Per §10 #10
+they will be generated proactively (e.g. via shadcn/ui in a separate
+step). Until they exist, current call sites use inline markup:
+
+| Primitive               | Current state                                                                                                 |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------ |
-| `Button` (general)      | **Inline only.** Sidebar `+ New` (`Sidebar.tsx:124-136`); search button (`widgets.tsx:65-75`); range pill (`widgets.tsx:443-454`); Tasks card `+` (`widgets.tsx:721-730`); each is hand-built. |
-| `Input`                 | **Not on dashboard.** Auth pages have inline-styled inputs (`login/page.tsx:111-119`, `:125-130`); not a primitive. |
-| `Select`                | **Not on dashboard.** Same — inline elsewhere.                                                              |
-| `Tabs`                  | **Not on dashboard.** Reports has inline tabs (`ReportsClient.tsx:42-66`); not a primitive.                  |
-| `Table`                 | **Not on dashboard.** Inline `<table>` markup elsewhere — see §9 for the table pattern.                      |
-| `Dialog` / `Modal`      | **Not on dashboard.** Inline modals across pages (settings, payroll, scheduling); no primitive.              |
-| `Badge`                 | **Partial.** `PulseStatusChip` (`widgets.tsx:527`) is the only badge-shaped primitive. Delta chips and "0 unread" pills are inline. |
-| `Stat card`             | **Yes — `CompactHeroKpi`** (`widgets.tsx:83-121`) is the canonical KPI card.                                 |
-| `PageHeader`            | **`PulseHeader`** (`widgets.tsx:39-79`) exists but is dashboard-specific (greeting wording, single search button). Not generic. |
+| `Button` (general)      | **Inline only.** Sidebar `+ New`; dashboard search button; range pill; Tasks card `+`; each is hand-built.   |
+| `Input`                 | **Not on dashboard.** Auth pages have inline-styled inputs.                                                   |
+| `Select`                | Inline elsewhere.                                                                                            |
+| `Tabs`                  | Reports has inline tabs.                                                                                     |
+| `Table`                 | Inline `<table>` markup — see §9.4.                                                                          |
+| `Dialog` / `Modal`      | Inline modals across pages (settings, payroll, scheduling).                                                  |
+| `Badge`                 | **Partial.** `PulseStatusChip` is the only badge-shaped primitive. Delta chips and "0 unread" pills are inline. |
+| `Stat card`             | **Yes — `CompactHeroKpi`** is the canonical KPI card.                                                        |
+| `PageHeader`            | **Yes — `PageHeader`** (§8.2). The previous dashboard-specific `PulseHeader` was removed.                    |
 
 ---
 
@@ -484,37 +550,27 @@ as inline markup or do not exist at all on the dashboard:
 
 ### 9.1 Page header
 
-The only "page header" primitive on the dashboard is `PulseHeader` —
-dashboard-specific. Its structure is:
+Every page composes `PageHeader` (§8.2). Dashboard call site:
 
 ```tsx
-<div className="flex items-end justify-between gap-4 flex-wrap mb-7">
-  <div>
-    <div className="text-[11px] uppercase tracking-[0.22em] font-extrabold mb-3"
-         style={{ color: PULSE.textDim }}>
-      {/* date */}
-    </div>
-    <h1 className="text-[48px] font-extrabold tracking-tight leading-none">
-      {/* greeting */}
-    </h1>
-    <p className="text-[14.5px] mt-3 font-bold"
-       style={{ color: PULSE.textMuted }}>
-      {/* subtitle */}
-    </p>
-  </div>
-  <div className="flex items-center gap-2">
-    {/* right-side actions */}
-  </div>
-</div>
+<PageHeader
+  kicker={dateLabel()}
+  title={`${greeting(new Date().getHours())}, ${firstName}.`}
+  subtitle={`${jobs.length} jobs today · ${completedCount} completed this month`}
+  actions={<SearchButton />}
+/>
 ```
 
-(Pulled from `widgets.tsx:48-77`.)
+The primitive renders the standard `flex items-end justify-between
+gap-4 flex-wrap mb-7` wrapper, kicker → H1 → subtitle stack, and
+right-aligned `actions` slot. Pages that don't need a kicker / subtitle
+omit those props.
 
 ### 9.2 Dashboard grid
 
 Sequence on `(app)/page.tsx:31-74`:
 
-1. **`PulseHeader`** — full width
+1. **`PageHeader`** — full width (§8.2)
 2. **KPI strip** — `grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5` containing 3 × `CompactHeroKpi`
 3. **Chart hero** — wrapper `mb-5`, then `PulseChartHero`
 4. **2-up middle row** — `grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5` containing `PulseScheduleCard` + `PulsePipelineCard`
@@ -534,10 +590,10 @@ Used by every widget card on the dashboard. The pattern (from `widgets.tsx:565-5
 ```
 
 Right-side variants:
-- "View all →" link (Schedule card) → `widgets.tsx:569-575`
-- Indicator pill ("0 unread") (Inbox card) → `widgets.tsx:697-702`
-- Icon button (Tasks card `+`) → `widgets.tsx:721-730`
-- LiveBadge (Activity card) → `widgets.tsx:789`
+- `CardHeaderLink` (Schedule card "View all →") → §8.13
+- Indicator pill ("0 unread") (Inbox card)
+- Icon button (Tasks card `+`)
+- `LiveBadge` (Activity card) → §8.10
 - Nothing (Pipeline card)
 
 ### 9.4 Tables (off-dashboard pattern, included for completeness)
@@ -546,29 +602,54 @@ The dashboard has no tables. The closest analog inside the Pulse primitives is t
 
 ---
 
-## 10. Inconsistencies
+## 10. Inconsistencies (resolved)
 
-When the same role is styled differently across the dashboard, the
-following is the proposed canonical version. New work follows the
-canonical version, and existing code should be migrated as it's touched.
+This section originally tracked 15 inconsistencies between role-similar
+elements across the Pulse surfaces. **All 15 are resolved.** The
+canonical decisions are reflected in §2–§9 above; this section is kept
+as the changelog of those decisions and the policy for future drift.
 
-| # | Inconsistency                                                                                                                  | Canonical (proposed)                                                       |
-| - | ------------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------- |
-| 1 | `font-semibold` (600) appears in 3 places only: `widgets.tsx:501`, `:511`, `:814`. Everything else is `font-bold`/`extrabold`. | Replace all three with `font-bold`. Goal: production never uses `font-semibold`. |
-| 2 | Subtitle under H1 is `text-[14.5px] font-bold` (`widgets.tsx:60`). Every other subtitle in pages is `text-sm` (14px) `font-bold`. | `text-sm font-bold`. Drop the `[14.5px]` outlier.                          |
-| 3 | Hero section labels use two sizes: `text-[11px]` for the date (`widgets.tsx:52`) and `text-[12px]` for chart card title (`widgets.tsx:425`). Both have the same role. | `text-[11px] uppercase tracking-[0.22em] font-extrabold` everywhere.        |
-| 4 | Uppercase tracking has three values for similar roles: `0.22em` (date / chart card label), `0.18em` (KPI label / Inbox indicator / LiveBadge / AM/PM), `0.16em` (activity time / tooltip date / table headers). | **0.22em** = page-level / hero section labels. **0.18em** = KPI + form labels. **0.16em** = micro caps inside chips, table column headers, and tiny captions. |
-| 5 | Empty-state title is `text-[13.5px]` (`widgets.tsx:676`) — only place that uses 13.5px.                                         | Round to `text-sm` (14px) for consistency.                                 |
-| 6 | `tabular-nums` missing on numeric values: KPI value (`widgets.tsx:106`), schedule price (`widgets.tsx:518`), pipeline count (`widgets.tsx:628`). | Add `tabular-nums` to anything that's a money / count value, including KPI value. |
-| 7 | Glow on `+` buttons: full-width `+ New` uses `0 0 16px violetGlow` (`Sidebar.tsx:131`), 7×7 icon `+` uses `0 0 12px violetGlow` (`widgets.tsx:726`). | **16px glow** on full-width violet buttons; **12px glow** on icon buttons. (Already differentiated, just needs to be a documented rule.) |
-| 8 | KPI value weight: `font-black` is used for big numbers, but Compact KPI uses `font-black` while pipeline count / sidebar pill counts use `font-bold`. | `font-black` is reserved for "hero" numbers (big KPI value, chart headline). Smaller numeric values are `font-bold tabular-nums`. |
-| 9 | Sidebar idle nav row has no hover state (`Sidebar.tsx:259-263`).                                                               | Add `hover:bg-[#0a0a0a]` (PULSE.bgAlt) on idle rows for affordance.        |
-| 10 | No primitives exist for `Button`, `Input`, `Select`, `Tabs`, `Table`, `Modal`, `Badge`. Each is inline. As the app grows this drift gets worse. | Carve canonical primitives in `components/pulse/` as new pages need them. Each should land WITH a docs entry here in the same commit. |
-| 11 | `PulseHeader` is dashboard-specific (greeting + single search button). No generic `<PageHeader title subtitle actions />` exists, even though every page has the same structure. | Extract a generic `PageHeader` that takes `kicker` (uppercase top label), `title`, `subtitle`, `actions` slot. Dashboard's variant becomes `<PageHeader kicker={dateLabel()} title={`${greeting}, ${firstName}.`} subtitle={...} actions={...} />`. |
-| 12 | "View all →" pattern (`widgets.tsx:571-575`) is hand-coded in the Schedule card and not anywhere else. Other cards' headers vary.    | Promote it to a `CardHeaderLink` helper (`{label, href}`).                |
-| 13 | `PULSE.greenSoft`, `PULSE.pink`, `PULSE.pinkSoft`, `PULSE.amber` are defined in `theme.ts:26-30` but **not used** by the dashboard. | Either remove unused tokens, or document them as "reserved for future status states" so future work knows they exist. |
-| 14 | `font-mono` appears once in `app/login/page.tsx:147` for the dev hint. The dashboard never uses mono.                            | Allowed only for code-like UI hints (not body); prefer regular sans for everything user-facing. |
-| 15 | No font is loaded via `next/font` — production relies on system sans (see §2). Different platforms render slightly differently.  | Decide: load Inter via `next/font/google` for cross-platform consistency, OR explicitly document the system-sans choice. Current state is undocumented drift. |
+### Scope
+
+The canonical rules apply to **Pulse surfaces only** — the files listed
+in §1. Non-Pulse pages (Calendar, Leaderboard, JobForm, EmailDetail,
+Settings, etc.) keep their existing styling and will be migrated when
+those pages move onto Pulse primitives.
+
+### Resolutions
+
+| #   | Resolution                                                                                                                                                                                                                                                                  | Reflected in     | Commit     |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------- | ---------- |
+| 1   | `font-semibold` is not used on Pulse surfaces. The three call sites in `widgets.tsx` (schedule address, schedule technician, activity body) became `font-bold`.                                                                                                              | §4 weights       | `a6d8801`  |
+| 2   | H1 subtitle is `text-sm font-bold` (was `text-[14.5px]`).                                                                                                                                                                                                                    | §4, §8.2         | `5717f15`  |
+| 3   | Page-level / hero section kicker is `text-[11px] uppercase tracking-[0.22em] font-extrabold` everywhere. The chart card kicker dropped from `text-[12px]` to `text-[11px]`.                                                                                                  | §4, §8.4         | `50bfbcb`  |
+| 4   | Three-tier uppercase tracking scale, locked: **0.22em** = page-level / hero kicker · **0.18em** = widget-internal label · **0.16em** = micro caps. No fourth tier.                                                                                                            | §4 tracking      | doc-only   |
+| 5   | Empty-state title is `text-sm font-extrabold` (was `text-[13.5px]`).                                                                                                                                                                                                         | §4, §8.9         | `50bfbcb`  |
+| 6   | Numeric values use `tabular-nums`. Added on the Compact KPI value, schedule price, and pipeline count.                                                                                                                                                                       | §4 numeric scale | `50bfbcb`  |
+| 7   | Violet glow rule, locked: **16px** on full-width / pill-shaped violet primary buttons · **12px** on compact icon buttons (≤32px). No third value.                                                                                                                            | §3, §7           | doc-only   |
+| 8   | Numeric weight rule, locked: `font-black tabular-nums` for hero numbers ≥ 24px (KPI value, chart headline) · `font-bold tabular-nums` for inline/row-level numbers · `font-extrabold` is **never** used on numbers.                                                          | §4 numeric scale | doc-only   |
+| 9   | Sidebar idle nav row has `hover:bg-[#0a0a0a]` (`PULSE.bgAlt`) for affordance. Active row's bg unchanged.                                                                                                                                                                     | §8.1             | `50bfbcb`  |
+| 10  | Primitives are generated proactively (e.g. via shadcn/ui in a separate step), not gated on per-feature need. **Policy:** any new primitive must land with a §8 sub-entry in this document in the same commit that introduces it.                                              | §8 preamble      | doc-only   |
+| 11  | Generic `PageHeader` primitive extracted in `components/pulse/PageHeader.tsx`. Slots: `kicker / title / subtitle / actions`. The dashboard composes its greeting + search button at the call site. The previous dashboard-specific `PulseHeader` was removed.                | §8.2, §9.1       | `4334f57`  |
+| 12  | `CardHeaderLink({ label, href })` exported from `widgets.tsx` for the canonical "View all →" affordance (`PULSE.violetSoft`, `font-extrabold`, `text-[11.5px]`).                                                                                                              | §8.13, §9.3      | `5dcc9d5`  |
+| 13  | Unused tokens (`greenSoft`, `pink`, `pinkSoft`, `amber`) removed from `theme.ts`, `globals.css`, and `tailwind.config.ts`. Future warning / alert / highlight colors get a properly-named role token introduced alongside their first call site.                              | §3 accents       | `733d31b`  |
+| 14  | `font-mono` is allowed only for literal code-shaped tokens (API keys, IDs, credentials). Never for prose, labels, or numbers. The single Pulse-adjacent occurrence (`app/login/page.tsx:147`, the dev-mode `admin / admin` hint) is in scope.                                  | §2               | doc-only   |
+| 15  | Inter loaded via `next/font/google` in `app/layout.tsx`; CSS variable `--font-sans` overridden so the existing Tailwind `font-sans` and body cascade resolve to Inter. CLS-free with a metric-adjusted Arial fallback.                                                        | §2               | `84569f8`  |
+
+### Ongoing drift policy
+
+When new drift appears (a one-off size, an undocumented weight, a third
+glow value, a non-tabular numeric, a new uppercase tracking value),
+either:
+
+1. Bring the call site into line with the canonical rules above, or
+2. If the drift represents a genuinely new role, open a PR that
+   documents the new rule in §3–§9 and adds a row to §10's resolutions
+   table alongside the call site change.
+
+Don't leave a third option (silent drift). The whole point of this
+document is that the second person to encounter a role doesn't have to
+re-derive its styling.
 
 ---
 
