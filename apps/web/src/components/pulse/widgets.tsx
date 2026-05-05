@@ -498,7 +498,7 @@ export function PulseScheduleRow({
         <div className="text-[14px] font-bold truncate">{job.customer_name}</div>
         {job.customer_address && (
           <div
-            className="text-[12px] truncate font-semibold"
+            className="text-[12px] truncate font-bold"
             style={{ color: PULSE.textSubtle }}
           >
             {job.customer_address}
@@ -508,7 +508,7 @@ export function PulseScheduleRow({
       <PulseStatusChip status={job.status} />
       {showTech && job.technician_name && (
         <div
-          className="text-[12px] font-semibold w-24 truncate text-right hidden xl:block"
+          className="text-[12px] font-bold w-24 truncate text-right hidden xl:block"
           style={{ color: PULSE.textMuted }}
         >
           {job.technician_name}
@@ -811,7 +811,7 @@ export function PulseActivityCard({ jobs }: { jobs: LiveJob[] }) {
               </span>
               <div className="flex-1 min-w-0">
                 <div
-                  className="text-[12.5px] font-semibold leading-snug"
+                  className="text-[12.5px] font-bold leading-snug"
                   style={{ color: PULSE.textMuted }}
                 >
                   <span className="font-bold" style={{ color: PULSE.text }}>
