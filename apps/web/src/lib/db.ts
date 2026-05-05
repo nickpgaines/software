@@ -359,6 +359,8 @@ async function init(): Promise<void> {
       price_cents INTEGER NOT NULL DEFAULT 0,
       status TEXT NOT NULL DEFAULT 'scheduled',
       notes TEXT,
+      subscription_id INTEGER,
+      subscription_visit_index INTEGER,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -387,6 +389,8 @@ async function init(): Promise<void> {
     ["started_at", "TEXT"],
     ["completed_at", "TEXT"],
     ["recurring", "INTEGER NOT NULL DEFAULT 0"],
+    ["subscription_id", "INTEGER REFERENCES customer_subscriptions(id) ON DELETE SET NULL"],
+    ["subscription_visit_index", "INTEGER"],
   ];
   for (const [col, def] of jobAdds) {
     await alterAddColumn("jobs", col, def, jobsCols);
@@ -520,6 +524,12 @@ async function init(): Promise<void> {
       "payments",
       "stripe_payment_intent_id",
       "TEXT",
+      paymentCols
+    );
+    await alterAddColumn(
+      "payments",
+      "subscription_id",
+      "INTEGER REFERENCES customer_subscriptions(id) ON DELETE SET NULL",
       paymentCols
     );
   }
@@ -814,6 +824,7 @@ async function init(): Promise<void> {
       notes        TEXT,
       send_email   INTEGER NOT NULL DEFAULT 0,
       send_sms     INTEGER NOT NULL DEFAULT 0,
+      subscription_id INTEGER,
       created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_payments_job_id     ON payments(job_id);
@@ -1175,6 +1186,7 @@ async function init(): Promise<void> {
     ["sold_by_id", "INTEGER REFERENCES staff(id) ON DELETE SET NULL"],
     ["tax_rate_bps", "INTEGER NOT NULL DEFAULT 0"],
     ["service_interval", "TEXT NOT NULL DEFAULT 'monthly'"],
+    ["accept_token", "TEXT"],
   ];
   for (const [col, def] of subAdds) {
     await alterAddColumn("customer_subscriptions", col, def, subCols);
@@ -1609,6 +1621,8 @@ export type Job = {
   started_at: string | null;
   completed_at: string | null;
   recurring: number;
+  subscription_id: number | null;
+  subscription_visit_index: number | null;
   created_at: string;
 };
 
@@ -1909,6 +1923,7 @@ export type CustomerSubscription = {
   start_date: string | null;
   sold_by_id: number | null;
   tax_rate_bps: number;
+  accept_token: string | null;
   created_at: string;
 };
 
@@ -2138,6 +2153,7 @@ export type Payment = {
   send_email: number;
   send_sms: number;
   stripe_payment_intent_id: string | null;
+  subscription_id: number | null;
   created_at: string;
 };
 

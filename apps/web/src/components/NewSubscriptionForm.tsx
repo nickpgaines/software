@@ -3,9 +3,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
 
 type Customer = {
@@ -111,7 +117,38 @@ function addDays(dateInput: string, days: number): string {
   return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
 }
 
+function dateInputToDate(dateInput: string): Date | undefined {
+  const [y, m, d] = dateInput.split("-").map(Number);
+  if (!y || !m || !d) return undefined;
+  return new Date(y, m - 1, d);
+}
+
+function dateToDateInput(d: Date): string {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+const VISITS_PER_YEAR: Record<SubscriptionInterval, number> = {
+  weekly: 52,
+  biweekly: 26,
+  monthly: 12,
+  quarterly: 4,
+  triannually: 3,
+  semiannually: 2,
+  yearly: 1,
+};
+
+const INTERVAL_PERIOD: Record<SubscriptionInterval, string> = {
+  weekly: "week",
+  biweekly: "2 weeks",
+  monthly: "month",
+  quarterly: "quarter",
+  triannually: "4 months",
+  semiannually: "6 months",
+  yearly: "year",
+};
+
 type AcceptMode = "send" | "accept";
+type BillingMode = "with_service" | "monthly";
 
 export default function NewSubscriptionForm() {
   const router = useRouter();
@@ -132,9 +169,10 @@ export default function NewSubscriptionForm() {
   const [showNewTemplate, setShowNewTemplate] = useState(false);
 
   const [price, setPrice] = useState("");
-  const [interval, setInterval] = useState<SubscriptionInterval>("monthly");
+  const [billingMode, setBillingMode] = useState<BillingMode>("with_service");
 
   const [acceptMode, setAcceptMode] = useState<AcceptMode>("send");
+  const [datePopoverOpen, setDatePopoverOpen] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -190,6 +228,16 @@ export default function NewSubscriptionForm() {
   }, [selectedTemplate, startDate, serviceInterval]);
 
   const priceCents = Math.max(0, Math.round((parseFloat(price) || 0) * 100));
+  const billingInterval: SubscriptionInterval =
+    billingMode === "monthly" ? "monthly" : serviceInterval;
+
+  const visitsPerYear = VISITS_PER_YEAR[serviceInterval];
+  const monthlyEquivalentCents = useMemo(() => {
+    if (priceCents <= 0) return 0;
+    const annual = priceCents * visitsPerYear;
+    return Math.round(annual / 12);
+  }, [priceCents, visitsPerYear]);
+
   const canSubmit =
     !!customerId &&
     !!templateId &&
@@ -208,7 +256,7 @@ export default function NewSubscriptionForm() {
         customer_id: customerId,
         template_id: templateId,
         price_cents: priceCents,
-        interval,
+        interval: billingInterval,
         action: acceptMode,
         start_date: startDate,
         sold_by_id: soldById || null,
@@ -298,17 +346,40 @@ export default function NewSubscriptionForm() {
               </h2>
             </CardHeader>
             <Field label="Start Date">
-              <div className="relative">
-                <Input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12] h-auto"
-                />
-                <div className="text-xs text-zinc-400 mt-1">
-                  {formatDateLabel(startDate)}
-                </div>
-              </div>
+              <Popover
+                open={datePopoverOpen}
+                onOpenChange={setDatePopoverOpen}
+              >
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    className="w-full justify-start text-left font-normal h-auto border border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12] text-white hover:bg-black"
+                  >
+                    <span aria-hidden className="mr-2 text-zinc-500">
+                      📅
+                    </span>
+                    {formatDateLabel(startDate)}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="start"
+                  className="w-auto p-3"
+                  sideOffset={6}
+                >
+                  <Calendar
+                    mode="single"
+                    required
+                    selected={dateInputToDate(startDate)}
+                    onSelect={(d) => {
+                      if (d) {
+                        setStartDate(dateToDateInput(d));
+                        setDatePopoverOpen(false);
+                      }
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
             </Field>
             <Field label="Sold By">
               {/* Native <select> kept: salesperson picker */}
@@ -418,41 +489,97 @@ export default function NewSubscriptionForm() {
                 )}
               </div>
             )}
-            <div className="grid grid-cols-2 gap-3 mt-4">
-              <Field label="Price (USD)">
+            <div className="mt-4">
+              <Field label="Price per visit">
                 <Input
                   type="number"
                   step="0.01"
                   min="0"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
-                  placeholder="49.00"
+                  placeholder="249.00"
                   className="w-full border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12] h-auto"
                 />
+                {priceCents > 0 && selectedTemplate && (
+                  <p className="text-[11px] text-zinc-500 mt-1.5">
+                    {formatPrice(priceCents)} per{" "}
+                    {INTERVAL_PERIOD[serviceInterval]}
+                    {billingMode === "monthly" && serviceInterval !== "monthly"
+                      ? ` · billed monthly at ~${formatPrice(monthlyEquivalentCents)}/mo`
+                      : ` · billed every ${INTERVAL_PERIOD[billingInterval]}`}
+                  </p>
+                )}
               </Field>
-              <Field label="Billing frequency">
-                {/* Native <select> kept: billing interval picker */}
-                <select
-                  value={interval}
-                  onChange={(e) =>
-                    setInterval(e.target.value as SubscriptionInterval)
-                  }
-                  className="w-full border border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12]"
-                >
-                  {(
-                    Object.entries(INTERVAL_LABELS) as [
-                      SubscriptionInterval,
-                      string,
-                    ][]
-                  ).map(([v, l]) => (
-                    <option key={v} value={v}>
-                      {l}
-                    </option>
-                  ))}
-                </select>
+              <Field label="Billing">
+                <div className="space-y-2">
+                  <BillingChoice
+                    checked={billingMode === "with_service"}
+                    onChange={() => setBillingMode("with_service")}
+                    title={`Bill with service (${INTERVAL_LABELS[serviceInterval].toLowerCase()})`}
+                    description={
+                      priceCents > 0
+                        ? `One charge of ${formatPrice(priceCents)} per ${INTERVAL_PERIOD[serviceInterval]}, on each visit.`
+                        : `One charge per ${INTERVAL_PERIOD[serviceInterval]}, on each visit.`
+                    }
+                  />
+                  <BillingChoice
+                    checked={billingMode === "monthly"}
+                    onChange={() => setBillingMode("monthly")}
+                    title="Bill monthly"
+                    description={
+                      priceCents > 0 && serviceInterval !== "monthly"
+                        ? `Spreads the cost evenly: ~${formatPrice(monthlyEquivalentCents)}/mo.`
+                        : `Charge the customer monthly regardless of visit cadence.`
+                    }
+                  />
+                </div>
               </Field>
             </div>
           </Card>
+
+          {selectedTemplate && (
+            <Card>
+              <CardHeader>
+                <h2 className="text-base font-extrabold text-white tracking-tight">
+                  Plan Summary
+                </h2>
+              </CardHeader>
+              <dl className="divide-y divide-[#1f1f24] rounded-xl border border-[#1f1f24] bg-[#0f0f12] text-sm">
+                <SummaryRow
+                  label="Visits per year"
+                  value={`${visitsPerYear}`}
+                />
+                <SummaryRow
+                  label="Service cadence"
+                  value={INTERVAL_LABELS[serviceInterval]}
+                />
+                <SummaryRow
+                  label="Duration"
+                  value={`Starting ${formatDateLabel(startDate)} · ongoing until canceled`}
+                />
+                {selectedCustomer && (
+                  <SummaryRow
+                    label="Service address"
+                    value={
+                      selectedCustomer.formatted_address ||
+                      selectedCustomer.address ||
+                      "—"
+                    }
+                  />
+                )}
+                {priceCents > 0 && (
+                  <SummaryRow
+                    label="Billing"
+                    value={
+                      billingMode === "monthly" && serviceInterval !== "monthly"
+                        ? `${formatPrice(priceCents)} per ${INTERVAL_PERIOD[serviceInterval]}, billed monthly at ~${formatPrice(monthlyEquivalentCents)}/mo`
+                        : `${formatPrice(priceCents)} per ${INTERVAL_PERIOD[serviceInterval]}, billed every ${INTERVAL_PERIOD[billingInterval]}`
+                    }
+                  />
+                )}
+              </dl>
+            </Card>
+          )}
 
           <Card>
             <CardHeader>
@@ -548,6 +675,62 @@ function Field({
         {label}
       </Label>
       {children}
+    </div>
+  );
+}
+
+function BillingChoice({
+  checked,
+  onChange,
+  title,
+  description,
+}: {
+  checked: boolean;
+  onChange: () => void;
+  title: string;
+  description: string;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      onClick={onChange}
+      className={
+        "w-full text-left rounded-xl border p-3 h-auto block " +
+        (checked
+          ? "border-slate-900 bg-black"
+          : "border-[#1f1f24] hover:border-[#2a2a32]")
+      }
+    >
+      <div className="flex items-start gap-3">
+        <span
+          className={
+            "mt-0.5 inline-flex h-4 w-4 shrink-0 rounded-full border-2 " +
+            (checked ? "border-slate-900" : "border-[#2a2a32]")
+          }
+        >
+          {checked && (
+            <span className="m-auto h-2 w-2 rounded-full bg-slate-900" />
+          )}
+        </span>
+        <div>
+          <div className="text-sm font-bold text-white tracking-tight">
+            {title}
+          </div>
+          <div className="text-xs text-zinc-400 mt-0.5">{description}</div>
+        </div>
+      </div>
+    </Button>
+  );
+}
+
+function SummaryRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-start justify-between gap-4 px-4 py-2.5">
+      <dt className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 shrink-0">
+        {label}
+      </dt>
+      <dd className="text-xs text-zinc-300 text-right">{value}</dd>
     </div>
   );
 }

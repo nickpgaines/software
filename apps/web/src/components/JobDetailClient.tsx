@@ -58,6 +58,27 @@ type Detail = {
     | "completed_unpaid"
     | "completed_partial"
     | "completed_paid";
+  subscription_id: number | null;
+  subscription_visit_index: number | null;
+};
+
+type SubscriptionLite = {
+  id: number;
+  name: string;
+  price_cents: number;
+  interval: string;
+  service_interval: string;
+  status: string;
+};
+
+const INTERVAL_PERIOD_LABEL: Record<string, string> = {
+  weekly: "weekly",
+  biweekly: "every 2 weeks",
+  monthly: "monthly",
+  quarterly: "quarterly",
+  triannually: "every 4 months",
+  semiannually: "every 6 months",
+  yearly: "annually",
 };
 
 type Step = "en_route" | "arrived" | "started" | "completed";
@@ -167,13 +188,16 @@ function money(cents: number) {
 
 export default function JobDetailClient({
   initialJob,
+  initialSubscription = null,
 }: {
   initialJob: Detail;
+  initialSubscription?: SubscriptionLite | null;
 }) {
   const router = useRouter();
   const [job, setJob] = useState<Detail>(initialJob);
   const [busy, setBusy] = useState<Step | null>(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const subscription = initialSubscription;
 
   // Sync local job state with initialJob whenever the server-provided
   // record changes. Without this, useState(initialJob) only seeds on
@@ -274,6 +298,40 @@ export default function JobDetailClient({
           </Button>
         </div>
       </div>
+
+      {subscription && (
+        <section className="rounded-2xl border border-emerald-500/40 bg-emerald-500/10 px-5 py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] uppercase tracking-[0.18em] font-extrabold text-emerald-300 bg-emerald-500/20 rounded-full px-2 py-0.5">
+                  Active Subscription
+                </span>
+                <span className="text-[10px] uppercase tracking-[0.18em] font-extrabold text-rose-300 bg-rose-500/20 rounded-full px-2 py-0.5">
+                  Do not collect
+                </span>
+              </div>
+              <div className="mt-1.5 text-sm font-bold text-white tracking-tight truncate">
+                {subscription.name}
+                {job.subscription_visit_index
+                  ? ` · Visit #${job.subscription_visit_index}`
+                  : ""}
+              </div>
+              <div className="text-xs text-emerald-200/80 mt-0.5">
+                {money(subscription.price_cents)} per visit · billed{" "}
+                {INTERVAL_PERIOD_LABEL[subscription.interval] ||
+                  subscription.interval}
+              </div>
+            </div>
+            <Link
+              href={`/settings?tab=subscriptions`}
+              className="text-xs text-emerald-300 hover:text-emerald-200 font-bold tracking-tight inline-flex items-center gap-1 shrink-0"
+            >
+              View subscription →
+            </Link>
+          </div>
+        </section>
+      )}
 
       <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">

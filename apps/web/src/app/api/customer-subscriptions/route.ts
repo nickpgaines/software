@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomBytes } from "crypto";
 import {
   getDb,
   type CustomerSubscription,
@@ -7,6 +8,14 @@ import {
   type SubscriptionTerms,
 } from "@/lib/db";
 import { getSessionContext } from "@/lib/auth";
+import {
+  ensureRollingVisits,
+  startDateToIso,
+} from "@/lib/subscription-schedule";
+
+function makeAcceptToken() {
+  return randomBytes(24).toString("base64url");
+}
 
 export const dynamic = "force-dynamic";
 
@@ -220,6 +229,8 @@ export async function POST(req: Request) {
       ? null
       : Number(body.sold_by_id) || null;
 
+  const acceptToken = makeAcceptToken();
+
   const result = await db
     .prepare(
       `INSERT INTO customer_subscriptions
@@ -228,8 +239,8 @@ export async function POST(req: Request) {
           status, sent_at, accepted_at, created_by,
           terms_snapshot, require_signature,
           signature_data, signature_name, signed_at,
-          start_date, sold_by_id, tax_rate_bps)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          start_date, sold_by_id, tax_rate_bps, accept_token)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       companyId,
@@ -251,15 +262,34 @@ export async function POST(req: Request) {
       signedAt,
       startDate,
       soldById,
-      taxRateBps
+      taxRateBps,
+      acceptToken
     );
+  const subscriptionId = Number(result.lastInsertRowid);
+
+  if (action === "accept") {
+    await ensureRollingVisits(db, {
+      subscriptionId,
+      customerId,
+      companyId,
+      startDateIso: startDateToIso(startDate),
+      serviceInterval,
+      pricePerVisitCents: price_cents,
+      visitName: name,
+      visitDescription: description,
+      soldById,
+      technicianId: null,
+    });
+  }
 
   if (action === "send") {
     const offerLine = `${name} — ${formatPrice(price_cents)} / ${intervalLabel(interval)}`;
     const desc = description ? `\n${description}` : "";
+    const origin = new URL(req.url).origin;
+    const acceptUrl = `${origin}/subscriptions/accept/${acceptToken}`;
     const messageBody =
       `Hi! Here's a subscription offer from us:\n${offerLine}${desc}\n` +
-      `Reply YES to accept and we'll get you set up.`;
+      `Tap to review & sign: ${acceptUrl}`;
     await db
       .prepare(
         `INSERT INTO messages (company_id, customer_id, body, direction)
@@ -272,6 +302,6 @@ export async function POST(req: Request) {
     .prepare(
       "SELECT * FROM customer_subscriptions WHERE id = ? AND company_id = ?"
     )
-    .get(result.lastInsertRowid, companyId)) as CustomerSubscription;
+    .get(subscriptionId, companyId)) as CustomerSubscription;
   return NextResponse.json(row, { status: 201 });
 }
