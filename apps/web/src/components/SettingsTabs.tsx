@@ -2,6 +2,11 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 type Tab =
   | "profile"
@@ -65,18 +70,19 @@ function SettingsTabsInner({ username }: { username: string }) {
           {TABS.map((t) => {
             const active = tab === t.key;
             return (
-              <button
+              <Button
                 key={t.key}
+                variant="ghost"
                 onClick={() => changeTab(t.key)}
                 className={
-                  "whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-bold transition " +
+                  "h-auto rounded-none whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-bold hover:bg-transparent " +
                   (active
                     ? "border-slate-900 text-white"
                     : "border-transparent text-zinc-400 hover:text-zinc-300")
                 }
               >
                 {t.label}
-              </button>
+              </Button>
             );
           })}
         </nav>
@@ -259,33 +265,35 @@ function ProfilePanel({ username }: { username: string }) {
             </div>
             <div className="flex-1 space-y-2">
               <div className="flex flex-wrap gap-2">
-                <input
+                <Input
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
                   onChange={onPickFile}
                   className="hidden"
                 />
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={photoBusy || isAdminEnv}
-                  className="text-sm border border-[#2a2a32] hover:border-slate-400 rounded-full px-4 py-2 text-zinc-300 disabled:opacity-50"
+                  className="h-auto text-sm border border-[#2a2a32] hover:border-slate-400 rounded-full px-4 py-2 text-zinc-300 hover:bg-transparent"
                 >
                   {photoBusy
                     ? "Loading…"
                     : photoUrl
                     ? "Change photo"
                     : "Add photo"}
-                </button>
+                </Button>
                 {photoUrl && !isAdminEnv && (
-                  <button
+                  <Button
+                    variant="ghost"
                     type="button"
                     onClick={() => setPhotoUrl(null)}
-                    className="text-sm text-zinc-400 font-bold hover:text-white"
+                    className="h-auto text-sm text-zinc-400 font-bold hover:text-white hover:bg-transparent"
                   >
                     Remove
-                  </button>
+                  </Button>
                 )}
               </div>
               {isAdminEnv && (
@@ -298,14 +306,15 @@ function ProfilePanel({ username }: { username: string }) {
                 <p className="text-xs text-rose-600">{photoError}</p>
               )}
               {dirty && !isAdminEnv && (
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={save}
                   disabled={saving}
-                  className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-4 py-2 font-bold"
+                  className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-4 py-2 font-bold"
                 >
                   {saving ? "Saving…" : "Save photo"}
-                </button>
+                </Button>
               )}
               {savedAt && !saving && !dirty && (
                 <p className="text-xs text-emerald-600">Saved</p>
@@ -399,44 +408,45 @@ function CompanyPanel() {
         </p>
       </div>
       <Field label="Company name">
-        <input
+        <Input
           type="text"
           value={name}
           disabled={loading}
           onChange={(e) => setName(e.target.value)}
-          className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
           placeholder="Acme Window Cleaning"
         />
       </Field>
       <Field label="Address">
-        <input
+        <Input
           type="text"
           value={address}
           disabled={loading}
           onChange={(e) => setAddress(e.target.value)}
-          className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
           placeholder="123 Main St, Springfield, IL"
         />
       </Field>
       <Field label="Phone">
-        <input
+        <Input
           type="tel"
           value={phone}
           disabled={loading}
           onChange={(e) => setPhone(e.target.value)}
-          className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
           placeholder="(555) 555-5555"
         />
       </Field>
       {error && <p className="text-sm text-rose-600">{error}</p>}
       <div className="flex items-center gap-3 pt-2">
-        <button
+        <Button
+          variant="ghost"
           type="submit"
           disabled={saving || loading}
-          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
+          className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
         >
           {saving ? "Saving…" : "Save changes"}
-        </button>
+        </Button>
         {savedAt && !saving && (
           <span className="text-xs text-emerald-600">Saved</span>
         )}
@@ -575,15 +585,17 @@ function PaymentsPanel() {
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            <button
+            <Button
+              variant="ghost"
               type="button"
               onClick={startConnect}
               disabled={working}
-              className="text-sm bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
+              className="h-auto text-sm bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
             >
               {working ? "Opening Stripe…" : "Create new Stripe account"}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
               type="button"
               onClick={startOAuth}
               disabled={working || !status.oauth_configured}
@@ -592,10 +604,10 @@ function PaymentsPanel() {
                   ? undefined
                   : "Set STRIPE_CONNECT_CLIENT_ID to enable sign-in"
               }
-              className="text-sm border border-[#2a2a32] bg-[#0f0f12] hover:bg-black disabled:bg-black disabled:text-zinc-500 disabled:cursor-not-allowed text-zinc-300 rounded-full px-5 py-2 font-bold"
+              className="h-auto text-sm border border-[#2a2a32] bg-[#0f0f12] hover:bg-black disabled:bg-black disabled:text-zinc-500 disabled:cursor-not-allowed text-zinc-300 rounded-full px-5 py-2 font-bold"
             >
               Sign in to existing Stripe
-            </button>
+            </Button>
           </div>
           {!status.oauth_configured && (
             <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
@@ -635,14 +647,15 @@ function PaymentsPanel() {
                 )}
               </p>
             </div>
-            <button
+            <Button
+              variant="ghost"
               type="button"
               onClick={load}
-              className="text-xs text-zinc-400 hover:text-white"
+              className="h-auto text-xs text-zinc-400 hover:text-white hover:bg-transparent"
               title="Re-check status"
             >
               Refresh
-            </button>
+            </Button>
           </div>
 
           <dl className="grid grid-cols-3 gap-2 pt-1">
@@ -659,14 +672,15 @@ function PaymentsPanel() {
                 Stripe still needs more information before this account can
                 accept payments or receive payouts.
               </p>
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 onClick={startConnect}
                 disabled={working}
-                className="mt-2 text-xs bg-amber-600 hover:bg-amber-500 disabled:bg-slate-400 text-white rounded-full px-3 py-1.5 font-bold"
+                className="h-auto mt-2 text-xs bg-amber-600 hover:bg-amber-500 disabled:bg-slate-400 text-white rounded-full px-3 py-1.5 font-bold"
               >
                 {working ? "Opening Stripe…" : "Finish onboarding"}
-              </button>
+              </Button>
             </div>
           )}
 
@@ -679,14 +693,15 @@ function PaymentsPanel() {
             >
               Open Stripe dashboard ↗
             </a>
-            <button
+            <Button
+              variant="ghost"
               type="button"
               onClick={disconnect}
               disabled={working}
-              className="text-xs text-rose-600 hover:text-rose-500 disabled:opacity-50"
+              className="h-auto text-xs text-rose-600 hover:text-rose-500 hover:bg-transparent"
             >
               Disconnect
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -927,12 +942,13 @@ function SubscriptionsPanel() {
           </p>
         </div>
         {editingId === null && (
-          <button
+          <Button
+            variant="ghost"
             onClick={startNew}
-            className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 font-bold"
+            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 font-bold"
           >
             New template
-          </button>
+          </Button>
         )}
       </div>
 
@@ -951,23 +967,23 @@ function SubscriptionsPanel() {
             {editingId === "new" ? "New template" : "Edit template"}
           </h3>
           <Field label="Name">
-            <input
+            <Input
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+              className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
               placeholder="Monthly Window Cleaning"
               autoFocus
             />
           </Field>
           <Field label="Description">
-            <textarea
+            <Textarea
               value={form.description}
               onChange={(e) =>
                 setForm({ ...form, description: e.target.value })
               }
               rows={2}
-              className="w-full border border-[#1f1f24] rounded-2xl px-4 py-2 text-sm bg-[#0f0f12]"
+              className="w-full border-[#1f1f24] rounded-2xl px-4 py-2 text-sm bg-[#0f0f12]"
               placeholder="Includes interior + exterior windows…"
             />
           </Field>
@@ -978,13 +994,14 @@ function SubscriptionsPanel() {
           </p>
           <div className="space-y-3 pt-2 border-t border-[#1f1f24]">
             <div>
-              <label className="block text-sm font-bold text-white tracking-tight mb-1">
+              <Label className="block mb-1 text-white tracking-tight">
                 Terms
-              </label>
+              </Label>
               <p className="text-xs text-zinc-400 mb-2">
                 Optional terms shown to the customer when this subscription
                 is sent or accepted.
               </p>
+              {/* Native <select> kept: Radix Select forbids empty-string item values, breaking the "Select terms (optional)" sentinel. */}
               <select
                 value={form.terms_id ?? ""}
                 onChange={(e) =>
@@ -1002,17 +1019,19 @@ function SubscriptionsPanel() {
                   </option>
                 ))}
               </select>
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 onClick={() => setShowTermsModal(true)}
-                className="mt-2 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                className="h-auto mt-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-transparent"
               >
                 Create new terms +
-              </button>
+              </Button>
             </div>
-            <label className="inline-flex items-center gap-3 text-sm text-zinc-300 font-bold">
+            <Label className="inline-flex items-center gap-3 text-zinc-300">
               <span>Require signature</span>
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 role="switch"
                 aria-checked={form.require_signature}
@@ -1023,8 +1042,10 @@ function SubscriptionsPanel() {
                   })
                 }
                 className={
-                  "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition " +
-                  (form.require_signature ? "bg-indigo-600" : "bg-[#2a2a32]")
+                  "relative h-5 w-9 shrink-0 items-center rounded-full p-0 " +
+                  (form.require_signature
+                    ? "bg-indigo-600 hover:bg-indigo-600"
+                    : "bg-[#2a2a32] hover:bg-[#2a2a32]")
                 }
               >
                 <span
@@ -1033,32 +1054,33 @@ function SubscriptionsPanel() {
                     (form.require_signature ? "translate-x-4" : "translate-x-0.5")
                   }
                 />
-              </button>
-            </label>
+              </Button>
+            </Label>
           </div>
-          <label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">
-            <input
-              type="checkbox"
+          <Label className="inline-flex items-center gap-2 text-zinc-300">
+            <Checkbox
               checked={form.active}
-              onChange={(e) => setForm({ ...form, active: e.target.checked })}
+              onCheckedChange={(c) => setForm({ ...form, active: c === true })}
             />
             Active
-          </label>
+          </Label>
           <div className="flex items-center gap-3 pt-1">
-            <button
+            <Button
+              variant="ghost"
               type="submit"
               disabled={saving}
-              className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
+              className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
             >
               {saving ? "Saving…" : "Save template"}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
               type="button"
               onClick={cancelEdit}
-              className="text-sm text-zinc-400 font-bold hover:text-white"
+              className="h-auto text-sm text-zinc-400 font-bold hover:text-white hover:bg-transparent"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       )}
@@ -1101,25 +1123,28 @@ function SubscriptionsPanel() {
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  <button
+                  <Button
+                    variant="ghost"
                     onClick={() => setActionTpl(t)}
                     disabled={t.active === 0}
-                    className="text-xs bg-slate-900 hover:bg-slate-800 disabled:bg-[#2a2a32] text-white rounded-full px-3 py-1.5 font-bold"
+                    className="h-auto text-xs bg-slate-900 hover:bg-slate-800 disabled:bg-[#2a2a32] text-white rounded-full px-3 py-1.5 font-bold"
                   >
                     Send / Accept
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="ghost"
                     onClick={() => startEdit(t)}
-                    className="text-xs text-zinc-400 hover:text-white"
+                    className="h-auto text-xs text-zinc-400 hover:text-white hover:bg-transparent"
                   >
                     Edit
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="ghost"
                     onClick={() => deleteTemplate(t.id)}
-                    className="text-xs text-rose-600 hover:text-rose-700"
+                    className="h-auto text-xs text-rose-600 hover:text-rose-700 hover:bg-transparent"
                   >
                     Delete
-                  </button>
+                  </Button>
                 </div>
               </li>
             ))}
@@ -1215,27 +1240,30 @@ function RecentSubscriptions({
                 <StatusBadge status={s.status} />
                 {s.status === "pending" && (
                   <>
-                    <button
+                    <Button
+                      variant="ghost"
                       onClick={() => updateStatus(s.id, "active")}
-                      className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-3 py-1.5 font-bold"
+                      className="h-auto text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-3 py-1.5 font-bold"
                     >
                       Mark accepted
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="ghost"
                       onClick={() => updateStatus(s.id, "declined")}
-                      className="text-xs text-zinc-400 hover:text-white"
+                      className="h-auto text-xs text-zinc-400 hover:text-white hover:bg-transparent"
                     >
                       Decline
-                    </button>
+                    </Button>
                   </>
                 )}
                 {s.status === "active" && (
-                  <button
+                  <Button
+                    variant="ghost"
                     onClick={() => updateStatus(s.id, "canceled")}
-                    className="text-xs text-rose-600 hover:text-rose-700"
+                    className="h-auto text-xs text-rose-600 hover:text-rose-700 hover:bg-transparent"
                   >
                     Cancel
-                  </button>
+                  </Button>
                 )}
               </div>
             </li>
@@ -1341,12 +1369,13 @@ function SendOrAcceptModal({
               {template.name}
             </h3>
           </div>
-          <button
+          <Button
+            variant="ghost"
             onClick={onClose}
-            className="text-sm text-zinc-500 hover:text-zinc-300"
+            className="h-auto text-sm text-zinc-500 hover:text-zinc-300 hover:bg-transparent"
           >
             ✕
-          </button>
+          </Button>
         </div>
 
         {template.description && (
@@ -1356,6 +1385,7 @@ function SendOrAcceptModal({
         )}
 
         <Field label="Customer">
+          {/* Native <select> kept: Radix Select forbids empty-string item values, breaking the "Select customer…" sentinel. */}
           <select
             value={customerId}
             onChange={(e) =>
@@ -1374,17 +1404,18 @@ function SendOrAcceptModal({
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="Price (USD)">
-            <input
+            <Input
               type="number"
               step="0.01"
               min="0"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               placeholder="49.00"
-              className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+              className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
             />
           </Field>
           <Field label="Billing interval">
+            {/* Native <select> kept: Radix Select forbids empty-string item values; preserved for consistency with the customer select sentinel pattern. */}
             <select
               value={interval}
               onChange={(e) =>
@@ -1423,12 +1454,12 @@ function SendOrAcceptModal({
               Customer signature
             </div>
             <SignaturePad value={signatureData} onChange={setSignatureData} />
-            <input
+            <Input
               type="text"
               value={signatureName}
               onChange={(e) => setSignatureName(e.target.value)}
               placeholder="Printed name"
-              className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+              className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
             />
             <p className="text-[11px] text-zinc-500">
               Required for &quot;Accept on device&quot;. Not needed for
@@ -1440,20 +1471,22 @@ function SendOrAcceptModal({
         {err && <p className="text-sm text-rose-600">{err}</p>}
 
         <div className="flex flex-col sm:flex-row gap-2 pt-2">
-          <button
+          <Button
+            variant="ghost"
             onClick={() => submit("send")}
             disabled={submitting}
-            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-4 py-2 font-bold flex-1"
+            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-4 py-2 font-bold flex-1"
           >
             Send to customer
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             onClick={() => submit("accept")}
             disabled={submitting}
-            className="text-sm bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white rounded-full px-4 py-2 font-bold flex-1"
+            className="h-auto text-sm bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white rounded-full px-4 py-2 font-bold flex-1"
           >
             Accept on device
-          </button>
+          </Button>
         </div>
         <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
           &quot;Send&quot; messages the customer with the offer.
@@ -1507,49 +1540,52 @@ function CreateTermsModal({
       >
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-base font-extrabold text-white tracking-tight">New terms</h3>
-          <button
+          <Button
+            variant="ghost"
             type="button"
             onClick={onClose}
-            className="text-sm text-zinc-500 hover:text-zinc-300"
+            className="h-auto text-sm text-zinc-500 hover:text-zinc-300 hover:bg-transparent"
           >
             ✕
-          </button>
+          </Button>
         </div>
         <Field label="Name">
-          <input
+          <Input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Standard subscription terms"
-            className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+            className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
             autoFocus
           />
         </Field>
         <Field label="Body">
-          <textarea
+          <Textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={10}
             placeholder="Enter the full terms the customer will see and sign…"
-            className="w-full border border-[#1f1f24] rounded-2xl px-4 py-2 text-sm bg-[#0f0f12] font-mono"
+            className="w-full border-[#1f1f24] rounded-2xl px-4 py-2 text-sm bg-[#0f0f12] font-mono"
           />
         </Field>
         {err && <p className="text-sm text-rose-600">{err}</p>}
         <div className="flex items-center gap-3 pt-1">
-          <button
+          <Button
+            variant="ghost"
             type="submit"
             disabled={saving}
-            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
+            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
           >
             {saving ? "Saving…" : "Save terms"}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             type="button"
             onClick={onClose}
-            className="text-sm text-zinc-400 font-bold hover:text-white"
+            className="h-auto text-sm text-zinc-400 font-bold hover:text-white hover:bg-transparent"
           >
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
     </div>
@@ -1648,13 +1684,14 @@ function SignaturePad({
         />
       </div>
       <div className="flex items-center justify-between">
-        <button
+        <Button
+          variant="ghost"
           type="button"
           onClick={clear}
-          className="text-xs text-zinc-400 hover:text-white"
+          className="h-auto text-xs text-zinc-400 hover:text-white hover:bg-transparent"
         >
           Clear
-        </button>
+        </Button>
         {value && (
           <span className="text-xs text-emerald-600">Signature captured</span>
         )}
@@ -1806,67 +1843,69 @@ function MessagingPanel() {
             Inbound webhook URL
           </div>
           <div className="flex gap-2">
-            <input
+            <Input
               type="text"
               readOnly
               value={webhookUrl}
-              className="flex-1 border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono text-xs"
+              className="h-auto flex-1 border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono text-xs"
             />
-            <button
+            <Button
+              variant="ghost"
               type="button"
               onClick={copyWebhook}
-              className="text-sm bg-[#0f0f12] border border-[#1f1f24] hover:bg-black rounded-full px-4 py-2 font-bold"
+              className="h-auto text-sm bg-[#0f0f12] border border-[#1f1f24] hover:bg-black rounded-full px-4 py-2 font-bold"
             >
               {copied ? "Copied" : "Copy"}
-            </button>
+            </Button>
           </div>
         </div>
       </div>
 
       <Field label="Account SID">
-        <input
+        <Input
           type="text"
           value={accountSid}
           disabled={loading}
           onChange={(e) => setAccountSid(e.target.value)}
-          className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
           placeholder={
             status?.account_sid_masked || "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
           }
         />
       </Field>
       <Field label="Auth Token">
-        <input
+        <Input
           type="password"
           value={authToken}
           disabled={loading}
           onChange={(e) => setAuthToken(e.target.value)}
-          className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
           placeholder={
             status?.auth_token_set ? "•••••••••••••••• (saved)" : "Auth Token"
           }
         />
       </Field>
       <Field label="From number">
-        <input
+        <Input
           type="tel"
           value={fromNumber}
           disabled={loading}
           onChange={(e) => setFromNumber(e.target.value)}
-          className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
           placeholder="e.g. +18435551234 (your Twilio number)"
         />
       </Field>
 
       {error && <p className="text-sm text-rose-600">{error}</p>}
       <div className="flex items-center gap-3 pt-2">
-        <button
+        <Button
+          variant="ghost"
           type="submit"
           disabled={saving || loading}
-          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
+          className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
         >
           {saving ? "Saving…" : "Save changes"}
-        </button>
+        </Button>
         {savedAt && !saving && (
           <span className="text-xs text-emerald-600">Saved</span>
         )}
@@ -2012,35 +2051,35 @@ function CallingPanel() {
           <div className="text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
             TwiML App Voice URL
           </div>
-          <input
+          <Input
             type="text"
             readOnly
             value={twimlVoiceUrl}
             onFocus={(e) => e.currentTarget.select()}
-            className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono text-xs"
+            className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono text-xs"
           />
         </div>
       </div>
 
       <Field label="API Key SID">
-        <input
+        <Input
           type="text"
           value={apiKeySid}
           disabled={loading}
           onChange={(e) => setApiKeySid(e.target.value)}
-          className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
           placeholder={
             status?.api_key_sid_masked || "SKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
           }
         />
       </Field>
       <Field label="API Key Secret">
-        <input
+        <Input
           type="password"
           value={apiKeySecret}
           disabled={loading}
           onChange={(e) => setApiKeySecret(e.target.value)}
-          className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
           placeholder={
             status?.api_key_secret_set
               ? "•••••••••••••••• (saved)"
@@ -2049,37 +2088,37 @@ function CallingPanel() {
         />
       </Field>
       <Field label="TwiML App SID">
-        <input
+        <Input
           type="text"
           value={twimlAppSid}
           disabled={loading}
           onChange={(e) => setTwimlAppSid(e.target.value)}
-          className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
           placeholder={
             status?.twiml_app_sid_masked || "APxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
           }
         />
       </Field>
 
-      <label className="flex items-center gap-2 text-sm text-zinc-300 font-bold">
-        <input
-          type="checkbox"
+      <Label className="flex items-center gap-2 text-zinc-300">
+        <Checkbox
           checked={recordCalls}
-          onChange={(e) => setRecordCalls(e.target.checked)}
+          onCheckedChange={(c) => setRecordCalls(c === true)}
           className="rounded border-[#2a2a32] text-white focus:ring-zinc-500"
         />
         Record calls
-      </label>
+      </Label>
 
       {error && <p className="text-sm text-rose-600">{error}</p>}
       <div className="flex items-center gap-3 pt-2">
-        <button
+        <Button
+          variant="ghost"
           type="submit"
           disabled={saving || loading}
-          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
+          className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
         >
           {saving ? "Saving…" : "Save changes"}
-        </button>
+        </Button>
         {savedAt && !saving && (
           <span className="text-xs text-emerald-600">Saved</span>
         )}
@@ -2214,12 +2253,12 @@ function EmailPanel() {
       </div>
 
       <Field label="Resend API key">
-        <input
+        <Input
           type="password"
           value={apiKey}
           disabled={loading}
           onChange={(e) => setApiKey(e.target.value)}
-          className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
           placeholder={
             status?.api_key_set
               ? `${status.api_key_prefix || "re_"}…  (saved)`
@@ -2228,45 +2267,46 @@ function EmailPanel() {
         />
       </Field>
       <Field label="From address">
-        <input
+        <Input
           type="email"
           value={fromAddress}
           disabled={loading}
           onChange={(e) => setFromAddress(e.target.value)}
-          className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
           placeholder="hello@yourcompany.com"
         />
       </Field>
       <Field label="From name">
-        <input
+        <Input
           type="text"
           value={fromName}
           disabled={loading}
           onChange={(e) => setFromName(e.target.value)}
-          className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
           placeholder="Acme Window Cleaning"
         />
       </Field>
       <Field label="Reply-to (optional)">
-        <input
+        <Input
           type="email"
           value={replyTo}
           disabled={loading}
           onChange={(e) => setReplyTo(e.target.value)}
-          className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
           placeholder="support@yourcompany.com"
         />
       </Field>
 
       {error && <p className="text-sm text-rose-600">{error}</p>}
       <div className="flex items-center gap-3 pt-2">
-        <button
+        <Button
+          variant="ghost"
           type="submit"
           disabled={saving || loading}
-          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
+          className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
         >
           {saving ? "Saving…" : "Save changes"}
-        </button>
+        </Button>
         {savedAt && !saving && (
           <span className="text-xs text-emerald-600">Saved</span>
         )}
@@ -2397,12 +2437,12 @@ function AiPanel() {
       </div>
 
       <Field label="Anthropic API key">
-        <input
+        <Input
           type="password"
           value={apiKey}
           disabled={loading}
           onChange={(e) => setApiKey(e.target.value)}
-          className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
           placeholder={
             status?.api_key_set
               ? `${status.api_key_prefix || "sk-ant-"}…  (saved)`
@@ -2411,6 +2451,7 @@ function AiPanel() {
         />
       </Field>
       <Field label="Model">
+        {/* Native <select> kept: Radix Select forbids empty-string item values; preserved for consistency with sibling sentinel selects in this file. */}
         <select
           value={model}
           disabled={loading}
@@ -2425,12 +2466,12 @@ function AiPanel() {
         </select>
       </Field>
       <Field label="Company voice (optional)">
-        <textarea
+        <Textarea
           value={voice}
           disabled={loading}
           onChange={(e) => setVoice(e.target.value)}
           rows={4}
-          className="w-full border border-[#1f1f24] rounded-2xl px-4 py-2 text-sm bg-[#0f0f12]"
+          className="w-full border-[#1f1f24] rounded-2xl px-4 py-2 text-sm bg-[#0f0f12]"
           placeholder={
             "e.g. Friendly and concise. Never defensive. If a customer complains, always offer a free re-clean and a callback within 24 hours."
           }
@@ -2443,13 +2484,14 @@ function AiPanel() {
 
       {error && <p className="text-sm text-rose-600">{error}</p>}
       <div className="flex items-center gap-3 pt-2">
-        <button
+        <Button
+          variant="ghost"
           type="submit"
           disabled={saving || loading}
-          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
+          className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
         >
           {saving ? "Saving…" : "Save changes"}
-        </button>
+        </Button>
         {savedAt && !saving && (
           <span className="text-xs text-emerald-600">Saved</span>
         )}
@@ -2490,9 +2532,9 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
+      <Label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1.5 font-normal">
         {label}
-      </label>
+      </Label>
       {children}
     </div>
   );
