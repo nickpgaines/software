@@ -186,7 +186,7 @@ export default function PayrollSettingsModal({
         onClick={onClose}
         aria-hidden
       />
-      <div className="relative bg-card rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-card border border-line rounded-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-card border-b border-line px-6 py-5 flex items-start justify-between">
           <div>
             <h2 className="text-page-title text-white">
@@ -409,7 +409,7 @@ function Section({
   return (
     <section className="space-y-4">
       <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+        <h3 className="text-eyebrow-tight uppercase text-fg-muted">
           {title}
         </h3>
         {subtitle && <p className="text-sm text-zinc-400 mt-3 font-bold">{subtitle}</p>}
@@ -652,7 +652,7 @@ function TiersEditor({
           className="flex items-center gap-2 bg-black rounded-2xl p-2"
         >
           <div className="flex-1">
-            <Label className="block text-[11px] uppercase tracking-wider text-zinc-400 px-2 font-normal">
+            <Label className="block text-eyebrow uppercase text-fg-muted px-2">
               From ($)
             </Label>
             <DollarInput
@@ -661,7 +661,7 @@ function TiersEditor({
             />
           </div>
           <div className="flex-1">
-            <Label className="block text-[11px] uppercase tracking-wider text-zinc-400 px-2 font-normal">
+            <Label className="block text-eyebrow uppercase text-fg-muted px-2">
               Rate (%)
             </Label>
             <PctInput
@@ -729,7 +729,7 @@ function BonusTiersEditor({
           className="flex items-center gap-2 bg-black rounded-2xl p-2"
         >
           <div className="flex-1">
-            <Label className="block text-[11px] uppercase tracking-wider text-zinc-400 px-2 font-normal">
+            <Label className="block text-eyebrow uppercase text-fg-muted px-2">
               Daily revenue ≥ ($)
             </Label>
             <DollarInput
@@ -738,7 +738,7 @@ function BonusTiersEditor({
             />
           </div>
           <div className="flex-1">
-            <Label className="block text-[11px] uppercase tracking-wider text-zinc-400 px-2 font-normal">
+            <Label className="block text-eyebrow uppercase text-fg-muted px-2">
               Bonus ($)
             </Label>
             <DollarInput

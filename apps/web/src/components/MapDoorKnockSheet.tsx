@@ -106,7 +106,7 @@ export default function MapDoorKnockSheet({
 
   return (
     <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4">
-      <div className="w-full sm:max-w-lg bg-card rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
+      <div className="w-full sm:max-w-lg bg-card border border-line rounded-t-2xl sm:rounded-2xl max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-card px-5 pt-5 pb-3 border-b border-line flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <h3 className="font-extrabold text-white tracking-tight truncate">

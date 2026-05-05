@@ -111,7 +111,7 @@ export default function MapTerritoryModal({
 
   return (
     <div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4">
-      <div className="bg-card rounded-3xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div className="bg-card border border-line rounded-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="px-5 py-4 border-b border-line flex items-center justify-between">
           <h3 className="font-extrabold text-white tracking-tight">
             {draft.id ? "Reassign territory" : "Assign territory"}

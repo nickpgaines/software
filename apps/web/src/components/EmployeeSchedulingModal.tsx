@@ -428,7 +428,7 @@ export default function EmployeeSchedulingModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <div className="absolute inset-0" onClick={onClose} aria-hidden />
-      <div className="relative bg-card rounded-2xl shadow-xl w-full max-w-3xl max-h-[92vh] overflow-y-auto">
+      <div className="relative bg-card border border-line rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-y-auto">
         <div className="sticky top-0 bg-card border-b border-line px-6 py-5 flex items-start justify-between z-10">
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-full bg-black flex items-center justify-center text-zinc-400">

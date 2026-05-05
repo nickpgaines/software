@@ -749,7 +749,7 @@ function NewCustomerModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <form
         onSubmit={save}
-        className="bg-card rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4"
+        className="bg-card border border-line rounded-2xl w-full max-w-md p-5 space-y-4"
       >
         <div className="flex items-start justify-between">
           <h3 className="text-base font-extrabold text-white tracking-tight">

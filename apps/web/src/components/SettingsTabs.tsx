@@ -1351,7 +1351,7 @@ function CancelSubscriptionModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="bg-card rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4">
+      <div className="bg-card border border-line rounded-2xl w-full max-w-md p-5 space-y-4">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="text-base font-extrabold text-white tracking-tight">
@@ -1551,7 +1551,7 @@ function SendOrAcceptModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="bg-card rounded-2xl shadow-xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-card border border-line rounded-2xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h3 className="text-base font-extrabold text-white tracking-tight">
@@ -1732,7 +1732,7 @@ function CreateTermsModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <form
         onSubmit={save}
-        className="bg-card rounded-2xl shadow-xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto"
+        className="bg-card border border-line rounded-2xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-start justify-between gap-3">
           <h3 className="text-base font-extrabold text-white tracking-tight">New terms</h3>

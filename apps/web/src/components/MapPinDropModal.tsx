@@ -65,7 +65,7 @@ export default function MapPinDropModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+      <div className="w-full max-w-md rounded-2xl bg-card border border-line p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-extrabold text-white tracking-tight">Drop pin</h2>
