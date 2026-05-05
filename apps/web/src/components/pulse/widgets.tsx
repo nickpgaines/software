@@ -19,6 +19,26 @@ import type {
 // and aren't callable on the server.
 export type { LiveJob, PipelineEntry, RevenuePoint, RevenueSummary };
 
+// ---------- Card header link --------------------------------------------
+
+export function CardHeaderLink({
+  label,
+  href,
+}: {
+  label: string;
+  href: string;
+}) {
+  return (
+    <Link
+      href={href}
+      className="text-[11.5px] font-extrabold"
+      style={{ color: PULSE.violetSoft }}
+    >
+      {label}
+    </Link>
+  );
+}
+
 function niceCeil(v: number) {
   if (v <= 0) return 1;
   const exp = Math.floor(Math.log10(v));
@@ -516,13 +536,7 @@ export function PulseScheduleCard({
         <h2 className="text-[15px] font-extrabold tracking-tight">
           Today's schedule
         </h2>
-        <Link
-          href="/schedule"
-          className="text-[11.5px] font-extrabold"
-          style={{ color: PULSE.violetSoft }}
-        >
-          View all →
-        </Link>
+        <CardHeaderLink label="View all →" href="/schedule" />
       </div>
       {jobs.length === 0 ? (
         <PulseEmptyState
