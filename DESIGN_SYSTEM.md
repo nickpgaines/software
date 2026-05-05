@@ -787,6 +787,51 @@ font-bold` (§3 muted-label role + §10 #1).
 **Props**: each part extends the corresponding HTML table-element
 attributes.
 
+#### 8.15.15 `Popover`
+
+Defined: `components/ui/popover.tsx`. Built on
+`@radix-ui/react-popover`. Exports `Popover`, `PopoverTrigger`,
+`PopoverAnchor`, `PopoverContent`.
+
+**Canonical visual**: content surface is `rounded-2xl border
+border-line bg-card shadow-lg p-4`. Card-tier radius (§6) rather than
+the form-control `rounded-xl` because a popover reads as a floating
+mini-card, not a control. `bg-card` (§3) instead of shadcn's
+`bg-popover` so the surface matches the same dark `#0f0f12` fill the
+rest of the app uses for surfaces.
+
+The default `align="center"` and `sideOffset={4}` come from the
+canonical shadcn template; existing call sites (e.g. the date popover
+in `NewSubscriptionForm`) pass `align="start"` / `sideOffset={6}` for
+better trigger alignment.
+
+**Props**: each part extends the matching Radix primitive props.
+
+#### 8.15.16 `Calendar`
+
+Defined: `components/ui/calendar.tsx`. Built on `react-day-picker` v9
+(no shadcn registry — react-day-picker switched its API between v8 and
+v9, so this is a hand-authored wrapper that targets v9's `classNames`
+keys directly).
+
+**Canonical visual**: dark surface; weekday header is the §4 widget
+label token (`text-[11px] uppercase tracking-[0.18em]
+font-extrabold text-zinc-500`); day cells are `h-9 w-9 rounded-full
+font-bold text-zinc-300`; selected day flips to `bg-slate-900 text-white`
+matching the primary-button shape; today is outlined with the same
+`outline-zinc-500` ring used for focused inputs; nav arrows are 7×7
+ghost circles. The wrapper applies `p-1` so the host `PopoverContent`'s
+own `p-3` (set at the call site) governs the outer padding.
+
+**Props**: extends `DayPicker` props (`mode`, `selected`, `onSelect`,
+`disabled`, `fromDate`, `toDate`, etc.). The wrapper passes through
+`classNames` so a call site can override individual day-picker class
+slots without losing the canonical defaults.
+
+**Imports react-day-picker's stylesheet** (`react-day-picker/style.css`)
+so the library's structural CSS (grid layout, focus rings) is applied;
+all visual styling is overridden via the `classNames` prop.
+
 ---
 
 ## 9. Layout patterns
@@ -888,6 +933,7 @@ those pages move onto Pulse primitives.
 | 20  | Tailwind theme cleanup: the unused compound text tokens (`text-h1`, `text-h1-hero`, `text-h1-display`, `text-h2`, `text-h3`, `text-subtitle`, `text-body`, `text-body-sm`, `text-kpi-value`, `text-kpi-value-lg`, `text-label-page`, `text-label`, `text-label-table`, `text-micro`) and the unused `rounded-card` border-radius alias were removed from `tailwind.config.ts`. None had call sites in `src/`, and a couple (h2 `lineHeight`, h3 size) had drifted from §4. The §4 arbitrary-class form remains canonical.                                                                                          | §4, §6           | `042f0b5`  |
 | 21  | shadcn/ui primitives generated under `components/ui/`: `Button`, `Input`, `Label`, `Textarea`, `Card`, `Separator`, `Badge`, `Dialog`, `DropdownMenu`, `Tooltip`, `Select`, `Checkbox`, `Tabs`, `Table`. Hand-authored from canonical shadcn templates (the registry was unreachable from the sandbox); adapted to Pulse tokens with the per-primitive overrides documented in §8.15. Global overrides vs. shadcn defaults: `font-medium`/`font-semibold` → `font-bold`/`font-extrabold` per role (§10 #1); form-control `rounded-md` → `rounded-xl` (§6); Card `rounded-xl` → `rounded-2xl` and shadow dropped (§6, §7); Tooltip `bg-primary` pill → `bg-card` border surface (§8.4). Added `tailwindcss-animate` plugin so shadcn data-state animation utilities resolve. `tailwind.config.ts` gains a "shadcn bridge color aliases" block exposing `primary` / `primary-foreground` / `secondary` / `secondary-foreground` / `muted` / `muted-foreground` / `accent` / `accent-foreground` / `destructive` / `destructive-foreground` / `popover` / `popover-foreground` / `input` / `ring` as Tailwind utility classes pointing at the bridge CSS variables defined in `globals.css` — values reference `var(--*)` directly, no `hsl()` wrapper, since our tokens are full color values, not HSL channels. Existing pages not migrated; that's a separate step. | §8.14, §8.15     | `365ee30`, `e5e87b3`, `a04c16e`, `a8dedae` |
 | 22  | `LeadsTabs.tsx` (the `/leads`-routed tab strip with Pipeline / Workflows / Forms / Integrations) intentionally does **not** use the shadcn `Tabs` primitive. The component is a router-link tab strip composed of `<Link>` elements driven by `usePathname()`, not a state-driven controlled tablist. Radix `Tabs` is built around an internal `value`/`onValueChange` model where `Trigger` elements update tab state inside a `Tabs.Root` wrapper. Adapting it to Next.js routing would require either (a) an `asChild` wrapper around each `<Link>` plus a sync layer to mirror `pathname` into Radix's value, or (b) abandoning the primitive's a11y plumbing entirely. Neither pays for the migration cost vs. the existing 30-line hand-rolled component. **Policy for future router-tab strips:** stay hand-rolled. The shadcn `Tabs` primitive is reserved for tab UIs whose state lives in React (panel switchers inside a single page), not URL-driven nav. | §8.14            | `de7f916`  |
+| 24  | `Popover` (§8.15.15) and `Calendar` (§8.15.16) primitives added for the subscription start-date picker. `Popover` is a canonical shadcn adaptation on `@radix-ui/react-popover` with Pulse tokens (`rounded-2xl`, `bg-card`, `shadow-lg`); `Calendar` is hand-authored on `react-day-picker` v9 because the v9 API diverges from v8 enough that the shadcn registry template no longer applies cleanly. New deps: `@radix-ui/react-popover`, `react-day-picker`, `date-fns`. First call site: the start-date field on `/subscriptions/new`, where the previous `<input type="date">` was replaced to satisfy the requirement that the date can only be picked from a calendar (no typing/clearing). | §8.15.15, §8.15.16 | `97403bd` |
 | 23  | Existing surfaces migrated onto the §8.14 / §8.15 shadcn primitives across 11 batches. **Files touched (alphabetical):** `app/(app)/customers/page.tsx`, `app/(app)/employees/page.tsx`, `app/invoices/pay/[token]/PayClient.tsx`, `app/login/page.tsx`, `app/signup/page.tsx`, `components/CalendarClient.tsx`, `components/CallsClient.tsx`, `components/customers/AddressFields.tsx`, `components/customers/ImportModal.tsx`, `components/EmailAutomationEditClient.tsx`, `components/EmailComposeClient.tsx`, `components/EmailDetailClient.tsx`, `components/EmailListClient.tsx`, `components/EmployeeForm.tsx`, `components/EmployeeSchedulingModal.tsx`, `components/JobDetailClient.tsx`, `components/JobForm.tsx`, `components/jobs/CustomerCard.tsx`, `components/jobs/PaymentsSection.tsx`, `components/jobs/RecordPaymentModal.tsx`, `components/LeaderboardClient.tsx`, `components/LeadsFormsClient.tsx`, `components/LeadsIntegrationsClient.tsx`, `components/LeadsPipelineClient.tsx`, `components/LeadsWorkflowsClient.tsx`, `components/MapDoorKnockSheet.tsx`, `components/MapFilterPanel.tsx`, `components/MapIconStrip.tsx`, `components/MapLassoPanel.tsx`, `components/MapPinDropModal.tsx`, `components/MapTerritoryListPanel.tsx`, `components/MapTerritoryModal.tsx`, `components/MessagesClient.tsx`, `components/NavBar.tsx`, `components/NewEstimateForm.tsx`, `components/NewInvoiceForm.tsx`, `components/NewMenu.tsx`, `components/NewSprintModal.tsx`, `components/NewSubscriptionForm.tsx`, `components/PayrollSettingsModal.tsx`, `components/PhoneClient.tsx`, `components/ReportsClient.tsx`, `components/SettingsTabs.tsx`, `components/StaffScorecardModal.tsx`. **Scope:** Native `<button>` → `Button`, `<input>` (text/email/tel/password/number/file/date/search) → `Input`, `<input type="checkbox">` → `Checkbox` (with `onChange` → `onCheckedChange` adaptation), `<textarea>` → `Textarea`, `<label>` → `Label`, `<table>`/`<thead>`/`<tbody>`/`<tr>`/`<th>`/`<td>` → `Table`/`TableHeader`/`TableBody`/`TableRow`/`TableHead`/`TableCell`. `NewMenu.tsx`'s hand-rolled `+ New` dropdown rewritten using `DropdownMenu` (the only `DropdownMenu` adoption in the migration). Status chips/pills migrated to `Badge` only on `CallsClient` and `EmailListClient`; other inline status spans left as-is. Toggle-switch buttons (the slider+thumb pattern used in 8+ places) migrated to `Button variant="ghost"` with `bg-X hover:bg-X` to lock active/inactive colors against ghost's default `hover:bg-elevated`. **Cross-cutting deferred items (kept native everywhere with inline comments):** (1) all `<select>` elements — Radix `Select` forbids empty-string item values, which would break the "All" / "Select…" sentinel patterns used for clearable filter state; (2) all `<input type="radio">` — no Radio primitive in `components/ui/` yet; (3) the `Tabs` primitive — underline-style tab nav (Reports/Settings) and router-link tabs (#22) don't fit its pill model, so each tab `<button>` is a `Button variant="ghost"` swap instead; (4) the `Dialog` primitive — every `fixed inset-0` modal wrapper kept hand-rolled, only the controls inside were migrated; (5) MapDoorKnockSheet's bottom-sheet wrapper kept hand-rolled (Dialog is centered-modal only); (6) calendar/scheduling grid cells (`CalendarClient` MonthView day cells, `EmployeeSchedulingModal` per-staff per-day shift cells) kept native with their custom grid styling; (7) Pulse-adjacent dashboard widgets (`TodaySchedule`, `SprintWidget`, `RevenueChart`) and the dashboard `(app)/page.tsx` button skipped — those are domain components or already on spec; (8) `MapClient.tsx` not modified — its only `<button` matches were inside Mapbox popup `innerHTML` strings, not React JSX; (9) `<a>` / `<Link>` elements left as anchors throughout. Auth (login, signup, NavBar) and Stripe-adjacent surfaces (Settings → Payments/Subscriptions/Messaging/Calling/AI, NewInvoiceForm, NewSubscriptionForm, PayClient, PaymentsSection, RecordPaymentModal) migrated as visual-only swaps with zero changes to logic, validation, API call sites, or copy. Per-batch commits: `4196239` (Messages/Calls/Phone), `8502ded` (Email), `3ae032a` (Reports/Leaderboard/Calendar), `de7f916` (Leads), `4b6eaa6` (Map), `fdcaca2` (Customers), `65442d7` (Employees/Payroll), `5f0b787` (Auth/Misc), `d43ab99` (Settings), `7516c4d` (big forms — JobForm/NewEstimate/NewInvoice/NewSubscription/NewSprint), `0587d3a` (Jobs subfolder + JobDetail + NewMenu). | §8.14, §8.15     | (see commits in description) |
 
 ### Ongoing drift policy
