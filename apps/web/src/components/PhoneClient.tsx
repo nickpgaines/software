@@ -12,6 +12,7 @@ import {
 import type { Call as TwilioCall, Device as TwilioDevice } from "@twilio/voice-sdk";
 import { PulseIcon } from "@/components/pulse/Icon";
 import { PULSE } from "@/components/pulse/theme";
+import { Button } from "@/components/ui/button";
 
 type CallTarget = {
   customerId: number | null;
@@ -284,23 +285,25 @@ function CallWidget() {
       </div>
 
       <div className="flex items-center gap-2 mt-3">
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={toggleMute}
           disabled={state.kind !== "in_call"}
-          className="flex-1 text-xs rounded-full px-3 py-2 font-bold flex items-center justify-center gap-1.5 bg-line-strong hover:bg-line-strong/80 disabled:opacity-50 transition"
+          className="flex-1 h-auto text-xs rounded-full px-3 py-2 font-bold gap-1.5 bg-line-strong hover:bg-line-strong/80 [&_svg]:size-3.5"
         >
           <PulseIcon name={muted ? "mic-off" : "mic"} className="w-3.5 h-3.5" />
           {muted ? "Unmute" : "Mute"}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="ghost"
           onClick={hangUp}
-          className="flex-1 text-xs rounded-full px-3 py-2 font-bold flex items-center justify-center gap-1.5 bg-red hover:bg-red/90 transition"
+          className="flex-1 h-auto text-xs rounded-full px-3 py-2 font-bold gap-1.5 bg-red hover:bg-red/90 [&_svg]:size-3.5"
         >
           <PulseIcon name="phone-off" className="w-3.5 h-3.5" />
           Hang up
-        </button>
+        </Button>
       </div>
     </div>
   );

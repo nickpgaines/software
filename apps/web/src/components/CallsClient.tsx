@@ -2,6 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { usePhone } from "@/components/PhoneClient";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type CallRow = {
   id: number;
@@ -96,9 +105,12 @@ export default function CallsClient() {
           </p>
         </div>
         {!phone.configured && (
-          <span className="text-xs text-zinc-400 bg-black border border-[#1f1f24] rounded-full px-3 py-1">
+          <Badge
+            variant="outline"
+            className="text-xs text-zinc-400 bg-black border border-[#1f1f24] rounded-full px-3 py-1 font-normal"
+          >
             Calling not configured. Connect Twilio Voice in Settings → Calling.
-          </span>
+          </Badge>
         )}
       </div>
 
@@ -110,50 +122,51 @@ export default function CallsClient() {
             No calls yet.
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-black border-b border-[#1f1f24]">
-              <tr>
-                <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">When</th>
-                <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Direction</th>
-                <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Customer</th>
-                <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Number</th>
-                <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Status</th>
-                <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Duration</th>
-                <th className="text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Recording</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#1f1f24]">
+          <Table>
+            <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-[#1f1f24]">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">When</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Direction</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Customer</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Number</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Status</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Duration</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Recording</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-[#1f1f24]">
               {calls.map((c) => {
                 const otherNumber =
                   c.direction === "outbound" ? c.to_phone : c.from_phone;
                 return (
-                  <tr key={c.id}>
-                    <td className="px-4 py-2 text-zinc-300 whitespace-nowrap" suppressHydrationWarning>
+                  <TableRow key={c.id} className="border-0 hover:bg-transparent">
+                    <TableCell className="px-4 py-2 text-zinc-300 whitespace-nowrap" suppressHydrationWarning>
                       {mounted ? fmtTime(c.created_at) : ""}
-                    </td>
-                    <td className="px-4 py-2 text-zinc-300 capitalize">
+                    </TableCell>
+                    <TableCell className="px-4 py-2 text-zinc-300 capitalize">
                       {c.direction}
-                    </td>
-                    <td className="px-4 py-2 font-bold text-white tracking-tight">
+                    </TableCell>
+                    <TableCell className="px-4 py-2 font-bold text-white tracking-tight">
                       {c.customer_name || "—"}
-                    </td>
-                    <td className="px-4 py-2 text-zinc-300 font-bold">
+                    </TableCell>
+                    <TableCell className="px-4 py-2 text-zinc-300 font-bold">
                       {otherNumber || "—"}
-                    </td>
-                    <td className="px-4 py-2">
-                      <span
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
+                      <Badge
+                        variant="outline"
                         className={
-                          "text-[11px] rounded-full px-2 py-0.5 border " +
+                          "text-[11px] rounded-full px-2 py-0.5 border font-normal " +
                           statusColor(c.status)
                         }
                       >
                         {c.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-zinc-300 tabular-nums">
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="px-4 py-2 text-zinc-300 tabular-nums">
                       {fmtDuration(c.duration_seconds)}
-                    </td>
-                    <td className="px-4 py-2">
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
                       {c.recording_sid ? (
                         <audio
                           src={`/api/calls/${c.id}/recording`}
@@ -164,12 +177,12 @@ export default function CallsClient() {
                       ) : (
                         <span className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">—</span>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
       </div>
     </div>
