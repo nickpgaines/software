@@ -10,6 +10,7 @@ export default function SignupPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [areaCode, setAreaCode] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -21,7 +22,7 @@ export default function SignupPage() {
     const res = await fetch("/api/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ companyName, name, email, password }),
+      body: JSON.stringify({ companyName, name, email, password, areaCode }),
     });
     setLoading(false);
     if (!res.ok) {
@@ -81,6 +82,26 @@ export default function SignupPage() {
               autoComplete="email"
               className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-slate-700 mb-1">
+              Business area code
+            </label>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={areaCode}
+              onChange={(e) =>
+                setAreaCode(e.target.value.replace(/\D/g, "").slice(0, 3))
+              }
+              placeholder="843"
+              maxLength={3}
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+            />
+            <p className="text-xs text-slate-500 mt-1">
+              We&apos;ll assign you a local phone number in this area code for
+              texting and calling your customers.
+            </p>
           </div>
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-1">

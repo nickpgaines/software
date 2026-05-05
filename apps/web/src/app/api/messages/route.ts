@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { getDb, type Customer, type Message } from "@/lib/db";
 import {
-  getMessagingSettings,
-  isMessagingConfigured,
+  getCompanyMessagingStatus,
   normalizeUSPhone,
-  sendSms,
+  sendCompanySms,
 } from "@/lib/sms";
 import { requireCompanyId } from "@/lib/auth";
 
@@ -57,22 +56,23 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Customer not found" }, { status: 404 });
   }
 
-  const settings = await getMessagingSettings(companyId);
+  const messaging = await getCompanyMessagingStatus(companyId);
   const toPhone = normalizeUSPhone(customer.phone);
-  const fromPhone = settings.from_number;
+  const fromPhone = messaging.fromPhone;
 
   let status: string;
   let errorMsg: string | null = null;
   let providerSid: string | null = null;
 
-  if (!isMessagingConfigured(settings)) {
+  if (!messaging.configured) {
     status = "not_configured";
-    errorMsg = "Messaging is not configured. Add Twilio credentials in Settings.";
+    errorMsg =
+      "Messaging is not configured. Your phone number is still being provisioned — try again in a moment, or contact support.";
   } else if (!toPhone) {
     status = "failed";
     errorMsg = "Customer has no valid phone number.";
   } else {
-    const result = await sendSms({ settings, to: toPhone, body: text });
+    const result = await sendCompanySms({ companyId, to: toPhone, body: text });
     if (result.ok) {
       status = result.status || "queued";
       providerSid = result.sid;
