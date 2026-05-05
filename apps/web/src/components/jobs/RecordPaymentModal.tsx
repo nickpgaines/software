@@ -8,6 +8,9 @@ import {
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export type PaymentMethod =
   | "card"
@@ -217,79 +220,81 @@ export default function RecordPaymentModal({
           <h3 className="font-extrabold text-white tracking-tight">
             {step === "card" ? "Charge card" : "Record payment"}
           </h3>
-          <button
+          <Button
+            variant="ghost"
             onClick={onClose}
-            className="text-zinc-500 hover:text-zinc-300 text-xl leading-none"
+            className="h-auto p-0 text-zinc-500 hover:text-zinc-300 text-xl leading-none"
             aria-label="Close"
           >
             ×
-          </button>
+          </Button>
         </div>
 
         {step === "details" && (
           <form onSubmit={submit} className="p-5 space-y-4">
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1">
+                <Label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1 font-normal">
                   Amount
-                </label>
+                </Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">
                     $
                   </span>
-                  <input
+                  <Input
                     type="number"
                     min="0.01"
                     step="0.01"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="w-full border border-[#1f1f24] rounded-full pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500"
+                    className="w-full border-[#1f1f24] rounded-full pl-7 pr-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 h-auto"
                     autoFocus
                     required
                   />
                 </div>
               </div>
               <div>
-                <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1">
+                <Label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1 font-normal">
                   Tip
-                </label>
+                </Label>
                 <div className="relative">
                   <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">
                     $
                   </span>
-                  <input
+                  <Input
                     type="number"
                     min="0"
                     step="0.01"
                     value={tip}
                     onChange={(e) => setTip(e.target.value)}
-                    className="w-full border border-[#1f1f24] rounded-full pl-7 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500"
+                    className="w-full border-[#1f1f24] rounded-full pl-7 pr-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 h-auto"
                   />
                 </div>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
+              <Label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1.5 font-normal">
                 Payment method
-              </label>
+              </Label>
               <div className="flex flex-wrap gap-1.5">
                 {METHODS.map((m) => {
                   const active = method === m.key;
                   return (
-                    <button
+                    <Button
                       key={m.key}
+                      variant="ghost"
                       type="button"
                       onClick={() => setMethod(m.key)}
                       className={
-                        "rounded-full px-3 py-1.5 text-sm border transition " +
+                        "h-auto rounded-full px-3 py-1.5 text-sm border " +
                         (active
                           ? "bg-slate-900 border-slate-900 text-white"
                           : "bg-[#0f0f12] border-[#1f1f24] text-zinc-300 hover:bg-black")
                       }
                     >
                       {m.label}
-                    </button>
+                    </Button>
                   );
                 })}
               </div>
@@ -332,15 +337,15 @@ export default function RecordPaymentModal({
             </div>
 
             <div>
-              <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1">
+              <Label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1 font-normal">
                 Notes
-              </label>
-              <input
+              </Label>
+              <Input
                 type="text"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Optional"
-                className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm"
+                className="w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm h-auto"
               />
             </div>
 
@@ -362,17 +367,19 @@ export default function RecordPaymentModal({
             {error && <p className="text-sm text-rose-600">{error}</p>}
 
             <div className="flex justify-end gap-2 pt-1">
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 onClick={onClose}
-                className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-zinc-300"
+                className="h-auto text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-zinc-300"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
                 type="submit"
                 disabled={saving || !amountValid}
-                className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
+                className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
               >
                 {saving
                   ? method === "card"
@@ -381,7 +388,7 @@ export default function RecordPaymentModal({
                   : method === "card"
                   ? "Continue to card"
                   : "Record payment"}
-              </button>
+              </Button>
             </div>
           </form>
         )}
@@ -502,21 +509,23 @@ function CardStep({
       {error && <p className="text-sm text-rose-600">{error}</p>}
 
       <div className="flex justify-end gap-2 pt-1">
-        <button
+        <Button
+          variant="ghost"
           type="button"
           onClick={onBack}
           disabled={submitting}
-          className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-zinc-300 disabled:opacity-50"
+          className="h-auto text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-zinc-300"
         >
           Back
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="ghost"
           type="submit"
           disabled={!stripe || !elements || !ready || submitting}
-          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
+          className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
         >
           {submitting ? "Charging…" : `Charge $${(totalCents / 100).toFixed(2)}`}
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -539,12 +548,13 @@ function ReceiptToggle({
     <div className="border border-[#1f1f24] rounded-2xl px-4 py-3">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm text-zinc-300 font-bold">{label}</span>
-        <button
+        <Button
+          variant="ghost"
           type="button"
           onClick={() => setEnabled(!enabled)}
           aria-pressed={enabled}
           className={
-            "relative w-10 h-6 rounded-full transition shrink-0 " +
+            "relative w-10 h-6 p-0 rounded-full shrink-0 hover:bg-transparent " +
             (enabled ? "bg-slate-900" : "bg-[#1f1f24]")
           }
         >
@@ -554,15 +564,15 @@ function ReceiptToggle({
               (enabled ? "left-[18px]" : "left-0.5")
             }
           />
-        </button>
+        </Button>
       </div>
       {enabled && (
-        <input
+        <Input
           type="text"
           value={value || ""}
           readOnly
           placeholder={placeholder}
-          className="mt-2 w-full border border-[#1f1f24] bg-black rounded-full px-3 py-1.5 text-sm text-zinc-400 font-bold"
+          className="mt-2 w-full border-[#1f1f24] bg-black rounded-full px-3 py-1.5 text-sm text-zinc-400 font-bold h-auto"
         />
       )}
     </div>

@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import PaymentsSection from "@/components/jobs/PaymentsSection";
 import RecordPaymentModal from "@/components/jobs/RecordPaymentModal";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 
 type Detail = {
   id: number;
@@ -263,12 +265,13 @@ export default function JobDetailClient({
           >
             Edit
           </Link>
-          <button
+          <Button
+            variant="ghost"
             onClick={deleteJob}
-            className="text-sm border border-rose-200 text-rose-600 hover:bg-rose-50 rounded-full px-4 py-2"
+            className="text-sm border-rose-200 text-rose-600 hover:bg-rose-50 rounded-full px-4 py-2 h-auto"
           >
             Delete
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -392,14 +395,15 @@ export default function JobDetailClient({
           <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
             <h2 className="font-extrabold text-white tracking-tight mb-4">Quick Actions</h2>
             <div className="space-y-2">
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 onClick={() => setPaymentModalOpen(true)}
-                className="w-full inline-flex items-center justify-between border border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold"
+                className="w-full inline-flex items-center justify-between border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold h-auto"
               >
                 <span>Record Payment</span>
                 <span className="text-zinc-500">›</span>
-              </button>
+              </Button>
               <Link
                 href="/schedule"
                 className="w-full inline-flex items-center justify-between border border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold"
@@ -407,22 +411,24 @@ export default function JobDetailClient({
                 <span>View in Schedule</span>
                 <span className="text-zinc-500">›</span>
               </Link>
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 title="Coming soon"
-                className="w-full inline-flex items-center justify-between border border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold"
+                className="w-full inline-flex items-center justify-between border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold h-auto"
               >
                 <span>Create Invoice</span>
                 <span className="text-zinc-500">›</span>
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="ghost"
                 type="button"
                 title="Coming soon"
-                className="w-full inline-flex items-center justify-between border border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold"
+                className="w-full inline-flex items-center justify-between border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold h-auto"
               >
                 <span>Send Review Request</span>
                 <span className="text-zinc-500">›</span>
-              </button>
+              </Button>
             </div>
           </section>
         </div>
@@ -722,11 +728,12 @@ function StepButton({
 }) {
   const done = !!timestamp;
   return (
-    <button
+    <Button
+      variant="ghost"
       onClick={onClick}
       disabled={busy}
       className={
-        "relative text-left rounded-2xl border p-4 transition flex items-start gap-3 " +
+        "relative text-left rounded-2xl border p-4 flex items-start gap-3 h-auto " +
         (done
           ? "border-[#2a2a32] bg-black"
           : "border-[#1f1f24] bg-[#0f0f12] hover:bg-black")
@@ -749,7 +756,7 @@ function StepButton({
           {done ? `Logged ${timeStamp(timestamp)}` : "Tap to log"}
         </div>
       </div>
-    </button>
+    </Button>
   );
 }
 
@@ -842,10 +849,9 @@ function ChecklistView({
     <ul className="space-y-2">
       {items.map((c, i) => (
         <li key={c.id} className="flex items-center gap-2">
-          <input
-            type="checkbox"
+          <Checkbox
             checked={!!c.completed}
-            onChange={() => toggle(i)}
+            onCheckedChange={() => toggle(i)}
             className="rounded border-[#2a2a32] text-white focus:ring-zinc-500"
           />
           <span

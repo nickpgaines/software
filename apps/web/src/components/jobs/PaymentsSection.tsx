@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import RecordPaymentModal from "@/components/jobs/RecordPaymentModal";
+import { Button } from "@/components/ui/button";
 
 export type PaymentsSectionPayment = {
   id: number;
@@ -69,26 +70,28 @@ export default function PaymentsSection({
       <div className="flex items-center justify-between mb-4">
         <h2 className="font-extrabold text-white tracking-tight">Payments</h2>
         {payments.length > 0 && (
-          <button
+          <Button
+            variant="ghost"
             type="button"
             onClick={() => setModalOpen(true)}
-            className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-1.5 font-bold"
+            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-1.5 font-bold"
           >
             Record payment
-          </button>
+          </Button>
         )}
       </div>
 
       {payments.length === 0 ? (
         <div className="py-6 text-center">
           <p className="text-sm text-zinc-400 font-bold">No payments recorded yet.</p>
-          <button
+          <Button
+            variant="ghost"
             type="button"
             onClick={() => setModalOpen(true)}
-            className="mt-3 text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 font-bold"
+            className="h-auto mt-3 text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 font-bold"
           >
             Record payment
-          </button>
+          </Button>
         </div>
       ) : (
         <ul className="divide-y divide-[#1f1f24]">
@@ -126,14 +129,15 @@ export default function PaymentsSection({
                     </div>
                   )}
                 </div>
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={() => deletePayment(p.id)}
-                  className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:text-rose-600"
+                  className="h-auto p-0 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:text-rose-600 hover:bg-transparent"
                   aria-label="Delete payment"
                 >
                   Delete
-                </button>
+                </Button>
               </div>
             </li>
           ))}

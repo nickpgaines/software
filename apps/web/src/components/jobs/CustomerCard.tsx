@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { APIProvider, Map, Marker } from "@vis.gl/react-google-maps";
+import { Button } from "@/components/ui/button";
 
 const KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
@@ -148,14 +149,15 @@ export default function CustomerCard({
                 {customer.name || "Customer"}
               </h3>
             </div>
-            <button
+            <Button
+              variant="ghost"
               type="button"
               onClick={onRemove}
-              className="text-xs text-zinc-400 hover:text-rose-600 border border-[#1f1f24] hover:border-rose-200 rounded-full px-3 py-1.5 whitespace-nowrap"
+              className="h-auto p-0 text-xs text-zinc-400 hover:text-rose-600 border border-[#1f1f24] hover:border-rose-200 rounded-full px-3 py-1.5 whitespace-nowrap"
               aria-label="Remove selected customer"
             >
               Remove
-            </button>
+            </Button>
           </div>
 
           <dl className="space-y-2.5 text-sm">

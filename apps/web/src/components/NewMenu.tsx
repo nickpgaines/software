@@ -1,7 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type Item = {
   key: string;
@@ -19,93 +24,54 @@ const ITEMS: Item[] = [
 ];
 
 export default function NewMenu({ fullWidth }: { fullWidth?: boolean }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function onDoc(e: MouseEvent) {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    }
-    if (open) document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, [open]);
-
   return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
+    <DropdownMenu>
+      <DropdownMenuTrigger
         className={
           fullWidth
-            ? "inline-flex items-center justify-center w-full gap-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-full py-3 text-sm font-semibold shadow-sm transition-colors"
-            : "inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-full px-3 py-1.5 text-sm font-bold shadow-sm"
+            ? "inline-flex items-center justify-center w-full gap-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-full py-3 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas data-[state=open]:bg-slate-800"
+            : "inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-full px-3 py-1.5 text-sm font-bold shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas data-[state=open]:bg-slate-800 group"
         }
       >
         New
         {!fullWidth && (
           <span
-            className={
-              "text-xs transition-transform " +
-              (open ? "rotate-180 inline-block" : "inline-block")
-            }
+            className="text-xs inline-block transition-transform group-data-[state=open]:rotate-180"
             aria-hidden
           >
             ▾
           </span>
         )}
-      </button>
+      </DropdownMenuTrigger>
 
-      {open && (
-        <div
-          className={`absolute top-full mt-2 z-50 w-48 bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-lg overflow-hidden ${
-            fullWidth ? "left-0" : "right-0"
-          }`}
-        >
-          <ul className="py-1">
-            {ITEMS.map((it) => {
-              const inner = (
-                <span
-                  className={
-                    "flex items-center justify-between gap-2 px-4 py-2 text-sm " +
-                    (it.disabled
-                      ? "text-zinc-500 cursor-not-allowed"
-                      : "text-zinc-300 hover:bg-black cursor-pointer")
-                  }
-                >
-                  <span>{it.label}</span>
-                  {it.disabled && (
-                    <span className="text-[10px] uppercase tracking-wide bg-black text-zinc-400 rounded-full px-1.5 py-0.5">
-                      Soon
-                    </span>
-                  )}
-                </span>
-              );
-
-              return (
-                <li key={it.key}>
-                  {it.disabled || !it.href ? (
-                    <button
-                      type="button"
-                      disabled
-                      className="block w-full text-left"
-                    >
-                      {inner}
-                    </button>
-                  ) : (
-                    <Link
-                      href={it.href}
-                      onClick={() => setOpen(false)}
-                      className="block"
-                    >
-                      {inner}
-                    </Link>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-    </div>
+      <DropdownMenuContent
+        align={fullWidth ? "start" : "end"}
+        className="w-48 bg-[#0f0f12] border-[#1f1f24] rounded-2xl shadow-lg p-1"
+      >
+        {ITEMS.map((it) => (
+          <DropdownMenuItem
+            key={it.key}
+            disabled={it.disabled}
+            asChild={!it.disabled && !!it.href}
+            className="flex items-center justify-between gap-2 px-4 py-2 text-sm text-zinc-300 focus:bg-black focus:text-zinc-300 cursor-pointer"
+          >
+            {!it.disabled && it.href ? (
+              <Link href={it.href}>
+                <span>{it.label}</span>
+              </Link>
+            ) : (
+              <>
+                <span>{it.label}</span>
+                {it.disabled && (
+                  <span className="text-[10px] uppercase tracking-wide bg-black text-zinc-400 rounded-full px-1.5 py-0.5">
+                    Soon
+                  </span>
+                )}
+              </>
+            )}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
