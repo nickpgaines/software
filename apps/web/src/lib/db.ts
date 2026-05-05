@@ -359,6 +359,8 @@ async function init(): Promise<void> {
       price_cents INTEGER NOT NULL DEFAULT 0,
       status TEXT NOT NULL DEFAULT 'scheduled',
       notes TEXT,
+      subscription_id INTEGER,
+      subscription_visit_index INTEGER,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -387,6 +389,8 @@ async function init(): Promise<void> {
     ["started_at", "TEXT"],
     ["completed_at", "TEXT"],
     ["recurring", "INTEGER NOT NULL DEFAULT 0"],
+    ["subscription_id", "INTEGER REFERENCES customer_subscriptions(id) ON DELETE SET NULL"],
+    ["subscription_visit_index", "INTEGER"],
   ];
   for (const [col, def] of jobAdds) {
     await alterAddColumn("jobs", col, def, jobsCols);
@@ -520,6 +524,18 @@ async function init(): Promise<void> {
       "payments",
       "stripe_payment_intent_id",
       "TEXT",
+      paymentCols
+    );
+    await alterAddColumn(
+      "payments",
+      "source",
+      "TEXT NOT NULL DEFAULT 'job'",
+      paymentCols
+    );
+    await alterAddColumn(
+      "payments",
+      "subscription_id",
+      "INTEGER REFERENCES customer_subscriptions(id) ON DELETE SET NULL",
       paymentCols
     );
   }
@@ -814,6 +830,7 @@ async function init(): Promise<void> {
       notes        TEXT,
       send_email   INTEGER NOT NULL DEFAULT 0,
       send_sms     INTEGER NOT NULL DEFAULT 0,
+      subscription_id INTEGER,
       created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_payments_job_id     ON payments(job_id);
@@ -834,6 +851,7 @@ async function init(): Promise<void> {
       price_cents  INTEGER NOT NULL DEFAULT 0,
       interval     TEXT    NOT NULL DEFAULT 'monthly'
                     CHECK (interval IN ('weekly','biweekly','monthly','quarterly','yearly')),
+      service_interval TEXT NOT NULL DEFAULT 'monthly',
       active       INTEGER NOT NULL DEFAULT 1,
       terms_id     INTEGER REFERENCES subscription_terms(id) ON DELETE SET NULL,
       require_signature INTEGER NOT NULL DEFAULT 0,
@@ -853,6 +871,7 @@ async function init(): Promise<void> {
       price_cents  INTEGER NOT NULL DEFAULT 0,
       interval     TEXT    NOT NULL DEFAULT 'monthly'
                     CHECK (interval IN ('weekly','biweekly','monthly','quarterly','yearly')),
+      service_interval TEXT NOT NULL DEFAULT 'monthly',
       status       TEXT    NOT NULL DEFAULT 'pending'
                     CHECK (status IN ('pending','active','declined','canceled')),
       sent_at      TEXT,
@@ -867,6 +886,7 @@ async function init(): Promise<void> {
       start_date   TEXT,
       sold_by_id   INTEGER REFERENCES staff(id) ON DELETE SET NULL,
       tax_rate_bps INTEGER NOT NULL DEFAULT 0,
+      accept_token TEXT,
       created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_customer_subscriptions_customer
@@ -1154,6 +1174,7 @@ async function init(): Promise<void> {
     ["terms_id", "INTEGER REFERENCES subscription_terms(id) ON DELETE SET NULL"],
     ["require_signature", "INTEGER NOT NULL DEFAULT 0"],
     ["tax_rate_bps", "INTEGER NOT NULL DEFAULT 0"],
+    ["service_interval", "TEXT NOT NULL DEFAULT 'monthly'"],
   ];
   for (const [col, def] of tplAdds) {
     await alterAddColumn("subscription_templates", col, def, tplCols);
@@ -1171,6 +1192,8 @@ async function init(): Promise<void> {
     ["start_date", "TEXT"],
     ["sold_by_id", "INTEGER REFERENCES staff(id) ON DELETE SET NULL"],
     ["tax_rate_bps", "INTEGER NOT NULL DEFAULT 0"],
+    ["service_interval", "TEXT NOT NULL DEFAULT 'monthly'"],
+    ["accept_token", "TEXT"],
   ];
   for (const [col, def] of subAdds) {
     await alterAddColumn("customer_subscriptions", col, def, subCols);
@@ -1200,6 +1223,7 @@ async function init(): Promise<void> {
         price_cents  INTEGER NOT NULL DEFAULT 0,
         interval     TEXT    NOT NULL DEFAULT 'monthly'
                       CHECK (interval IN ('weekly','biweekly','monthly','quarterly','triannually','semiannually','yearly')),
+        service_interval TEXT NOT NULL DEFAULT 'monthly',
         status       TEXT    NOT NULL DEFAULT 'pending'
                       CHECK (status IN ('pending','active','declined','canceled')),
         sent_at      TEXT,
@@ -1217,10 +1241,12 @@ async function init(): Promise<void> {
       );
       INSERT INTO customer_subscriptions__new
         (id, customer_id, template_id, name, description, price_cents, interval,
+         service_interval,
          status, sent_at, accepted_at, canceled_at, created_by, terms_snapshot,
          require_signature, signature_data, signature_name, signed_at,
          start_date, sold_by_id, created_at)
       SELECT id, customer_id, template_id, name, description, price_cents, interval,
+             service_interval,
              status, sent_at, accepted_at, canceled_at, created_by, terms_snapshot,
              require_signature, signature_data, signature_name, signed_at,
              start_date, sold_by_id, created_at
@@ -1602,6 +1628,8 @@ export type Job = {
   started_at: string | null;
   completed_at: string | null;
   recurring: number;
+  subscription_id: number | null;
+  subscription_visit_index: number | null;
   created_at: string;
 };
 
@@ -1864,6 +1892,7 @@ export type SubscriptionTemplate = {
   description: string | null;
   price_cents: number;
   interval: SubscriptionInterval;
+  service_interval: SubscriptionInterval;
   active: number;
   terms_id: number | null;
   require_signature: number;
@@ -1887,6 +1916,7 @@ export type CustomerSubscription = {
   description: string | null;
   price_cents: number;
   interval: SubscriptionInterval;
+  service_interval: SubscriptionInterval;
   status: CustomerSubscriptionStatus;
   sent_at: string | null;
   accepted_at: string | null;
@@ -1900,6 +1930,7 @@ export type CustomerSubscription = {
   start_date: string | null;
   sold_by_id: number | null;
   tax_rate_bps: number;
+  accept_token: string | null;
   created_at: string;
 };
 
@@ -2117,6 +2148,8 @@ export type StaffDefaultShift = {
   updated_at: string;
 };
 
+export type PaymentSource = "job" | "subscription" | "tip" | "other";
+
 export type Payment = {
   id: number;
   company_id: number;
@@ -2129,6 +2162,8 @@ export type Payment = {
   send_email: number;
   send_sms: number;
   stripe_payment_intent_id: string | null;
+  source: PaymentSource;
+  subscription_id: number | null;
   created_at: string;
 };
 

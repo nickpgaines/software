@@ -754,6 +754,7 @@ type SubscriptionTemplate = {
   description: string | null;
   price_cents: number;
   interval: SubscriptionInterval;
+  service_interval: SubscriptionInterval;
   active: number;
   terms_id: number | null;
   require_signature: number;
@@ -777,6 +778,7 @@ type CustomerSubscription = {
   description: string | null;
   price_cents: number;
   interval: SubscriptionInterval;
+  service_interval: SubscriptionInterval;
   status: "pending" | "active" | "declined" | "canceled";
   sent_at: string | null;
   accepted_at: string | null;
@@ -811,6 +813,7 @@ type TemplateForm = {
   active: boolean;
   terms_id: number | null;
   require_signature: boolean;
+  service_interval: SubscriptionInterval;
 };
 
 function emptyForm(): TemplateForm {
@@ -820,6 +823,7 @@ function emptyForm(): TemplateForm {
     active: true,
     terms_id: null,
     require_signature: false,
+    service_interval: "monthly",
   };
 }
 
@@ -874,6 +878,7 @@ function SubscriptionsPanel() {
       active: t.active === 1,
       terms_id: t.terms_id,
       require_signature: t.require_signature === 1,
+      service_interval: t.service_interval || "monthly",
     });
     setEditingId(t.id);
   }
@@ -897,6 +902,7 @@ function SubscriptionsPanel() {
       active: form.active,
       terms_id: form.terms_id,
       require_signature: form.require_signature,
+      service_interval: form.service_interval,
     };
     const url =
       editingId === "new"
@@ -987,10 +993,34 @@ function SubscriptionsPanel() {
               placeholder="Includes interior + exterior windows…"
             />
           </Field>
+          <Field label="Service frequency">
+            {/* Native <select> kept: Radix Select forbids empty-string item values; preserved for consistency with other selects on this surface. */}
+            <select
+              value={form.service_interval}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  service_interval: e.target.value as SubscriptionInterval,
+                })
+              }
+              className="w-full border border-line rounded-full px-4 py-2 text-sm bg-card"
+            >
+              {(
+                Object.entries(INTERVAL_LABELS) as [
+                  SubscriptionInterval,
+                  string,
+                ][]
+              ).map(([v, l]) => (
+                <option key={v} value={v}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </Field>
           <p className="text-xs text-zinc-400 -mt-1">
-            Price and billing interval are set per customer when you create a
-            subscription from this template — no need to make a separate
-            template per price point.
+            How often the service is delivered. Price and billing frequency
+            are set per customer when you create a subscription from this
+            template.
           </p>
           <div className="space-y-3 pt-2 border-t border-line">
             <div>
@@ -1114,7 +1144,8 @@ function SubscriptionsPanel() {
                     )}
                   </div>
                   <div className="text-xs text-zinc-400 mt-0.5">
-                    Price &amp; cadence set per customer
+                    Service: {INTERVAL_LABELS[t.service_interval || "monthly"].toLowerCase()}
+                    {" · "}price &amp; billing set per customer
                   </div>
                   {t.description && (
                     <p className="text-xs text-zinc-400 mt-1 line-clamp-2">
@@ -1200,6 +1231,10 @@ function RecentSubscriptions({
     return m;
   }, [customers]);
 
+  const [cancelTarget, setCancelTarget] = useState<CustomerSubscription | null>(
+    null
+  );
+
   if (subscriptions.length === 0) return null;
 
   async function updateStatus(
@@ -1212,6 +1247,21 @@ function RecentSubscriptions({
       body: JSON.stringify({ status }),
     });
     if (res.ok) await onChange();
+  }
+
+  async function cancelSubscription(
+    id: number,
+    mode: "all_future" | "keep_next"
+  ) {
+    const res = await fetch(`/api/customer-subscriptions/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: "canceled", cancel_mode: mode }),
+    });
+    if (res.ok) {
+      setCancelTarget(null);
+      await onChange();
+    }
   }
 
   return (
@@ -1259,7 +1309,7 @@ function RecentSubscriptions({
                 {s.status === "active" && (
                   <Button
                     variant="ghost"
-                    onClick={() => updateStatus(s.id, "canceled")}
+                    onClick={() => setCancelTarget(s)}
                     className="h-auto text-xs text-rose-600 hover:text-rose-700 hover:bg-transparent"
                   >
                     Cancel
@@ -1270,6 +1320,145 @@ function RecentSubscriptions({
           );
         })}
       </ul>
+      {cancelTarget && (
+        <CancelSubscriptionModal
+          subscription={cancelTarget}
+          onClose={() => setCancelTarget(null)}
+          onConfirm={(mode) => cancelSubscription(cancelTarget.id, mode)}
+        />
+      )}
+    </div>
+  );
+}
+
+function CancelSubscriptionModal({
+  subscription,
+  onClose,
+  onConfirm,
+}: {
+  subscription: CustomerSubscription;
+  onClose: () => void;
+  onConfirm: (mode: "all_future" | "keep_next") => void | Promise<void>;
+}) {
+  const [mode, setMode] = useState<"all_future" | "keep_next">("all_future");
+  const [submitting, setSubmitting] = useState(false);
+
+  async function go() {
+    setSubmitting(true);
+    await onConfirm(mode);
+    setSubmitting(false);
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
+      <div className="bg-card rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <h3 className="text-base font-extrabold text-white tracking-tight">
+              Cancel subscription
+            </h3>
+            <p className="text-xs text-zinc-400 mt-1">
+              {subscription.name} · {formatPrice(subscription.price_cents)} /{" "}
+              {INTERVAL_LABELS[subscription.interval].toLowerCase()}
+            </p>
+          </div>
+          <Button
+            variant="ghost"
+            onClick={onClose}
+            className="h-auto text-sm text-zinc-500 hover:text-zinc-300 hover:bg-transparent"
+          >
+            ✕
+          </Button>
+        </div>
+        <p className="text-xs text-zinc-400">
+          Past visits and their payment records stay intact. Pick how to
+          handle the upcoming visits already on the schedule.
+        </p>
+        <div className="space-y-2">
+          <Label className="block w-full rounded-xl border border-line hover:border-line-strong p-3 cursor-pointer">
+            {/* Native <input type="radio"> kept: no Radio primitive in design system. */}
+            <input
+              type="radio"
+              name="cancel-mode"
+              checked={mode === "all_future"}
+              onChange={() => setMode("all_future")}
+              className="sr-only"
+            />
+            <div className="flex items-start gap-3">
+              <span
+                className={
+                  "mt-0.5 inline-flex h-4 w-4 shrink-0 rounded-full border-2 " +
+                  (mode === "all_future"
+                    ? "border-slate-200"
+                    : "border-line-strong")
+                }
+              >
+                {mode === "all_future" && (
+                  <span className="m-auto h-2 w-2 rounded-full bg-slate-200" />
+                )}
+              </span>
+              <div>
+                <div className="text-sm font-bold text-white tracking-tight">
+                  Cancel all future visits
+                </div>
+                <div className="text-xs text-zinc-400 mt-0.5">
+                  Every upcoming subscription visit on the schedule is
+                  canceled.
+                </div>
+              </div>
+            </div>
+          </Label>
+          <Label className="block w-full rounded-xl border border-line hover:border-line-strong p-3 cursor-pointer">
+            <input
+              type="radio"
+              name="cancel-mode"
+              checked={mode === "keep_next"}
+              onChange={() => setMode("keep_next")}
+              className="sr-only"
+            />
+            <div className="flex items-start gap-3">
+              <span
+                className={
+                  "mt-0.5 inline-flex h-4 w-4 shrink-0 rounded-full border-2 " +
+                  (mode === "keep_next"
+                    ? "border-slate-200"
+                    : "border-line-strong")
+                }
+              >
+                {mode === "keep_next" && (
+                  <span className="m-auto h-2 w-2 rounded-full bg-slate-200" />
+                )}
+              </span>
+              <div>
+                <div className="text-sm font-bold text-white tracking-tight">
+                  Keep the next visit, cancel everything after
+                </div>
+                <div className="text-xs text-zinc-400 mt-0.5">
+                  Useful when the upcoming visit is already prepped or the
+                  customer expects it.
+                </div>
+              </div>
+            </div>
+          </Label>
+        </div>
+        <div className="flex items-center gap-3 pt-1">
+          <Button
+            variant="ghost"
+            onClick={go}
+            disabled={submitting}
+            className="h-auto text-sm bg-rose-600 hover:bg-rose-700 disabled:bg-rose-300 text-white rounded-full px-5 py-2 font-bold"
+          >
+            {submitting ? "Canceling…" : "Cancel subscription"}
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={onClose}
+            className="h-auto text-sm text-zinc-400 font-bold hover:text-white hover:bg-transparent"
+          >
+            Keep active
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -1383,6 +1572,13 @@ function SendOrAcceptModal({
             {template.description}
           </p>
         )}
+
+        <p className="text-xs text-zinc-400">
+          Service frequency:{" "}
+          <span className="font-bold text-white tracking-tight">
+            {INTERVAL_LABELS[template.service_interval || "monthly"]}
+          </span>
+        </p>
 
         <Field label="Customer">
           {/* Native <select> kept: Radix Select forbids empty-string item values, breaking the "Select customer…" sentinel. */}

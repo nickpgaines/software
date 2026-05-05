@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type MapPin } from "@/lib/db";
-import { resolveReportRange } from "@/lib/report-range";
+import { resolveReportRangeFromUrl } from "@/lib/report-range";
 import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   const companyId = await requireCompanyId();
   const db = await getDb();
   const url = new URL(req.url);
-  const { range, start, end } = resolveReportRange(url.searchParams.get("range"));
+  const { range, start, end } = resolveReportRangeFromUrl(url);
   const startIso = start.toISOString();
   const endIso = end.toISOString();
 

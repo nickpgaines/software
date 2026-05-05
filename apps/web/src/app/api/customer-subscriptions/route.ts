@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomBytes } from "crypto";
 import {
   getDb,
   type CustomerSubscription,
@@ -7,6 +8,14 @@ import {
   type SubscriptionTerms,
 } from "@/lib/db";
 import { getSessionContext } from "@/lib/auth";
+import {
+  ensureRollingVisits,
+  startDateToIso,
+} from "@/lib/subscription-schedule";
+
+function makeAcceptToken() {
+  return randomBytes(24).toString("base64url");
+}
 
 export const dynamic = "force-dynamic";
 
@@ -125,6 +134,7 @@ export async function POST(req: Request) {
     );
   }
   const interval: SubscriptionInterval = body.interval;
+  let serviceInterval: SubscriptionInterval = interval;
   let templateId: number | null = null;
   let termsSnapshot: string | null = null;
   let requireSignature = 0;
@@ -152,6 +162,10 @@ export async function POST(req: Request) {
     if (!description) description = tpl.description;
     requireSignature = tpl.require_signature ? 1 : 0;
     if (body.tax_rate_bps === undefined) taxRateBps = tpl.tax_rate_bps || 0;
+    serviceInterval =
+      tpl.service_interval && VALID_INTERVALS.includes(tpl.service_interval)
+        ? tpl.service_interval
+        : interval;
     if (tpl.terms_id) {
       const terms = (await db
         .prepare(
@@ -215,15 +229,18 @@ export async function POST(req: Request) {
       ? null
       : Number(body.sold_by_id) || null;
 
+  const acceptToken = makeAcceptToken();
+
   const result = await db
     .prepare(
       `INSERT INTO customer_subscriptions
          (company_id, customer_id, template_id, name, description, price_cents, interval,
+          service_interval,
           status, sent_at, accepted_at, created_by,
           terms_snapshot, require_signature,
           signature_data, signature_name, signed_at,
-          start_date, sold_by_id, tax_rate_bps)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          start_date, sold_by_id, tax_rate_bps, accept_token)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       companyId,
@@ -233,6 +250,7 @@ export async function POST(req: Request) {
       description,
       price_cents,
       interval,
+      serviceInterval,
       status,
       sentAt,
       acceptedAt,
@@ -244,15 +262,41 @@ export async function POST(req: Request) {
       signedAt,
       startDate,
       soldById,
-      taxRateBps
+      taxRateBps,
+      acceptToken
     );
+  const subscriptionId = Number(result.lastInsertRowid);
+
+  if (action === "accept") {
+    try {
+      await ensureRollingVisits(db, {
+        subscriptionId,
+        customerId,
+        companyId,
+        startDateIso: startDateToIso(startDate),
+        serviceInterval,
+        pricePerVisitCents: price_cents,
+        visitName: name,
+        visitDescription: description,
+        soldById,
+        technicianId: null,
+      });
+    } catch (e) {
+      // Seeding the rolling window is best-effort — log and continue so
+      // the subscription itself still saves. The /api/cron/subscription-visits
+      // top-up will catch up on the next run.
+      console.error("ensureRollingVisits failed", e);
+    }
+  }
 
   if (action === "send") {
     const offerLine = `${name} — ${formatPrice(price_cents)} / ${intervalLabel(interval)}`;
     const desc = description ? `\n${description}` : "";
+    const origin = new URL(req.url).origin;
+    const acceptUrl = `${origin}/subscriptions/accept/${acceptToken}`;
     const messageBody =
       `Hi! Here's a subscription offer from us:\n${offerLine}${desc}\n` +
-      `Reply YES to accept and we'll get you set up.`;
+      `Tap to review & sign: ${acceptUrl}`;
     await db
       .prepare(
         `INSERT INTO messages (company_id, customer_id, body, direction)
@@ -265,6 +309,6 @@ export async function POST(req: Request) {
     .prepare(
       "SELECT * FROM customer_subscriptions WHERE id = ? AND company_id = ?"
     )
-    .get(result.lastInsertRowid, companyId)) as CustomerSubscription;
+    .get(subscriptionId, companyId)) as CustomerSubscription;
   return NextResponse.json(row, { status: 201 });
 }
