@@ -70,57 +70,63 @@ export async function POST(req: Request) {
     for (const change of entry.changes ?? []) {
       if (change.field !== "leadgen") continue;
       const { leadgen_id, page_id, form_id } = change.value;
-      // Resolve the tenant: page_id is globally UNIQUE in the schema so this
-      // finds the single (or no) page row, and its company_id tells us which
-      // tenant the lead should be filed under.
-      const page = (await db
-        .prepare("SELECT * FROM meta_pages WHERE page_id = ?")
-        .get(page_id)) as MetaPage | undefined;
-      if (!page || !page.enabled || !page.page_access_token) continue;
-      try {
-        const detail = await fetchLeadDetail(leadgen_id, page.page_access_token);
-        const firstName = fieldValue(
-          detail.field_data,
-          "first_name",
-          "full_name"
-        );
-        const lastName = fieldValue(detail.field_data, "last_name");
-        const email = fieldValue(detail.field_data, "email");
-        const phone = fieldValue(
-          detail.field_data,
-          "phone_number",
-          "phone"
-        );
-        const address = fieldValue(
-          detail.field_data,
-          "street_address",
-          "address",
-          "city"
-        );
-        await db
-          .prepare(
-            `INSERT INTO leads
-               (company_id, first_name, last_name, email, phone, address, source,
-                source_page_id, source_page_name, source_form_id,
-                meta_lead_id, raw_payload, stage)
-             VALUES (?, ?, ?, ?, ?, ?, 'meta', ?, ?, ?, ?, ?, 'new')
-             ON CONFLICT(meta_lead_id) DO NOTHING`
-          )
-          .run(
-            page.company_id,
-            firstName,
-            lastName,
-            email,
-            phone,
-            address,
-            page.page_id,
-            page.page_name,
-            form_id || detail.form_id || null,
-            detail.id,
-            JSON.stringify(detail)
+      // Multiple tenants may have the same Facebook Page connected (the
+      // legacy global UNIQUE on meta_pages.page_id has been replaced with
+      // UNIQUE(company_id, page_id)), so fan out to every enabled subscription.
+      const subscribedPages = (await db
+        .prepare(
+          "SELECT * FROM meta_pages WHERE page_id = ? AND enabled = 1 AND page_access_token IS NOT NULL"
+        )
+        .all(page_id)) as MetaPage[];
+      for (const page of subscribedPages) {
+        try {
+          const detail = await fetchLeadDetail(
+            leadgen_id,
+            page.page_access_token!
           );
-      } catch (e) {
-        console.error("ingest meta lead failed", leadgen_id, e);
+          const firstName = fieldValue(
+            detail.field_data,
+            "first_name",
+            "full_name"
+          );
+          const lastName = fieldValue(detail.field_data, "last_name");
+          const email = fieldValue(detail.field_data, "email");
+          const phone = fieldValue(
+            detail.field_data,
+            "phone_number",
+            "phone"
+          );
+          const address = fieldValue(
+            detail.field_data,
+            "street_address",
+            "address",
+            "city"
+          );
+          await db
+            .prepare(
+              `INSERT INTO leads
+                 (company_id, first_name, last_name, email, phone, address, source,
+                  source_page_id, source_page_name, source_form_id,
+                  meta_lead_id, raw_payload, stage)
+               VALUES (?, ?, ?, ?, ?, ?, 'meta', ?, ?, ?, ?, ?, 'new')
+               ON CONFLICT(meta_lead_id) DO NOTHING`
+            )
+            .run(
+              page.company_id,
+              firstName,
+              lastName,
+              email,
+              phone,
+              address,
+              page.page_id,
+              page.page_name,
+              form_id || detail.form_id || null,
+              detail.id,
+              JSON.stringify(detail)
+            );
+        } catch (e) {
+          console.error("ingest meta lead failed", leadgen_id, page.company_id, e);
+        }
       }
     }
   }

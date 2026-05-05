@@ -315,10 +315,62 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
   );
 }
 
+// Rebuild meta_pages to drop the legacy global UNIQUE on `page_id` and
+// replace it with a per-tenant UNIQUE(company_id, page_id). Without this,
+// two tenants can never both connect the same Meta Page. No-op once the
+// rebuild has run (detected by inspecting sqlite_master for the inline
+// constraint).
+async function rebuildMetaPagesUnique(): Promise<void> {
+  const row = await _db
+    .prepare(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='meta_pages'"
+    )
+    .get<{ sql: string }>();
+  if (!row?.sql) return;
+  const hasInlineUnique = /page_id\s+TEXT\s+NOT\s+NULL\s+UNIQUE/i.test(row.sql);
+  if (!hasInlineUnique) {
+    await _db.exec(
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_meta_pages_company_page
+         ON meta_pages(company_id, page_id)`
+    );
+    return;
+  }
+
+  const cols = await _db
+    .prepare("PRAGMA table_info(meta_pages)")
+    .all<{ name: string }>();
+  const colNames = cols.map((c) => c.name).join(", ");
+
+  await _db.exec(`
+    CREATE TABLE meta_pages__rebuild (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      page_id           TEXT NOT NULL,
+      page_name         TEXT NOT NULL,
+      page_access_token TEXT,
+      enabled           INTEGER NOT NULL DEFAULT 1,
+      created_at        TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at        TEXT NOT NULL DEFAULT (datetime('now')),
+      company_id        INTEGER REFERENCES company(id) ON DELETE CASCADE
+    )
+  `);
+  await _db.exec(
+    `INSERT INTO meta_pages__rebuild (${colNames}) SELECT ${colNames} FROM meta_pages`
+  );
+  await _db.exec("DROP TABLE meta_pages");
+  await _db.exec("ALTER TABLE meta_pages__rebuild RENAME TO meta_pages");
+  await _db.exec(
+    `CREATE INDEX IF NOT EXISTS idx_meta_pages_company_id ON meta_pages(company_id)`
+  );
+  await _db.exec(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_meta_pages_company_page
+       ON meta_pages(company_id, page_id)`
+  );
+}
+
 // Bump when init() gains migrations that must run on existing deploys.
 // First call after deploy runs the full init; subsequent cold starts hit
 // the fast-path below (one SELECT) and skip the ~150 DDL statements.
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 async function init(): Promise<void> {
   // Fast path: if the schema is already at the current version, skip the
@@ -1034,7 +1086,7 @@ async function init(): Promise<void> {
 
     CREATE TABLE IF NOT EXISTS meta_pages (
       id                INTEGER PRIMARY KEY AUTOINCREMENT,
-      page_id           TEXT NOT NULL UNIQUE,
+      page_id           TEXT NOT NULL,
       page_name         TEXT NOT NULL,
       page_access_token TEXT,
       enabled           INTEGER NOT NULL DEFAULT 1,
@@ -1377,6 +1429,12 @@ async function init(): Promise<void> {
   // 'welcome', 'spring_blast', etc. so the constraint must be per-tenant.
   // Rebuild the table without the inline UNIQUE, then add UNIQUE(company_id, key).
   await rebuildEmailAutomationsUnique();
+
+  // meta_pages: legacy schema had `page_id TEXT NOT NULL UNIQUE` inline,
+  // which prevented two tenants from each connecting the same Facebook Page.
+  // Rebuild without the inline UNIQUE and add UNIQUE(company_id, page_id) so
+  // page subscriptions become per-tenant.
+  await rebuildMetaPagesUnique();
 
   // Seed the legacy tenant's default automations now that the per-tenant
   // UNIQUE(company_id, key) is in place. INSERT OR IGNORE makes this a no-op

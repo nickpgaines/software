@@ -23,6 +23,7 @@ export default async function LeadsIntegrationsPage() {
       connected={!!integration?.access_token}
       userName={integration?.user_name ?? null}
       connectedAt={integration?.connected_at ?? null}
+      tokenExpiresAt={integration?.token_expires_at ?? null}
       initialPages={pages.map((p) => ({
         id: p.id,
         page_id: p.page_id,

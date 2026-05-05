@@ -12,17 +12,36 @@ type PageRow = {
   enabled: boolean;
 };
 
+// Show the reconnect prompt this many days before the long-lived token's
+// stated expiry. Meta long-lived page tokens last ~60 days; a week of
+// runway gives the operator time to reconnect before lead ingestion stops.
+const RECONNECT_WARNING_DAYS = 7;
+
+type TokenStatus = "ok" | "expiring" | "expired";
+
+function tokenStatus(expiresAt: string | null): TokenStatus {
+  if (!expiresAt) return "ok";
+  const expiryMs = Date.parse(expiresAt);
+  if (!Number.isFinite(expiryMs)) return "ok";
+  const now = Date.now();
+  if (expiryMs <= now) return "expired";
+  const daysLeft = (expiryMs - now) / (1000 * 60 * 60 * 24);
+  return daysLeft <= RECONNECT_WARNING_DAYS ? "expiring" : "ok";
+}
+
 export default function LeadsIntegrationsClient({
   configured,
   connected,
   userName,
   connectedAt,
+  tokenExpiresAt,
   initialPages,
 }: {
   configured: boolean;
   connected: boolean;
   userName: string | null;
   connectedAt: string | null;
+  tokenExpiresAt: string | null;
   initialPages: PageRow[];
 }) {
   const searchParams = useSearchParams();
@@ -118,6 +137,46 @@ export default function LeadsIntegrationsClient({
           {banner.message}
         </div>
       )}
+
+      {connected && (() => {
+        const status = tokenStatus(tokenExpiresAt);
+        if (status === "ok") return null;
+        const expiryLabel = tokenExpiresAt
+          ? new Date(tokenExpiresAt).toLocaleDateString()
+          : null;
+        const isExpired = status === "expired";
+        return (
+          <div
+            className={
+              "rounded-lg px-4 py-3 text-sm flex items-center justify-between gap-4 " +
+              (isExpired
+                ? "bg-red-50 text-red-700"
+                : "bg-amber-50 text-amber-800")
+            }
+          >
+            <div>
+              <div className="font-bold">
+                {isExpired
+                  ? "Meta access has expired — reconnect required"
+                  : "Meta access expires soon — reconnect required"}
+              </div>
+              <div className="mt-0.5">
+                {isExpired
+                  ? "New leads from Meta have stopped arriving. Reconnect to resume ingestion."
+                  : `Your Meta access token${expiryLabel ? ` expires on ${expiryLabel}` : " will expire soon"}. Reconnect to keep leads flowing.`}
+              </div>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={connect}
+              className="h-auto bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-4 py-2 rounded-lg shrink-0"
+            >
+              Reconnect
+            </Button>
+          </div>
+        );
+      })()}
 
       <div className="border border-[#1f1f24] rounded-2xl overflow-hidden">
         <div className="p-6 flex items-start gap-5">
