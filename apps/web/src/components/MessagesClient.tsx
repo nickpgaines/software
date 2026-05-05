@@ -1,6 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 type Conversation = {
   id: number;
@@ -94,14 +99,15 @@ export default function MessagesClient() {
     conversations.find((c) => c.id === selectedId) || null;
 
   return (
-    <div className="flex bg-white border border-slate-200 rounded-2xl overflow-hidden h-[calc(100vh-9rem)] min-h-[480px] shadow-sm">
-      <aside className="w-80 shrink-0 border-r border-slate-200 flex flex-col">
+    <div className="flex bg-[#0f0f12] border border-[#1f1f24] rounded-2xl overflow-hidden h-[calc(100vh-9rem)] min-h-[480px] shadow-sm">
+      <aside className="w-80 shrink-0 border-r border-[#1f1f24] flex flex-col">
         <div className="px-4 pt-4 pb-3 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-900">Messages</h2>
-          <button
+          <h2 className="text-lg font-extrabold text-white tracking-tight">Messages</h2>
+          <Button
             type="button"
+            variant="ghost"
             title="Compose"
-            className="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center"
+            className="w-8 h-8 p-0 rounded-full hover:bg-black text-zinc-400"
           >
             <svg
               className="w-4 h-4"
@@ -115,19 +121,19 @@ export default function MessagesClient() {
               <path d="M12 20h9" />
               <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z" />
             </svg>
-          </button>
+          </Button>
         </div>
         <div className="px-4 pb-2">
           <div className="relative">
-            <input
+            <Input
               type="search"
               placeholder="Search conversations..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-slate-50 border border-slate-200 rounded-full pl-9 pr-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+              className="w-full h-auto bg-black border-[#1f1f24] rounded-full pl-9 pr-3 py-2 text-sm focus-visible:ring-zinc-500"
             />
             <svg
-              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
+              className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -141,71 +147,74 @@ export default function MessagesClient() {
           </div>
         </div>
         <div className="px-4 pb-3 flex items-center justify-between">
-          <label className="text-xs text-slate-600 flex items-center gap-2">
-            <input
-              type="checkbox"
+          <Label className="text-xs font-normal text-zinc-400 flex items-center gap-2">
+            <Checkbox
               checked={unreadOnly}
-              onChange={(e) => setUnreadOnly(e.target.checked)}
-              className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+              onCheckedChange={(checked) => setUnreadOnly(checked === true)}
+              className="border-[#2a2a32]"
             />
             Unread only
-          </label>
+          </Label>
         </div>
 
-        <div className="flex-1 overflow-y-auto border-t border-slate-100">
+        <div className="flex-1 overflow-y-auto border-t border-[#1f1f24]">
           {filtered.length === 0 ? (
-            <div className="p-6 text-center text-sm text-slate-400">
+            <div className="p-6 text-center text-sm text-zinc-500">
               {conversations.length === 0
                 ? "No customers yet."
                 : "No matching conversations."}
             </div>
           ) : (
-            <ul className="divide-y divide-slate-100">
+            <ul className="divide-y divide-[#1f1f24]">
               {filtered.map((c) => (
                 <li key={c.id}>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
                     onClick={() => setSelectedId(c.id)}
                     className={
-                      "w-full text-left px-4 py-3 flex gap-3 hover:bg-slate-50 transition " +
-                      (selectedId === c.id ? "bg-slate-100" : "")
+                      "w-full h-auto text-left px-4 py-3 flex gap-3 justify-start rounded-none whitespace-normal hover:bg-black " +
+                      (selectedId === c.id ? "bg-black" : "")
                     }
                   >
-                    <div className="w-9 h-9 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-semibold shrink-0">
+                    <div className="w-9 h-9 rounded-full bg-[#1f1f24] text-zinc-300 flex items-center justify-center text-xs font-semibold shrink-0">
                       {initials(c.name)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-baseline justify-between gap-2">
-                        <span className="font-medium text-slate-900 truncate">
+                        <span className="font-bold text-white tracking-tight truncate">
                           {c.name}
                         </span>
                         <span
-                          className="text-[10px] text-slate-400 shrink-0"
+                          className="text-[10px] text-zinc-500 shrink-0"
                           suppressHydrationWarning
                         >
                           {mounted ? relativeTime(c.last_at) : ""}
                         </span>
                       </div>
-                      <div className="text-xs text-slate-500 truncate">
+                      <div className="text-xs text-zinc-400 truncate">
                         {c.phone || "—"}
                       </div>
                       <div className="flex items-center justify-between gap-2 mt-0.5">
-                        <span className="text-xs text-slate-500 truncate">
+                        <span className="text-xs text-zinc-400 truncate">
                           {c.last_direction === "outbound" ? "You: " : ""}
                           {c.last_body || (
-                            <span className="italic text-slate-400">
+                            <span className="italic text-zinc-500">
                               No messages yet
                             </span>
                           )}
                         </span>
                         {c.unread_count > 0 && (
-                          <span className="text-[10px] bg-slate-900 text-white rounded-full px-1.5 py-0.5 shrink-0">
+                          <Badge
+                            variant="default"
+                            className="text-[10px] bg-slate-900 text-white rounded-full px-1.5 py-0.5 shrink-0 border-transparent font-normal hover:bg-slate-900"
+                          >
                             {c.unread_count}
-                          </span>
+                          </Badge>
                         )}
                       </div>
                     </div>
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>
@@ -215,7 +224,7 @@ export default function MessagesClient() {
 
       <main className="flex-1 flex flex-col min-w-0">
         {!selected ? (
-          <div className="flex-1 flex items-center justify-center text-sm text-slate-400">
+          <div className="flex-1 flex items-center justify-center text-sm text-zinc-500">
             Select a conversation
           </div>
         ) : (
@@ -311,25 +320,25 @@ function Thread({
 
   return (
     <>
-      <header className="px-5 py-3 border-b border-slate-200 flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center text-xs font-semibold">
+      <header className="px-5 py-3 border-b border-[#1f1f24] flex items-center gap-3">
+        <div className="w-9 h-9 rounded-full bg-[#1f1f24] text-zinc-300 flex items-center justify-center text-xs font-semibold">
           {initials(conversation.name)}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="font-semibold text-slate-900 truncate">
+          <div className="font-extrabold text-white tracking-tight truncate">
             {conversation.name}
           </div>
-          <div className="text-xs text-slate-500 truncate">
+          <div className="text-xs text-zinc-400 truncate">
             {conversation.phone || "—"}
           </div>
         </div>
       </header>
 
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 bg-slate-50/40">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 py-4 bg-black/40">
         {loading ? (
-          <div className="text-center text-sm text-slate-400 py-6">Loading…</div>
+          <div className="text-center text-sm text-zinc-500 py-6">Loading…</div>
         ) : messages.length === 0 ? (
-          <div className="text-center text-sm text-slate-400 py-10">
+          <div className="text-center text-sm text-zinc-500 py-10">
             No messages yet. Send the first one below.
           </div>
         ) : (
@@ -351,7 +360,7 @@ function Thread({
                           ? failed
                             ? "bg-rose-100 border border-rose-200 text-rose-900 rounded-br-sm"
                             : "bg-slate-900 text-white rounded-br-sm"
-                          : "bg-white border border-slate-200 text-slate-900 rounded-bl-sm")
+                          : "bg-[#0f0f12] border border-[#1f1f24] text-white rounded-bl-sm")
                       }
                     >
                       <div>{m.body}</div>
@@ -361,8 +370,8 @@ function Thread({
                           (out
                             ? failed
                               ? "text-rose-700"
-                              : "text-slate-300"
-                            : "text-slate-400")
+                              : "text-zinc-500"
+                            : "text-zinc-500")
                         }
                         suppressHydrationWarning
                       >
@@ -384,11 +393,11 @@ function Thread({
         )}
       </div>
 
-      <div className="border-t border-slate-200">
+      <div className="border-t border-[#1f1f24]">
         {(drafting || draftError) && (
           <div className="px-4 pt-2 text-xs">
             {drafting && (
-              <span className="text-slate-500">Drafting reply with Claude…</span>
+              <span className="text-zinc-400">Drafting reply with Claude…</span>
             )}
             {draftError && (
               <span className="text-rose-600">{draftError}</span>
@@ -399,12 +408,13 @@ function Thread({
           onSubmit={send}
           className="px-4 py-3 flex items-center gap-2"
         >
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={draftReply}
             disabled={drafting}
             title="Draft a reply with Claude"
-            className="shrink-0 inline-flex items-center gap-1 text-xs font-medium bg-violet-50 hover:bg-violet-100 disabled:opacity-50 text-violet-900 border border-violet-200 rounded-full px-3 py-2"
+            className="shrink-0 h-auto gap-1 text-xs font-bold bg-violet-50 hover:bg-violet-100 text-violet-900 border border-violet-200 rounded-full px-3 py-2 [&_svg]:size-3.5"
           >
             <svg
               className="w-3.5 h-3.5"
@@ -419,18 +429,19 @@ function Thread({
               <path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9z" />
             </svg>
             {drafting ? "Drafting…" : "Draft"}
-          </button>
-          <input
+          </Button>
+          <Input
             type="text"
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="Type a message…"
-            className="flex-1 border border-slate-200 rounded-full px-4 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-slate-400"
+            className="flex-1 h-auto border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] focus-visible:ring-zinc-500"
           />
-          <button
+          <Button
             type="submit"
+            variant="ghost"
             disabled={sending || !body.trim()}
-            className="bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full w-10 h-10 flex items-center justify-center"
+            className="bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full w-10 h-10 p-0"
             aria-label="Send"
           >
             <svg
@@ -445,7 +456,7 @@ function Thread({
               <line x1="22" y1="2" x2="11" y2="13" />
               <polygon points="22 2 15 22 11 13 2 9 22 2" />
             </svg>
-          </button>
+          </Button>
         </form>
       </div>
     </>

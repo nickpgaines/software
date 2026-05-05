@@ -8,6 +8,18 @@ import AddressFields, {
   type AddressValue,
 } from "@/components/customers/AddressFields";
 import { usePhone } from "@/components/PhoneClient";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type Customer = {
   id: number;
@@ -97,55 +109,58 @@ function CustomersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Customers</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Customers</h1>
+          <p className="text-sm text-zinc-400 mt-3 font-bold">
             People you clean windows for.
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <button
+          <Button
+            variant="ghost"
             onClick={() => setImporting(true)}
-            className="text-sm border border-slate-300 bg-white hover:bg-slate-50 text-slate-700 rounded px-3 py-2"
+            className="h-auto text-sm border border-[#2a2a32] bg-[#0f0f12] hover:bg-black text-zinc-300 rounded px-3 py-2 font-bold"
           >
             Import
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             onClick={() => setCreating(true)}
-            className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded px-3 py-2"
+            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 text-white rounded px-3 py-2 font-bold"
           >
             + Customer
-          </button>
+          </Button>
         </div>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-lg overflow-hidden">
         {customers.length === 0 ? (
-          <div className="p-8 text-center text-sm text-slate-500">
+          <div className="p-8 text-center text-sm text-zinc-400 font-bold">
             No customers yet.
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-600">
-              <tr>
-                <th className="text-left px-4 py-2 font-medium">Name</th>
-                <th className="text-left px-4 py-2 font-medium">Address</th>
-                <th className="text-left px-4 py-2 font-medium">Phone</th>
-                <th className="text-left px-4 py-2 font-medium">Email</th>
-                <th className="px-4 py-2" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
+          <Table>
+            <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-[#1f1f24]">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-auto text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Name</TableHead>
+                <TableHead className="h-auto text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Address</TableHead>
+                <TableHead className="h-auto text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Phone</TableHead>
+                <TableHead className="h-auto text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Email</TableHead>
+                <TableHead className="h-auto px-4 py-2" />
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-[#1f1f24]">
               {customers.map((c) => (
-                <tr key={c.id}>
-                  <td className="px-4 py-2 font-medium text-slate-900">
+                <TableRow key={c.id} className="border-0 hover:bg-transparent">
+                  <TableCell className="px-4 py-2 font-bold text-white tracking-tight">
                     {fullName(c) || "—"}
-                  </td>
-                  <td className="px-4 py-2 text-slate-700">{c.address || "—"}</td>
-                  <td className="px-4 py-2 text-slate-700">{c.phone || "—"}</td>
-                  <td className="px-4 py-2 text-slate-700">{c.email || "—"}</td>
-                  <td className="px-4 py-2 text-right">
+                  </TableCell>
+                  <TableCell className="px-4 py-2 text-zinc-300 font-bold">{c.address || "—"}</TableCell>
+                  <TableCell className="px-4 py-2 text-zinc-300 font-bold">{c.phone || "—"}</TableCell>
+                  <TableCell className="px-4 py-2 text-zinc-300 font-bold">{c.email || "—"}</TableCell>
+                  <TableCell className="px-4 py-2 text-right">
                     {phone.configured && c.phone && (
-                      <button
+                      <Button
+                        variant="ghost"
                         onClick={() =>
                           phone.startCall({
                             customerId: c.id,
@@ -154,28 +169,30 @@ function CustomersPage() {
                           })
                         }
                         disabled={phone.state.kind !== "idle"}
-                        className="text-xs text-emerald-700 hover:text-emerald-900 disabled:opacity-40 mr-3"
+                        className="h-auto p-0 text-[11px] uppercase tracking-[0.14em] font-extrabold text-emerald-400 hover:text-emerald-300 hover:bg-transparent mr-4"
                       >
                         Call
-                      </button>
+                      </Button>
                     )}
-                    <button
+                    <Button
+                      variant="ghost"
                       onClick={() => setEditing(c)}
-                      className="text-xs text-slate-500 hover:text-slate-900 mr-3"
+                      className="h-auto p-0 text-[11px] uppercase tracking-[0.14em] font-extrabold text-zinc-400 hover:text-white hover:bg-transparent mr-4"
                     >
                       Edit
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="ghost"
                       onClick={() => del(c.id)}
-                      className="text-xs text-red-500 hover:text-red-700"
+                      className="h-auto p-0 text-[11px] uppercase tracking-[0.14em] font-extrabold text-red-400 hover:text-red-300 hover:bg-transparent"
                     >
                       Delete
-                    </button>
-                  </td>
-                </tr>
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
       </div>
 
@@ -271,83 +288,86 @@ function CustomerForm({
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-md">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200">
-          <h3 className="font-medium">
+      <div className="bg-[#0f0f12] rounded-lg shadow-lg w-full max-w-md">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1f1f24]">
+          <h3 className="font-bold">
             {customer ? "Edit customer" : "New customer"}
           </h3>
-          <button
+          <Button
+            variant="ghost"
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-700 text-xl leading-none"
+            className="h-auto w-auto p-0 text-zinc-500 hover:text-zinc-300 hover:bg-transparent text-xl leading-none"
           >
             ×
-          </button>
+          </Button>
         </div>
         <form onSubmit={onSubmit} className="p-4 space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <Field label="First name" required>
-              <input
+              <Input
                 type="text"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
+                className="w-full h-auto border-[#2a2a32] rounded px-3 py-2 text-sm"
                 autoFocus
                 required
               />
             </Field>
             <Field label="Last name" required>
-              <input
+              <Input
                 type="text"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
+                className="w-full h-auto border-[#2a2a32] rounded px-3 py-2 text-sm"
                 required
               />
             </Field>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Phone">
-              <input
+              <Input
                 type="tel"
                 value={phone ?? ""}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
+                className="w-full h-auto border-[#2a2a32] rounded px-3 py-2 text-sm"
               />
             </Field>
             <Field label="Email">
-              <input
+              <Input
                 type="email"
                 value={email ?? ""}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
+                className="w-full h-auto border-[#2a2a32] rounded px-3 py-2 text-sm"
               />
             </Field>
           </div>
           <AddressFields value={address} onChange={setAddress} />
           <Field label="Notes">
-            <textarea
+            <Textarea
               value={notes ?? ""}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              className="w-full border border-slate-300 rounded px-3 py-2 text-sm"
+              className="w-full border-[#2a2a32] rounded px-3 py-2 text-sm"
             />
           </Field>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex justify-end gap-2 pt-2">
-            <button
+            <Button
               type="button"
+              variant="ghost"
               onClick={onClose}
-              className="text-sm border border-slate-300 bg-white hover:bg-slate-50 rounded px-3 py-2"
+              className="h-auto text-sm border border-[#2a2a32] bg-[#0f0f12] hover:bg-black rounded px-3 py-2 font-bold"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
+              variant="ghost"
               disabled={saving}
-              className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded px-3 py-2"
+              className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded px-3 py-2 font-bold"
             >
               {saving ? "Saving…" : "Save"}
-            </button>
+            </Button>
           </div>
         </form>
       </div>
@@ -366,10 +386,10 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1">
+      <Label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
         {label}
         {required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
+      </Label>
       {children}
     </div>
   );

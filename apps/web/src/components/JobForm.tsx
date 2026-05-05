@@ -8,6 +8,11 @@ import AddressFields, {
   EMPTY_ADDRESS,
   type AddressValue,
 } from "@/components/customers/AddressFields";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 type Customer = {
   id: number;
@@ -389,31 +394,32 @@ export default function JobForm({
     <form onSubmit={submit} className="space-y-6">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">
+          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
             {mode === "edit" ? "Edit Job" : "Create Job"}
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-sm text-zinc-500 mt-1">
             Schedule a window cleaning visit and assign your team.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <Link
             href="/schedule"
-            className="text-sm border border-slate-200 bg-white hover:bg-slate-50 rounded-full px-4 py-2 text-slate-700"
+            className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-zinc-300"
           >
             Cancel
           </Link>
-          <button
+          <Button
             type="submit"
             disabled={saving}
-            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium shadow-sm"
+            variant="ghost"
+            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold shadow-sm h-auto"
           >
             {saving
               ? "Saving…"
               : mode === "edit"
               ? "Save changes"
               : "Create Job"}
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -451,13 +457,14 @@ export default function JobForm({
                 }}
                 selectedId={customerId}
               />
-              <button
+              <Button
                 type="button"
                 onClick={() => setShowNewCustomer(true)}
-                className="text-sm border border-slate-200 bg-white hover:bg-slate-50 rounded-full px-4 py-2 text-slate-700 whitespace-nowrap"
+                variant="ghost"
+                className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-zinc-300 whitespace-nowrap h-auto"
               >
                 + New Customer
-              </button>
+              </Button>
             </div>
             {showNewCustomer && (
               <NewCustomerInline
@@ -477,58 +484,56 @@ export default function JobForm({
       <Section title="Scheduling">
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-[80px_1fr_1fr] items-center gap-3">
-            <label className="text-sm font-medium text-slate-700">Start</label>
-            <input
+            <Label className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">Start</Label>
+            <Input
               type="date"
               value={startDate}
               onChange={(e) => applyNewStart(e.target.value, startTime)}
               disabled={scheduleLater}
-              className="border border-slate-200 rounded-full px-4 py-2 text-sm bg-white disabled:bg-slate-50"
+              className="border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] disabled:bg-black h-auto"
             />
-            <input
+            <Input
               type="time"
               value={startTime}
               onChange={(e) => applyNewStart(startDate, e.target.value)}
               disabled={scheduleLater || anytime}
-              className="border border-slate-200 rounded-full px-4 py-2 text-sm bg-white disabled:bg-slate-50"
+              className="border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] disabled:bg-black h-auto"
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-[80px_1fr_1fr] items-center gap-3">
-            <label className="text-sm font-medium text-slate-700">End</label>
-            <input
+            <Label className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">End</Label>
+            <Input
               type="date"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
               disabled={scheduleLater}
-              className="border border-slate-200 rounded-full px-4 py-2 text-sm bg-white disabled:bg-slate-50"
+              className="border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] disabled:bg-black h-auto"
             />
-            <input
+            <Input
               type="time"
               value={endTime}
               onChange={(e) => setEndTime(e.target.value)}
               disabled={scheduleLater || anytime}
-              className="border border-slate-200 rounded-full px-4 py-2 text-sm bg-white disabled:bg-slate-50"
+              className="border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] disabled:bg-black h-auto"
             />
           </div>
           <div className="flex flex-wrap gap-4 pt-1">
-            <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
+            <Label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">
+              <Checkbox
                 checked={anytime}
-                onChange={(e) => setAnytime(e.target.checked)}
-                className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+                onCheckedChange={(c) => setAnytime(c === true)}
+                className="rounded border-[#2a2a32] text-white focus:ring-zinc-500"
               />
               Anytime (no specific time of day)
-            </label>
-            <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-              <input
-                type="checkbox"
+            </Label>
+            <Label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">
+              <Checkbox
                 checked={scheduleLater}
-                onChange={(e) => setScheduleLater(e.target.checked)}
-                className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+                onCheckedChange={(c) => setScheduleLater(c === true)}
+                className="rounded border-[#2a2a32] text-white focus:ring-zinc-500"
               />
               Schedule later
-            </label>
+            </Label>
           </div>
         </div>
       </Section>
@@ -536,10 +541,11 @@ export default function JobForm({
       <Section title="Assignment">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Field label="Lead Source">
+            {/* Native <select> kept: empty-string sentinel value for "Select source…" */}
             <select
               value={leadSource}
               onChange={(e) => setLeadSource(e.target.value)}
-              className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+              className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
             >
               <option value="">Select source…</option>
               {LEAD_SOURCES.map((s) => (
@@ -576,13 +582,14 @@ export default function JobForm({
           </span>
         }
         action={
-          <button
+          <Button
             type="button"
             onClick={addItem}
-            className="text-sm border border-slate-200 bg-white hover:bg-slate-50 rounded-full px-3 py-1.5"
+            variant="ghost"
+            className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-3 py-1.5 h-auto"
           >
             + Add Item
-          </button>
+          </Button>
         }
       >
         <div className="space-y-3">
@@ -595,23 +602,23 @@ export default function JobForm({
             />
           ))}
         </div>
-        <div className="border-t border-slate-100 mt-4 pt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+        <div className="border-t border-[#1f1f24] mt-4 pt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
           <Total label="Subtotal" value={money(subtotal)} />
           <Total label="Total" value={money(total)} bold />
           <Total label="Total Paid" value={money(Math.round(paid * 100))} className="text-emerald-600">
-            <input
+            <Input
               type="number"
               min={0}
               step="0.01"
               value={paid}
               onChange={(e) => setPaid(Number(e.target.value))}
-              className="mt-1 border border-slate-200 rounded-full px-3 py-1 text-sm w-full"
+              className="mt-1 border-[#1f1f24] rounded-full px-3 py-1 text-sm w-full h-auto"
             />
           </Total>
           <Total
             label="Balance Due"
             value={money(balance)}
-            className={balance > 0 ? "text-rose-600" : "text-slate-500"}
+            className={balance > 0 ? "text-rose-600" : "text-zinc-400"}
             bold
           />
         </div>
@@ -620,44 +627,45 @@ export default function JobForm({
       <Section
         title="Checklist"
         action={
-          <button
+          <Button
             type="button"
             onClick={addChecklist}
-            className="text-sm border border-slate-200 bg-white hover:bg-slate-50 rounded-full px-3 py-1.5"
+            variant="ghost"
+            className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-3 py-1.5 h-auto"
           >
             + Add Item
-          </button>
+          </Button>
         }
       >
         {checklist.length === 0 || !showChecklist ? (
-          <p className="text-sm text-slate-400">No tasks selected.</p>
+          <p className="text-sm text-zinc-500">No tasks selected.</p>
         ) : (
           <ul className="space-y-2">
             {checklist.map((c) => (
               <li key={c.key} className="flex items-center gap-2">
-                <input
-                  type="checkbox"
+                <Checkbox
                   checked={c.completed}
-                  onChange={(e) =>
-                    updateCheck(c.key, { completed: e.target.checked })
+                  onCheckedChange={(ch) =>
+                    updateCheck(c.key, { completed: ch === true })
                   }
-                  className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+                  className="rounded border-[#2a2a32] text-white focus:ring-zinc-500"
                 />
-                <input
+                <Input
                   type="text"
                   value={c.text}
                   onChange={(e) => updateCheck(c.key, { text: e.target.value })}
                   placeholder="Task description"
-                  className="flex-1 border border-slate-200 rounded-full px-4 py-2 text-sm"
+                  className="flex-1 border-[#1f1f24] rounded-full px-4 py-2 text-sm h-auto"
                 />
-                <button
+                <Button
                   type="button"
                   onClick={() => removeCheck(c.key)}
-                  className="text-slate-400 hover:text-rose-500 px-2"
+                  variant="ghost"
+                  className="text-zinc-500 hover:text-rose-500 px-2 h-auto"
                   aria-label="Remove task"
                 >
                   ×
-                </button>
+                </Button>
               </li>
             ))}
           </ul>
@@ -665,12 +673,12 @@ export default function JobForm({
       </Section>
 
       <Section title="Notes">
-        <textarea
+        <Textarea
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           rows={3}
           placeholder="Add any additional notes..."
-          className="w-full border border-slate-200 rounded-2xl px-4 py-3 text-sm bg-white"
+          className="w-full border-[#1f1f24] rounded-2xl px-4 py-3 text-sm bg-[#0f0f12] h-auto"
         />
       </Section>
 
@@ -679,35 +687,35 @@ export default function JobForm({
       </Section>
 
       <Section title="Recurring Service">
-        <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
+        <Label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">
+          <Checkbox
             checked={recurring}
-            onChange={(e) => setRecurring(e.target.checked)}
-            className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+            onCheckedChange={(c) => setRecurring(c === true)}
+            className="rounded border-[#2a2a32] text-white focus:ring-zinc-500"
           />
           Make this a recurring service
-        </label>
+        </Label>
       </Section>
 
       <div className="flex justify-end gap-2">
         <Link
           href="/schedule"
-          className="text-sm border border-slate-200 bg-white hover:bg-slate-50 rounded-full px-5 py-2 text-slate-700"
+          className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-5 py-2 text-zinc-300"
         >
           Cancel
         </Link>
-        <button
+        <Button
           type="submit"
           disabled={saving}
-          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium shadow-sm"
+          variant="ghost"
+          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold shadow-sm h-auto"
         >
           {saving
             ? "Saving…"
             : mode === "edit"
             ? "Save changes"
             : "Create Job"}
-        </button>
+        </Button>
       </div>
     </form>
   );
@@ -723,9 +731,9 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6">
+    <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5 sm:p-6">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-semibold text-slate-900">{title}</h2>
+        <h2 className="font-extrabold text-white tracking-tight">{title}</h2>
         {action}
       </div>
       {children}
@@ -742,9 +750,9 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-sm font-medium text-slate-700 mb-1.5">
+      <Label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
         {label}
-      </label>
+      </Label>
       {children}
     </div>
   );
@@ -765,14 +773,14 @@ function Total({
 }) {
   return (
     <div>
-      <div className="text-xs uppercase tracking-wide text-slate-400">
+      <div className="text-xs uppercase tracking-wide text-zinc-500">
         {label}
       </div>
       <div
         className={
           (bold ? "font-bold text-lg " : "font-semibold ") +
           "tabular-nums " +
-          (className || "text-slate-900")
+          (className || "text-white")
         }
       >
         {value}
@@ -810,7 +818,7 @@ function CustomerSearch({
 
   return (
     <div ref={ref} className="relative flex-1">
-      <input
+      <Input
         type="text"
         value={query}
         onChange={(e) => {
@@ -820,27 +828,28 @@ function CustomerSearch({
         }}
         onFocus={() => setOpen(true)}
         placeholder="Search customer by name…"
-        className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+        className="w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] h-auto"
       />
       {open && suggestions.length > 0 && !selectedId && (
-        <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden">
+        <div className="absolute z-30 left-0 right-0 mt-1 bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-lg overflow-hidden">
           {suggestions.map((c) => (
-            <button
+            <Button
               key={c.id}
               type="button"
               onClick={() => {
                 onPick(c);
                 setOpen(false);
               }}
-              className="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm"
+              variant="ghost"
+              className="w-full text-left px-4 py-2 hover:bg-black text-sm h-auto block rounded-none"
             >
-              <div className="font-medium text-slate-900">{c.name}</div>
+              <div className="font-bold text-white tracking-tight">{c.name}</div>
               {c.address && (
-                <div className="text-xs text-slate-500 truncate">
+                <div className="text-xs text-zinc-400 truncate">
                   {c.address}
                 </div>
               )}
-            </button>
+            </Button>
           ))}
         </div>
       )}
@@ -897,33 +906,33 @@ function NewCustomerInline({
   }
 
   const pillCls =
-    "border border-slate-200 rounded-full px-4 py-2 text-sm bg-white";
+    "border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]";
 
   return (
-    <div className="mt-3 border border-slate-200 rounded-2xl p-4 space-y-3 bg-slate-50">
+    <div className="mt-3 border border-[#1f1f24] rounded-2xl p-4 space-y-3 bg-black">
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-        <input
+        <Input
           type="text"
           placeholder="First name *"
           value={firstName}
           onChange={(e) => setFirstName(e.target.value)}
           className={pillCls}
         />
-        <input
+        <Input
           type="text"
           placeholder="Last name *"
           value={lastName}
           onChange={(e) => setLastName(e.target.value)}
           className={pillCls}
         />
-        <input
+        <Input
           type="tel"
           placeholder="Phone"
           value={phone}
           onChange={(e) => setPhone(e.target.value)}
           className={pillCls}
         />
-        <input
+        <Input
           type="email"
           placeholder="Email"
           value={email}
@@ -939,21 +948,23 @@ function NewCustomerInline({
       />
       {error && <p className="text-sm text-rose-600">{error}</p>}
       <div className="flex justify-end gap-2">
-        <button
+        <Button
           type="button"
           onClick={onClose}
-          className="text-sm border border-slate-200 bg-white hover:bg-slate-50 rounded-full px-4 py-1.5"
+          variant="ghost"
+          className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-1.5 h-auto"
         >
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={save}
           disabled={saving}
-          className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-1.5"
+          variant="ghost"
+          className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-1.5 h-auto"
         >
           Save customer
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -993,24 +1004,25 @@ function StaffMultiPicker({
 
   return (
     <div ref={ref} className="relative">
-      <div className="min-h-[42px] flex flex-wrap items-center gap-1.5 border border-slate-200 rounded-2xl px-2 py-1.5 bg-white">
+      <div className="min-h-[42px] flex flex-wrap items-center gap-1.5 border border-[#1f1f24] rounded-2xl px-2 py-1.5 bg-[#0f0f12]">
         {picked.map((s) => (
           <span
             key={s.id}
-            className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 rounded-full px-2.5 py-0.5 text-xs"
+            className="inline-flex items-center gap-1 bg-black text-zinc-300 rounded-full px-2.5 py-0.5 text-xs"
           >
             {s.name}
-            <button
+            <Button
               type="button"
               onClick={() => setIds(ids.filter((id) => id !== s.id))}
-              className="text-slate-500 hover:text-slate-900"
+              variant="ghost"
+              className="text-zinc-400 hover:text-white h-auto p-0"
               aria-label={`Remove ${s.name}`}
             >
               ×
-            </button>
+            </Button>
           </span>
         ))}
-        <input
+        <Input
           type="text"
           value={query}
           onChange={(e) => {
@@ -1019,26 +1031,27 @@ function StaffMultiPicker({
           }}
           onFocus={() => setOpen(true)}
           placeholder={picked.length === 0 ? placeholder : ""}
-          className="flex-1 min-w-[120px] outline-none text-sm bg-transparent px-2"
+          className="flex-1 min-w-[120px] outline-none text-sm bg-transparent px-2 border-0 h-auto"
         />
       </div>
       {open && suggestions.length > 0 && (
-        <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden">
+        <div className="absolute z-20 left-0 right-0 mt-1 bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-lg overflow-hidden">
           {suggestions.map((s) => (
-            <button
+            <Button
               key={s.id}
               type="button"
               onClick={() => {
                 setIds([...ids, s.id]);
                 setQuery("");
               }}
-              className="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm flex items-center justify-between"
+              variant="ghost"
+              className="w-full text-left px-4 py-2 hover:bg-black text-sm flex items-center justify-between h-auto rounded-none"
             >
-              <span className="font-medium text-slate-900">{s.name}</span>
+              <span className="font-bold text-white tracking-tight">{s.name}</span>
               {s.role && (
-                <span className="text-xs text-slate-400">{s.role}</span>
+                <span className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">{s.role}</span>
               )}
-            </button>
+            </Button>
           ))}
         </div>
       )}
@@ -1069,11 +1082,11 @@ function LineItemCard({
   const lineTotal = Math.round(item.quantity * item.price_cents);
 
   return (
-    <div className="border border-slate-200 rounded-2xl p-4 space-y-3 bg-white">
+    <div className="border border-[#1f1f24] rounded-2xl p-4 space-y-3 bg-[#0f0f12]">
       <div className="flex items-start gap-3">
         <div className="flex-1 space-y-3">
           <div ref={titleRef} className="relative">
-            <input
+            <Input
               type="text"
               value={item.title}
               onChange={(e) => {
@@ -1082,49 +1095,51 @@ function LineItemCard({
               }}
               onFocus={() => setTitleOpen(true)}
               placeholder="Service title"
-              className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm"
+              className="w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm h-auto"
             />
             {titleOpen && (
-              <div className="absolute z-20 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-2xl shadow-lg overflow-hidden">
+              <div className="absolute z-20 left-0 right-0 mt-1 bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-lg overflow-hidden">
                 {SERVICE_PRESETS.filter(
                   (p) =>
                     !item.title ||
                     p.toLowerCase().includes(item.title.toLowerCase())
                 ).map((p) => (
-                  <button
+                  <Button
                     key={p}
                     type="button"
                     onClick={() => {
                       onChange({ title: p });
                       setTitleOpen(false);
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm"
+                    variant="ghost"
+                    className="w-full text-left px-4 py-2 hover:bg-black text-sm h-auto block rounded-none"
                   >
                     {p}
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
           </div>
           <div className="relative">
-            <textarea
+            <Textarea
               value={item.description}
               onChange={(e) => onChange({ description: e.target.value })}
               rows={2}
               placeholder="Description (optional)"
-              className="w-full border border-slate-200 rounded-2xl px-4 py-2 text-sm"
+              className="w-full border-[#1f1f24] rounded-2xl px-4 py-2 text-sm h-auto"
             />
-            <button
+            <Button
               type="button"
               title="AI write — coming soon"
-              className="absolute top-2 right-2 inline-flex items-center gap-1 text-xs bg-violet-50 text-violet-700 hover:bg-violet-100 rounded-full px-2.5 py-1"
+              variant="ghost"
+              className="absolute top-2 right-2 inline-flex items-center gap-1 text-xs bg-violet-50 text-violet-700 hover:bg-violet-100 rounded-full px-2.5 py-1 h-auto"
             >
               <span>✦</span> AI Write
-            </button>
+            </Button>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Quantity">
-              <input
+              <Input
                 type="number"
                 min={0}
                 step="1"
@@ -1132,11 +1147,11 @@ function LineItemCard({
                 onChange={(e) =>
                   onChange({ quantity: Number(e.target.value) || 0 })
                 }
-                className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm"
+                className="w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm h-auto"
               />
             </Field>
             <Field label="Price ($)">
-              <input
+              <Input
                 type="number"
                 min={0}
                 step="0.01"
@@ -1146,35 +1161,34 @@ function LineItemCard({
                     price_cents: Math.round(Number(e.target.value) * 100) || 0,
                   })
                 }
-                className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm"
+                className="w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm h-auto"
               />
             </Field>
           </div>
           <div className="flex flex-wrap items-center gap-4 text-sm">
-            <label className="inline-flex items-center gap-2">
-              <input
-                type="checkbox"
+            <Label className="inline-flex items-center gap-2 font-normal">
+              <Checkbox
                 checked={item.taxable}
-                onChange={(e) => onChange({ taxable: e.target.checked })}
-                className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+                onCheckedChange={(c) => onChange({ taxable: c === true })}
+                className="rounded border-[#2a2a32] text-white focus:ring-zinc-500"
               />
               Taxable
-            </label>
-            <label className="inline-flex items-center gap-2">
-              <input
-                type="checkbox"
+            </Label>
+            <Label className="inline-flex items-center gap-2 font-normal">
+              <Checkbox
                 checked={item.upsell}
-                onChange={(e) => onChange({ upsell: e.target.checked })}
-                className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+                onCheckedChange={(c) => onChange({ upsell: c === true })}
+                className="rounded border-[#2a2a32] text-white focus:ring-zinc-500"
               />
               Upsell
-            </label>
+            </Label>
           </div>
         </div>
-        <button
+        <Button
           type="button"
           onClick={onRemove}
-          className="text-slate-400 hover:text-rose-500 p-1"
+          variant="ghost"
+          className="text-zinc-500 hover:text-rose-500 p-1 h-auto"
           aria-label="Remove item"
         >
           <svg
@@ -1191,11 +1205,11 @@ function LineItemCard({
             <path d="M10 11v6" />
             <path d="M14 11v6" />
           </svg>
-        </button>
+        </Button>
       </div>
-      <div className="flex justify-end text-sm text-slate-500">
+      <div className="flex justify-end text-sm text-zinc-400 font-bold">
         Item total:{" "}
-        <span className="font-semibold text-slate-900 ml-1">
+        <span className="font-extrabold text-white tracking-tight ml-1">
           {money(lineTotal)}
         </span>
       </div>
@@ -1219,15 +1233,15 @@ function Dropzone() {
       className={
         "border-2 border-dashed rounded-2xl py-10 text-center transition " +
         (isOver
-          ? "border-slate-400 bg-slate-50"
-          : "border-slate-200 bg-slate-50/40")
+          ? "border-slate-400 bg-black"
+          : "border-[#1f1f24] bg-black/40")
       }
     >
-      <div className="text-3xl text-slate-300">⤴</div>
-      <p className="mt-2 text-sm font-medium text-slate-700">
+      <div className="text-3xl text-zinc-500">⤴</div>
+      <p className="mt-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
         Click to upload or drag and drop
       </p>
-      <p className="text-xs text-slate-400">PNG, JPG, GIF up to 5MB</p>
+      <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">PNG, JPG, GIF up to 5MB</p>
     </div>
   );
 }

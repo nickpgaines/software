@@ -2,6 +2,16 @@
 
 import Papa from "papaparse";
 import { useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const FIELDS = [
   "first_name",
@@ -174,21 +184,22 @@ export default function ImportModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 shrink-0">
+      <div className="bg-[#0f0f12] rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1f1f24] shrink-0">
           <div>
-            <h3 className="font-medium">Import customers</h3>
-            <p className="text-xs text-slate-400 mt-0.5">
+            <h3 className="font-bold">Import customers</h3>
+            <p className="text-xs text-zinc-500 mt-0.5">
               <Stepper step={step} />
             </p>
           </div>
-          <button
+          <Button
+            variant="ghost"
             onClick={close}
-            className="text-slate-400 hover:text-slate-700 text-xl leading-none"
+            className="h-auto w-auto p-0 text-zinc-500 hover:text-zinc-300 hover:bg-transparent text-xl leading-none"
             aria-label="Close"
           >
             ×
-          </button>
+          </Button>
         </div>
 
         <div className="p-4 overflow-y-auto flex-1">
@@ -220,7 +231,7 @@ export default function ImportModal({
           )}
 
           {step === "importing" && (
-            <div className="py-12 text-center text-sm text-slate-500">
+            <div className="py-12 text-center text-sm text-zinc-400 font-bold">
               Importing…
             </div>
           )}
@@ -234,85 +245,92 @@ export default function ImportModal({
           )}
         </div>
 
-        <div className="px-4 py-3 border-t border-slate-200 flex items-center justify-between gap-2 shrink-0">
+        <div className="px-4 py-3 border-t border-[#1f1f24] flex items-center justify-between gap-2 shrink-0">
           {step === "upload" && (
             <>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={close}
-                className="text-sm border border-slate-300 bg-white hover:bg-slate-50 rounded px-3 py-2"
+                className="h-auto text-sm border border-[#2a2a32] bg-[#0f0f12] hover:bg-black rounded px-3 py-2 font-bold"
               >
                 Cancel
-              </button>
+              </Button>
               <span />
             </>
           )}
 
           {step === "mapping" && (
             <>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => {
                   setStep("upload");
                   setError(null);
                 }}
-                className="text-sm border border-slate-300 bg-white hover:bg-slate-50 rounded px-3 py-2"
+                className="h-auto text-sm border border-[#2a2a32] bg-[#0f0f12] hover:bg-black rounded px-3 py-2 font-bold"
               >
                 Back
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => setStep("preview")}
                 disabled={!firstNameMapped}
-                className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded px-3 py-2"
+                className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded px-3 py-2 font-bold"
               >
                 Next: preview
-              </button>
+              </Button>
             </>
           )}
 
           {step === "preview" && (
             <>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => setStep("mapping")}
-                className="text-sm border border-slate-300 bg-white hover:bg-slate-50 rounded px-3 py-2"
+                className="h-auto text-sm border border-[#2a2a32] bg-[#0f0f12] hover:bg-black rounded px-3 py-2 font-bold"
               >
                 Back
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={doImport}
-                className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded px-3 py-2"
+                className="h-auto text-sm bg-slate-900 hover:bg-slate-800 text-white rounded px-3 py-2 font-bold"
               >
                 Import {csvRows.length} {csvRows.length === 1 ? "row" : "rows"}
-              </button>
+              </Button>
             </>
           )}
 
           {step === "importing" && (
             <>
               <span />
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 disabled
-                className="text-sm bg-slate-400 text-white rounded px-3 py-2"
+                className="h-auto text-sm bg-slate-400 text-white rounded px-3 py-2 font-bold"
               >
                 Importing…
-              </button>
+              </Button>
             </>
           )}
 
           {step === "result" && (
             <>
               <span />
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={finishAndRefresh}
-                className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded px-3 py-2"
+                className="h-auto text-sm bg-slate-900 hover:bg-slate-800 text-white rounded px-3 py-2 font-bold"
               >
                 Close
-              </button>
+              </Button>
             </>
           )}
         </div>
@@ -337,7 +355,7 @@ function Stepper({ step }: { step: Step }) {
             className={
               i === activeIdx ||
               (step === "importing" && l.key === "preview")
-                ? "text-slate-700 font-medium"
+                ? "text-zinc-300 font-bold"
                 : ""
             }
           >
@@ -365,7 +383,7 @@ function UploadStep({
 }) {
   return (
     <div className="space-y-3">
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-zinc-400 font-bold">
         Upload a CSV file. The first row should be column headers.
       </p>
       <div
@@ -384,17 +402,17 @@ function UploadStep({
         className={
           "rounded-lg border-2 border-dashed py-12 text-center cursor-pointer transition " +
           (dragActive
-            ? "border-slate-400 bg-slate-50"
-            : "border-slate-200 bg-slate-50/40 hover:bg-slate-50")
+            ? "border-slate-400 bg-black"
+            : "border-[#1f1f24] bg-black/40 hover:bg-black")
         }
       >
-        <div className="text-3xl text-slate-300">⤴</div>
-        <p className="mt-2 text-sm font-medium text-slate-700">
+        <div className="text-3xl text-zinc-500">⤴</div>
+        <p className="mt-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
           Click to choose or drag & drop a CSV file
         </p>
-        <p className="text-xs text-slate-400">.csv files only</p>
+        <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">.csv files only</p>
       </div>
-      <input
+      <Input
         ref={fileInputRef}
         type="file"
         accept=".csv,text/csv"
@@ -423,38 +441,39 @@ function MappingStep({
   const firstSample = csvRows[0] ?? {};
   return (
     <div className="space-y-3">
-      <p className="text-sm text-slate-600">
-        Match each CSV column to a Nick360 field. <strong>First name</strong>{" "}
+      <p className="text-sm text-zinc-400 font-bold">
+        Match each CSV column to a Forge CRM field. <strong>First name</strong>{" "}
         is required; the others are optional. If you map a single &ldquo;Full
         Name&rdquo; column to First name, we&rsquo;ll auto-split it.
       </p>
-      <div className="border border-slate-200 rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-600">
-            <tr>
-              <th className="text-left px-3 py-2 font-medium">CSV column</th>
-              <th className="text-left px-3 py-2 font-medium">Sample</th>
-              <th className="text-left px-3 py-2 font-medium">
-                Nick360 field
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-200">
+      <div className="border border-[#1f1f24] rounded-lg overflow-hidden">
+        <Table>
+          <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-[#1f1f24]">
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="h-auto text-left px-3 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">CSV column</TableHead>
+              <TableHead className="h-auto text-left px-3 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Sample</TableHead>
+              <TableHead className="h-auto text-left px-3 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">
+                Forge CRM field
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody className="divide-y divide-[#1f1f24]">
             {headers.map((h) => (
-              <tr key={h}>
-                <td className="px-3 py-2 font-medium text-slate-900">{h}</td>
-                <td className="px-3 py-2 text-slate-500 truncate max-w-[200px]">
+              <TableRow key={h} className="border-0 hover:bg-transparent">
+                <TableCell className="px-3 py-2 font-bold text-white tracking-tight">{h}</TableCell>
+                <TableCell className="px-3 py-2 text-zinc-400 truncate max-w-[200px]">
                   {(firstSample[h] ?? "").toString() || (
-                    <span className="italic text-slate-300">empty</span>
+                    <span className="italic text-zinc-500">empty</span>
                   )}
-                </td>
-                <td className="px-3 py-2">
+                </TableCell>
+                <TableCell className="px-3 py-2">
+                  {/* Native <select> kept: deferred Select migration (empty-string "ignore" sentinel forbidden by Radix). */}
                   <select
                     value={mapping[h] ?? ""}
                     onChange={(e) =>
                       setField(h, e.target.value as Field | "")
                     }
-                    className="border border-slate-300 rounded px-2 py-1 text-sm"
+                    className="border border-[#2a2a32] rounded px-2 py-1 text-sm"
                   >
                     <option value="">— ignore —</option>
                     {FIELDS.map((f) => (
@@ -463,11 +482,11 @@ function MappingStep({
                       </option>
                     ))}
                   </select>
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
@@ -484,38 +503,38 @@ function PreviewStep({
 }) {
   return (
     <div className="space-y-3">
-      <p className="text-sm text-slate-600">
+      <p className="text-sm text-zinc-400 font-bold">
         Showing the first {previewRows.length} of {totalRows} rows after mapping.
         Review for accuracy before importing.
       </p>
-      <div className="border border-slate-200 rounded-lg overflow-hidden">
-        <table className="w-full text-sm">
-          <thead className="bg-slate-50 text-slate-600">
-            <tr>
+      <div className="border border-[#1f1f24] rounded-lg overflow-hidden">
+        <Table>
+          <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-[#1f1f24]">
+            <TableRow className="hover:bg-transparent">
               {FIELDS.map((f) => (
-                <th key={f} className="text-left px-3 py-2 font-medium">
+                <TableHead key={f} className="h-auto text-left px-3 py-2 font-bold">
                   {FIELD_LABELS[f]}
-                </th>
+                </TableHead>
               ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-200">
+            </TableRow>
+          </TableHeader>
+          <TableBody className="divide-y divide-[#1f1f24]">
             {previewRows.map((row, i) => (
-              <tr key={i}>
+              <TableRow key={i} className="border-0 hover:bg-transparent">
                 {FIELDS.map((f) => (
-                  <td
+                  <TableCell
                     key={f}
-                    className="px-3 py-2 text-slate-700 truncate max-w-[160px]"
+                    className="px-3 py-2 text-zinc-300 truncate max-w-[160px]"
                   >
                     {row[f] || (
-                      <span className="italic text-slate-300">empty</span>
+                      <span className="italic text-zinc-500">empty</span>
                     )}
-                  </td>
+                  </TableCell>
                 ))}
-              </tr>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
       {error && <p className="text-sm text-red-600">{error}</p>}
     </div>
@@ -535,11 +554,11 @@ function ResultStep({
     result.inserted + result.skipped + result.errors.length;
   return (
     <div className="space-y-4">
-      <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-center">
-        <div className="text-2xl font-semibold text-slate-900">
+      <div className="bg-black border border-[#1f1f24] rounded-lg p-4 text-center">
+        <div className="text-[40px] font-extrabold tracking-tight leading-none text-white">
           Imported {result.inserted} {result.inserted === 1 ? "customer" : "customers"}
         </div>
-        <div className="text-sm text-slate-500 mt-1">
+        <div className="text-sm text-zinc-400 mt-3 font-bold">
           {result.skipped > 0 && (
             <>
               Skipped {result.skipped} duplicate
@@ -561,44 +580,45 @@ function ResultStep({
 
       {(result.skippedReasons.length > 0 || result.errors.length > 0) && (
         <div>
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => setShowSkipped(!showSkipped)}
-            className="text-sm text-slate-600 hover:text-slate-900"
+            className="h-auto p-0 text-sm text-zinc-400 font-bold hover:text-white hover:bg-transparent"
           >
             {showSkipped ? "▾" : "▸"} Show details (
             {result.skippedReasons.length + result.errors.length})
-          </button>
+          </Button>
           {showSkipped && (
-            <div className="mt-2 border border-slate-200 rounded-lg overflow-hidden max-h-60 overflow-y-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-slate-50 text-slate-600 sticky top-0">
-                  <tr>
-                    <th className="text-left px-3 py-2 font-medium w-16">
+            <div className="mt-2 border border-[#1f1f24] rounded-lg overflow-hidden max-h-60 overflow-y-auto">
+              <Table>
+                <TableHeader className="bg-black text-zinc-400 sticky top-0">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="h-auto text-left px-3 py-2 font-bold w-16">
                       Row
-                    </th>
-                    <th className="text-left px-3 py-2 font-medium">Reason</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200">
+                    </TableHead>
+                    <TableHead className="h-auto text-left px-3 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Reason</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="divide-y divide-[#1f1f24]">
                   {result.errors.map((e, i) => (
-                    <tr key={`e-${i}`}>
-                      <td className="px-3 py-2 text-slate-700 tabular-nums">
+                    <TableRow key={`e-${i}`} className="border-0 hover:bg-transparent">
+                      <TableCell className="px-3 py-2 text-zinc-300 tabular-nums">
                         {e.row}
-                      </td>
-                      <td className="px-3 py-2 text-red-600">{e.reason}</td>
-                    </tr>
+                      </TableCell>
+                      <TableCell className="px-3 py-2 text-red-600">{e.reason}</TableCell>
+                    </TableRow>
                   ))}
                   {result.skippedReasons.map((s, i) => (
-                    <tr key={`s-${i}`}>
-                      <td className="px-3 py-2 text-slate-700 tabular-nums">
+                    <TableRow key={`s-${i}`} className="border-0 hover:bg-transparent">
+                      <TableCell className="px-3 py-2 text-zinc-300 tabular-nums">
                         {s.row}
-                      </td>
-                      <td className="px-3 py-2 text-slate-600">{s.reason}</td>
-                    </tr>
+                      </TableCell>
+                      <TableCell className="px-3 py-2 text-zinc-400">{s.reason}</TableCell>
+                    </TableRow>
                   ))}
-                </tbody>
-              </table>
+                </TableBody>
+              </Table>
             </div>
           )}
         </div>

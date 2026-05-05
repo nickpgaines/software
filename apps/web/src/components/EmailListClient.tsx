@@ -2,6 +2,16 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type Blast = {
   id: number;
@@ -79,7 +89,7 @@ function statusBadge(status: string) {
     return "bg-rose-50 text-rose-700 border-rose-200";
   if (status === "sending")
     return "bg-sky-50 text-sky-700 border-sky-200";
-  return "bg-slate-50 text-slate-700 border-slate-200";
+  return "bg-black text-zinc-300 border-[#1f1f24]";
 }
 
 export default function EmailListClient() {
@@ -165,14 +175,14 @@ export default function EmailListClient() {
     <div className="space-y-8">
       <div className="flex items-baseline justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Email</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Email</h1>
+          <p className="text-sm text-zinc-400 mt-3 font-bold">
             Send one-off blasts or turn on automated emails that go out on their own.
           </p>
         </div>
         <Link
           href="/email/new"
-          className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 font-medium"
+          className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 font-bold"
         >
           New blast
         </Link>
@@ -191,10 +201,10 @@ export default function EmailListClient() {
 
       <section className="space-y-3">
         <div className="flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
+          <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
             Automated emails
           </h2>
-          <span className="text-xs text-slate-400">
+          <span className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
             Toggle on to enable. Edit to customize the message.
           </span>
         </div>
@@ -204,13 +214,13 @@ export default function EmailListClient() {
             ? Array.from({ length: 4 }).map((_, i) => (
                 <div
                   key={i}
-                  className="h-32 bg-white border border-slate-200 rounded-2xl animate-pulse"
+                  className="h-32 bg-[#0f0f12] border border-[#1f1f24] rounded-2xl animate-pulse"
                 />
               ))
             : automations.map((a) => (
                 <div
                   key={a.id}
-                  className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 flex flex-col gap-3"
+                  className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm p-4 flex flex-col gap-3"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -222,50 +232,51 @@ export default function EmailListClient() {
                               ? SEASON_EMOJI[a.season]
                               : "📧"}
                         </span>
-                        <h3 className="font-medium text-slate-900">{a.name}</h3>
+                        <h3 className="font-bold text-white tracking-tight">{a.name}</h3>
                       </div>
                       {a.description && (
-                        <p className="text-xs text-slate-500 mt-1">
+                        <p className="text-xs text-zinc-400 mt-1">
                           {a.description}
                         </p>
                       )}
                     </div>
-                    <button
+                    <Button
                       type="button"
+                      variant="ghost"
                       role="switch"
                       aria-checked={a.enabled === 1}
                       disabled={busyId === a.id}
                       onClick={() => toggleAutomation(a, a.enabled !== 1)}
                       className={
-                        "relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full transition disabled:opacity-50 " +
-                        (a.enabled === 1 ? "bg-emerald-500" : "bg-slate-200")
+                        "relative h-6 w-11 p-0 shrink-0 cursor-pointer rounded-full justify-start hover:bg-current " +
+                        (a.enabled === 1 ? "bg-emerald-500 hover:bg-emerald-500" : "bg-[#1f1f24] hover:bg-[#1f1f24]")
                       }
                     >
                       <span
                         className={
-                          "inline-block h-5 w-5 transform rounded-full bg-white shadow transition " +
+                          "inline-block h-5 w-5 transform rounded-full bg-[#0f0f12] shadow transition " +
                           (a.enabled === 1 ? "translate-x-5" : "translate-x-0.5")
                         }
                       />
-                    </button>
+                    </Button>
                   </div>
 
-                  <div className="text-xs text-slate-500 grid grid-cols-2 gap-y-1 gap-x-4">
+                  <div className="text-xs text-zinc-400 grid grid-cols-2 gap-y-1 gap-x-4">
                     <div>
-                      <span className="text-slate-400">Audience: </span>
-                      <span className="text-slate-700">
+                      <span className="text-zinc-500">Audience: </span>
+                      <span className="text-zinc-300">
                         {AUDIENCE_LABELS[a.audience] || a.audience}
                       </span>
                     </div>
                     <div>
-                      <span className="text-slate-400">When: </span>
-                      <span className="text-slate-700">{fmtSendWindow(a)}</span>
+                      <span className="text-zinc-500">When: </span>
+                      <span className="text-zinc-300">{fmtSendWindow(a)}</span>
                     </div>
                     <div className="col-span-2 truncate">
-                      <span className="text-slate-400">Subject: </span>
-                      <span className="text-slate-700">
+                      <span className="text-zinc-500">Subject: </span>
+                      <span className="text-zinc-300">
                         {a.subject || (
-                          <span className="italic text-slate-400">
+                          <span className="italic text-zinc-500">
                             (none yet)
                           </span>
                         )}
@@ -273,8 +284,8 @@ export default function EmailListClient() {
                     </div>
                     {a.last_sent_at && (
                       <div className="col-span-2" suppressHydrationWarning>
-                        <span className="text-slate-400">Last sent: </span>
-                        <span className="text-slate-700">
+                        <span className="text-zinc-500">Last sent: </span>
+                        <span className="text-zinc-300">
                           {mounted ? fmtTime(a.last_sent_at) : ""}
                         </span>
                       </div>
@@ -284,16 +295,17 @@ export default function EmailListClient() {
                   <div className="flex items-center gap-2 pt-1">
                     <Link
                       href={`/email/automations/${a.id}`}
-                      className="text-xs bg-white border border-slate-200 hover:bg-slate-50 rounded-full px-3 py-1.5 font-medium"
+                      className="text-xs bg-[#0f0f12] border border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5 font-bold"
                     >
                       Edit
                     </Link>
                     {a.kind === "seasonal" && (
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
                         onClick={() => runAutomation(a)}
                         disabled={busyId === a.id || a.enabled !== 1}
-                        className="text-xs bg-white border border-slate-200 hover:bg-slate-50 disabled:opacity-50 rounded-full px-3 py-1.5 font-medium"
+                        className="h-auto text-xs bg-[#0f0f12] border border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5 font-bold"
                         title={
                           a.enabled !== 1
                             ? "Enable this automation to send"
@@ -301,7 +313,7 @@ export default function EmailListClient() {
                         }
                       >
                         Send now
-                      </button>
+                      </Button>
                     )}
                   </div>
                 </div>
@@ -310,70 +322,71 @@ export default function EmailListClient() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-slate-700 uppercase tracking-wide">
+        <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
           Blast history
         </h2>
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
           {loading ? (
-            <div className="p-10 text-center text-sm text-slate-400">Loading…</div>
+            <div className="p-10 text-center text-sm text-zinc-500">Loading…</div>
           ) : blasts.length === 0 ? (
-            <div className="p-10 text-center text-sm text-slate-400">
+            <div className="p-10 text-center text-sm text-zinc-500">
               No blasts yet. Click <strong>New blast</strong> to send your first.
             </div>
           ) : (
-            <table className="w-full text-sm">
-              <thead className="bg-slate-50 text-slate-500">
-                <tr>
-                  <th className="text-left px-4 py-2 font-medium">Sent</th>
-                  <th className="text-left px-4 py-2 font-medium">Subject</th>
-                  <th className="text-left px-4 py-2 font-medium">Audience</th>
-                  <th className="text-left px-4 py-2 font-medium">Recipients</th>
-                  <th className="text-left px-4 py-2 font-medium">Delivered</th>
-                  <th className="text-left px-4 py-2 font-medium">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-200">
+            <Table>
+              <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-[#1f1f24]">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Sent</TableHead>
+                  <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Subject</TableHead>
+                  <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Audience</TableHead>
+                  <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Recipients</TableHead>
+                  <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Delivered</TableHead>
+                  <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-[#1f1f24]">
                 {blasts.map((b) => (
-                  <tr key={b.id} className="hover:bg-slate-50">
-                    <td
-                      className="px-4 py-2 text-slate-700 whitespace-nowrap"
+                  <TableRow key={b.id} className="border-0 hover:bg-black">
+                    <TableCell
+                      className="px-4 py-2 text-zinc-300 whitespace-nowrap"
                       suppressHydrationWarning
                     >
                       {mounted ? fmtTime(b.sent_at || b.created_at) : ""}
-                    </td>
-                    <td className="px-4 py-2 font-medium text-slate-900">
+                    </TableCell>
+                    <TableCell className="px-4 py-2 font-bold text-white tracking-tight">
                       <Link href={`/email/${b.id}`} className="hover:underline">
                         {b.subject}
                       </Link>
-                    </td>
-                    <td className="px-4 py-2 text-slate-700">
+                    </TableCell>
+                    <TableCell className="px-4 py-2 text-zinc-300 font-bold">
                       {AUDIENCE_LABELS[b.audience] || b.audience}
-                    </td>
-                    <td className="px-4 py-2 text-slate-700 tabular-nums">
+                    </TableCell>
+                    <TableCell className="px-4 py-2 text-zinc-300 tabular-nums">
                       {b.recipient_count}
-                    </td>
-                    <td className="px-4 py-2 text-slate-700 tabular-nums">
+                    </TableCell>
+                    <TableCell className="px-4 py-2 text-zinc-300 tabular-nums">
                       {b.sent_count}
                       {b.failed_count > 0 && (
                         <span className="text-rose-600">
                           {" "}· {b.failed_count} failed
                         </span>
                       )}
-                    </td>
-                    <td className="px-4 py-2">
-                      <span
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
+                      <Badge
+                        variant="outline"
                         className={
-                          "text-[11px] rounded-full px-2 py-0.5 border capitalize " +
+                          "text-[11px] rounded-full px-2 py-0.5 border capitalize font-normal " +
                           statusBadge(b.status)
                         }
                       >
                         {b.status}
-                      </span>
-                    </td>
-                  </tr>
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           )}
         </div>
       </section>

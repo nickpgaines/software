@@ -3,6 +3,16 @@
 import { useState } from "react";
 import { Plus, ChevronRight } from "lucide-react";
 import type { LeadWorkflow, LeadWorkflowRun } from "@/lib/db";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default function LeadsWorkflowsClient({
   initialWorkflows,
@@ -55,58 +65,61 @@ export default function LeadsWorkflowsClient({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-slate-900">Workflows</h2>
-        <p className="text-sm text-slate-500">
+        <h2 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Workflows</h2>
+        <p className="text-sm text-zinc-400 font-bold">
           Automate follow-ups and lead nurturing sequences
         </p>
       </div>
 
       <div className="flex justify-end">
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={() => setShowNew(true)}
-          className="inline-flex items-center gap-1.5 bg-sky-400 hover:bg-sky-500 text-white text-sm font-medium px-4 py-2 rounded-full"
+          className="h-auto gap-1.5 bg-sky-400 hover:bg-sky-500 text-white text-sm font-bold px-4 py-2 rounded-full"
         >
           <Plus className="w-4 h-4" />
           Add Workflow
-        </button>
+        </Button>
       </div>
 
       <div className="flex justify-center">
-        <div className="bg-slate-100 rounded-full p-1 flex items-center text-sm">
-          <button
+        <div className="bg-black rounded-full p-1 flex items-center text-sm">
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => setTab("workflows")}
             className={
-              "px-4 py-1.5 rounded-full " +
+              "h-auto px-4 py-1.5 rounded-full hover:bg-transparent " +
               (tab === "workflows"
-                ? "bg-white text-slate-900 shadow-sm font-medium"
-                : "text-slate-500")
+                ? "bg-[#0f0f12] text-white shadow-sm font-bold"
+                : "text-zinc-400 font-bold")
             }
           >
             Workflows
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => setTab("logs")}
             className={
-              "px-4 py-1.5 rounded-full " +
+              "h-auto px-4 py-1.5 rounded-full hover:bg-transparent " +
               (tab === "logs"
-                ? "bg-white text-slate-900 shadow-sm font-medium"
-                : "text-slate-500")
+                ? "bg-[#0f0f12] text-white shadow-sm font-bold"
+                : "text-zinc-400 font-bold")
             }
           >
             Workflow Logs
-          </button>
+          </Button>
         </div>
       </div>
 
       {tab === "workflows" ? (
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <Stat label="TOTAL" value={total} valueClass="text-slate-900" />
+            <Stat label="TOTAL" value={total} valueClass="text-white" />
             <Stat label="ACTIVE" value={active} valueClass="text-emerald-600" />
-            <Stat label="PAUSED" value={paused} valueClass="text-slate-900" />
+            <Stat label="PAUSED" value={paused} valueClass="text-white" />
           </div>
 
           <div className="space-y-3">
@@ -129,34 +142,36 @@ export default function LeadsWorkflowsClient({
           onClick={() => setShowNew(false)}
         >
           <div
-            className="bg-white rounded-2xl p-6 w-full max-w-md"
+            className="bg-[#0f0f12] rounded-2xl p-6 w-full max-w-md"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">
+            <h3 className="text-lg font-extrabold text-white tracking-tight mb-4">
               New workflow
             </h3>
-            <input
+            <Input
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Workflow name"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+              className="w-full h-auto border-[#1f1f24] rounded-lg px-3 py-2 text-sm focus-visible:ring-[#2a2a32]"
             />
             <div className="flex justify-end gap-2 mt-4">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => setShowNew(false)}
-                className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900"
+                className="h-auto px-4 py-2 text-sm text-zinc-400 font-bold hover:text-white hover:bg-transparent"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={createWorkflow}
-                className="px-4 py-2 text-sm bg-sky-400 hover:bg-sky-500 text-white rounded-full"
+                className="h-auto px-4 py-2 text-sm bg-sky-400 hover:bg-sky-500 text-white rounded-full font-bold"
               >
                 Create
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -175,8 +190,8 @@ function Stat({
   valueClass: string;
 }) {
   return (
-    <div className="border border-slate-200 rounded-2xl p-5">
-      <div className="text-xs uppercase tracking-wide text-slate-500">
+    <div className="border border-[#1f1f24] rounded-2xl p-5">
+      <div className="text-xs uppercase tracking-wide text-zinc-400">
         {label}
       </div>
       <div className={`text-3xl font-bold mt-2 ${valueClass}`}>{value}</div>
@@ -201,13 +216,13 @@ function WorkflowRow({
     }
   })();
   return (
-    <div className="border border-slate-200 rounded-2xl p-4 flex items-center justify-between gap-4">
+    <div className="border border-[#1f1f24] rounded-2xl p-4 flex items-center justify-between gap-4">
       <div>
-        <div className="font-semibold text-slate-900">{workflow.name}</div>
-        <div className="text-xs text-slate-500 mt-0.5">
+        <div className="font-extrabold text-white tracking-tight">{workflow.name}</div>
+        <div className="text-xs text-zinc-400 mt-0.5">
           Trigger: A new lead is created
         </div>
-        <div className="text-xs text-slate-500 mt-0.5">
+        <div className="text-xs text-zinc-400 mt-0.5">
           {stepCount} steps &middot; Max/day {workflow.max_per_day}
         </div>
       </div>
@@ -217,29 +232,30 @@ function WorkflowRow({
             "text-xs px-3 py-1 rounded-full " +
             (enabled
               ? "bg-emerald-50 text-emerald-700"
-              : "bg-slate-100 text-slate-600")
+              : "bg-black text-zinc-400")
           }
         >
           {enabled ? "Active" : "Paused"}
         </span>
-        <button
+        <Button
           type="button"
+          variant="ghost"
           role="switch"
           aria-checked={enabled}
           onClick={() => onToggle(!enabled)}
           className={
-            "relative w-10 h-6 rounded-full transition-colors " +
-            (enabled ? "bg-emerald-500" : "bg-slate-300")
+            "relative w-10 h-6 p-0 rounded-full hover:bg-current " +
+            (enabled ? "bg-emerald-500 hover:bg-emerald-500" : "bg-[#2a2a32] hover:bg-[#2a2a32]")
           }
         >
           <span
             className={
-              "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform " +
+              "absolute top-0.5 left-0.5 w-5 h-5 bg-[#0f0f12] rounded-full shadow transition-transform " +
               (enabled ? "translate-x-4" : "")
             }
           />
-        </button>
-        <ChevronRight className="w-4 h-4 text-slate-400" />
+        </Button>
+        <ChevronRight className="w-4 h-4 text-zinc-500" />
       </div>
     </div>
   );
@@ -254,7 +270,7 @@ function LogsTable({
 }) {
   if (runs.length === 0) {
     return (
-      <div className="border border-dashed border-slate-200 rounded-2xl p-12 text-center text-sm text-slate-500">
+      <div className="border border-dashed border-[#1f1f24] rounded-2xl p-12 text-center text-sm text-zinc-400 font-bold">
         No workflow runs yet. They&rsquo;ll appear here once a workflow is
         active and a lead matches its trigger.
       </div>
@@ -262,33 +278,33 @@ function LogsTable({
   }
   const wfMap = new Map(workflows.map((w) => [w.id, w.name]));
   return (
-    <div className="border border-slate-200 rounded-2xl overflow-hidden">
-      <table className="w-full text-sm">
-        <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-          <tr>
-            <th className="text-left px-4 py-3">Workflow</th>
-            <th className="text-left px-4 py-3">Lead</th>
-            <th className="text-left px-4 py-3">Step</th>
-            <th className="text-left px-4 py-3">Status</th>
-            <th className="text-left px-4 py-3">Created</th>
-          </tr>
-        </thead>
-        <tbody>
+    <div className="border border-[#1f1f24] rounded-2xl overflow-hidden">
+      <Table>
+        <TableHeader className="bg-black text-xs uppercase text-zinc-400">
+          <TableRow className="border-0 hover:bg-transparent">
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Workflow</TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Lead</TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Step</TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Status</TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Created</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {runs.map((r) => (
-            <tr key={r.id} className="border-t border-slate-100">
-              <td className="px-4 py-3 text-slate-900">
+            <TableRow key={r.id} className="border-t border-b-0 border-[#1f1f24] hover:bg-transparent">
+              <TableCell className="px-4 py-3 text-white">
                 {wfMap.get(r.workflow_id) || `#${r.workflow_id}`}
-              </td>
-              <td className="px-4 py-3 text-slate-600">#{r.lead_id}</td>
-              <td className="px-4 py-3 text-slate-600">{r.step_index}</td>
-              <td className="px-4 py-3 text-slate-600">{r.status}</td>
-              <td className="px-4 py-3 text-slate-500 text-xs">
+              </TableCell>
+              <TableCell className="px-4 py-3 text-zinc-400">#{r.lead_id}</TableCell>
+              <TableCell className="px-4 py-3 text-zinc-400">{r.step_index}</TableCell>
+              <TableCell className="px-4 py-3 text-zinc-400">{r.status}</TableCell>
+              <TableCell className="px-4 py-3 text-zinc-400 text-xs">
                 {new Date(r.created_at).toLocaleString()}
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

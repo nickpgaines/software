@@ -2,6 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 type Customer = {
   id: number;
@@ -218,22 +223,23 @@ export default function NewSubscriptionForm() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
             New Subscription
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-zinc-400 mt-3 font-bold">
             Sell or set up a recurring subscription for a customer.
           </p>
         </div>
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={submit}
           disabled={!canSubmit}
-          className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2.5 text-sm font-medium shadow-sm"
+          className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2.5 text-sm font-bold shadow-sm h-auto"
         >
           <span aria-hidden>⊕</span>
           {submitting ? "Creating…" : "Create Subscription"}
-        </button>
+        </Button>
       </div>
 
       {error && (
@@ -246,16 +252,17 @@ export default function NewSubscriptionForm() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 className="text-base font-extrabold text-white tracking-tight">
                 Customer
               </h2>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => setShowNewCustomer(true)}
-                className="text-sm font-medium text-slate-700 border border-slate-200 hover:bg-slate-50 rounded-full px-3 py-1.5"
+                className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5 h-auto"
               >
                 + Create New Customer
-              </button>
+              </Button>
             </CardHeader>
             <CustomerPicker
               customers={customers}
@@ -272,7 +279,7 @@ export default function NewSubscriptionForm() {
               }}
             />
             {selectedCustomer && (
-              <div className="text-xs text-slate-500 mt-2">
+              <div className="text-xs text-zinc-400 mt-2">
                 {selectedCustomer.formatted_address ||
                   selectedCustomer.address ||
                   "—"}
@@ -282,30 +289,31 @@ export default function NewSubscriptionForm() {
 
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 className="text-base font-extrabold text-white tracking-tight">
                 Schedule
               </h2>
             </CardHeader>
             <Field label="Start Date">
               <div className="relative">
-                <input
+                <Input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white"
+                  className="w-full border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12] h-auto"
                 />
-                <div className="text-xs text-slate-500 mt-1">
+                <div className="text-xs text-zinc-400 mt-1">
                   {formatDateLabel(startDate)}
                 </div>
               </div>
             </Field>
             <Field label="Sold By">
+              {/* Native <select> kept: salesperson picker */}
               <select
                 value={soldById}
                 onChange={(e) =>
                   setSoldById(e.target.value ? Number(e.target.value) : "")
                 }
-                className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white"
+                className="w-full border border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12]"
               >
                 <option value="">Select salesperson…</option>
                 {staff.map((s) => (
@@ -320,7 +328,7 @@ export default function NewSubscriptionForm() {
 
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 className="text-base font-extrabold text-white tracking-tight">
                 Accept Plan
               </h2>
             </CardHeader>
@@ -351,15 +359,16 @@ export default function NewSubscriptionForm() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-slate-900">Plan</h2>
+              <h2 className="text-base font-extrabold text-white tracking-tight">Plan</h2>
             </CardHeader>
             <Field label="Plan Template">
+              {/* Native <select> kept: plan template picker */}
               <select
                 value={templateId}
                 onChange={(e) =>
                   setTemplateId(e.target.value ? Number(e.target.value) : "")
                 }
-                className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white"
+                className="w-full border border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12]"
               >
                 <option value="">Select plan template…</option>
                 {templates
@@ -371,16 +380,17 @@ export default function NewSubscriptionForm() {
                   ))}
               </select>
             </Field>
-            <button
+            <Button
               type="button"
+              variant="ghost"
               onClick={() => setShowNewTemplate(true)}
-              className="mt-2 text-sm font-medium text-amber-600 hover:text-amber-700"
+              className="mt-2 text-sm font-medium text-amber-600 hover:text-amber-700 h-auto p-0"
             >
               + Create new template
-            </button>
+            </Button>
             {selectedTemplate && (
-              <div className="mt-3 rounded-xl border border-slate-200 bg-slate-50 p-3 text-xs text-slate-600 space-y-1">
-                <div className="font-medium text-slate-900">
+              <div className="mt-3 rounded-xl border border-[#1f1f24] bg-black p-3 text-xs text-zinc-400 space-y-1">
+                <div className="font-bold text-white tracking-tight">
                   {selectedTemplate.name}
                 </div>
                 {selectedTemplate.description && (
@@ -389,34 +399,35 @@ export default function NewSubscriptionForm() {
                   </div>
                 )}
                 {linkedTerms && (
-                  <div className="text-slate-500">
-                    Terms: <span className="font-medium">{linkedTerms.name}</span>
+                  <div className="text-zinc-400">
+                    Terms: <span className="font-bold">{linkedTerms.name}</span>
                   </div>
                 )}
                 {selectedTemplate.require_signature === 1 && (
-                  <div className="text-slate-500">Signature required</div>
+                  <div className="text-zinc-400">Signature required</div>
                 )}
               </div>
             )}
             <div className="grid grid-cols-2 gap-3 mt-4">
               <Field label="Price (USD)">
-                <input
+                <Input
                   type="number"
                   step="0.01"
                   min="0"
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   placeholder="49.00"
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white"
+                  className="w-full border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12] h-auto"
                 />
               </Field>
               <Field label="Billing & service frequency">
+                {/* Native <select> kept: billing interval picker */}
                 <select
                   value={interval}
                   onChange={(e) =>
                     setInterval(e.target.value as SubscriptionInterval)
                   }
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white"
+                  className="w-full border border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12]"
                 >
                   {(
                     Object.entries(INTERVAL_LABELS) as [
@@ -435,25 +446,25 @@ export default function NewSubscriptionForm() {
 
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 className="text-base font-extrabold text-white tracking-tight">
                 Included Visits
               </h2>
             </CardHeader>
             {!selectedTemplate ? (
-              <p className="text-sm text-slate-500 py-6 text-center">
+              <p className="text-sm text-zinc-400 font-bold py-6 text-center">
                 Select a plan template to see included visits.
               </p>
             ) : (
-              <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200 bg-white">
+              <ul className="divide-y divide-[#1f1f24] rounded-xl border border-[#1f1f24] bg-[#0f0f12]">
                 {includedVisits.map((v, i) => (
                   <li
                     key={i}
                     className="flex items-center justify-between gap-3 px-4 py-2.5"
                   >
-                    <div className="text-sm text-slate-900">
+                    <div className="text-sm text-white">
                       Visit {i + 1}
                     </div>
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs text-zinc-400">
                       {formatDateLabel(v.date)}
                     </div>
                   </li>
@@ -461,7 +472,7 @@ export default function NewSubscriptionForm() {
               </ul>
             )}
             {selectedTemplate && (
-              <p className="text-[11px] text-slate-400 mt-2">
+              <p className="text-[11px] text-zinc-500 mt-2">
                 Projected based on {INTERVAL_LABELS[interval].toLowerCase()}{" "}
                 cadence from the start date.
               </p>
@@ -499,7 +510,7 @@ export default function NewSubscriptionForm() {
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5 shadow-sm">
       {children}
     </div>
   );
@@ -522,9 +533,9 @@ function Field({
 }) {
   return (
     <div className="mb-3">
-      <label className="block text-xs font-medium text-slate-500 mb-1.5">
+      <Label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
         {label}
-      </label>
+      </Label>
       {children}
     </div>
   );
@@ -542,14 +553,15 @@ function RadioOption({
   description: string;
 }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
       onClick={onChange}
       className={
-        "w-full text-left rounded-xl border p-3 transition " +
+        "w-full text-left rounded-xl border p-3 h-auto block " +
         (checked
-          ? "border-slate-900 bg-slate-50"
-          : "border-slate-200 hover:border-slate-300")
+          ? "border-slate-900 bg-black"
+          : "border-[#1f1f24] hover:border-[#2a2a32]")
       }
     >
       <div className="flex items-start gap-3">
@@ -558,7 +570,7 @@ function RadioOption({
             "mt-0.5 inline-flex h-4 w-4 shrink-0 rounded-full border-2 " +
             (checked
               ? "border-slate-900"
-              : "border-slate-300")
+              : "border-[#2a2a32]")
           }
         >
           {checked && (
@@ -566,11 +578,11 @@ function RadioOption({
           )}
         </span>
         <div>
-          <div className="text-sm font-medium text-slate-900">{title}</div>
-          <div className="text-xs text-slate-500 mt-0.5">{description}</div>
+          <div className="text-sm font-bold text-white tracking-tight">{title}</div>
+          <div className="text-xs text-zinc-400 mt-0.5">{description}</div>
         </div>
       </div>
-    </button>
+    </Button>
   );
 }
 
@@ -610,7 +622,7 @@ function CustomerPicker({
 
   return (
     <div ref={ref} className="relative">
-      <input
+      <Input
         type="search"
         value={query}
         onChange={(e) => {
@@ -620,30 +632,31 @@ function CustomerPicker({
         }}
         onFocus={() => setOpen(true)}
         placeholder="Search"
-        className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white pl-9"
+        className="w-full border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12] pl-9 h-auto"
       />
-      <span className="absolute left-3 top-2.5 text-slate-400" aria-hidden>
+      <span className="absolute left-3 top-2.5 text-zinc-500" aria-hidden>
         ⌕
       </span>
       {open && suggestions.length > 0 && !selectedId && (
-        <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+        <div className="absolute z-30 left-0 right-0 mt-1 bg-[#0f0f12] border border-[#1f1f24] rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
           {suggestions.map((c) => (
-            <button
+            <Button
               key={c.id}
               type="button"
+              variant="ghost"
               onClick={() => {
                 onPick(c);
                 setOpen(false);
               }}
-              className="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm"
+              className="w-full text-left px-4 py-2 hover:bg-black text-sm h-auto block rounded-none"
             >
-              <div className="font-medium text-slate-900">{c.name}</div>
+              <div className="font-bold text-white tracking-tight">{c.name}</div>
               {(c.formatted_address || c.address) && (
-                <div className="text-xs text-slate-500 truncate">
+                <div className="text-xs text-zinc-400 truncate">
                   {c.formatted_address || c.address}
                 </div>
               )}
-            </button>
+            </Button>
           ))}
         </div>
       )}
@@ -699,79 +712,82 @@ function NewCustomerModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <form
         onSubmit={save}
-        className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4"
+        className="bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4"
       >
         <div className="flex items-start justify-between">
-          <h3 className="text-base font-semibold text-slate-900">
+          <h3 className="text-base font-extrabold text-white tracking-tight">
             New customer
           </h3>
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={onClose}
-            className="text-sm text-slate-400 hover:text-slate-700"
+            className="text-sm text-zinc-500 hover:text-zinc-300 h-auto p-0"
           >
             ✕
-          </button>
+          </Button>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Field label="First name">
-            <input
+            <Input
               type="text"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+              className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm h-auto"
               autoFocus
             />
           </Field>
           <Field label="Last name">
-            <input
+            <Input
               type="text"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+              className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm h-auto"
             />
           </Field>
         </div>
         <Field label="Phone">
-          <input
+          <Input
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+            className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm h-auto"
           />
         </Field>
         <Field label="Email">
-          <input
+          <Input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+            className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm h-auto"
           />
         </Field>
         <Field label="Address">
-          <input
+          <Input
             type="text"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+            className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm h-auto"
           />
         </Field>
         {err && <p className="text-sm text-rose-600">{err}</p>}
         <div className="flex items-center gap-3">
-          <button
+          <Button
             type="submit"
+            variant="ghost"
             disabled={saving}
-            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold h-auto"
           >
             {saving ? "Saving…" : "Save customer"}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="ghost"
             onClick={onClose}
-            className="text-sm text-slate-600 hover:text-slate-900"
+            className="text-sm text-zinc-400 font-bold hover:text-white h-auto p-0"
           >
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
     </div>
@@ -826,49 +842,51 @@ function NewTemplateModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <form
         onSubmit={save}
-        className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4 max-h-[90vh] overflow-y-auto"
+        className="bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-start justify-between">
-          <h3 className="text-base font-semibold text-slate-900">
+          <h3 className="text-base font-extrabold text-white tracking-tight">
             New plan template
           </h3>
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={onClose}
-            className="text-sm text-slate-400 hover:text-slate-700"
+            className="text-sm text-zinc-500 hover:text-zinc-300 h-auto p-0"
           >
             ✕
-          </button>
+          </Button>
         </div>
         <Field label="Name">
-          <input
+          <Input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Monthly Window Cleaning"
-            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+            className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm h-auto"
             autoFocus
           />
         </Field>
         <Field label="Description">
-          <textarea
+          <Textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
-            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+            className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm"
           />
         </Field>
-        <p className="text-xs text-slate-500 -mt-1">
+        <p className="text-xs text-zinc-400 -mt-1">
           Price and billing interval are set per customer when you create a
           subscription from this template.
         </p>
         <Field label="Terms (optional)">
+          {/* Native <select> kept: terms picker */}
           <select
             value={termsId}
             onChange={(e) =>
               setTermsId(e.target.value ? Number(e.target.value) : "")
             }
-            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+            className="w-full border border-[#1f1f24] rounded-xl px-3 py-2 text-sm"
           >
             <option value="">None</option>
             {terms.map((t) => (
@@ -878,30 +896,31 @@ function NewTemplateModal({
             ))}
           </select>
         </Field>
-        <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-          <input
-            type="checkbox"
+        <Label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">
+          <Checkbox
             checked={requireSignature}
-            onChange={(e) => setRequireSignature(e.target.checked)}
+            onCheckedChange={(v) => setRequireSignature(v === true)}
           />
           Require signature
-        </label>
+        </Label>
         {err && <p className="text-sm text-rose-600">{err}</p>}
         <div className="flex items-center gap-3">
-          <button
+          <Button
             type="submit"
+            variant="ghost"
             disabled={saving}
-            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold h-auto"
           >
             {saving ? "Saving…" : "Save template"}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="ghost"
             onClick={onClose}
-            className="text-sm text-slate-600 hover:text-slate-900"
+            className="text-sm text-zinc-400 font-bold hover:text-white h-auto p-0"
           >
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
     </div>

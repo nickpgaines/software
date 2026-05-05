@@ -10,6 +10,9 @@ import {
   useState,
 } from "react";
 import type { Call as TwilioCall, Device as TwilioDevice } from "@twilio/voice-sdk";
+import { PulseIcon } from "@/components/pulse/Icon";
+import { PULSE } from "@/components/pulse/theme";
+import { Button } from "@/components/ui/button";
 
 type CallTarget = {
   customerId: number | null;
@@ -262,53 +265,45 @@ function CallWidget() {
       : formatDuration(elapsed);
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-72 bg-slate-900 text-white rounded-2xl shadow-2xl p-4">
+    <div className="fixed bottom-6 right-6 z-50 w-72 bg-card text-fg rounded-2xl shadow-menu p-4">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-300 flex items-center justify-center">
-          <svg
-            className="w-5 h-5"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.57 2.81.7A2 2 0 0 1 22 16.92z" />
-          </svg>
+        <div
+          className="w-10 h-10 rounded-full flex items-center justify-center"
+          style={{ background: `${PULSE.green}1F`, color: PULSE.green }}
+        >
+          <PulseIcon name="phone" className="w-5 h-5" />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium truncate">
+          <div className="text-sm font-bold truncate">
             {state.target.customerName || state.target.toPhone}
           </div>
-          <div className="text-xs text-slate-400 truncate">
+          <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-fg-subtle truncate">
             {state.target.customerName ? state.target.toPhone : status}
           </div>
         </div>
-        <div className="text-xs text-slate-300 tabular-nums">{status}</div>
+        <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-fg-subtle tabular-nums">{status}</div>
       </div>
 
       <div className="flex items-center gap-2 mt-3">
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={toggleMute}
           disabled={state.kind !== "in_call"}
-          className={
-            "flex-1 text-xs rounded-full px-3 py-2 font-medium transition " +
-            (muted
-              ? "bg-amber-500 text-slate-900 hover:bg-amber-400"
-              : "bg-slate-800 hover:bg-slate-700 disabled:opacity-50")
-          }
+          className="flex-1 h-auto text-xs rounded-full px-3 py-2 font-bold gap-1.5 bg-line-strong hover:bg-line-strong/80 [&_svg]:size-3.5"
         >
+          <PulseIcon name={muted ? "mic-off" : "mic"} className="w-3.5 h-3.5" />
           {muted ? "Unmute" : "Mute"}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
+          variant="ghost"
           onClick={hangUp}
-          className="flex-1 text-xs rounded-full px-3 py-2 font-medium bg-rose-600 hover:bg-rose-500 transition"
+          className="flex-1 h-auto text-xs rounded-full px-3 py-2 font-bold gap-1.5 bg-red hover:bg-red/90 [&_svg]:size-3.5"
         >
+          <PulseIcon name="phone-off" className="w-3.5 h-3.5" />
           Hang up
-        </button>
+        </Button>
       </div>
     </div>
   );

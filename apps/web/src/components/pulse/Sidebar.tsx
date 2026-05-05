@@ -1,0 +1,260 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import { PULSE } from "./theme";
+import { PulseIcon } from "./Icon";
+
+type Me = {
+  identity: string;
+  is_admin_account: boolean;
+  staff: {
+    id: number;
+    name: string;
+    first_name: string | null;
+    last_name: string | null;
+    photo_url: string | null;
+  } | null;
+};
+
+type NavItem = {
+  name: string;
+  icon: string;
+  href: string;
+  section: string;
+};
+
+const NAV: NavItem[] = [
+  { name: "Dashboard", icon: "home", href: "/", section: "Workspace" },
+  { name: "Schedule", icon: "calendar", href: "/schedule", section: "Workspace" },
+  { name: "Map", icon: "map", href: "/map", section: "Workspace" },
+  { name: "Leads", icon: "inbox", href: "/leads", section: "Pipeline" },
+  { name: "Estimates", icon: "doc", href: "/estimates/new", section: "Pipeline" },
+  { name: "Invoices", icon: "wallet", href: "/invoices/new", section: "Pipeline" },
+  { name: "Subscriptions", icon: "cart", href: "/subscriptions/new", section: "Pipeline" },
+  { name: "Messages", icon: "message", href: "/messages", section: "Inbox" },
+  { name: "Calls", icon: "phone", href: "/calls", section: "Inbox" },
+  { name: "Email", icon: "mail", href: "/email", section: "Inbox" },
+  { name: "Reports", icon: "chart", href: "/reports", section: "Insights" },
+  { name: "Leaderboard", icon: "trophy", href: "/leaderboard", section: "Insights" },
+  { name: "Customers", icon: "user", href: "/customers", section: "Team" },
+  { name: "Employees", icon: "users", href: "/employees", section: "Team" },
+  { name: "Settings", icon: "settings", href: "/settings", section: "Team" },
+];
+
+const NEW_ITEMS = [
+  { key: "job", label: "Job", href: "/schedule/new" },
+  { key: "subscription", label: "Subscription", href: "/subscriptions/new" },
+  { key: "invoice", label: "Invoice", href: "/invoices/new" },
+  { key: "estimate", label: "Estimate", href: "/estimates/new" },
+  { key: "customer", label: "Customer", href: "/customers?new=1" },
+];
+
+const SECTIONS = ["Workspace", "Pipeline", "Inbox", "Insights", "Team"];
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length === 0 || !parts[0]) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+export function PulseSidebar() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [me, setMe] = useState<Me | null>(null);
+  const [newOpen, setNewOpen] = useState(false);
+  const newRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (!cancelled) setMe(data);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [pathname]);
+
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (!newRef.current?.contains(e.target as Node)) setNewOpen(false);
+    }
+    if (newOpen) document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [newOpen]);
+
+  async function logout() {
+    await fetch("/api/logout", { method: "POST" });
+    router.push("/login");
+    router.refresh();
+  }
+
+  const displayName =
+    me?.staff?.first_name?.trim() ||
+    me?.staff?.name?.trim() ||
+    (me?.is_admin_account ? "Admin" : me?.identity) ||
+    "You";
+  const photo = me?.staff?.photo_url ?? null;
+
+  return (
+    <aside
+      className="fixed left-0 top-0 bottom-0 w-60 z-40 flex flex-col px-3 py-4"
+      style={{ background: PULSE.bg, borderRight: `1px solid ${PULSE.divider}` }}
+    >
+      {/* Brand */}
+      <div className="px-2 mb-1">
+        <div className="flex items-center gap-2.5 py-2">
+          <div className="w-9 h-9 flex-shrink-0" aria-hidden />
+          <span
+            className="text-[15px] font-extrabold tracking-tight"
+            style={{ color: PULSE.text }}
+          >
+            Forge CRM
+          </span>
+        </div>
+      </div>
+
+      {/* + New menu */}
+      <div ref={newRef} className="relative px-1 mt-2">
+        <button
+          type="button"
+          onClick={() => setNewOpen((v) => !v)}
+          className="w-full h-10 rounded-xl flex items-center justify-center gap-2 text-[13px] font-extrabold transition-colors shadow-glow-violet"
+          style={{
+            background: PULSE.violet,
+            color: "#fff",
+          }}
+        >
+          <PulseIcon name="plus" className="w-3.5 h-3.5" />
+          New
+        </button>
+        {newOpen && (
+          <div
+            className="absolute top-full left-1 right-1 mt-1.5 z-50 rounded-xl overflow-hidden shadow-menu"
+            style={{
+              background: PULSE.card,
+              border: `1px solid ${PULSE.cardBorder}`,
+            }}
+          >
+            {NEW_ITEMS.map((item) => (
+              <Link
+                key={item.key}
+                href={item.href}
+                onClick={() => setNewOpen(false)}
+                className="block px-3.5 py-2.5 text-[13px] font-bold transition-colors"
+                style={{ color: PULSE.textMuted }}
+              >
+                {item.label}
+              </Link>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Nav */}
+      <ul className="flex-1 overflow-y-auto px-1 mt-4 space-y-3">
+        {SECTIONS.map((section) => {
+          const items = NAV.filter((i) => i.section === section);
+          if (items.length === 0) return null;
+          return (
+            <li key={section}>
+              <div
+                className="px-3 pt-2 pb-1.5 text-[10px] uppercase tracking-[0.2em] font-bold"
+                style={{ color: PULSE.textDim }}
+              >
+                {section}
+              </div>
+              <ul className="space-y-0.5">
+                {items.map((it) => (
+                  <PulseNavRow key={it.name} item={it} pathname={pathname} />
+                ))}
+              </ul>
+            </li>
+          );
+        })}
+      </ul>
+
+      {/* Profile + sign out */}
+      <div className="mt-auto pt-3" style={{ borderTop: `1px solid ${PULSE.divider}` }}>
+        <div className="flex items-center gap-2.5 px-2 py-1.5">
+          <div
+            className="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold flex-shrink-0 overflow-hidden"
+            style={{ background: PULSE.cardBorderHi, color: PULSE.text }}
+          >
+            {photo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={photo}
+                alt={displayName}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span>{initials(displayName)}</span>
+            )}
+          </div>
+          <span
+            className="text-[12.5px] font-bold flex-1 truncate"
+            style={{ color: PULSE.text }}
+          >
+            {displayName}
+          </span>
+        </div>
+        <button
+          type="button"
+          onClick={logout}
+          className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-[12.5px] font-bold transition-colors"
+          style={{ color: PULSE.textMuted }}
+        >
+          <PulseIcon name="logout" />
+          Sign out
+        </button>
+      </div>
+    </aside>
+  );
+}
+
+function PulseNavRow({
+  item,
+  pathname,
+}: {
+  item: NavItem;
+  pathname: string | null;
+}) {
+  const active =
+    item.href === "/" ? pathname === "/" : pathname?.startsWith(item.href) ?? false;
+  const baseRow =
+    "flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] transition-colors";
+
+  if (active) {
+    return (
+      <li>
+        <Link
+          href={item.href}
+          className={`${baseRow} font-extrabold`}
+          style={{ background: PULSE.cardBorderHi, color: PULSE.text }}
+        >
+          <PulseIcon name={item.icon} />
+          <span className="flex-1 truncate">{item.name}</span>
+        </Link>
+      </li>
+    );
+  }
+
+  return (
+    <li>
+      <Link
+        href={item.href}
+        className={`${baseRow} font-bold hover:bg-elevated`}
+        style={{ color: PULSE.textMuted }}
+      >
+        <PulseIcon name={item.icon} />
+        <span className="flex-1 truncate">{item.name}</span>
+      </Link>
+    </li>
+  );
+}

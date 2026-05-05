@@ -2,6 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { usePhone } from "@/components/PhoneClient";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type CallRow = {
   id: number;
@@ -52,7 +61,7 @@ function statusColor(status: string): string {
     status === "canceled"
   )
     return "text-rose-700 bg-rose-50 border-rose-200";
-  return "text-slate-700 bg-slate-50 border-slate-200";
+  return "text-zinc-300 bg-black border-[#1f1f24]";
 }
 
 export default function CallsClient() {
@@ -90,70 +99,74 @@ export default function CallsClient() {
     <div className="space-y-6">
       <div className="flex items-baseline justify-between">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Calls</h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Calls</h1>
+          <p className="text-sm text-zinc-400 mt-3 font-bold">
             All calls made and received through your business number.
           </p>
         </div>
         {!phone.configured && (
-          <span className="text-xs text-slate-500 bg-slate-100 border border-slate-200 rounded-full px-3 py-1">
+          <Badge
+            variant="outline"
+            className="text-xs text-zinc-400 bg-black border border-[#1f1f24] rounded-full px-3 py-1 font-normal"
+          >
             Calling not configured. Connect Twilio Voice in Settings → Calling.
-          </span>
+          </Badge>
         )}
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
         {loading ? (
-          <div className="p-10 text-center text-sm text-slate-400">Loading…</div>
+          <div className="p-10 text-center text-sm text-zinc-500">Loading…</div>
         ) : calls.length === 0 ? (
-          <div className="p-10 text-center text-sm text-slate-400">
+          <div className="p-10 text-center text-sm text-zinc-500">
             No calls yet.
           </div>
         ) : (
-          <table className="w-full text-sm">
-            <thead className="bg-slate-50 text-slate-500">
-              <tr>
-                <th className="text-left px-4 py-2 font-medium">When</th>
-                <th className="text-left px-4 py-2 font-medium">Direction</th>
-                <th className="text-left px-4 py-2 font-medium">Customer</th>
-                <th className="text-left px-4 py-2 font-medium">Number</th>
-                <th className="text-left px-4 py-2 font-medium">Status</th>
-                <th className="text-left px-4 py-2 font-medium">Duration</th>
-                <th className="text-left px-4 py-2 font-medium">Recording</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200">
+          <Table>
+            <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-[#1f1f24]">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">When</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Direction</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Customer</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Number</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Status</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Duration</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Recording</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-[#1f1f24]">
               {calls.map((c) => {
                 const otherNumber =
                   c.direction === "outbound" ? c.to_phone : c.from_phone;
                 return (
-                  <tr key={c.id}>
-                    <td className="px-4 py-2 text-slate-700 whitespace-nowrap" suppressHydrationWarning>
+                  <TableRow key={c.id} className="border-0 hover:bg-transparent">
+                    <TableCell className="px-4 py-2 text-zinc-300 whitespace-nowrap" suppressHydrationWarning>
                       {mounted ? fmtTime(c.created_at) : ""}
-                    </td>
-                    <td className="px-4 py-2 text-slate-700 capitalize">
+                    </TableCell>
+                    <TableCell className="px-4 py-2 text-zinc-300 capitalize">
                       {c.direction}
-                    </td>
-                    <td className="px-4 py-2 font-medium text-slate-900">
+                    </TableCell>
+                    <TableCell className="px-4 py-2 font-bold text-white tracking-tight">
                       {c.customer_name || "—"}
-                    </td>
-                    <td className="px-4 py-2 text-slate-700">
+                    </TableCell>
+                    <TableCell className="px-4 py-2 text-zinc-300 font-bold">
                       {otherNumber || "—"}
-                    </td>
-                    <td className="px-4 py-2">
-                      <span
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
+                      <Badge
+                        variant="outline"
                         className={
-                          "text-[11px] rounded-full px-2 py-0.5 border " +
+                          "text-[11px] rounded-full px-2 py-0.5 border font-normal " +
                           statusColor(c.status)
                         }
                       >
                         {c.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-2 text-slate-700 tabular-nums">
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="px-4 py-2 text-zinc-300 tabular-nums">
                       {fmtDuration(c.duration_seconds)}
-                    </td>
-                    <td className="px-4 py-2">
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
                       {c.recording_sid ? (
                         <audio
                           src={`/api/calls/${c.id}/recording`}
@@ -162,14 +175,14 @@ export default function CallsClient() {
                           className="h-8"
                         />
                       ) : (
-                        <span className="text-xs text-slate-400">—</span>
+                        <span className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">—</span>
                       )}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
       </div>
     </div>

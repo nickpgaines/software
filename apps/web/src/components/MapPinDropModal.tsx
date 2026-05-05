@@ -4,6 +4,10 @@ import { ChevronDown, Hand } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PIN_STATUS, type PinStatus } from "@/lib/map-pin-colors";
 import NewMenu from "./NewMenu";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 const DEFAULT_OBJECTIONS = [
   "Spouse",
@@ -61,11 +65,11 @@ export default function MapPinDropModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-lg bg-white p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+      <div className="w-full max-w-md rounded-lg bg-[#0f0f12] p-6 shadow-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900">Drop pin</h2>
-            <p className="mt-1 text-sm text-slate-500">
+            <h2 className="text-lg font-extrabold text-white tracking-tight">Drop pin</h2>
+            <p className="mt-1 text-sm text-zinc-400 font-bold">
               Choose a status and add a note (optional).
             </p>
           </div>
@@ -77,71 +81,72 @@ export default function MapPinDropModal({
             const Icon = meta.icon;
             const selected = status === key;
             return (
-              <button
+              <Button
                 key={key}
                 type="button"
+                variant="ghost"
                 onClick={() => setStatus(key)}
                 className={
-                  "flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition border-2 " +
+                  "h-auto justify-start gap-2 rounded-md px-3 py-2 text-sm font-bold border-2 hover:bg-current " +
                   (selected ? "border-slate-900" : "border-transparent")
                 }
                 style={{ backgroundColor: meta.color, color: meta.textColor }}
               >
                 <Icon className="h-4 w-4" />
                 <span>{meta.label}</span>
-              </button>
+              </Button>
             );
           })}
         </div>
 
-        <textarea
+        <Textarea
           value={note}
           onChange={(e) => setNote(e.target.value)}
           placeholder="Add a note..."
           rows={3}
-          className="mt-4 block w-full resize-none rounded-md border border-slate-200 px-3 py-2 text-sm text-slate-900 placeholder:text-slate-400 focus:border-slate-900 focus:outline-none"
+          className="mt-4 block w-full resize-none rounded-md border-[#1f1f24] px-3 py-2 text-sm text-white placeholder:text-zinc-500 bg-transparent focus-visible:border-slate-900"
         />
 
-        <div className="mt-4 rounded-md border border-slate-200">
-          <button
+        <div className="mt-4 rounded-md border border-[#1f1f24]">
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => setObjectionsOpen((v) => !v)}
-            className="flex w-full items-center justify-between gap-2 px-3 py-2 text-sm font-medium text-slate-900"
+            className="h-auto w-full justify-between gap-2 px-3 py-2 text-sm font-bold text-white tracking-tight rounded-b-none hover:bg-transparent"
           >
             <span className="flex items-center gap-2">
-              <Hand className="h-4 w-4 text-slate-500" />
+              <Hand className="h-4 w-4 text-zinc-400" />
               Objections
               {objections.length > 0 && (
-                <span className="rounded-full bg-slate-900 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+                <span className="rounded-full bg-slate-900 px-1.5 py-0.5 text-[10px] font-extrabold text-white tracking-tight">
                   {objections.length}
                 </span>
               )}
             </span>
             <ChevronDown
               className={
-                "h-4 w-4 text-slate-500 transition-transform " +
+                "h-4 w-4 text-zinc-400 transition-transform " +
                 (objectionsOpen ? "rotate-180" : "")
               }
             />
-          </button>
+          </Button>
           {objectionsOpen && (
-            <ul className="border-t border-slate-100">
+            <ul className="border-t border-[#1f1f24]">
               {DEFAULT_OBJECTIONS.map((o) => {
                 const checked = objections.includes(o);
                 return (
                   <li
                     key={o}
-                    className="border-b border-slate-100 last:border-b-0"
+                    className="border-b border-[#1f1f24] last:border-b-0"
                   >
-                    <label className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm text-slate-900 hover:bg-slate-50">
-                      <input
-                        type="checkbox"
+                    <Label className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-black font-normal">
+                      <Checkbox
                         checked={checked}
-                        onChange={() => toggleObjection(o)}
-                        className="h-4 w-4 rounded border-slate-300 accent-slate-900"
+                        onCheckedChange={() => toggleObjection(o)}
+                        className="border-[#2a2a32]"
                       />
-                      <span className="font-medium">{o}</span>
-                    </label>
+                      <span className="font-bold">{o}</span>
+                    </Label>
                   </li>
                 );
               })}
@@ -150,21 +155,23 @@ export default function MapPinDropModal({
         </div>
 
         <div className="mt-6 flex justify-end gap-2">
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={onCancel}
-            className="rounded-md border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="h-auto rounded-md border border-[#1f1f24] px-4 py-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:bg-black"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="ghost"
             disabled={!status}
             onClick={() => status && onSubmit(status, note, objections)}
-            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50"
+            className="h-auto rounded-md bg-slate-900 px-4 py-2 text-sm font-bold text-white tracking-tight hover:bg-slate-800"
           >
             Drop Pin
-          </button>
+          </Button>
         </div>
       </div>
     </div>

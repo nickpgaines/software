@@ -1,4 +1,4 @@
-# Nick360
+# Forge CRM
 
 Simple CRM for a door-to-door window cleaning business. Login, dashboard, schedule, and customer management.
 

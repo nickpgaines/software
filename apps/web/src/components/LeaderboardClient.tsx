@@ -4,6 +4,17 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import StaffScorecardModal from "./StaffScorecardModal";
 import NewSprintModal from "./NewSprintModal";
 import SprintWidget, { type Sprint } from "./SprintWidget";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type View = "sales" | "tech";
 type Range = "today" | "week" | "month" | "year" | "custom";
@@ -59,9 +70,9 @@ function formatDate(iso: string | null, mounted: boolean) {
 
 function rankBadgeClass(i: number) {
   if (i === 0) return "bg-amber-400 text-white";
-  if (i === 1) return "bg-slate-300 text-white";
+  if (i === 1) return "bg-[#2a2a32] text-white";
   if (i === 2) return "bg-orange-300 text-white";
-  return "bg-slate-100 text-slate-500";
+  return "bg-black text-zinc-400";
 }
 
 function roleBadgeClass(role: string | null) {
@@ -69,7 +80,7 @@ function roleBadgeClass(role: string | null) {
   if (r === "admin") return "bg-rose-100 text-rose-600";
   if (r === "sales" || r === "salesperson") return "bg-sky-100 text-sky-700";
   if (r === "tech" || r === "technician") return "bg-emerald-100 text-emerald-700";
-  return "bg-slate-100 text-slate-600";
+  return "bg-black text-zinc-400";
 }
 
 function avatarColor(name: string) {
@@ -210,41 +221,44 @@ export default function LeaderboardClient({
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <h1 className="text-3xl sm:text-4xl font-bold text-slate-900">{title}</h1>
-        <div className="flex items-center gap-1 bg-slate-100 rounded-full p-1 text-sm">
-          <button
+        <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">{title}</h1>
+        <div className="flex items-center gap-1 bg-black rounded-full p-1 text-sm">
+          <Button
+            variant="ghost"
             onClick={() => setView("sales")}
             className={
-              "px-4 py-1.5 rounded-full transition " +
+              "h-auto px-4 py-1.5 rounded-full font-bold hover:bg-transparent " +
               (view === "sales"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500 hover:text-slate-900")
+                ? "bg-[#0f0f12] text-white shadow-sm"
+                : "text-zinc-400 hover:text-white")
             }
           >
             Sales
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             onClick={() => setView("tech")}
             className={
-              "px-4 py-1.5 rounded-full transition " +
+              "h-auto px-4 py-1.5 rounded-full font-bold hover:bg-transparent " +
               (view === "tech"
-                ? "bg-white text-slate-900 shadow-sm"
-                : "text-slate-500 hover:text-slate-900")
+                ? "bg-[#0f0f12] text-white shadow-sm"
+                : "text-zinc-400 hover:text-white")
             }
           >
             Technicians
-          </button>
+          </Button>
         </div>
       </div>
 
       {isAdmin && (
         <div className="flex justify-end">
-          <button
+          <Button
+            variant="ghost"
             onClick={() => setShowNewSprint(true)}
-            className="text-sm border border-slate-200 bg-white hover:bg-slate-50 rounded-full px-4 py-2 flex items-center gap-2 text-slate-700"
+            className="h-auto text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 gap-2 text-zinc-300 font-bold"
           >
             <span className="text-lg leading-none">+</span> Start a sprint
-          </button>
+          </Button>
         </div>
       )}
 
@@ -261,8 +275,9 @@ export default function LeaderboardClient({
         </div>
       )}
 
-      <button
+      <Button
         type="button"
+        variant="ghost"
         onClick={() => {
           if (me) setScorecardId(me.id);
           else {
@@ -270,7 +285,7 @@ export default function LeaderboardClient({
             if (el) el.scrollIntoView({ behavior: "smooth" });
           }
         }}
-        className="w-full text-left flex items-center gap-3 bg-white border border-slate-200 rounded-2xl px-5 py-4 hover:bg-slate-50 shadow-sm"
+        className="w-full h-auto text-left flex items-center gap-3 justify-start bg-[#0f0f12] border border-[#1f1f24] rounded-2xl px-5 py-4 hover:bg-black shadow-sm whitespace-normal"
       >
         <div
           className={
@@ -290,8 +305,8 @@ export default function LeaderboardClient({
           )}
         </div>
         <div className="flex-1">
-          <div className="font-semibold text-slate-900">Your Stats</div>
-          <div className="text-sm text-slate-500">
+          <div className="font-extrabold text-white tracking-tight">Your Stats</div>
+          <div className="text-sm text-zinc-400 font-bold">
             {money(meRevenue)} {view === "sales" ? "sold" : "cleaned"}
             {myRank
               ? ` · Rank #${myRank}`
@@ -300,8 +315,8 @@ export default function LeaderboardClient({
               : ""}
           </div>
         </div>
-        <span className="text-slate-300 text-2xl leading-none">›</span>
-      </button>
+        <span className="text-zinc-500 text-2xl leading-none">›</span>
+      </Button>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard label="Total Revenue" value={money(total)} />
@@ -309,10 +324,10 @@ export default function LeaderboardClient({
         <KpiCard label="Top Performer" value={top?.name || "—"} />
       </div>
 
-      <div id="rankings" className="bg-white border border-slate-200 rounded-2xl shadow-sm">
-        <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between gap-3 flex-wrap">
+      <div id="rankings" className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm">
+        <div className="px-5 py-4 border-b border-[#1f1f24] flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
-            <h2 className="font-semibold text-slate-900">
+            <h2 className="font-extrabold text-white tracking-tight">
               {view === "sales" ? "Sales Rankings" : "Technician Rankings"}
             </h2>
             <span className="inline-flex items-center gap-1.5 bg-sky-50 border border-sky-100 text-sky-700 text-xs px-2.5 py-1 rounded-full">
@@ -334,35 +349,37 @@ export default function LeaderboardClient({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-slate-50 border border-slate-100 rounded-full p-1 text-sm">
+            <div className="flex items-center gap-1 bg-black border border-[#1f1f24] rounded-full p-1 text-sm">
               {PRESET_RANGES.map((r) => (
-                <button
+                <Button
                   key={r.key}
+                  variant="ghost"
                   onClick={() => {
                     setRange(r.key);
                     setCustomOpen(false);
                   }}
                   className={
-                    "px-3 py-1 rounded-full transition whitespace-nowrap " +
+                    "h-auto px-3 py-1 rounded-full whitespace-nowrap font-bold hover:bg-transparent " +
                     (range === r.key
-                      ? "bg-white text-slate-900 shadow-sm"
-                      : "text-slate-500 hover:text-slate-900")
+                      ? "bg-[#0f0f12] text-white shadow-sm"
+                      : "text-zinc-400 hover:text-white")
                   }
                 >
                   {r.label}
-                </button>
+                </Button>
               ))}
               <div ref={customRef} className="relative">
-                <button
+                <Button
+                  variant="ghost"
                   onClick={() => {
                     setRange("custom");
                     setCustomOpen((o) => !o);
                   }}
                   className={
-                    "px-3 py-1 rounded-full transition whitespace-nowrap inline-flex items-center gap-1 " +
+                    "h-auto px-3 py-1 rounded-full whitespace-nowrap gap-1 font-bold hover:bg-transparent " +
                     (range === "custom"
-                      ? "bg-white text-slate-900 shadow-sm"
-                      : "text-slate-500 hover:text-slate-900")
+                      ? "bg-[#0f0f12] text-white shadow-sm"
+                      : "text-zinc-400 hover:text-white")
                   }
                 >
                   Custom
@@ -380,48 +397,50 @@ export default function LeaderboardClient({
                   >
                     <polyline points="6 9 12 15 18 9" />
                   </svg>
-                </button>
+                </Button>
                 {customOpen && (
-                  <div className="absolute right-0 mt-2 z-30 bg-white border border-slate-200 rounded-2xl shadow-lg p-4 w-64 space-y-3">
+                  <div className="absolute right-0 mt-2 z-30 bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-lg p-4 w-64 space-y-3">
                     <div>
-                      <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+                      <Label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1 font-normal">
                         From
-                      </label>
-                      <input
+                      </Label>
+                      <Input
                         type="date"
                         value={customFrom}
                         max={customTo || undefined}
                         onChange={(e) => setCustomFrom(e.target.value)}
-                        className="w-full border border-slate-200 rounded-full px-3 py-1.5 text-sm"
+                        className="w-full h-auto border-[#1f1f24] rounded-full px-3 py-1.5 text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1">
+                      <Label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1 font-normal">
                         To
-                      </label>
-                      <input
+                      </Label>
+                      <Input
                         type="date"
                         value={customTo}
                         min={customFrom || undefined}
                         onChange={(e) => setCustomTo(e.target.value)}
-                        className="w-full border border-slate-200 rounded-full px-3 py-1.5 text-sm"
+                        className="w-full h-auto border-[#1f1f24] rounded-full px-3 py-1.5 text-sm"
                       />
                     </div>
-                    <button
+                    <Button
+                      variant="ghost"
                       onClick={() => setCustomOpen(false)}
                       disabled={!customFrom || !customTo}
-                      className="w-full text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-3 py-1.5"
+                      className="w-full h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-3 py-1.5 font-bold"
                     >
                       Apply
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
             </div>
-            <button
+            <Button
               type="button"
+              variant="ghost"
               title="Filter"
-              className="w-9 h-9 border border-slate-200 bg-white hover:bg-slate-50 rounded-full flex items-center justify-center text-slate-500"
+              className="w-9 h-9 p-0 border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full text-zinc-400"
               aria-label="Filter"
             >
               <svg
@@ -435,43 +454,43 @@ export default function LeaderboardClient({
               >
                 <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
               </svg>
-            </button>
+            </Button>
           </div>
         </div>
 
         {loading && !data ? (
-          <div className="p-10 text-center text-sm text-slate-400">Loading…</div>
+          <div className="p-10 text-center text-sm text-zinc-500">Loading…</div>
         ) : activeRows.length === 0 ? (
-          <div className="p-10 text-center text-sm text-slate-500">
+          <div className="p-10 text-center text-sm text-zinc-400 font-bold">
             No {view === "sales" ? "sales" : "technician"} revenue in this
             window yet. Assign staff to jobs in the schedule.
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs uppercase tracking-wider text-slate-400">
-                  <th className="text-left px-5 py-3 font-medium">Rank</th>
-                  <th className="text-left px-5 py-3 font-medium">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-0 hover:bg-transparent text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+                  <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Rank</TableHead>
+                  <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">
                     {personColumn}
-                  </th>
-                  <th className="text-left px-5 py-3 font-medium">Role</th>
-                  <th className="text-right px-5 py-3 font-medium">Revenue</th>
-                  <th className="text-right px-5 py-3 font-medium">Jobs</th>
-                  <th className="text-right px-5 py-3 font-medium">{avgColumn}</th>
-                  <th className="text-right px-5 py-3 font-medium">{lastColumn}</th>
-                </tr>
-              </thead>
-              <tbody>
+                  </TableHead>
+                  <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Role</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Revenue</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Jobs</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">{avgColumn}</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">{lastColumn}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {activeRows.map((r, i) => {
                   const isMe = me?.id === r.id;
                   const isTop = i === 0;
                   return (
-                    <tr
+                    <TableRow
                       key={r.id}
                       onClick={() => setScorecardId(r.id)}
                       className={
-                        "border-t border-slate-100 cursor-pointer hover:bg-slate-50 " +
+                        "border-t border-b-0 border-[#1f1f24] cursor-pointer hover:bg-black " +
                         (isMe
                           ? "bg-amber-50/60 ring-1 ring-amber-200"
                           : isTop
@@ -479,7 +498,7 @@ export default function LeaderboardClient({
                           : "")
                       }
                     >
-                      <td className="px-5 py-3">
+                      <TableCell className="px-5 py-3">
                         <span
                           className={
                             "inline-flex items-center justify-center w-8 h-8 rounded-full font-semibold text-sm " +
@@ -488,8 +507,8 @@ export default function LeaderboardClient({
                         >
                           {i + 1}
                         </span>
-                      </td>
-                      <td className="px-5 py-3">
+                      </TableCell>
+                      <TableCell className="px-5 py-3">
                         <div className="flex items-center gap-3">
                           <div
                             className={
@@ -508,41 +527,41 @@ export default function LeaderboardClient({
                               initials(r.name)
                             )}
                           </div>
-                          <span className="font-medium text-slate-900">
+                          <span className="font-bold text-white tracking-tight">
                             {r.name}
                           </span>
                         </div>
-                      </td>
-                      <td className="px-5 py-3">
+                      </TableCell>
+                      <TableCell className="px-5 py-3">
                         <span
                           className={
-                            "text-xs px-2.5 py-1 rounded-full font-medium " +
+                            "text-xs px-2.5 py-1 rounded-full font-bold " +
                             roleBadgeClass(r.role)
                           }
                         >
                           {r.role || "Staff"}
                         </span>
-                      </td>
-                      <td className="px-5 py-3 text-right font-semibold text-slate-900 tabular-nums">
+                      </TableCell>
+                      <TableCell className="px-5 py-3 text-right font-extrabold text-white tracking-tight tabular-nums">
                         {money(r.revenue_cents)}
-                      </td>
-                      <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                      </TableCell>
+                      <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
                         {r.job_count}
-                      </td>
-                      <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                      </TableCell>
+                      <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
                         {money(Math.round(r.revenue_cents / r.job_count))}
-                      </td>
-                      <td
-                        className="px-5 py-3 text-right text-slate-900 tabular-nums whitespace-nowrap"
+                      </TableCell>
+                      <TableCell
+                        className="px-5 py-3 text-right text-white tabular-nums whitespace-nowrap"
                         suppressHydrationWarning
                       >
                         {formatDate(r.last_sale_at, mounted)}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
       </div>
@@ -570,9 +589,9 @@ export default function LeaderboardClient({
 
 function KpiCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6 min-h-[140px] flex flex-col justify-between shadow-sm">
-      <div className="text-sm text-slate-400">{label}</div>
-      <div className="text-4xl font-bold text-slate-900 tabular-nums">
+    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-6 min-h-[140px] flex flex-col justify-between shadow-sm">
+      <div className="text-sm text-zinc-500">{label}</div>
+      <div className="text-4xl font-bold text-white tabular-nums">
         {value}
       </div>
     </div>

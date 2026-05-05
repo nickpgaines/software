@@ -5,6 +5,18 @@ import { Settings } from "lucide-react";
 import PayrollSettingsModal, {
   type PayrollSettingsValue,
 } from "./PayrollSettingsModal";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type Tab = "overview" | "sales" | "jobs" | "subscriptions" | "map" | "employees" | "payroll";
 type Range = "1w" | "1m" | "3m" | "1y";
@@ -43,23 +55,24 @@ export default function ReportsClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between gap-4 flex-wrap border-b border-slate-200">
+      <div className="flex items-end justify-between gap-4 flex-wrap border-b border-[#1f1f24]">
         <nav className="-mb-px flex gap-6">
           {TABS.map((t) => {
             const active = tab === t.key;
             return (
-              <button
+              <Button
                 key={t.key}
+                variant="ghost"
                 onClick={() => setTab(t.key)}
                 className={
-                  "whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-medium transition " +
+                  "h-auto rounded-none whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-bold hover:bg-transparent " +
                   (active
-                    ? "border-slate-900 text-slate-900"
-                    : "border-transparent text-slate-500 hover:text-slate-700")
+                    ? "border-slate-900 text-white"
+                    : "border-transparent text-zinc-400 hover:text-zinc-300")
                 }
               >
                 {t.label}
-              </button>
+              </Button>
             );
           })}
         </nav>
@@ -87,20 +100,21 @@ function RangePills({
   setRange: (r: Range) => void;
 }) {
   return (
-    <div className="flex items-center gap-1 bg-slate-100 rounded-full p-1 text-sm mb-3">
+    <div className="flex items-center gap-1 bg-black rounded-full p-1 text-sm mb-3">
       {RANGES.map((r) => (
-        <button
+        <Button
           key={r.key}
+          variant="ghost"
           onClick={() => setRange(r.key)}
           className={
-            "px-3 py-1 rounded-full transition whitespace-nowrap " +
+            "h-auto px-3 py-1 rounded-full whitespace-nowrap font-bold hover:bg-transparent " +
             (range === r.key
-              ? "bg-white text-slate-900 shadow-sm"
-              : "text-slate-500 hover:text-slate-900")
+              ? "bg-[#0f0f12] text-white shadow-sm"
+              : "text-zinc-400 hover:text-white")
           }
         >
           {r.label}
-        </button>
+        </Button>
       ))}
     </div>
   );
@@ -162,7 +176,7 @@ function OverviewPanel({ range }: { range: Range }) {
 
   if (loading && !data)
     return (
-      <p className="text-sm text-slate-400 py-10 text-center">Loading…</p>
+      <p className="text-sm text-zinc-500 py-10 text-center">Loading…</p>
     );
   if (!data) return null;
 
@@ -221,9 +235,9 @@ function OverviewPanel({ range }: { range: Range }) {
           ]}
         />
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-            <div className="text-xs text-slate-400">ARR Added</div>
-            <div className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">
+          <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl px-5 py-4">
+            <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-1.5">ARR Added</div>
+            <div className="text-[26px] font-black tracking-tight leading-none tabular-nums text-white">
               {money(data.subscriptions.arr_added_cents)}
             </div>
           </div>
@@ -267,7 +281,7 @@ function SalesPanel({ range }: { range: Range }) {
 
   if (loading && !data)
     return (
-      <p className="text-sm text-slate-400 py-10 text-center">Loading…</p>
+      <p className="text-sm text-zinc-500 py-10 text-center">Loading…</p>
     );
   if (!data) return null;
 
@@ -284,44 +298,44 @@ function SalesPanel({ range }: { range: Range }) {
       </Section>
 
       <Section title="Top reps">
-        <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
           {data.reps.length === 0 ? (
-            <p className="p-8 text-sm text-slate-400 text-center">
+            <p className="p-8 text-sm text-zinc-500 text-center">
               No rep activity in this window.
             </p>
           ) : (
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-xs uppercase tracking-wider text-slate-400">
-                  <th className="text-left px-5 py-3 font-medium">Rep</th>
-                  <th className="text-right px-5 py-3 font-medium">Doors</th>
-                  <th className="text-right px-5 py-3 font-medium">Sales</th>
-                  <th className="text-right px-5 py-3 font-medium">Conv.</th>
-                  <th className="text-right px-5 py-3 font-medium">Revenue</th>
-                </tr>
-              </thead>
-              <tbody>
+            <Table>
+              <TableHeader>
+                <TableRow className="border-0 hover:bg-transparent text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+                  <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Rep</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Doors</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Sales</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Conv.</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Revenue</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {data.reps.map((r) => (
-                  <tr key={r.id} className="border-t border-slate-100">
-                    <td className="px-5 py-3 font-medium text-slate-900">
+                  <TableRow key={r.id} className="border-t border-b-0 border-[#1f1f24] hover:bg-transparent">
+                    <TableCell className="px-5 py-3 font-bold text-white tracking-tight">
                       {r.name}
-                    </td>
-                    <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                    </TableCell>
+                    <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
                       {r.doors_knocked}
-                    </td>
-                    <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                    </TableCell>
+                    <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
                       {r.sales}
-                    </td>
-                    <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                    </TableCell>
+                    <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
                       {pct(r.conversion_rate)}
-                    </td>
-                    <td className="px-5 py-3 text-right font-semibold text-slate-900 tabular-nums">
+                    </TableCell>
+                    <TableCell className="px-5 py-3 text-right font-extrabold text-white tracking-tight tabular-nums">
                       {money(r.revenue_cents)}
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 ))}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           )}
         </div>
       </Section>
@@ -404,7 +418,7 @@ function SubscriptionsPanel() {
 
   if (loading && !data)
     return (
-      <p className="text-sm text-slate-400 py-10 text-center">Loading…</p>
+      <p className="text-sm text-zinc-500 py-10 text-center">Loading…</p>
     );
   if (!data) return null;
 
@@ -437,7 +451,7 @@ function SubscriptionsPanel() {
       </div>
 
       <div className="flex items-center justify-between flex-wrap gap-4">
-        <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+        <h2 className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-zinc-500">
           Statistics
         </h2>
         <div className="flex items-center gap-6">
@@ -472,11 +486,11 @@ function SubscriptionsPanel() {
           />
         </div>
 
-        <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-          <div className="text-sm font-semibold text-slate-900">
+        <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5 shadow-sm">
+          <div className="text-sm font-extrabold text-white tracking-tight">
             Monthly Recurring Revenue
           </div>
-          <div className="text-xs text-slate-400 mt-0.5">
+          <div className="text-xs text-zinc-500 mt-0.5">
             {data.monthly[0]?.iso} – {data.monthly[data.monthly.length - 1]?.iso}
           </div>
           <div className="mt-4 flex items-end gap-2 h-40">
@@ -487,14 +501,14 @@ function SubscriptionsPanel() {
                   key={m.iso}
                   className="flex-1 flex flex-col items-center justify-end gap-1"
                 >
-                  <div className="text-[10px] text-slate-500 tabular-nums">
+                  <div className="text-[10px] text-zinc-400 tabular-nums">
                     {m.mrr_cents > 0 ? money(m.mrr_cents) : "—"}
                   </div>
                   <div
                     className="w-full bg-amber-400 rounded-sm"
                     style={{ height: `${h}%` }}
                   />
-                  <div className="text-[10px] text-slate-500">{m.label}</div>
+                  <div className="text-[10px] text-zinc-400">{m.label}</div>
                 </div>
               );
             })}
@@ -551,12 +565,13 @@ function SelectFilter({
   options: { id: number; name: string }[];
 }) {
   return (
-    <label className="block">
-      <span className="text-xs font-medium text-slate-500">{label}</span>
+    <Label className="block font-normal">
+      <span className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">{label}</span>
+      {/* Native <select> kept: Radix Select forbids empty-string item values, which breaks the "All" clear-filter sentinel. Flagged for follow-up. */}
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 block w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 shadow-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+        className="mt-1 block w-full rounded-xl border border-[#1f1f24] bg-[#0f0f12] px-3 py-2 text-sm text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2a2a32]"
       >
         <option value="">All</option>
         {options.map((o) => (
@@ -565,7 +580,7 @@ function SelectFilter({
           </option>
         ))}
       </select>
-    </label>
+    </Label>
   );
 }
 
@@ -579,25 +594,26 @@ function Toggle({
   onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="inline-flex items-center gap-2 text-sm text-slate-700 cursor-pointer">
+    <Label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold cursor-pointer">
       <span>{label}</span>
-      <button
+      <Button
         type="button"
+        variant="ghost"
         onClick={() => onChange(!checked)}
         className={
-          "relative inline-flex h-5 w-9 items-center rounded-full transition " +
-          (checked ? "bg-emerald-500" : "bg-slate-300")
+          "relative h-5 w-9 p-0 rounded-full justify-start hover:bg-current " +
+          (checked ? "bg-emerald-500 hover:bg-emerald-500" : "bg-[#2a2a32] hover:bg-[#2a2a32]")
         }
         aria-pressed={checked}
       >
         <span
           className={
-            "inline-block h-4 w-4 transform rounded-full bg-white shadow transition " +
+            "inline-block h-4 w-4 transform rounded-full bg-[#0f0f12] shadow transition " +
             (checked ? "translate-x-4" : "translate-x-0.5")
           }
         />
-      </button>
-    </label>
+      </Button>
+    </Label>
   );
 }
 
@@ -615,16 +631,18 @@ function StatCard({
   return (
     <div
       className={
-        "bg-white border border-slate-200 rounded-2xl shadow-sm " +
-        (compact ? "p-4" : "p-5")
+        "bg-[#0f0f12] border border-[#1f1f24] rounded-2xl " +
+        (compact ? "px-4 py-3" : "px-5 py-4")
       }
     >
-      <div className="text-xs text-slate-400">{label}</div>
+      <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-1.5">
+        {label}
+      </div>
       <div
         className={
-          (compact ? "text-xl" : "text-2xl") +
-          " font-bold mt-1 tabular-nums " +
-          (valueClassName || "text-slate-900")
+          (compact ? "text-[22px]" : "text-[26px]") +
+          " font-black tracking-tight leading-none tabular-nums " +
+          (valueClassName || "text-white")
         }
       >
         {value}
@@ -641,36 +659,36 @@ function BreakdownTable({
   rows: { key: string; name: string; count: number; mrr_cents: number }[];
 }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
       {rows.length === 0 ? (
-        <p className="p-8 text-sm text-slate-400 text-center">
+        <p className="p-8 text-sm text-zinc-500 text-center">
           No subscriptions yet.
         </p>
       ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-xs uppercase tracking-wider text-slate-400 bg-slate-50">
-              <th className="text-left px-5 py-3 font-medium">{header}</th>
-              <th className="text-right px-5 py-3 font-medium">Count</th>
-              <th className="text-right px-5 py-3 font-medium">MRR</th>
-            </tr>
-          </thead>
-          <tbody>
+        <Table>
+          <TableHeader>
+            <TableRow className="border-0 hover:bg-transparent text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 bg-black">
+              <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">{header}</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Count</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">MRR</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {rows.map((r) => (
-              <tr key={r.key} className="border-t border-slate-100">
-                <td className="px-5 py-3 font-medium text-slate-900">
+              <TableRow key={r.key} className="border-t border-b-0 border-[#1f1f24] hover:bg-transparent">
+                <TableCell className="px-5 py-3 font-bold text-white tracking-tight">
                   {r.name}
-                </td>
-                <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                </TableCell>
+                <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
                   {r.count}
-                </td>
-                <td className="px-5 py-3 text-right font-semibold text-slate-900 tabular-nums">
+                </TableCell>
+                <TableCell className="px-5 py-3 text-right font-extrabold text-white tracking-tight tabular-nums">
                   {money(r.mrr_cents)}
-                </td>
-              </tr>
+                </TableCell>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       )}
     </div>
   );
@@ -688,27 +706,27 @@ function ArrAddedChart({
   const totalCount = points.reduce((sum, p) => sum + p.count, 0);
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
-          <div className="text-sm font-semibold text-slate-900">
+          <div className="text-sm font-extrabold text-white tracking-tight">
             New ARR per month{includeTax ? " (w/ tax)" : ""}
           </div>
-          <div className="text-xs text-slate-400 mt-0.5">
+          <div className="text-xs text-zinc-500 mt-0.5 font-bold">
             {points[0]?.iso} – {points[points.length - 1]?.iso}
           </div>
         </div>
         <div className="text-right">
-          <div className="text-xs text-slate-400">
+          <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
             Total added ({totalCount} subs)
           </div>
-          <div className="text-xl font-bold text-slate-900 tabular-nums">
+          <div className="text-xl font-black text-white tracking-tight tabular-nums mt-1">
             {money(total)}
           </div>
         </div>
       </div>
       {points.length === 0 ? (
-        <p className="text-sm text-slate-400 text-center py-10">
+        <p className="text-sm text-zinc-500 text-center py-10 font-bold">
           No subscription activity yet.
         </p>
       ) : (
@@ -723,14 +741,14 @@ function ArrAddedChart({
                   p.count === 1 ? "" : "s"
                 }`}
               >
-                <div className="text-[10px] text-slate-500 tabular-nums">
+                <div className="text-[10px] text-zinc-500 tabular-nums font-bold">
                   {p.arr_cents > 0 ? money(p.arr_cents) : "—"}
                 </div>
                 <div
                   className="w-full bg-emerald-500 rounded-sm"
                   style={{ height: `${h}%` }}
                 />
-                <div className="text-[10px] text-slate-500">{p.label}</div>
+                <div className="text-[10px] text-zinc-500 font-bold">{p.label}</div>
               </div>
             );
           })}
@@ -749,7 +767,7 @@ function Section({
 }) {
   return (
     <section className="space-y-3">
-      <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
+      <h2 className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-zinc-500">
         {title}
       </h2>
       {children}
@@ -772,11 +790,15 @@ function Stats({
       {items.map((it) => (
         <div
           key={it.label}
-          className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm"
+          className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl px-5 py-4 flex items-center justify-between gap-4"
         >
-          <div className="text-xs text-slate-400">{it.label}</div>
-          <div className="text-2xl font-bold text-slate-900 mt-1 tabular-nums">
-            {it.value}
+          <div className="min-w-0">
+            <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-1.5">
+              {it.label}
+            </div>
+            <div className="text-[26px] font-black tracking-tight leading-none tabular-nums text-white">
+              {it.value}
+            </div>
           </div>
         </div>
       ))}
@@ -835,7 +857,7 @@ function EmployeesPanel() {
 
   if (loading && !data)
     return (
-      <p className="text-sm text-slate-400 py-10 text-center">Loading…</p>
+      <p className="text-sm text-zinc-500 py-10 text-center font-bold">Loading…</p>
     );
   if (!data) return null;
 
@@ -902,53 +924,53 @@ function EmployeeTable({
   emptyText: string;
 }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl overflow-hidden">
       {rows.length === 0 ? (
-        <p className="p-8 text-sm text-slate-400 text-center">{emptyText}</p>
+        <p className="p-8 text-sm text-zinc-500 text-center font-bold">{emptyText}</p>
       ) : (
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="text-xs uppercase tracking-wider text-slate-400 bg-slate-50">
-              <th className="text-left px-5 py-3 font-medium">Employee</th>
-              <th className="text-right px-5 py-3 font-medium">Tenure</th>
-              <th className="text-right px-5 py-3 font-medium">Lifetime</th>
-              <th className="text-right px-5 py-3 font-medium">Monthly</th>
-              <th className="text-right px-5 py-3 font-medium">Daily</th>
+        <Table>
+          <TableHeader>
+            <TableRow className="border-0 hover:bg-transparent bg-black">
+              <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Employee</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Tenure</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Lifetime</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Monthly</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Daily</TableHead>
               {variant === "tech" && (
-                <th className="text-right px-5 py-3 font-medium">$/hr</th>
+                <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">$/hr</TableHead>
               )}
-            </tr>
-          </thead>
-          <tbody>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {rows.map((r) => (
-              <tr key={r.id} className="border-t border-slate-100">
-                <td className="px-5 py-3">
-                  <div className="font-medium text-slate-900">{r.name}</div>
+              <TableRow key={r.id} className="border-t border-b-0 border-[#1f1f24] hover:bg-transparent">
+                <TableCell className="px-5 py-3">
+                  <div className="font-bold text-white tracking-tight">{r.name}</div>
                   {r.email && (
-                    <div className="text-xs text-slate-500">{r.email}</div>
+                    <div className="text-xs text-zinc-500 font-bold">{r.email}</div>
                   )}
-                </td>
-                <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                </TableCell>
+                <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
                   {Math.round(r.days_active)} d
-                </td>
-                <td className="px-5 py-3 text-right font-semibold text-slate-900 tabular-nums">
+                </TableCell>
+                <TableCell className="px-5 py-3 text-right font-extrabold text-white tracking-tight tabular-nums">
                   {money(r.lifetime_revenue_cents)}
-                </td>
-                <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                </TableCell>
+                <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
                   {money(r.avg_monthly_revenue_cents)}
-                </td>
-                <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                </TableCell>
+                <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
                   {money(r.avg_daily_revenue_cents)}
-                </td>
+                </TableCell>
                 {variant === "tech" && (
-                  <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+                  <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
                     {money((r as EmployeeTechRow).avg_dollar_per_hour_cents)}
-                  </td>
+                  </TableCell>
                 )}
-              </tr>
+              </TableRow>
             ))}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       )}
     </div>
   );
@@ -1031,7 +1053,7 @@ function PayrollPanel({ range }: { range: Range }) {
 
   if (loading && !data)
     return (
-      <p className="text-sm text-slate-400 py-10 text-center">Loading…</p>
+      <p className="text-sm text-zinc-500 py-10 text-center">Loading…</p>
     );
   if (!data) return null;
 
@@ -1042,19 +1064,20 @@ function PayrollPanel({ range }: { range: Range }) {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">Payroll</h2>
-          <p className="text-sm text-slate-500 mt-1">
+          <h2 className="text-lg font-extrabold text-white tracking-tight">Payroll</h2>
+          <p className="text-sm text-zinc-400 mt-3 font-bold">
             Calculate commissions for sales and technician teams.
           </p>
         </div>
-        <button
+        <Button
+          variant="ghost"
           onClick={() => setSettingsOpen(true)}
-          className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 rounded-full hover:bg-slate-50 shadow-sm"
+          className="h-auto gap-2 px-3 py-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 bg-[#0f0f12] border border-[#1f1f24] rounded-full hover:bg-black shadow-sm"
           aria-label="Payroll settings"
         >
           <Settings className="w-4 h-4" />
           <span>Payroll settings</span>
-        </button>
+        </Button>
       </div>
 
       <PayrollTable
@@ -1114,31 +1137,31 @@ function PayrollTable({
 }) {
   return (
     <Section title={title}>
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
         {rows.length === 0 ? (
-          <p className="p-8 text-sm text-slate-400 text-center">
+          <p className="p-8 text-sm text-zinc-500 text-center">
             No employees yet.
           </p>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="text-xs uppercase tracking-wider text-slate-400 bg-slate-50">
-                <th className="text-left px-5 py-3 font-medium">Employee</th>
-                <th className="text-left px-5 py-3 font-medium">Email</th>
-                <th className="text-left px-5 py-3 font-medium">Role</th>
-                <th className="text-right px-5 py-3 font-medium">{rateLabel}</th>
-                <th className="text-right px-5 py-3 font-medium">Total</th>
+          <Table>
+            <TableHeader>
+              <TableRow className="border-0 hover:bg-transparent text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 bg-black">
+                <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Employee</TableHead>
+                <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Email</TableHead>
+                <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Role</TableHead>
+                <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">{rateLabel}</TableHead>
+                <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Total</TableHead>
                 {showTips && (
-                  <th className="text-right px-5 py-3 font-medium">Tips</th>
+                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Tips</TableHead>
                 )}
                 {showBonus && (
-                  <th className="text-right px-5 py-3 font-medium">Bonus</th>
+                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Bonus</TableHead>
                 )}
-                <th className="text-right px-5 py-3 font-medium">Payout</th>
-                <th className="text-center px-5 py-3 font-medium">Paid</th>
-              </tr>
-            </thead>
-            <tbody>
+                <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Payout</TableHead>
+                <TableHead className="h-auto text-center px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Paid</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {rows.map((r) => (
                 <PayrollRowView
                   key={r.id}
@@ -1150,8 +1173,8 @@ function PayrollTable({
                   onPaidToggle={(paid) => onPaidToggle(r.id, paid)}
                 />
               ))}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
       </div>
     </Section>
@@ -1189,18 +1212,18 @@ function PayrollRowView({
   }
 
   return (
-    <tr className="border-t border-slate-100">
-      <td className="px-5 py-3 font-medium text-slate-900">{row.name}</td>
-      <td className="px-5 py-3 text-slate-600">{row.email || "—"}</td>
-      <td className="px-5 py-3">
-        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 text-xs font-medium capitalize">
+    <TableRow className="border-t border-b-0 border-[#1f1f24] hover:bg-transparent">
+      <TableCell className="px-5 py-3 font-bold text-white tracking-tight">{row.name}</TableCell>
+      <TableCell className="px-5 py-3 text-zinc-400">{row.email || "—"}</TableCell>
+      <TableCell className="px-5 py-3">
+        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 text-xs font-bold capitalize">
           {row.role.replace(/_/g, " ")}
         </span>
-      </td>
-      <td className="px-5 py-3 text-right tabular-nums">
+      </TableCell>
+      <TableCell className="px-5 py-3 text-right tabular-nums">
         {rateEditable ? (
           editing ? (
-            <input
+            <Input
               autoFocus
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
@@ -1212,47 +1235,47 @@ function PayrollRowView({
                   setEditing(false);
                 }
               }}
-              className="w-20 text-right border border-slate-300 rounded px-2 py-1"
+              className="w-20 h-auto text-right border-[#2a2a32] rounded px-2 py-1"
             />
           ) : (
-            <button
+            <Button
+              variant="ghost"
               onClick={() => setEditing(true)}
-              className="text-slate-700 hover:text-slate-900 hover:underline"
+              className="h-auto p-0 text-zinc-300 hover:bg-transparent hover:text-white hover:underline font-bold"
             >
               {(row.rate * 100).toFixed(1)}%
-            </button>
+            </Button>
           )
         ) : (
-          <span className="text-slate-700">
+          <span className="text-zinc-300">
             {(row.rate * 100).toFixed(1)}%
           </span>
         )}
-      </td>
-      <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+      </TableCell>
+      <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
         {money(row.total_cents)}
-      </td>
+      </TableCell>
       {showTips && (
-        <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+        <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
           {money(row.tips_cents)}
-        </td>
+        </TableCell>
       )}
       {showBonus && (
-        <td className="px-5 py-3 text-right text-slate-700 tabular-nums">
+        <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
           {money(row.bonus_cents || 0)}
-        </td>
+        </TableCell>
       )}
-      <td className="px-5 py-3 text-right font-semibold text-slate-900 tabular-nums">
+      <TableCell className="px-5 py-3 text-right font-extrabold text-white tracking-tight tabular-nums">
         {money(row.payout_cents)}
-      </td>
-      <td className="px-5 py-3 text-center">
-        <input
-          type="checkbox"
+      </TableCell>
+      <TableCell className="px-5 py-3 text-center">
+        <Checkbox
           checked={row.paid}
-          onChange={(e) => onPaidToggle(e.target.checked)}
-          className="w-4 h-4 cursor-pointer"
+          onCheckedChange={(checked) => onPaidToggle(checked === true)}
+          className="cursor-pointer"
         />
-      </td>
-    </tr>
+      </TableCell>
+    </TableRow>
   );
 }
 
@@ -1288,7 +1311,7 @@ function PayrollSummary({
     }
   );
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm divide-y divide-slate-100">
+    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm divide-y divide-[#1f1f24]">
       {items.map((it) => (
         <div
           key={it.label}
@@ -1298,8 +1321,8 @@ function PayrollSummary({
             className={
               "text-sm " +
               (it.emphasis
-                ? "font-semibold text-slate-900"
-                : "text-slate-600")
+                ? "font-extrabold text-white tracking-tight"
+                : "text-zinc-400")
             }
           >
             {it.label}
@@ -1308,8 +1331,8 @@ function PayrollSummary({
             className={
               "tabular-nums " +
               (it.emphasis
-                ? "text-lg font-bold text-slate-900"
-                : "font-semibold text-slate-900")
+                ? "text-lg font-bold text-white"
+                : "font-extrabold text-white tracking-tight")
             }
           >
             {it.value}
@@ -1351,7 +1374,7 @@ function JobsPanel({ range }: { range: Range }) {
 
   if (loading && !data)
     return (
-      <p className="text-sm text-slate-400 py-10 text-center">Loading…</p>
+      <p className="text-sm text-zinc-500 py-10 text-center font-bold">Loading…</p>
     );
   if (!data) return null;
 
@@ -1425,7 +1448,7 @@ function MapPanel({ range }: { range: Range }) {
 
   if (loading && !data)
     return (
-      <p className="text-sm text-slate-400 py-10 text-center">Loading…</p>
+      <p className="text-sm text-zinc-500 py-10 text-center font-bold">Loading…</p>
     );
   if (!data) return null;
 
@@ -1462,14 +1485,14 @@ function ObjectionsBreakdown({
   objections: MapReport["objections"];
 }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl overflow-hidden">
       {objections.breakdown.length === 0 ? (
-        <p className="p-8 text-sm text-slate-400 text-center">
+        <p className="p-8 text-sm text-zinc-500 text-center font-bold">
           No objections recorded in this window.
         </p>
       ) : (
-        <div className="divide-y divide-slate-100">
-          <div className="px-5 py-3 text-xs uppercase tracking-wider text-slate-400 bg-slate-50 flex items-center justify-between">
+        <div className="divide-y divide-[#1f1f24]">
+          <div className="px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500 bg-black flex items-center justify-between">
             <span>
               Objection ({objections.pins_with_objections} pin
               {objections.pins_with_objections === 1 ? "" : "s"} with objections)
@@ -1479,12 +1502,12 @@ function ObjectionsBreakdown({
           {objections.breakdown.map((o) => (
             <div key={o.name} className="px-5 py-3">
               <div className="flex items-center justify-between text-sm">
-                <span className="font-medium text-slate-900">{o.name}</span>
-                <span className="text-slate-700 tabular-nums">
+                <span className="font-bold text-white tracking-tight">{o.name}</span>
+                <span className="text-zinc-300 font-bold tabular-nums">
                   {o.count} · {pct(o.pct)}
                 </span>
               </div>
-              <div className="mt-2 h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+              <div className="mt-2 h-2 w-full rounded-full bg-[#1f1f24] overflow-hidden">
                 <div
                   className="h-full bg-rose-500"
                   style={{
