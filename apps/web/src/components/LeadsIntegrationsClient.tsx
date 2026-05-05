@@ -111,7 +111,7 @@ export default function LeadsIntegrationsClient({
           className={
             "rounded-lg px-4 py-2.5 text-sm " +
             (banner.type === "ok"
-              ? "bg-emerald-50 text-emerald-700"
+              ? "bg-green/10 text-green border border-green/30"
               : "bg-red-50 text-red-700")
           }
         >
@@ -133,7 +133,7 @@ export default function LeadsIntegrationsClient({
                 className={
                   "text-xs px-2 py-0.5 rounded-full " +
                   (connected
-                    ? "bg-emerald-50 text-emerald-700"
+                    ? "bg-green/10 text-green border border-green/30"
                     : "bg-black text-zinc-400")
                 }
               >
@@ -236,7 +236,7 @@ export default function LeadsIntegrationsClient({
                     onClick={() => togglePage(p.id, !p.enabled)}
                     className={
                       "relative w-10 h-6 p-0 rounded-full shrink-0 hover:bg-current " +
-                      (p.enabled ? "bg-emerald-500 hover:bg-emerald-500" : "bg-line-strong hover:bg-line-strong")
+                      (p.enabled ? "bg-green hover:bg-green" : "bg-line-strong hover:bg-line-strong")
                     }
                   >
                     <span

@@ -76,7 +76,7 @@ export default function LeadsWorkflowsClient({
           type="button"
           variant="ghost"
           onClick={() => setShowNew(true)}
-          className="h-auto gap-1.5 bg-sky-400 hover:bg-sky-500 text-white text-sm font-bold px-4 py-2 rounded-full"
+          className="h-auto gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold px-4 py-2 rounded-full"
         >
           <Plus className="w-4 h-4" />
           Add Workflow
@@ -92,7 +92,7 @@ export default function LeadsWorkflowsClient({
             className={
               "h-auto px-4 py-1.5 rounded-full hover:bg-transparent " +
               (tab === "workflows"
-                ? "bg-card text-white shadow-sm font-bold"
+                ? "bg-card text-white font-bold"
                 : "text-zinc-400 font-bold")
             }
           >
@@ -105,7 +105,7 @@ export default function LeadsWorkflowsClient({
             className={
               "h-auto px-4 py-1.5 rounded-full hover:bg-transparent " +
               (tab === "logs"
-                ? "bg-card text-white shadow-sm font-bold"
+                ? "bg-card text-white font-bold"
                 : "text-zinc-400 font-bold")
             }
           >
@@ -118,7 +118,7 @@ export default function LeadsWorkflowsClient({
         <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <Stat label="TOTAL" value={total} valueClass="text-white" />
-            <Stat label="ACTIVE" value={active} valueClass="text-emerald-600" />
+            <Stat label="ACTIVE" value={active} valueClass="text-green" />
             <Stat label="PAUSED" value={paused} valueClass="text-white" />
           </div>
 
@@ -168,7 +168,7 @@ export default function LeadsWorkflowsClient({
                 type="button"
                 variant="ghost"
                 onClick={createWorkflow}
-                className="h-auto px-4 py-2 text-sm bg-sky-400 hover:bg-sky-500 text-white rounded-full font-bold"
+                className="h-auto px-4 py-2 text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full font-bold"
               >
                 Create
               </Button>
@@ -191,7 +191,7 @@ function Stat({
 }) {
   return (
     <div className="border border-line rounded-2xl p-5">
-      <div className="text-xs uppercase tracking-wide text-zinc-400">
+      <div className="text-eyebrow-tight uppercase text-zinc-400">
         {label}
       </div>
       <div className={`text-3xl font-bold mt-2 ${valueClass}`}>{value}</div>
@@ -231,7 +231,7 @@ function WorkflowRow({
           className={
             "text-xs px-3 py-1 rounded-full " +
             (enabled
-              ? "bg-emerald-50 text-emerald-700"
+              ? "bg-green/10 text-green border border-green/30"
               : "bg-black text-zinc-400")
           }
         >
@@ -245,7 +245,7 @@ function WorkflowRow({
           onClick={() => onToggle(!enabled)}
           className={
             "relative w-10 h-6 p-0 rounded-full hover:bg-current " +
-            (enabled ? "bg-emerald-500 hover:bg-emerald-500" : "bg-line-strong hover:bg-line-strong")
+            (enabled ? "bg-green hover:bg-green" : "bg-line-strong hover:bg-line-strong")
           }
         >
           <span

@@ -60,7 +60,7 @@ export default function LeadsFormsClient({
           type="button"
           variant="ghost"
           onClick={() => setShowNew(true)}
-          className="h-auto gap-1.5 bg-sky-400 hover:bg-sky-500 text-white text-sm font-bold px-4 py-2 rounded-full"
+          className="h-auto gap-1.5 bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold px-4 py-2 rounded-full"
         >
           <Plus className="w-4 h-4" />
           Add Form
@@ -100,7 +100,7 @@ export default function LeadsFormsClient({
                     className={
                       "text-xs px-3 py-1 rounded-full " +
                       (enabled
-                        ? "bg-emerald-50 text-emerald-700"
+                        ? "bg-green/10 text-green border border-green/30"
                         : "bg-black text-zinc-400")
                     }
                   >
@@ -114,7 +114,7 @@ export default function LeadsFormsClient({
                     onClick={() => toggle(f.id, !enabled)}
                     className={
                       "relative w-10 h-6 p-0 rounded-full hover:bg-current " +
-                      (enabled ? "bg-emerald-500 hover:bg-emerald-500" : "bg-line-strong hover:bg-line-strong")
+                      (enabled ? "bg-green hover:bg-green" : "bg-line-strong hover:bg-line-strong")
                     }
                   >
                     <span
@@ -167,7 +167,7 @@ export default function LeadsFormsClient({
                 type="button"
                 variant="ghost"
                 onClick={createForm}
-                className="h-auto px-4 py-2 text-sm bg-sky-400 hover:bg-sky-500 text-white rounded-full font-bold"
+                className="h-auto px-4 py-2 text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full font-bold"
               >
                 Create
               </Button>

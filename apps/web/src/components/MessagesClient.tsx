@@ -99,7 +99,7 @@ export default function MessagesClient() {
     conversations.find((c) => c.id === selectedId) || null;
 
   return (
-    <div className="flex bg-card border border-line rounded-2xl overflow-hidden h-[calc(100vh-9rem)] min-h-[480px] shadow-sm">
+    <div className="flex bg-card border border-line rounded-2xl overflow-hidden h-[calc(100vh-9rem)] min-h-[480px]">
       <aside className="w-80 shrink-0 border-r border-line flex flex-col">
         <div className="px-4 pt-4 pb-3 flex items-center justify-between">
           <h2 className="text-lg font-extrabold text-white tracking-tight">Messages</h2>
@@ -358,7 +358,7 @@ function Thread({
                         "rounded-2xl px-3 py-2 text-sm break-words " +
                         (out
                           ? failed
-                            ? "bg-rose-100 border border-rose-200 text-rose-900 rounded-br-sm"
+                            ? "bg-red/10 border border-red/30 text-red rounded-br-sm"
                             : "bg-slate-900 text-white rounded-br-sm"
                           : "bg-card border border-line text-white rounded-bl-sm")
                       }
@@ -369,7 +369,7 @@ function Thread({
                           "text-[10px] mt-1 " +
                           (out
                             ? failed
-                              ? "text-rose-700"
+                              ? "text-red"
                               : "text-zinc-500"
                             : "text-zinc-500")
                         }
@@ -379,7 +379,7 @@ function Thread({
                       </div>
                     </div>
                     {failed && (
-                      <div className="text-[10px] text-rose-600 max-w-full text-right">
+                      <div className="text-[10px] text-red max-w-full text-right">
                         {m.status === "not_configured"
                           ? "Not sent — connect Twilio in Settings → Messaging"
                           : `Not delivered${m.error ? ` — ${m.error}` : ""}`}
@@ -400,7 +400,7 @@ function Thread({
               <span className="text-zinc-400">Drafting reply with Claude…</span>
             )}
             {draftError && (
-              <span className="text-rose-600">{draftError}</span>
+              <span className="text-red">{draftError}</span>
             )}
           </div>
         )}
