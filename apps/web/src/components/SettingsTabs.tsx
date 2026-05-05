@@ -754,6 +754,7 @@ type SubscriptionTemplate = {
   description: string | null;
   price_cents: number;
   interval: SubscriptionInterval;
+  service_interval: SubscriptionInterval;
   active: number;
   terms_id: number | null;
   require_signature: number;
@@ -777,6 +778,7 @@ type CustomerSubscription = {
   description: string | null;
   price_cents: number;
   interval: SubscriptionInterval;
+  service_interval: SubscriptionInterval;
   status: "pending" | "active" | "declined" | "canceled";
   sent_at: string | null;
   accepted_at: string | null;
@@ -811,6 +813,7 @@ type TemplateForm = {
   active: boolean;
   terms_id: number | null;
   require_signature: boolean;
+  service_interval: SubscriptionInterval;
 };
 
 function emptyForm(): TemplateForm {
@@ -820,6 +823,7 @@ function emptyForm(): TemplateForm {
     active: true,
     terms_id: null,
     require_signature: false,
+    service_interval: "monthly",
   };
 }
 
@@ -874,6 +878,7 @@ function SubscriptionsPanel() {
       active: t.active === 1,
       terms_id: t.terms_id,
       require_signature: t.require_signature === 1,
+      service_interval: t.service_interval || "monthly",
     });
     setEditingId(t.id);
   }
@@ -897,6 +902,7 @@ function SubscriptionsPanel() {
       active: form.active,
       terms_id: form.terms_id,
       require_signature: form.require_signature,
+      service_interval: form.service_interval,
     };
     const url =
       editingId === "new"
@@ -987,10 +993,34 @@ function SubscriptionsPanel() {
               placeholder="Includes interior + exterior windows…"
             />
           </Field>
+          <Field label="Service frequency">
+            {/* Native <select> kept: Radix Select forbids empty-string item values; preserved for consistency with other selects on this surface. */}
+            <select
+              value={form.service_interval}
+              onChange={(e) =>
+                setForm({
+                  ...form,
+                  service_interval: e.target.value as SubscriptionInterval,
+                })
+              }
+              className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+            >
+              {(
+                Object.entries(INTERVAL_LABELS) as [
+                  SubscriptionInterval,
+                  string,
+                ][]
+              ).map(([v, l]) => (
+                <option key={v} value={v}>
+                  {l}
+                </option>
+              ))}
+            </select>
+          </Field>
           <p className="text-xs text-zinc-400 -mt-1">
-            Price and billing interval are set per customer when you create a
-            subscription from this template — no need to make a separate
-            template per price point.
+            How often the service is delivered. Price and billing frequency
+            are set per customer when you create a subscription from this
+            template.
           </p>
           <div className="space-y-3 pt-2 border-t border-[#1f1f24]">
             <div>
@@ -1114,7 +1144,8 @@ function SubscriptionsPanel() {
                     )}
                   </div>
                   <div className="text-xs text-zinc-400 mt-0.5">
-                    Price &amp; cadence set per customer
+                    Service: {INTERVAL_LABELS[t.service_interval || "monthly"].toLowerCase()}
+                    {" · "}price &amp; billing set per customer
                   </div>
                   {t.description && (
                     <p className="text-xs text-zinc-400 mt-1 line-clamp-2">
@@ -1383,6 +1414,13 @@ function SendOrAcceptModal({
             {template.description}
           </p>
         )}
+
+        <p className="text-xs text-zinc-400">
+          Service frequency:{" "}
+          <span className="font-bold text-white tracking-tight">
+            {INTERVAL_LABELS[template.service_interval || "monthly"]}
+          </span>
+        </p>
 
         <Field label="Customer">
           {/* Native <select> kept: Radix Select forbids empty-string item values, breaking the "Select customer…" sentinel. */}

@@ -834,6 +834,7 @@ async function init(): Promise<void> {
       price_cents  INTEGER NOT NULL DEFAULT 0,
       interval     TEXT    NOT NULL DEFAULT 'monthly'
                     CHECK (interval IN ('weekly','biweekly','monthly','quarterly','yearly')),
+      service_interval TEXT NOT NULL DEFAULT 'monthly',
       active       INTEGER NOT NULL DEFAULT 1,
       terms_id     INTEGER REFERENCES subscription_terms(id) ON DELETE SET NULL,
       require_signature INTEGER NOT NULL DEFAULT 0,
@@ -853,6 +854,7 @@ async function init(): Promise<void> {
       price_cents  INTEGER NOT NULL DEFAULT 0,
       interval     TEXT    NOT NULL DEFAULT 'monthly'
                     CHECK (interval IN ('weekly','biweekly','monthly','quarterly','yearly')),
+      service_interval TEXT NOT NULL DEFAULT 'monthly',
       status       TEXT    NOT NULL DEFAULT 'pending'
                     CHECK (status IN ('pending','active','declined','canceled')),
       sent_at      TEXT,
@@ -1154,6 +1156,7 @@ async function init(): Promise<void> {
     ["terms_id", "INTEGER REFERENCES subscription_terms(id) ON DELETE SET NULL"],
     ["require_signature", "INTEGER NOT NULL DEFAULT 0"],
     ["tax_rate_bps", "INTEGER NOT NULL DEFAULT 0"],
+    ["service_interval", "TEXT NOT NULL DEFAULT 'monthly'"],
   ];
   for (const [col, def] of tplAdds) {
     await alterAddColumn("subscription_templates", col, def, tplCols);
@@ -1171,6 +1174,7 @@ async function init(): Promise<void> {
     ["start_date", "TEXT"],
     ["sold_by_id", "INTEGER REFERENCES staff(id) ON DELETE SET NULL"],
     ["tax_rate_bps", "INTEGER NOT NULL DEFAULT 0"],
+    ["service_interval", "TEXT NOT NULL DEFAULT 'monthly'"],
   ];
   for (const [col, def] of subAdds) {
     await alterAddColumn("customer_subscriptions", col, def, subCols);
@@ -1200,6 +1204,7 @@ async function init(): Promise<void> {
         price_cents  INTEGER NOT NULL DEFAULT 0,
         interval     TEXT    NOT NULL DEFAULT 'monthly'
                       CHECK (interval IN ('weekly','biweekly','monthly','quarterly','triannually','semiannually','yearly')),
+        service_interval TEXT NOT NULL DEFAULT 'monthly',
         status       TEXT    NOT NULL DEFAULT 'pending'
                       CHECK (status IN ('pending','active','declined','canceled')),
         sent_at      TEXT,
@@ -1217,10 +1222,12 @@ async function init(): Promise<void> {
       );
       INSERT INTO customer_subscriptions__new
         (id, customer_id, template_id, name, description, price_cents, interval,
+         service_interval,
          status, sent_at, accepted_at, canceled_at, created_by, terms_snapshot,
          require_signature, signature_data, signature_name, signed_at,
          start_date, sold_by_id, created_at)
       SELECT id, customer_id, template_id, name, description, price_cents, interval,
+             service_interval,
              status, sent_at, accepted_at, canceled_at, created_by, terms_snapshot,
              require_signature, signature_data, signature_name, signed_at,
              start_date, sold_by_id, created_at
@@ -1864,6 +1871,7 @@ export type SubscriptionTemplate = {
   description: string | null;
   price_cents: number;
   interval: SubscriptionInterval;
+  service_interval: SubscriptionInterval;
   active: number;
   terms_id: number | null;
   require_signature: number;
@@ -1887,6 +1895,7 @@ export type CustomerSubscription = {
   description: string | null;
   price_cents: number;
   interval: SubscriptionInterval;
+  service_interval: SubscriptionInterval;
   status: CustomerSubscriptionStatus;
   sent_at: string | null;
   accepted_at: string | null;

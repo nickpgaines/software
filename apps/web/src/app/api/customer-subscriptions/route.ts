@@ -125,6 +125,7 @@ export async function POST(req: Request) {
     );
   }
   const interval: SubscriptionInterval = body.interval;
+  let serviceInterval: SubscriptionInterval = interval;
   let templateId: number | null = null;
   let termsSnapshot: string | null = null;
   let requireSignature = 0;
@@ -152,6 +153,10 @@ export async function POST(req: Request) {
     if (!description) description = tpl.description;
     requireSignature = tpl.require_signature ? 1 : 0;
     if (body.tax_rate_bps === undefined) taxRateBps = tpl.tax_rate_bps || 0;
+    serviceInterval =
+      tpl.service_interval && VALID_INTERVALS.includes(tpl.service_interval)
+        ? tpl.service_interval
+        : interval;
     if (tpl.terms_id) {
       const terms = (await db
         .prepare(
@@ -219,11 +224,12 @@ export async function POST(req: Request) {
     .prepare(
       `INSERT INTO customer_subscriptions
          (company_id, customer_id, template_id, name, description, price_cents, interval,
+          service_interval,
           status, sent_at, accepted_at, created_by,
           terms_snapshot, require_signature,
           signature_data, signature_name, signed_at,
           start_date, sold_by_id, tax_rate_bps)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       companyId,
@@ -233,6 +239,7 @@ export async function POST(req: Request) {
       description,
       price_cents,
       interval,
+      serviceInterval,
       status,
       sentAt,
       acceptedAt,

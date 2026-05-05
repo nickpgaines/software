@@ -45,6 +45,7 @@ type SubscriptionTemplate = {
   active: number;
   terms_id: number | null;
   require_signature: number;
+  service_interval: SubscriptionInterval;
 };
 
 const INTERVAL_LABELS: Record<SubscriptionInterval, string> = {
@@ -175,15 +176,18 @@ export default function NewSubscriptionForm() {
 
   const requireSignature = selectedTemplate?.require_signature === 1;
 
+  const serviceInterval: SubscriptionInterval =
+    selectedTemplate?.service_interval || "monthly";
+
   const includedVisits = useMemo(() => {
     if (!selectedTemplate || !startDate) return [] as { date: string }[];
-    const days = intervalDays(interval);
+    const days = intervalDays(serviceInterval);
     const out: { date: string }[] = [];
     for (let i = 0; i < 4; i++) {
       out.push({ date: addDays(startDate, days * i) });
     }
     return out;
-  }, [selectedTemplate, startDate, interval]);
+  }, [selectedTemplate, startDate, serviceInterval]);
 
   const priceCents = Math.max(0, Math.round((parseFloat(price) || 0) * 100));
   const canSubmit =
@@ -398,6 +402,12 @@ export default function NewSubscriptionForm() {
                     {selectedTemplate.description}
                   </div>
                 )}
+                <div className="text-zinc-400">
+                  Service frequency:{" "}
+                  <span className="font-bold">
+                    {INTERVAL_LABELS[serviceInterval]}
+                  </span>
+                </div>
                 {linkedTerms && (
                   <div className="text-zinc-400">
                     Terms: <span className="font-bold">{linkedTerms.name}</span>
@@ -420,7 +430,7 @@ export default function NewSubscriptionForm() {
                   className="w-full border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12] h-auto"
                 />
               </Field>
-              <Field label="Billing & service frequency">
+              <Field label="Billing frequency">
                 {/* Native <select> kept: billing interval picker */}
                 <select
                   value={interval}
@@ -473,7 +483,8 @@ export default function NewSubscriptionForm() {
             )}
             {selectedTemplate && (
               <p className="text-[11px] text-zinc-500 mt-2">
-                Projected based on {INTERVAL_LABELS[interval].toLowerCase()}{" "}
+                Projected based on the template&apos;s{" "}
+                {INTERVAL_LABELS[serviceInterval].toLowerCase()} service
                 cadence from the start date.
               </p>
             )}
@@ -807,6 +818,8 @@ function NewTemplateModal({
   const [description, setDescription] = useState("");
   const [termsId, setTermsId] = useState<number | "">("");
   const [requireSignature, setRequireSignature] = useState(false);
+  const [serviceInterval, setServiceInterval] =
+    useState<SubscriptionInterval>("monthly");
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -827,6 +840,7 @@ function NewTemplateModal({
         active: true,
         terms_id: termsId || null,
         require_signature: requireSignature,
+        service_interval: serviceInterval,
       }),
     });
     setSaving(false);
@@ -875,8 +889,29 @@ function NewTemplateModal({
             className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm"
           />
         </Field>
+        <Field label="Service frequency">
+          {/* Native <select> kept: service interval picker */}
+          <select
+            value={serviceInterval}
+            onChange={(e) =>
+              setServiceInterval(e.target.value as SubscriptionInterval)
+            }
+            className="w-full border border-[#1f1f24] rounded-xl px-3 py-2 text-sm bg-[#0f0f12]"
+          >
+            {(
+              Object.entries(INTERVAL_LABELS) as [
+                SubscriptionInterval,
+                string,
+              ][]
+            ).map(([v, l]) => (
+              <option key={v} value={v}>
+                {l}
+              </option>
+            ))}
+          </select>
+        </Field>
         <p className="text-xs text-zinc-400 -mt-1">
-          Price and billing interval are set per customer when you create a
+          Price and billing frequency are set per customer when you create a
           subscription from this template.
         </p>
         <Field label="Terms (optional)">
