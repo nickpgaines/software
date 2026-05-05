@@ -123,11 +123,14 @@ named role token tied to a real call site.
 - **Outlined ring** for chips that need a border: `${color}33` (20% opacity)
   for the border. See `widgets.tsx:807` (activity avatar border).
 - **Glow shadow** for violet primary CTA buttons (locked):
-  - **`0 0 16px ${PULSE.violetGlow}`** on full-width / pill-shaped
-    buttons (e.g. Sidebar `+ New`).
-  - **`0 0 12px ${PULSE.violetGlow}`** on compact icon buttons (≤32px,
-    e.g. Tasks card `+`).
-  - No third value. Glow size scales with button footprint.
+  - **`shadow-glow-violet`** = `0 0 16px ${PULSE.violetGlow}` on
+    full-width / pill-shaped buttons (e.g. Sidebar `+ New`).
+  - **`shadow-glow-violet-sm`** = `0 0 12px ${PULSE.violetGlow}` on
+    compact icon buttons (≤32px, e.g. Tasks card `+`).
+  - No third value. Glow size scales with button footprint. Both tokens
+    resolve via Tailwind's `boxShadow` extension to the corresponding
+    CSS variable in `globals.css`; the inline `style={{ boxShadow }}`
+    form is no longer used on Pulse surfaces.
 
 ---
 
@@ -210,7 +213,7 @@ Three tiers, locked. No fourth value.
 
 | Value                              | Where                                                              |
 | ---------------------------------- | ------------------------------------------------------------------ |
-| `max-w-[1440px] mx-auto px-10 py-10` | App content container — `(app)/layout.tsx:14`                    |
+| `max-w-app mx-auto px-10 py-10`    | App content container — `(app)/layout.tsx:14`. `max-w-app` resolves to `--layout-app-max-width` (1440px) via Tailwind's `maxWidth` extension. |
 | `w-60` (240px)                     | Sidebar width — `Sidebar.tsx:106`                                  |
 | `ml-60` (240px)                    | Main column offset — `(app)/layout.tsx:13`                         |
 
@@ -273,21 +276,28 @@ Three tiers, intentional:
 The dashboard mostly uses **flat surfaces with borders** (`#1f1f24`) — no
 elevation shadows on cards. The only shadows in the component tree:
 
-| Shadow                                                  | Element                          | Where                       |
-| ------------------------------------------------------- | -------------------------------- | --------------------------- |
-| `0 0 16px rgba(139,92,246,0.35)` (PULSE.violetGlow)     | Sidebar `+ New` button           | `Sidebar.tsx:131`           |
-| `0 0 12px rgba(139,92,246,0.35)`                        | Tasks card inline `+` button     | `widgets.tsx:726`           |
-| `0 0 8px ${PULSE.green}` (~rgba(34,197,94,1))           | LiveBadge dot                    | `widgets.tsx:749`           |
-| `0 12px 28px -8px rgba(0,0,0,0.5)`                      | Sidebar new-menu dropdown        | `Sidebar.tsx:143`           |
-| `0 8px 24px -8px rgba(0,0,0,0.6)`                       | Chart hover tooltip card         | `widgets.tsx:343`           |
-| `0 0 0 3px PULSE.bg`                                    | Chart hover dot ring             | `widgets.tsx:328`           |
-| `0 0 0 1px ${color}33` (border-style ring)              | Activity avatar (treated as ring)| `widgets.tsx:807`           |
+| Token                  | Resolved value                                          | Element                          | Where                       |
+| ---------------------- | ------------------------------------------------------- | -------------------------------- | --------------------------- |
+| `shadow-glow-violet`   | `0 0 16px rgba(139,92,246,0.35)` (PULSE.violetGlow)     | Sidebar `+ New` button           | `Sidebar.tsx:131`           |
+| `shadow-glow-violet-sm`| `0 0 12px rgba(139,92,246,0.35)`                        | Tasks card inline `+` button     | `widgets.tsx:726`           |
+| `shadow-glow-green`    | `0 0 8px ${PULSE.green}` (~rgba(34,197,94,1))           | LiveBadge dot                    | `widgets.tsx:749`           |
+| `shadow-menu`          | `0 12px 28px -8px rgba(0,0,0,0.5)`                      | Sidebar new-menu dropdown        | `Sidebar.tsx:143`           |
+| `shadow-tooltip`       | `0 8px 24px -8px rgba(0,0,0,0.6)`                       | Chart hover tooltip card         | `widgets.tsx:343`           |
+| (inline)               | `0 0 0 3px PULSE.bg`                                    | Chart hover dot ring             | `widgets.tsx:328`           |
+| (inline)               | `0 0 0 1px ${color}33` (border-style ring)              | Activity avatar (treated as ring)| `widgets.tsx:807`           |
 
-There is **no** systematic elevation scale (e.g. `shadow-sm` / `shadow-md`).
-Each shadow is hand-tuned for its widget. New work should pull from one of
-the patterns above; don't introduce new shadow values. The two violet
+The first five shadows are exposed as Tailwind utility classes via the
+`boxShadow` theme extension in `tailwind.config.ts`; each reads from a
+CSS variable defined in `globals.css`. The bottom two (chart hover dot
+ring and activity avatar ring) are still applied inline because their
+values are dynamic — `PULSE.bg` for the dot and the per-item accent
+`${color}33` for the avatar. New work should pull from one of the
+patterns above; don't introduce new shadow values. The two violet
 glows are governed by the size rule in §3 (16px on full-width / pill
 buttons, 12px on compact icon buttons).
+
+There is **no** systematic elevation scale (e.g. `shadow-sm` / `shadow-md`).
+Each shadow is hand-tuned for its widget.
 
 ---
 
@@ -475,7 +485,7 @@ All three: `rounded-2xl p-6`, bg `PULSE.card`, border `PULSE.cardBorder`.
 
 **`PulseTasksCard`** — `widgets.tsx:713-739`:
 - H2 "Tasks"
-- Right-side icon button: 7×7 round, bg `PULSE.violet`, white plus, glow `0 0 12px ${PULSE.violetGlow}`
+- Right-side icon button: 7×7 round, bg `PULSE.violet`, white plus, glow `shadow-glow-violet-sm`
 - Empty state: doc icon, "No tasks yet" / "Create one to keep your team organized."
 
 **`PulseActivityCard`** — `widgets.tsx:756-835`:
@@ -499,13 +509,19 @@ Defined: `widgets.tsx:741-754`.
 
 - Layout: `flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em]`
 - Color: `PULSE.green`
-- Dot: `w-1.5 h-1.5 rounded-full`, bg `PULSE.green`, glow `0 0 8px ${PULSE.green}`
+- Dot: `w-1.5 h-1.5 rounded-full`, bg `PULSE.green`, glow `shadow-glow-green`
 
 ### 8.11 `PulseIcon`
 
 Defined: `Icon.tsx:1-43`. SVG icon set with `viewBox="0 0 24 24"`, `fill="none"`, `stroke="currentColor"`, `strokeWidth={1.75}`, `strokeLinecap="round"`, `strokeLinejoin="round"`. Default size `w-4 h-4`. Special case: the `plus` icon overrides `strokeWidth={2.5}`.
 
-Available names: `home`, `calendar`, `map`, `inbox`, `doc`, `check`, `wallet`, `message`, `phone`, `mail`, `chart`, `trophy`, `user`, `users`, `settings`, `plus`, `search`, `bell`, `chevron`, `logout`, `cart`. Unknown name → empty circle (`Icon.tsx:35`).
+Available names: `home`, `calendar`, `map`, `inbox`, `doc`, `check`, `wallet`, `message`, `phone`, `mail`, `chart`, `trophy`, `user`, `users`, `settings`, `plus`, `search`, `bell`, `chevron`, `logout`, `cart`, `mic`, `mic-off`, `phone-off`. Unknown name → empty circle (`Icon.tsx:35`).
+
+`mic` / `mic-off` / `phone-off` were added to support the CallWidget
+mute and hang-up affordances (see §10 #19). `mic-off` is the `mic`
+glyph plus a diagonal slash; `phone-off` is the `phone` glyph plus a
+diagonal slash — both follow the same `viewBox` / `strokeWidth` /
+linecap conventions as the rest of the set.
 
 ### 8.13 `CardHeaderLink`
 
@@ -576,7 +592,7 @@ Sequence on `(app)/page.tsx:31-74`:
 4. **2-up middle row** — `grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5` containing `PulseScheduleCard` + `PulsePipelineCard`
 5. **3-up bottom row** — `grid grid-cols-1 lg:grid-cols-3 gap-4` containing `PulseInboxCard` + `PulseTasksCard` + `PulseActivityCard`
 
-Container width is enforced by the layout (`max-w-[1440px] mx-auto px-10 py-10`) — pages render content directly.
+Container width is enforced by the layout (`max-w-app mx-auto px-10 py-10`) — pages render content directly.
 
 ### 9.3 Card title row
 
@@ -605,7 +621,10 @@ The dashboard has no tables. The closest analog inside the Pulse primitives is t
 ## 10. Inconsistencies (resolved)
 
 This section originally tracked 15 inconsistencies between role-similar
-elements across the Pulse surfaces. **All 15 are resolved.** The
+elements across the Pulse surfaces. **All 15 are resolved.** Rows
+16–20 record subsequent token-migration work (post-audit) where
+hardcoded values on the Pulse surfaces were swapped for the design
+tokens already defined in `tailwind.config.ts` / `globals.css`. The
 canonical decisions are reflected in §2–§9 above; this section is kept
 as the changelog of those decisions and the policy for future drift.
 
@@ -628,13 +647,18 @@ those pages move onto Pulse primitives.
 | 6   | Numeric values use `tabular-nums`. Added on the Compact KPI value, schedule price, and pipeline count.                                                                                                                                                                       | §4 numeric scale | `50bfbcb`  |
 | 7   | Violet glow rule, locked: **16px** on full-width / pill-shaped violet primary buttons · **12px** on compact icon buttons (≤32px). No third value.                                                                                                                            | §3, §7           | doc-only   |
 | 8   | Numeric weight rule, locked: `font-black tabular-nums` for hero numbers ≥ 24px (KPI value, chart headline) · `font-bold tabular-nums` for inline/row-level numbers · `font-extrabold` is **never** used on numbers.                                                          | §4 numeric scale | doc-only   |
-| 9   | Sidebar idle nav row has `hover:bg-[#0a0a0a]` (`PULSE.bgAlt`) for affordance. Active row's bg unchanged.                                                                                                                                                                     | §8.1             | `50bfbcb`  |
+| 9   | Sidebar idle nav row has `hover:bg-elevated` (= `PULSE.bgAlt`, `#0a0a0a`) for affordance. Active row's bg unchanged. The arbitrary form `hover:bg-[#0a0a0a]` was migrated to the token alias in #18.                                                                                | §8.1             | `50bfbcb`  |
 | 10  | Primitives are generated proactively (e.g. via shadcn/ui in a separate step), not gated on per-feature need. **Policy:** any new primitive must land with a §8 sub-entry in this document in the same commit that introduces it.                                              | §8 preamble      | doc-only   |
 | 11  | Generic `PageHeader` primitive extracted in `components/pulse/PageHeader.tsx`. Slots: `kicker / title / subtitle / actions`. The dashboard composes its greeting + search button at the call site. The previous dashboard-specific `PulseHeader` was removed.                | §8.2, §9.1       | `4334f57`  |
 | 12  | `CardHeaderLink({ label, href })` exported from `widgets.tsx` for the canonical "View all →" affordance (`PULSE.violetSoft`, `font-extrabold`, `text-[11.5px]`).                                                                                                              | §8.13, §9.3      | `5dcc9d5`  |
 | 13  | Unused tokens (`greenSoft`, `pink`, `pinkSoft`, `amber`) removed from `theme.ts`, `globals.css`, and `tailwind.config.ts`. Future warning / alert / highlight colors get a properly-named role token introduced alongside their first call site.                              | §3 accents       | `733d31b`  |
 | 14  | `font-mono` is allowed only for literal code-shaped tokens (API keys, IDs, credentials). Never for prose, labels, or numbers. The single Pulse-adjacent occurrence (`app/login/page.tsx:147`, the dev-mode `admin / admin` hint) is in scope.                                  | §2               | doc-only   |
 | 15  | Inter loaded via `next/font/google` in `app/layout.tsx`; CSS variable `--font-sans` overridden so the existing Tailwind `font-sans` and body cascade resolve to Inter. CLS-free with a metric-adjusted Arial fallback.                                                        | §2               | `84569f8`  |
+| 16  | The five Pulse-surface shadow values are now exposed as `boxShadow` tokens (`shadow-glow-violet`, `shadow-glow-violet-sm`, `shadow-glow-green`, `shadow-menu`, `shadow-tooltip`) and applied as Tailwind utility classes. Inline `style={{ boxShadow }}` is no longer used for Sidebar `+ New`, the new-menu dropdown, the chart tooltip card, the Tasks card `+`, or the LiveBadge dot. The dynamic-value rings on the chart hover dot and activity avatar remain inline. | §3, §7, §8.4, §8.8, §8.10 | `f9ee3cc`  |
+| 17  | App container width and idle sidebar nav hover both use their token aliases: `max-w-app` (= `--layout-app-max-width`, 1440px) replaces `max-w-[1440px]` in `(app)/layout.tsx`; `hover:bg-elevated` replaces `hover:bg-[#0a0a0a]` in `Sidebar.tsx`. `text-white` / `text-zinc-500` in the CallWidget became `text-fg` / `text-fg-subtle`.                                              | §3, §5, §8.1, §9.2 | `f9ee3cc`  |
+| 18  | `globals.css` no longer applies a cosmetic `letter-spacing: -0.005em` to bare inputs/textareas/selects. Body cascade tracking is the canonical default; tighter tracking remains scoped to display-weight roles (H1, KPI value) via `tracking-tight`.                              | §4               | `59fd322`  |
+| 19  | CallWidget (`PhoneClient.tsx`) brought onto Pulse tokens: `bg-slate-900` → `bg-card`, `shadow-2xl` → `shadow-menu`, mute idle `bg-slate-800` / `hover:bg-slate-700` → `bg-line-strong` / `hover:bg-line-strong/80`, hang-up `bg-rose-600` / `hover:bg-rose-500` → `bg-red` / `hover:bg-red/90`. The avatar chip uses the canonical accent-chip pattern (`${PULSE.green}1F` bg + `PULSE.green` text). The inline phone `<svg>` was replaced with `<PulseIcon name="phone" />`. **Mute state** no longer reads from color: both states share `bg-line-strong`; `mic` ↔ `mic-off` icons (added to `PulseIcon`, §8.11) plus the `Mute` / `Unmute` label communicate state. The hang-up button gained a `phone-off` icon (also added to §8.11) for symmetry. Override on the original audit recommendation: no amber/warning token was introduced. | §3, §8.11        | `59fd322`, `252eb22` |
+| 20  | Tailwind theme cleanup: the unused compound text tokens (`text-h1`, `text-h1-hero`, `text-h1-display`, `text-h2`, `text-h3`, `text-subtitle`, `text-body`, `text-body-sm`, `text-kpi-value`, `text-kpi-value-lg`, `text-label-page`, `text-label`, `text-label-table`, `text-micro`) and the unused `rounded-card` border-radius alias were removed from `tailwind.config.ts`. None had call sites in `src/`, and a couple (h2 `lineHeight`, h3 size) had drifted from §4. The §4 arbitrary-class form remains canonical.                                                                                          | §4, §6           | `042f0b5`  |
 
 ### Ongoing drift policy
 
