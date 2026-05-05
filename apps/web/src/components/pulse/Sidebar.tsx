@@ -251,7 +251,7 @@ function PulseNavRow({
     <li>
       <Link
         href={item.href}
-        className={`${baseRow} font-bold`}
+        className={`${baseRow} font-bold hover:bg-[#0a0a0a]`}
         style={{ color: PULSE.textMuted }}
       >
         <PulseIcon name={item.icon} />

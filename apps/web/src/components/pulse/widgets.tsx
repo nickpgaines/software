@@ -103,7 +103,7 @@ export function CompactHeroKpi({
         >
           {label}
         </div>
-        <div className="text-[26px] font-black tracking-tight leading-none">
+        <div className="text-[26px] font-black tracking-tight leading-none tabular-nums">
           {value}
         </div>
       </div>
@@ -422,7 +422,7 @@ export function PulseChartHero({
       <div className="flex items-baseline justify-between mb-5 flex-wrap gap-3">
         <div>
           <div
-            className="text-[12px] uppercase tracking-[0.22em] font-extrabold mb-3"
+            className="text-[11px] uppercase tracking-[0.22em] font-extrabold mb-3"
             style={{ color: PULSE.textSubtle }}
           >
             Revenue · {titleLabel}
@@ -515,7 +515,7 @@ export function PulseScheduleRow({
         </div>
       )}
       <div
-        className="text-[14px] font-bold w-20 text-right"
+        className="text-[14px] font-bold tabular-nums w-20 text-right"
         style={{ color: PULSE.text }}
       >
         {formatCents(job.price_cents)}
@@ -625,7 +625,7 @@ export function PulsePipelineCard({
             <div className="flex items-baseline justify-between mb-1.5">
               <span className="text-[12.5px] font-bold">{p.label}</span>
               <span
-                className="text-[11px] font-bold"
+                className="text-[11px] font-bold tabular-nums"
                 style={{ color: PULSE.textSubtle }}
               >
                 {p.count} · {formatCentsShort(p.value)}
@@ -673,7 +673,7 @@ export function PulseEmptyState({
       >
         <PulseIcon name={iconName} />
       </div>
-      <p className="mt-3 text-[13.5px] font-extrabold">{title}</p>
+      <p className="mt-3 text-sm font-extrabold">{title}</p>
       <p
         className="text-[11.5px] mt-1 font-bold max-w-[20ch]"
         style={{ color: PULSE.textSubtle }}
