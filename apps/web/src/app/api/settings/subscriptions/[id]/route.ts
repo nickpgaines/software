@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import {
   getDb,
+  type Db,
   type SubscriptionInterval,
   type SubscriptionTemplate,
 } from "@/lib/db";
@@ -15,6 +16,22 @@ const VALID_INTERVALS: SubscriptionInterval[] = [
   "semiannually",
   "yearly",
 ];
+
+// Ensures the subscription_templates table has the columns this route
+// writes to. The init-time migration adds them, but if a long-running
+// server process predates the migration, this provides a per-request
+// safety net so editing a template doesn't 500 with "no such column".
+async function ensureTemplateColumns(db: Db): Promise<void> {
+  const cols = (await db
+    .prepare("PRAGMA table_info(subscription_templates)")
+    .all()) as { name: string }[];
+  const has = (n: string) => cols.some((c) => c.name === n);
+  if (!has("service_interval")) {
+    await db.exec(
+      "ALTER TABLE subscription_templates ADD COLUMN service_interval TEXT NOT NULL DEFAULT 'monthly'"
+    );
+  }
+}
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +64,7 @@ export async function PUT(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const db = await getDb();
+  await ensureTemplateColumns(db);
   const id = Number(params.id);
   const existing = (await db
     .prepare(
@@ -105,26 +123,32 @@ export async function PUT(
         ? body.service_interval
         : existing.service_interval;
 
-  await db
-    .prepare(
-      `UPDATE subscription_templates
-         SET name = ?, description = ?, active = ?,
-             terms_id = ?, require_signature = ?, tax_rate_bps = ?,
-             service_interval = ?,
-             updated_at = datetime('now')
-       WHERE id = ? AND company_id = ?`
-    )
-    .run(
-      name,
-      description,
-      active,
-      termsId,
-      requireSignature,
-      taxRateBps,
-      serviceInterval,
-      id,
-      ctx.companyId
-    );
+  try {
+    await db
+      .prepare(
+        `UPDATE subscription_templates
+           SET name = ?, description = ?, active = ?,
+               terms_id = ?, require_signature = ?, tax_rate_bps = ?,
+               service_interval = ?,
+               updated_at = datetime('now')
+         WHERE id = ? AND company_id = ?`
+      )
+      .run(
+        name,
+        description,
+        active,
+        termsId,
+        requireSignature,
+        taxRateBps,
+        serviceInterval,
+        id,
+        ctx.companyId
+      );
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "database error";
+    console.error("subscription_templates PUT failed", e);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
   const row = (await db
     .prepare(
       "SELECT * FROM subscription_templates WHERE id = ? AND company_id = ?"
