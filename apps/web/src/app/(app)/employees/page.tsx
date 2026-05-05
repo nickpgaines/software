@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Plus, User } from "lucide-react";
 import { getDb, type Staff } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
+import { Card } from "@/components/ui/card";
 import {
   Table,
   TableBody,
@@ -71,7 +72,7 @@ export default async function EmployeesPage() {
         </Link>
       </div>
 
-      <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
+      <Card className="shadow-sm overflow-hidden">
         {employees.length === 0 ? (
           <div className="p-12 text-center text-sm text-zinc-400 font-bold">
             No employees yet. Click &ldquo;Add Employee&rdquo; to add your
@@ -153,7 +154,7 @@ export default async function EmployeesPage() {
             </TableBody>
           </Table>
         )}
-      </div>
+      </Card>
     </div>
   );
 }

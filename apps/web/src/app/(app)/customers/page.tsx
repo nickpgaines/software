@@ -9,6 +9,7 @@ import AddressFields, {
 } from "@/components/customers/AddressFields";
 import { usePhone } from "@/components/PhoneClient";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -132,7 +133,7 @@ function CustomersPage() {
         </div>
       </div>
 
-      <div className="bg-card border border-line rounded-lg overflow-hidden">
+      <Card className="rounded-lg overflow-hidden">
         {customers.length === 0 ? (
           <div className="p-8 text-center text-sm text-zinc-400 font-bold">
             No customers yet.
@@ -194,7 +195,7 @@ function CustomersPage() {
             </TableBody>
           </Table>
         )}
-      </div>
+      </Card>
 
       {(creating || editing) && (
         <CustomerForm
