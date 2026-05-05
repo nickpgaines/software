@@ -55,7 +55,7 @@ export default function ReportsClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between gap-4 flex-wrap border-b border-[#1f1f24]">
+      <div className="flex items-end justify-between gap-4 flex-wrap border-b border-line">
         <nav className="-mb-px flex gap-6">
           {TABS.map((t) => {
             const active = tab === t.key;
@@ -109,7 +109,7 @@ function RangePills({
           className={
             "h-auto px-3 py-1 rounded-full whitespace-nowrap font-bold hover:bg-transparent " +
             (range === r.key
-              ? "bg-[#0f0f12] text-white shadow-sm"
+              ? "bg-card text-white shadow-sm"
               : "text-zinc-400 hover:text-white")
           }
         >
@@ -235,7 +235,7 @@ function OverviewPanel({ range }: { range: Range }) {
           ]}
         />
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl px-5 py-4">
+          <div className="bg-card border border-line rounded-2xl px-5 py-4">
             <div className="text-eyebrow uppercase text-zinc-500 mb-1.5">ARR Added</div>
             <div className="text-[26px] font-black tracking-tight leading-none tabular-nums text-white">
               {money(data.subscriptions.arr_added_cents)}
@@ -298,7 +298,7 @@ function SalesPanel({ range }: { range: Range }) {
       </Section>
 
       <Section title="Top reps">
-        <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
           {data.reps.length === 0 ? (
             <p className="p-8 text-sm text-zinc-500 text-center">
               No rep activity in this window.
@@ -316,7 +316,7 @@ function SalesPanel({ range }: { range: Range }) {
               </TableHeader>
               <TableBody>
                 {data.reps.map((r) => (
-                  <TableRow key={r.id} className="border-t border-b-0 border-[#1f1f24] hover:bg-transparent">
+                  <TableRow key={r.id} className="border-t border-b-0 border-line hover:bg-transparent">
                     <TableCell className="px-5 py-3 font-bold text-white tracking-tight">
                       {r.name}
                     </TableCell>
@@ -486,7 +486,7 @@ function SubscriptionsPanel() {
           />
         </div>
 
-        <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5 shadow-sm">
+        <div className="bg-card border border-line rounded-2xl p-5 shadow-sm">
           <div className="text-sm font-extrabold text-white tracking-tight">
             Monthly Recurring Revenue
           </div>
@@ -571,7 +571,7 @@ function SelectFilter({
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 block w-full rounded-xl border border-[#1f1f24] bg-[#0f0f12] px-3 py-2 text-sm text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#2a2a32]"
+        className="mt-1 block w-full rounded-xl border border-line bg-card px-3 py-2 text-sm text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-line-strong"
       >
         <option value="">All</option>
         {options.map((o) => (
@@ -602,13 +602,13 @@ function Toggle({
         onClick={() => onChange(!checked)}
         className={
           "relative h-5 w-9 p-0 rounded-full justify-start hover:bg-current " +
-          (checked ? "bg-emerald-500 hover:bg-emerald-500" : "bg-[#2a2a32] hover:bg-[#2a2a32]")
+          (checked ? "bg-emerald-500 hover:bg-emerald-500" : "bg-line-strong hover:bg-line-strong")
         }
         aria-pressed={checked}
       >
         <span
           className={
-            "inline-block h-4 w-4 transform rounded-full bg-[#0f0f12] shadow transition " +
+            "inline-block h-4 w-4 transform rounded-full bg-card shadow transition " +
             (checked ? "translate-x-4" : "translate-x-0.5")
           }
         />
@@ -631,7 +631,7 @@ function StatCard({
   return (
     <div
       className={
-        "bg-[#0f0f12] border border-[#1f1f24] rounded-2xl " +
+        "bg-card border border-line rounded-2xl " +
         (compact ? "px-4 py-3" : "px-5 py-4")
       }
     >
@@ -659,7 +659,7 @@ function BreakdownTable({
   rows: { key: string; name: string; count: number; mrr_cents: number }[];
 }) {
   return (
-    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
+    <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
       {rows.length === 0 ? (
         <p className="p-8 text-sm text-zinc-500 text-center">
           No subscriptions yet.
@@ -675,7 +675,7 @@ function BreakdownTable({
           </TableHeader>
           <TableBody>
             {rows.map((r) => (
-              <TableRow key={r.key} className="border-t border-b-0 border-[#1f1f24] hover:bg-transparent">
+              <TableRow key={r.key} className="border-t border-b-0 border-line hover:bg-transparent">
                 <TableCell className="px-5 py-3 font-bold text-white tracking-tight">
                   {r.name}
                 </TableCell>
@@ -706,7 +706,7 @@ function ArrAddedChart({
   const totalCount = points.reduce((sum, p) => sum + p.count, 0);
 
   return (
-    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
+    <div className="bg-card border border-line rounded-2xl p-5">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <div className="text-sm font-extrabold text-white tracking-tight">
@@ -790,7 +790,7 @@ function Stats({
       {items.map((it) => (
         <div
           key={it.label}
-          className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl px-5 py-4 flex items-center justify-between gap-4"
+          className="bg-card border border-line rounded-2xl px-5 py-4 flex items-center justify-between gap-4"
         >
           <div className="min-w-0">
             <div className="text-eyebrow uppercase text-zinc-500 mb-1.5">
@@ -924,7 +924,7 @@ function EmployeeTable({
   emptyText: string;
 }) {
   return (
-    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl overflow-hidden">
+    <div className="bg-card border border-line rounded-2xl overflow-hidden">
       {rows.length === 0 ? (
         <p className="p-8 text-sm text-zinc-500 text-center font-bold">{emptyText}</p>
       ) : (
@@ -943,7 +943,7 @@ function EmployeeTable({
           </TableHeader>
           <TableBody>
             {rows.map((r) => (
-              <TableRow key={r.id} className="border-t border-b-0 border-[#1f1f24] hover:bg-transparent">
+              <TableRow key={r.id} className="border-t border-b-0 border-line hover:bg-transparent">
                 <TableCell className="px-5 py-3">
                   <div className="font-bold text-white tracking-tight">{r.name}</div>
                   {r.email && (
@@ -1072,7 +1072,7 @@ function PayrollPanel({ range }: { range: Range }) {
         <Button
           variant="ghost"
           onClick={() => setSettingsOpen(true)}
-          className="h-auto gap-2 px-3 py-2 text-eyebrow uppercase text-zinc-500 bg-[#0f0f12] border border-[#1f1f24] rounded-full hover:bg-black shadow-sm"
+          className="h-auto gap-2 px-3 py-2 text-eyebrow uppercase text-zinc-500 bg-card border border-line rounded-full hover:bg-black shadow-sm"
           aria-label="Payroll settings"
         >
           <Settings className="w-4 h-4" />
@@ -1137,7 +1137,7 @@ function PayrollTable({
 }) {
   return (
     <Section title={title}>
-      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
         {rows.length === 0 ? (
           <p className="p-8 text-sm text-zinc-500 text-center">
             No employees yet.
@@ -1212,7 +1212,7 @@ function PayrollRowView({
   }
 
   return (
-    <TableRow className="border-t border-b-0 border-[#1f1f24] hover:bg-transparent">
+    <TableRow className="border-t border-b-0 border-line hover:bg-transparent">
       <TableCell className="px-5 py-3 font-bold text-white tracking-tight">{row.name}</TableCell>
       <TableCell className="px-5 py-3 text-zinc-400">{row.email || "—"}</TableCell>
       <TableCell className="px-5 py-3">
@@ -1235,7 +1235,7 @@ function PayrollRowView({
                   setEditing(false);
                 }
               }}
-              className="w-20 h-auto text-right border-[#2a2a32] rounded px-2 py-1"
+              className="w-20 h-auto text-right border-line-strong rounded px-2 py-1"
             />
           ) : (
             <Button
@@ -1311,7 +1311,7 @@ function PayrollSummary({
     }
   );
   return (
-    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm divide-y divide-[#1f1f24]">
+    <div className="bg-card border border-line rounded-2xl shadow-sm divide-y divide-line">
       {items.map((it) => (
         <div
           key={it.label}
@@ -1485,13 +1485,13 @@ function ObjectionsBreakdown({
   objections: MapReport["objections"];
 }) {
   return (
-    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl overflow-hidden">
+    <div className="bg-card border border-line rounded-2xl overflow-hidden">
       {objections.breakdown.length === 0 ? (
         <p className="p-8 text-sm text-zinc-500 text-center font-bold">
           No objections recorded in this window.
         </p>
       ) : (
-        <div className="divide-y divide-[#1f1f24]">
+        <div className="divide-y divide-line">
           <div className="px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500 bg-black flex items-center justify-between">
             <span>
               Objection ({objections.pins_with_objections} pin
@@ -1507,7 +1507,7 @@ function ObjectionsBreakdown({
                   {o.count} · {pct(o.pct)}
                 </span>
               </div>
-              <div className="mt-2 h-2 w-full rounded-full bg-[#1f1f24] overflow-hidden">
+              <div className="mt-2 h-2 w-full rounded-full bg-line overflow-hidden">
                 <div
                   className="h-full bg-rose-500"
                   style={{

@@ -168,7 +168,7 @@ function AddressFieldsInner({
             placeholder="Start typing an address…"
             className={
               inputClassName ||
-              "w-full h-auto border-[#2a2a32] rounded px-3 py-2 text-sm"
+              "w-full h-auto border-line-strong rounded px-3 py-2 text-sm"
             }
             autoComplete="off"
             required
@@ -179,7 +179,7 @@ function AddressFieldsInner({
             </span>
           )}
           {showInputDropdown && (
-            <ul className="absolute z-30 left-0 right-0 mt-1 bg-[#0f0f12] border border-[#1f1f24] rounded-lg shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+            <ul className="absolute z-30 left-0 right-0 mt-1 bg-card border border-line rounded-lg shadow-lg overflow-hidden max-h-64 overflow-y-auto">
               {predictions.map((p, i) => (
                 <li key={p.id}>
                   <Button
@@ -240,7 +240,7 @@ function ManualFields({
 }) {
   const cls =
     inputClassName ||
-    "w-full h-auto border-[#2a2a32] rounded px-3 py-2 text-sm";
+    "w-full h-auto border-line-strong rounded px-3 py-2 text-sm";
   return (
     <>
       {!skipLine1 && (

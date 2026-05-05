@@ -259,7 +259,7 @@ export default function NewSubscriptionForm() {
                 type="button"
                 variant="ghost"
                 onClick={() => setShowNewCustomer(true)}
-                className="text-eyebrow uppercase text-zinc-500 border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5 h-auto"
+                className="text-eyebrow uppercase text-zinc-500 border-line hover:bg-black rounded-full px-3 py-1.5 h-auto"
               >
                 + Create New Customer
               </Button>
@@ -299,7 +299,7 @@ export default function NewSubscriptionForm() {
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12] h-auto"
+                  className="w-full border-line rounded-xl px-4 py-2 text-sm bg-card h-auto"
                 />
                 <div className="text-xs text-zinc-400 mt-1">
                   {formatDateLabel(startDate)}
@@ -313,7 +313,7 @@ export default function NewSubscriptionForm() {
                 onChange={(e) =>
                   setSoldById(e.target.value ? Number(e.target.value) : "")
                 }
-                className="w-full border border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12]"
+                className="w-full border border-line rounded-xl px-4 py-2 text-sm bg-card"
               >
                 <option value="">Select salesperson…</option>
                 {staff.map((s) => (
@@ -368,7 +368,7 @@ export default function NewSubscriptionForm() {
                 onChange={(e) =>
                   setTemplateId(e.target.value ? Number(e.target.value) : "")
                 }
-                className="w-full border border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12]"
+                className="w-full border border-line rounded-xl px-4 py-2 text-sm bg-card"
               >
                 <option value="">Select plan template…</option>
                 {templates
@@ -389,7 +389,7 @@ export default function NewSubscriptionForm() {
               + Create new template
             </Button>
             {selectedTemplate && (
-              <div className="mt-3 rounded-xl border border-[#1f1f24] bg-black p-3 text-xs text-zinc-400 space-y-1">
+              <div className="mt-3 rounded-xl border border-line bg-black p-3 text-xs text-zinc-400 space-y-1">
                 <div className="font-bold text-white tracking-tight">
                   {selectedTemplate.name}
                 </div>
@@ -417,7 +417,7 @@ export default function NewSubscriptionForm() {
                   value={price}
                   onChange={(e) => setPrice(e.target.value)}
                   placeholder="49.00"
-                  className="w-full border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12] h-auto"
+                  className="w-full border-line rounded-xl px-4 py-2 text-sm bg-card h-auto"
                 />
               </Field>
               <Field label="Billing & service frequency">
@@ -427,7 +427,7 @@ export default function NewSubscriptionForm() {
                   onChange={(e) =>
                     setInterval(e.target.value as SubscriptionInterval)
                   }
-                  className="w-full border border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12]"
+                  className="w-full border border-line rounded-xl px-4 py-2 text-sm bg-card"
                 >
                   {(
                     Object.entries(INTERVAL_LABELS) as [
@@ -455,7 +455,7 @@ export default function NewSubscriptionForm() {
                 Select a plan template to see included visits.
               </p>
             ) : (
-              <ul className="divide-y divide-[#1f1f24] rounded-xl border border-[#1f1f24] bg-[#0f0f12]">
+              <ul className="divide-y divide-line rounded-xl border border-line bg-card">
                 {includedVisits.map((v, i) => (
                   <li
                     key={i}
@@ -510,7 +510,7 @@ export default function NewSubscriptionForm() {
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5 shadow-sm">
+    <div className="bg-card border border-line rounded-2xl p-5 shadow-sm">
       {children}
     </div>
   );
@@ -561,7 +561,7 @@ function RadioOption({
         "w-full text-left rounded-xl border p-3 h-auto block " +
         (checked
           ? "border-slate-900 bg-black"
-          : "border-[#1f1f24] hover:border-[#2a2a32]")
+          : "border-line hover:border-line-strong")
       }
     >
       <div className="flex items-start gap-3">
@@ -570,7 +570,7 @@ function RadioOption({
             "mt-0.5 inline-flex h-4 w-4 shrink-0 rounded-full border-2 " +
             (checked
               ? "border-slate-900"
-              : "border-[#2a2a32]")
+              : "border-line-strong")
           }
         >
           {checked && (
@@ -632,13 +632,13 @@ function CustomerPicker({
         }}
         onFocus={() => setOpen(true)}
         placeholder="Search"
-        className="w-full border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12] pl-9 h-auto"
+        className="w-full border-line rounded-xl px-4 py-2 text-sm bg-card pl-9 h-auto"
       />
       <span className="absolute left-3 top-2.5 text-zinc-500" aria-hidden>
         ⌕
       </span>
       {open && suggestions.length > 0 && !selectedId && (
-        <div className="absolute z-30 left-0 right-0 mt-1 bg-[#0f0f12] border border-[#1f1f24] rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+        <div className="absolute z-30 left-0 right-0 mt-1 bg-card border border-line rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
           {suggestions.map((c) => (
             <Button
               key={c.id}
@@ -712,7 +712,7 @@ function NewCustomerModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <form
         onSubmit={save}
-        className="bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4"
+        className="bg-card rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4"
       >
         <div className="flex items-start justify-between">
           <h3 className="text-base font-extrabold text-white tracking-tight">
@@ -733,7 +733,7 @@ function NewCustomerModal({
               type="text"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm h-auto"
+              className="w-full border-line rounded-xl px-3 py-2 text-sm h-auto"
               autoFocus
             />
           </Field>
@@ -742,7 +742,7 @@ function NewCustomerModal({
               type="text"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
-              className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm h-auto"
+              className="w-full border-line rounded-xl px-3 py-2 text-sm h-auto"
             />
           </Field>
         </div>
@@ -751,7 +751,7 @@ function NewCustomerModal({
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm h-auto"
+            className="w-full border-line rounded-xl px-3 py-2 text-sm h-auto"
           />
         </Field>
         <Field label="Email">
@@ -759,7 +759,7 @@ function NewCustomerModal({
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm h-auto"
+            className="w-full border-line rounded-xl px-3 py-2 text-sm h-auto"
           />
         </Field>
         <Field label="Address">
@@ -767,7 +767,7 @@ function NewCustomerModal({
             type="text"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm h-auto"
+            className="w-full border-line rounded-xl px-3 py-2 text-sm h-auto"
           />
         </Field>
         {err && <p className="text-sm text-rose-600">{err}</p>}
@@ -842,7 +842,7 @@ function NewTemplateModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <form
         onSubmit={save}
-        className="bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4 max-h-[90vh] overflow-y-auto"
+        className="bg-card rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-start justify-between">
           <h3 className="text-base font-extrabold text-white tracking-tight">
@@ -863,7 +863,7 @@ function NewTemplateModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Monthly Window Cleaning"
-            className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm h-auto"
+            className="w-full border-line rounded-xl px-3 py-2 text-sm h-auto"
             autoFocus
           />
         </Field>
@@ -872,7 +872,7 @@ function NewTemplateModal({
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             rows={2}
-            className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm"
+            className="w-full border-line rounded-xl px-3 py-2 text-sm"
           />
         </Field>
         <p className="text-xs text-zinc-400 -mt-1">
@@ -886,7 +886,7 @@ function NewTemplateModal({
             onChange={(e) =>
               setTermsId(e.target.value ? Number(e.target.value) : "")
             }
-            className="w-full border border-[#1f1f24] rounded-xl px-3 py-2 text-sm"
+            className="w-full border border-line rounded-xl px-3 py-2 text-sm"
           >
             <option value="">None</option>
             {terms.map((t) => (

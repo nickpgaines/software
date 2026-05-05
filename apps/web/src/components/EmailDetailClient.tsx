@@ -108,22 +108,22 @@ export default function EmailDetailClient({ id }: { id: number }) {
         <Stat label="Status" value={blast.status} />
       </div>
 
-      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm p-6">
+      <div className="bg-card border border-line rounded-2xl shadow-sm p-6">
         <div className="text-xs uppercase tracking-wide text-zinc-500 mb-2">
           Message preview
         </div>
         <div
-          className="prose prose-sm max-w-none text-white border-t border-[#1f1f24] pt-4"
+          className="prose prose-sm max-w-none text-white border-t border-line pt-4"
           dangerouslySetInnerHTML={{ __html: blast.body_html }}
         />
       </div>
 
-      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
-        <div className="px-6 py-4 border-b border-[#1f1f24] text-sm font-bold text-white tracking-tight">
+      <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
+        <div className="px-6 py-4 border-b border-line text-sm font-bold text-white tracking-tight">
           Recipients
         </div>
         <Table>
-          <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-[#1f1f24]">
+          <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-line">
             <TableRow className="hover:bg-transparent">
               <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Email</TableHead>
               <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Name</TableHead>
@@ -132,7 +132,7 @@ export default function EmailDetailClient({ id }: { id: number }) {
               <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Error</TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody className="divide-y divide-[#1f1f24]">
+          <TableBody className="divide-y divide-line">
             {recipients.map((r) => (
               <TableRow key={r.id} className="border-0 hover:bg-transparent">
                 <TableCell className="px-4 py-2 text-zinc-300 font-bold">{r.email}</TableCell>
@@ -163,7 +163,7 @@ function Stat({
   const ring =
     tone === "rose"
       ? "bg-rose-50 border-rose-200 text-rose-700"
-      : "bg-[#0f0f12] border-[#1f1f24] text-white";
+      : "bg-card border-line text-white";
   return (
     <div className={`border rounded-xl p-4 ${ring}`}>
       <div className="text-xs uppercase tracking-wide text-zinc-500 mb-1">

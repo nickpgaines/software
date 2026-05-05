@@ -68,7 +68,7 @@ export default function LeadsFormsClient({
       </div>
 
       {forms.length === 0 ? (
-        <div className="border border-dashed border-[#1f1f24] rounded-2xl p-12 text-center">
+        <div className="border border-dashed border-line rounded-2xl p-12 text-center">
           <div className="mx-auto w-12 h-12 rounded-full bg-black flex items-center justify-center text-zinc-500">
             <FileText className="w-5 h-5" />
           </div>
@@ -84,7 +84,7 @@ export default function LeadsFormsClient({
             return (
               <div
                 key={f.id}
-                className="border border-[#1f1f24] rounded-2xl p-4 flex items-center justify-between gap-4"
+                className="border border-line rounded-2xl p-4 flex items-center justify-between gap-4"
               >
                 <div>
                   <div className="font-extrabold text-white tracking-tight">{f.name}</div>
@@ -114,12 +114,12 @@ export default function LeadsFormsClient({
                     onClick={() => toggle(f.id, !enabled)}
                     className={
                       "relative w-10 h-6 p-0 rounded-full hover:bg-current " +
-                      (enabled ? "bg-emerald-500 hover:bg-emerald-500" : "bg-[#2a2a32] hover:bg-[#2a2a32]")
+                      (enabled ? "bg-emerald-500 hover:bg-emerald-500" : "bg-line-strong hover:bg-line-strong")
                     }
                   >
                     <span
                       className={
-                        "absolute top-0.5 left-0.5 w-5 h-5 bg-[#0f0f12] rounded-full shadow transition-transform " +
+                        "absolute top-0.5 left-0.5 w-5 h-5 bg-card rounded-full shadow transition-transform " +
                         (enabled ? "translate-x-4" : "")
                       }
                     />
@@ -137,7 +137,7 @@ export default function LeadsFormsClient({
           onClick={() => setShowNew(false)}
         >
           <div
-            className="bg-[#0f0f12] rounded-2xl p-6 w-full max-w-md"
+            className="bg-card rounded-2xl p-6 w-full max-w-md"
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-extrabold text-white tracking-tight mb-4">
@@ -148,7 +148,7 @@ export default function LeadsFormsClient({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Form name"
-              className="w-full h-auto border-[#1f1f24] rounded-lg px-3 py-2 text-sm focus-visible:ring-[#2a2a32]"
+              className="w-full h-auto border-line rounded-lg px-3 py-2 text-sm focus-visible:ring-line-strong"
             />
             <p className="text-xs text-zinc-400 mt-2">
               Default fields: first name, last name, email, phone. You can

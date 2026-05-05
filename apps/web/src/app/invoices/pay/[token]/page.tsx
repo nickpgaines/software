@@ -75,7 +75,7 @@ export default async function InvoicePayPage({
       <h1 className="text-page-title text-white mt-1">
         {invoice.title?.trim() || `Invoice #${invoice.id}`}
       </h1>
-      <div className="mt-6 flex items-end justify-between gap-3 border-t border-[#1f1f24] pt-4">
+      <div className="mt-6 flex items-end justify-between gap-3 border-t border-line pt-4">
         <span className="text-sm text-zinc-400 font-bold">Amount due</span>
         <span className="text-page-title text-white tabular-nums">
           {money(invoice.total_cents - invoice.paid_cents)}
@@ -100,7 +100,7 @@ export default async function InvoicePayPage({
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-6">
-      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm p-8 w-full max-w-md">
+      <div className="bg-card border border-line rounded-2xl shadow-sm p-8 w-full max-w-md">
         {children}
       </div>
     </div>

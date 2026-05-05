@@ -140,7 +140,7 @@ export default function CustomerCard({
       : preferredAddress;
 
   return (
-    <div className="border border-[#1f1f24] rounded-2xl bg-[#0f0f12] overflow-hidden">
+    <div className="border border-line rounded-2xl bg-card overflow-hidden">
       <div className="grid grid-cols-1 md:grid-cols-[1fr_320px]">
         <div className="p-5 space-y-3">
           <div className="flex items-start justify-between gap-3">
@@ -153,7 +153,7 @@ export default function CustomerCard({
               variant="ghost"
               type="button"
               onClick={onRemove}
-              className="h-auto p-0 text-xs text-zinc-400 hover:text-rose-600 border border-[#1f1f24] hover:border-rose-200 rounded-full px-3 py-1.5 whitespace-nowrap"
+              className="h-auto p-0 text-xs text-zinc-400 hover:text-rose-600 border border-line hover:border-rose-200 rounded-full px-3 py-1.5 whitespace-nowrap"
               aria-label="Remove selected customer"
             >
               Remove
@@ -197,7 +197,7 @@ export default function CustomerCard({
           </dl>
         </div>
 
-        <div className="bg-black md:border-l border-[#1f1f24] min-h-[220px]">
+        <div className="bg-black md:border-l border-line min-h-[220px]">
           {geo.status === "ok" ? (
             <CustomerMap lat={geo.lat} lng={geo.lng} />
           ) : (

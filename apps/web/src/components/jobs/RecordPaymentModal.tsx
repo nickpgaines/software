@@ -215,8 +215,8 @@ export default function RecordPaymentModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-[#0f0f12] rounded-2xl shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#1f1f24]">
+      <div className="bg-card rounded-2xl shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between px-5 py-4 border-b border-line">
           <h3 className="font-extrabold text-white tracking-tight">
             {step === "card" ? "Charge card" : "Record payment"}
           </h3>
@@ -247,7 +247,7 @@ export default function RecordPaymentModal({
                     step="0.01"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="w-full border-[#1f1f24] rounded-full pl-7 pr-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 h-auto"
+                    className="w-full border-line rounded-full pl-7 pr-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 h-auto"
                     autoFocus
                     required
                   />
@@ -267,7 +267,7 @@ export default function RecordPaymentModal({
                     step="0.01"
                     value={tip}
                     onChange={(e) => setTip(e.target.value)}
-                    className="w-full border-[#1f1f24] rounded-full pl-7 pr-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 h-auto"
+                    className="w-full border-line rounded-full pl-7 pr-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 h-auto"
                   />
                 </div>
               </div>
@@ -290,7 +290,7 @@ export default function RecordPaymentModal({
                         "h-auto rounded-full px-3 py-1.5 text-sm border " +
                         (active
                           ? "bg-slate-900 border-slate-900 text-white"
-                          : "bg-[#0f0f12] border-[#1f1f24] text-zinc-300 hover:bg-black")
+                          : "bg-card border-line text-zinc-300 hover:bg-black")
                       }
                     >
                       {m.label}
@@ -345,7 +345,7 @@ export default function RecordPaymentModal({
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Optional"
-                className="w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm h-auto"
+                className="w-full border-line rounded-full px-4 py-2 text-sm h-auto"
               />
             </div>
 
@@ -371,7 +371,7 @@ export default function RecordPaymentModal({
                 variant="ghost"
                 type="button"
                 onClick={onClose}
-                className="h-auto text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-zinc-300"
+                className="h-auto text-sm border border-line bg-card hover:bg-black rounded-full px-4 py-2 text-zinc-300"
               >
                 Cancel
               </Button>
@@ -514,7 +514,7 @@ function CardStep({
           type="button"
           onClick={onBack}
           disabled={submitting}
-          className="h-auto text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-zinc-300"
+          className="h-auto text-sm border border-line bg-card hover:bg-black rounded-full px-4 py-2 text-zinc-300"
         >
           Back
         </Button>
@@ -545,7 +545,7 @@ function ReceiptToggle({
   placeholder: string;
 }) {
   return (
-    <div className="border border-[#1f1f24] rounded-2xl px-4 py-3">
+    <div className="border border-line rounded-2xl px-4 py-3">
       <div className="flex items-center justify-between gap-3">
         <span className="text-sm text-zinc-300 font-bold">{label}</span>
         <Button
@@ -555,12 +555,12 @@ function ReceiptToggle({
           aria-pressed={enabled}
           className={
             "relative w-10 h-6 p-0 rounded-full shrink-0 hover:bg-transparent " +
-            (enabled ? "bg-slate-900" : "bg-[#1f1f24]")
+            (enabled ? "bg-slate-900" : "bg-line")
           }
         >
           <span
             className={
-              "absolute top-0.5 w-5 h-5 bg-[#0f0f12] rounded-full shadow transition " +
+              "absolute top-0.5 w-5 h-5 bg-card rounded-full shadow transition " +
               (enabled ? "left-[18px]" : "left-0.5")
             }
           />
@@ -572,7 +572,7 @@ function ReceiptToggle({
           value={value || ""}
           readOnly
           placeholder={placeholder}
-          className="mt-2 w-full border-[#1f1f24] bg-black rounded-full px-3 py-1.5 text-sm text-zinc-400 font-bold h-auto"
+          className="mt-2 w-full border-line bg-black rounded-full px-3 py-1.5 text-sm text-zinc-400 font-bold h-auto"
         />
       )}
     </div>

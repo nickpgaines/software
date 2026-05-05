@@ -38,7 +38,7 @@ export default function SignupPage() {
   }
 
   const inputCls =
-    "w-full h-auto bg-black border-[#2a2a32] rounded-lg px-3 py-2.5 text-sm font-bold text-white placeholder-zinc-600 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50";
+    "w-full h-auto bg-black border-line-strong rounded-lg px-3 py-2.5 text-sm font-bold text-white placeholder-zinc-600 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50";
   const labelCls =
     "block text-eyebrow uppercase text-zinc-500 mb-2";
 
@@ -55,7 +55,7 @@ export default function SignupPage() {
         </div>
         <form
           onSubmit={onSubmit}
-          className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-6 space-y-5"
+          className="bg-card border border-line rounded-2xl p-6 space-y-5"
         >
           <div>
             <Label className={labelCls}>Company name</Label>

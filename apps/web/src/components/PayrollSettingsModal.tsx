@@ -185,8 +185,8 @@ export default function PayrollSettingsModal({
         onClick={onClose}
         aria-hidden
       />
-      <div className="relative bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-[#0f0f12] border-b border-[#1f1f24] px-6 py-5 flex items-start justify-between">
+      <div className="relative bg-card rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-card border-b border-line px-6 py-5 flex items-start justify-between">
           <div>
             <h2 className="text-page-title text-white">
               Payroll Settings
@@ -373,7 +373,7 @@ export default function PayrollSettingsModal({
           )}
         </div>
 
-        <div className="sticky bottom-0 bg-[#0f0f12] border-t border-[#1f1f24] px-6 py-4 flex items-center justify-end gap-3">
+        <div className="sticky bottom-0 bg-card border-t border-line px-6 py-4 flex items-center justify-end gap-3">
           <Button
             variant="ghost"
             onClick={onClose}
@@ -419,7 +419,7 @@ function Section({
 }
 
 function Divider() {
-  return <div className="border-t border-[#1f1f24]" />;
+  return <div className="border-t border-line" />;
 }
 
 function Field({
@@ -456,7 +456,7 @@ function Select<T extends string>({
     <select
       value={value}
       onChange={(e) => onChange(e.target.value as T)}
-      className="w-full appearance-none border border-[#2a2a32] rounded-full px-4 py-2.5 text-sm pr-10 bg-[#0f0f12] bg-no-repeat bg-right"
+      className="w-full appearance-none border border-line-strong rounded-full px-4 py-2.5 text-sm pr-10 bg-card bg-no-repeat bg-right"
       style={{
         backgroundImage:
           "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M1 1l5 5 5-5'/%3E%3C/svg%3E\")",
@@ -497,12 +497,12 @@ function ToggleRow({
         onClick={() => onChange(!checked)}
         className={
           "relative h-6 w-11 p-0 shrink-0 rounded-full justify-start hover:bg-current " +
-          (checked ? "bg-slate-900 hover:bg-slate-900" : "bg-[#1f1f24] hover:bg-[#1f1f24]")
+          (checked ? "bg-slate-900 hover:bg-slate-900" : "bg-line hover:bg-line")
         }
       >
         <span
           className={
-            "inline-block h-5 w-5 rounded-full bg-[#0f0f12] shadow transform transition " +
+            "inline-block h-5 w-5 rounded-full bg-card shadow transform transition " +
             (checked ? "translate-x-5" : "translate-x-0.5")
           }
         />
@@ -572,7 +572,7 @@ function SegmentedControl<T extends string>({
             className={
               "h-auto px-4 py-1.5 rounded-full hover:bg-transparent " +
               (active
-                ? "bg-[#0f0f12] text-white shadow-sm font-bold"
+                ? "bg-card text-white shadow-sm font-bold"
                 : "text-zinc-400 hover:text-white font-bold")
             }
           >
@@ -616,7 +616,7 @@ function PctInput({
         onBlur={(e) => commit(e.target.value)}
         placeholder={placeholder}
         inputMode="decimal"
-        className="w-full h-auto border-[#2a2a32] rounded-full px-4 py-2.5 pr-10 text-sm"
+        className="w-full h-auto border-line-strong rounded-full px-4 py-2.5 pr-10 text-sm"
       />
       <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-zinc-500">
         %
@@ -647,7 +647,7 @@ function DollarInput({
         onBlur={() => onChange(dollarsToCents(text))}
         placeholder="0.00"
         inputMode="decimal"
-        className="w-full h-auto border-[#2a2a32] rounded-full pl-8 pr-4 py-2.5 text-sm"
+        className="w-full h-auto border-line-strong rounded-full pl-8 pr-4 py-2.5 text-sm"
       />
     </div>
   );

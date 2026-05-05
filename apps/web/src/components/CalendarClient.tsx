@@ -199,7 +199,7 @@ export default function CalendarClient() {
               className={
                 "h-auto px-4 py-1.5 rounded-full capitalize font-bold hover:bg-transparent " +
                 (view === v
-                  ? "bg-[#0f0f12] text-white shadow-sm"
+                  ? "bg-card text-white shadow-sm"
                   : "text-zinc-400 hover:text-white")
               }
             >
@@ -216,7 +216,7 @@ export default function CalendarClient() {
             placeholder="Search customers..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-auto bg-[#0f0f12] border-[#1f1f24] rounded-full pl-10 pr-4 py-2.5 text-sm focus-visible:ring-zinc-500"
+            className="w-full h-auto bg-card border-line rounded-full pl-10 pr-4 py-2.5 text-sm focus-visible:ring-zinc-500"
           />
           <svg
             className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500"
@@ -236,7 +236,7 @@ export default function CalendarClient() {
             type="button"
             variant="ghost"
             onClick={() => setSchedulingOpen(true)}
-            className="h-auto gap-2 border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-sm text-zinc-300 font-bold"
+            className="h-auto gap-2 border border-line bg-card hover:bg-black rounded-full px-4 py-2 text-sm text-zinc-300 font-bold"
           >
             <svg
               className="w-4 h-4"
@@ -257,7 +257,7 @@ export default function CalendarClient() {
           <Button
             type="button"
             variant="ghost"
-            className="h-auto gap-2 border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-sm text-zinc-300 font-bold"
+            className="h-auto gap-2 border border-line bg-card hover:bg-black rounded-full px-4 py-2 text-sm text-zinc-300 font-bold"
             title="Coming soon"
           >
             <svg
@@ -283,7 +283,7 @@ export default function CalendarClient() {
         </div>
       </div>
 
-      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl overflow-hidden">
+      <div className="bg-card border border-line rounded-2xl overflow-hidden">
         {view === "week" && (
           <WeekView
             start={startOfWeek(cursor)}
@@ -307,7 +307,7 @@ export default function CalendarClient() {
       </div>
 
       <div className="flex items-center justify-center">
-        <div className="inline-flex items-center gap-2 bg-[#0f0f12] border border-[#1f1f24] rounded-full px-2 py-1 text-sm text-zinc-300 font-bold">
+        <div className="inline-flex items-center gap-2 bg-card border border-line rounded-full px-2 py-1 text-sm text-zinc-300 font-bold">
           <Button
             variant="ghost"
             onClick={() => navigate(-1)}
@@ -384,7 +384,7 @@ function jobsByDay(jobs: Job[], days: Date[]) {
 // is handled separately because it's not a unified-status state.
 function jobStatusColors(job: Job) {
   if (job.status === "cancelled") {
-    return "bg-black border-[#1f1f24] text-zinc-400 line-through border-l-4 border-l-slate-400";
+    return "bg-black border-line text-zinc-400 line-through border-l-4 border-l-slate-400";
   }
   switch (job.job_status) {
     case "completed_paid":
@@ -397,7 +397,7 @@ function jobStatusColors(job: Job) {
       return "bg-amber-50 border-amber-200 text-amber-900 border-l-4 border-l-amber-500";
     case "scheduled":
     default:
-      return "bg-black border-[#1f1f24] text-zinc-300 border-l-4 border-l-slate-300";
+      return "bg-black border-line text-zinc-300 border-l-4 border-l-slate-300";
   }
 }
 
@@ -552,7 +552,7 @@ function WeekView({
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[760px]">
-        <div className="grid grid-cols-[64px_repeat(7,1fr)] border-b border-[#1f1f24]">
+        <div className="grid grid-cols-[64px_repeat(7,1fr)] border-b border-line">
           <div />
           {days.map((d) => {
             const isToday = sameDay(d, today);
@@ -580,7 +580,7 @@ function WeekView({
           })}
         </div>
         <div className="grid grid-cols-[64px_repeat(7,1fr)] grid-rows-1">
-          <div className="border-r border-[#1f1f24]">
+          <div className="border-r border-line">
             {HOURS.map((h) => (
               <div
                 key={h}
@@ -601,7 +601,7 @@ function WeekView({
               <div
                 key={d.toISOString()}
                 className={
-                  "relative border-r border-[#1f1f24] last:border-r-0 " +
+                  "relative border-r border-line last:border-r-0 " +
                   (isToday ? "bg-black" : "")
                 }
                 style={{ height: `${HOURS.length * HOUR_PX}px` }}
@@ -609,7 +609,7 @@ function WeekView({
                 {HOURS.map((h, hi) => (
                   <div
                     key={h}
-                    className="border-b border-[#1f1f24]"
+                    className="border-b border-line"
                     style={{ height: `${HOUR_PX}px` }}
                   />
                 ))}
@@ -653,7 +653,7 @@ function DayView({
   const isToday = sameDay(day, startOfDay(now));
   return (
     <div className="grid grid-cols-[80px_1fr]">
-      <div className="border-r border-[#1f1f24] pt-3">
+      <div className="border-r border-line pt-3">
         {HOURS.map((h) => (
           <div
             key={h}
@@ -671,7 +671,7 @@ function DayView({
         {HOURS.map((h) => (
           <div
             key={h}
-            className="border-b border-[#1f1f24]"
+            className="border-b border-line"
             style={{ height: `${HOUR_PX}px` }}
           />
         ))}
@@ -708,7 +708,7 @@ function MonthView({
   const weekDayHeaders = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   return (
     <div>
-      <div className="grid grid-cols-7 border-b border-[#1f1f24] bg-black">
+      <div className="grid grid-cols-7 border-b border-line bg-black">
         {weekDayHeaders.map((d) => (
           <div
             key={d}
@@ -728,7 +728,7 @@ function MonthView({
               key={d.toISOString()}
               onClick={() => onPickDay(d)}
               className={
-                "border-b border-r border-[#1f1f24] last:border-r-0 text-left p-2 min-h-[110px] hover:bg-black transition " +
+                "border-b border-r border-line last:border-r-0 text-left p-2 min-h-[110px] hover:bg-black transition " +
                 (inMonth ? "" : "bg-black/40 text-zinc-500 ") +
                 (isToday ? "bg-black" : "")
               }

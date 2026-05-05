@@ -11,7 +11,7 @@ export default function LeadsLayout({
         <h1 className="text-page-title text-white">Leads</h1>
         <LeadsTabs />
       </div>
-      <div className="border-t border-[#1f1f24]" />
+      <div className="border-t border-line" />
       {children}
     </div>
   );

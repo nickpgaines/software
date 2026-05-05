@@ -184,8 +184,8 @@ export default function ImportModal({
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-[#0f0f12] rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1f1f24] shrink-0">
+      <div className="bg-card rounded-lg shadow-lg w-full max-w-3xl max-h-[90vh] flex flex-col">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-line shrink-0">
           <div>
             <h3 className="font-bold">Import customers</h3>
             <p className="text-xs text-zinc-500 mt-0.5">
@@ -245,14 +245,14 @@ export default function ImportModal({
           )}
         </div>
 
-        <div className="px-4 py-3 border-t border-[#1f1f24] flex items-center justify-between gap-2 shrink-0">
+        <div className="px-4 py-3 border-t border-line flex items-center justify-between gap-2 shrink-0">
           {step === "upload" && (
             <>
               <Button
                 type="button"
                 variant="ghost"
                 onClick={close}
-                className="h-auto text-sm border border-[#2a2a32] bg-[#0f0f12] hover:bg-black rounded px-3 py-2 font-bold"
+                className="h-auto text-sm border border-line-strong bg-card hover:bg-black rounded px-3 py-2 font-bold"
               >
                 Cancel
               </Button>
@@ -269,7 +269,7 @@ export default function ImportModal({
                   setStep("upload");
                   setError(null);
                 }}
-                className="h-auto text-sm border border-[#2a2a32] bg-[#0f0f12] hover:bg-black rounded px-3 py-2 font-bold"
+                className="h-auto text-sm border border-line-strong bg-card hover:bg-black rounded px-3 py-2 font-bold"
               >
                 Back
               </Button>
@@ -291,7 +291,7 @@ export default function ImportModal({
                 type="button"
                 variant="ghost"
                 onClick={() => setStep("mapping")}
-                className="h-auto text-sm border border-[#2a2a32] bg-[#0f0f12] hover:bg-black rounded px-3 py-2 font-bold"
+                className="h-auto text-sm border border-line-strong bg-card hover:bg-black rounded px-3 py-2 font-bold"
               >
                 Back
               </Button>
@@ -403,7 +403,7 @@ function UploadStep({
           "rounded-lg border-2 border-dashed py-12 text-center cursor-pointer transition " +
           (dragActive
             ? "border-slate-400 bg-black"
-            : "border-[#1f1f24] bg-black/40 hover:bg-black")
+            : "border-line bg-black/40 hover:bg-black")
         }
       >
         <div className="text-3xl text-zinc-500">⤴</div>
@@ -446,9 +446,9 @@ function MappingStep({
         is required; the others are optional. If you map a single &ldquo;Full
         Name&rdquo; column to First name, we&rsquo;ll auto-split it.
       </p>
-      <div className="border border-[#1f1f24] rounded-lg overflow-hidden">
+      <div className="border border-line rounded-lg overflow-hidden">
         <Table>
-          <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-[#1f1f24]">
+          <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-line">
             <TableRow className="hover:bg-transparent">
               <TableHead className="h-auto text-left px-3 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">CSV column</TableHead>
               <TableHead className="h-auto text-left px-3 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Sample</TableHead>
@@ -457,7 +457,7 @@ function MappingStep({
               </TableHead>
             </TableRow>
           </TableHeader>
-          <TableBody className="divide-y divide-[#1f1f24]">
+          <TableBody className="divide-y divide-line">
             {headers.map((h) => (
               <TableRow key={h} className="border-0 hover:bg-transparent">
                 <TableCell className="px-3 py-2 font-bold text-white tracking-tight">{h}</TableCell>
@@ -473,7 +473,7 @@ function MappingStep({
                     onChange={(e) =>
                       setField(h, e.target.value as Field | "")
                     }
-                    className="border border-[#2a2a32] rounded px-2 py-1 text-sm"
+                    className="border border-line-strong rounded px-2 py-1 text-sm"
                   >
                     <option value="">— ignore —</option>
                     {FIELDS.map((f) => (
@@ -507,9 +507,9 @@ function PreviewStep({
         Showing the first {previewRows.length} of {totalRows} rows after mapping.
         Review for accuracy before importing.
       </p>
-      <div className="border border-[#1f1f24] rounded-lg overflow-hidden">
+      <div className="border border-line rounded-lg overflow-hidden">
         <Table>
-          <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-[#1f1f24]">
+          <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-line">
             <TableRow className="hover:bg-transparent">
               {FIELDS.map((f) => (
                 <TableHead key={f} className="h-auto text-left px-3 py-2 font-bold">
@@ -518,7 +518,7 @@ function PreviewStep({
               ))}
             </TableRow>
           </TableHeader>
-          <TableBody className="divide-y divide-[#1f1f24]">
+          <TableBody className="divide-y divide-line">
             {previewRows.map((row, i) => (
               <TableRow key={i} className="border-0 hover:bg-transparent">
                 {FIELDS.map((f) => (
@@ -554,7 +554,7 @@ function ResultStep({
     result.inserted + result.skipped + result.errors.length;
   return (
     <div className="space-y-4">
-      <div className="bg-black border border-[#1f1f24] rounded-lg p-4 text-center">
+      <div className="bg-black border border-line rounded-lg p-4 text-center">
         <div className="text-page-title text-white">
           Imported {result.inserted} {result.inserted === 1 ? "customer" : "customers"}
         </div>
@@ -590,7 +590,7 @@ function ResultStep({
             {result.skippedReasons.length + result.errors.length})
           </Button>
           {showSkipped && (
-            <div className="mt-2 border border-[#1f1f24] rounded-lg overflow-hidden max-h-60 overflow-y-auto">
+            <div className="mt-2 border border-line rounded-lg overflow-hidden max-h-60 overflow-y-auto">
               <Table>
                 <TableHeader className="bg-black text-zinc-400 sticky top-0">
                   <TableRow className="hover:bg-transparent">
@@ -600,7 +600,7 @@ function ResultStep({
                     <TableHead className="h-auto text-left px-3 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Reason</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody className="divide-y divide-[#1f1f24]">
+                <TableBody className="divide-y divide-line">
                   {result.errors.map((e, i) => (
                     <TableRow key={`e-${i}`} className="border-0 hover:bg-transparent">
                       <TableCell className="px-3 py-2 text-zinc-300 tabular-nums">

@@ -428,8 +428,8 @@ export default function EmployeeSchedulingModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <div className="absolute inset-0" onClick={onClose} aria-hidden />
-      <div className="relative bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-3xl max-h-[92vh] overflow-y-auto">
-        <div className="sticky top-0 bg-[#0f0f12] border-b border-[#1f1f24] px-6 py-5 flex items-start justify-between z-10">
+      <div className="relative bg-card rounded-2xl shadow-xl w-full max-w-3xl max-h-[92vh] overflow-y-auto">
+        <div className="sticky top-0 bg-card border-b border-line px-6 py-5 flex items-start justify-between z-10">
           <div className="flex items-start gap-3">
             <div className="w-9 h-9 rounded-full bg-black flex items-center justify-center text-zinc-400">
               <Users className="w-4 h-4" />
@@ -502,7 +502,7 @@ export default function EmployeeSchedulingModal({
             </Button>
           </div>
 
-          <div className="border border-[#1f1f24] rounded-2xl overflow-hidden">
+          <div className="border border-line rounded-2xl overflow-hidden">
             <div className="grid grid-cols-[160px_repeat(7,1fr)] bg-black text-[11px] uppercase tracking-wider text-zinc-400">
               <div className="px-3 py-3">Employee</div>
               {days.map((d) => {
@@ -535,7 +535,7 @@ export default function EmployeeSchedulingModal({
             {activeStaff.map((s) => (
               <div
                 key={s.id}
-                className="grid grid-cols-[160px_repeat(7,1fr)] border-t border-[#1f1f24] items-center"
+                className="grid grid-cols-[160px_repeat(7,1fr)] border-t border-line items-center"
               >
                 <button
                   onClick={() => toggleStaffRow(s.id)}
@@ -567,9 +567,9 @@ export default function EmployeeSchedulingModal({
                           ? "border-sky-500 ring-2 ring-sky-200 bg-sky-50"
                           : sh
                           ? sh.source === "default"
-                            ? "border-[#1f1f24] bg-[#0f0f12] text-zinc-400"
-                            : "border-[#1f1f24] bg-[#0f0f12] text-zinc-300"
-                          : "border-dashed border-[#1f1f24] bg-[#0f0f12] text-zinc-500 hover:text-zinc-400")
+                            ? "border-line bg-card text-zinc-400"
+                            : "border-line bg-card text-zinc-300"
+                          : "border-dashed border-line bg-card text-zinc-500 hover:text-zinc-400")
                       }
                     >
                       {sh ? (
@@ -601,7 +601,7 @@ export default function EmployeeSchedulingModal({
                 value={staffSearch}
                 onChange={(e) => setStaffSearch(e.target.value)}
                 placeholder="Search employees…"
-                className="w-full h-auto bg-[#0f0f12] border-[#1f1f24] rounded-full pl-10 pr-4 py-2.5 text-sm focus-visible:ring-[#2a2a32]"
+                className="w-full h-auto bg-card border-line rounded-full pl-10 pr-4 py-2.5 text-sm focus-visible:ring-line-strong"
               />
               <svg
                 className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500"
@@ -616,7 +616,7 @@ export default function EmployeeSchedulingModal({
                 <path d="m21 21-4.3-4.3" />
               </svg>
               {staffSearch && candidateStaff.length > 0 && (
-                <div className="absolute z-20 left-0 right-0 mt-1 bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-lg max-h-60 overflow-y-auto">
+                <div className="absolute z-20 left-0 right-0 mt-1 bg-card border border-line rounded-2xl shadow-lg max-h-60 overflow-y-auto">
                   {candidateStaff.slice(0, 12).map((s) => (
                     <Button
                       key={s.id}
@@ -708,7 +708,7 @@ export default function EmployeeSchedulingModal({
             </div>
           )}
 
-          <Label className="flex items-center justify-between gap-4 bg-black border border-[#1f1f24] rounded-2xl px-4 py-3 cursor-pointer font-normal">
+          <Label className="flex items-center justify-between gap-4 bg-black border border-line rounded-2xl px-4 py-3 cursor-pointer font-normal">
             <div>
               <div className="text-sm font-extrabold text-white tracking-tight">
                 Set as default schedule
@@ -732,7 +732,7 @@ export default function EmployeeSchedulingModal({
           )}
         </div>
 
-        <div className="sticky bottom-0 bg-[#0f0f12] border-t border-[#1f1f24] px-6 py-4 flex items-center justify-between gap-3">
+        <div className="sticky bottom-0 bg-card border-t border-line px-6 py-4 flex items-center justify-between gap-3">
           <div className="text-sm text-zinc-400 font-bold">
             {employeeCount} employee{employeeCount === 1 ? "" : "s"} &middot;{" "}
             {totalShifts} shift{totalShifts === 1 ? "" : "s"}
@@ -741,7 +741,7 @@ export default function EmployeeSchedulingModal({
             <Button
               variant="ghost"
               onClick={onClose}
-              className="h-auto px-4 py-2 text-eyebrow uppercase text-zinc-500 bg-[#0f0f12] border border-[#1f1f24] rounded-full hover:bg-black"
+              className="h-auto px-4 py-2 text-eyebrow uppercase text-zinc-500 bg-card border border-line rounded-full hover:bg-black"
               disabled={saving}
             >
               Cancel
@@ -776,7 +776,7 @@ function TimeStepper({
         type="button"
         variant="ghost"
         onClick={() => onAdjust(-1)}
-        className="w-8 h-8 p-0 rounded-full bg-[#0f0f12] border border-[#1f1f24] hover:bg-black text-zinc-400"
+        className="w-8 h-8 p-0 rounded-full bg-card border border-line hover:bg-black text-zinc-400"
         aria-label="Earlier"
       >
         <Minus className="w-3.5 h-3.5" />
@@ -793,7 +793,7 @@ function TimeStepper({
         type="button"
         variant="ghost"
         onClick={() => onAdjust(1)}
-        className="w-8 h-8 p-0 rounded-full bg-[#0f0f12] border border-[#1f1f24] hover:bg-black text-zinc-400"
+        className="w-8 h-8 p-0 rounded-full bg-card border border-line hover:bg-black text-zinc-400"
         aria-label="Later"
       >
         <Plus className="w-3.5 h-3.5" />

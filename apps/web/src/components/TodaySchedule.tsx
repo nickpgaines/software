@@ -90,7 +90,7 @@ export default function TodaySchedule({ initialJobs }: { initialJobs: Job[] }) {
   }, [offset]);
 
   return (
-    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-6">
+    <div className="bg-card border border-line rounded-2xl p-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <button
@@ -116,7 +116,7 @@ export default function TodaySchedule({ initialJobs }: { initialJobs: Job[] }) {
         </div>
         <button
           onClick={() => setOffset(0)}
-          className="w-8 h-8 rounded border border-[#1f1f24] hover:bg-black text-zinc-400 flex items-center justify-center"
+          className="w-8 h-8 rounded border border-line hover:bg-black text-zinc-400 flex items-center justify-center"
           title="Today"
           aria-label="Jump to today"
         >
@@ -149,12 +149,12 @@ export default function TodaySchedule({ initialJobs }: { initialJobs: Job[] }) {
             {jobs.map((j) => (
               <li key={j.id}>
                 <div
-                  className="text-sm text-zinc-400 font-bold border-b border-[#1f1f24] pb-2 mb-2"
+                  className="text-sm text-zinc-400 font-bold border-b border-line pb-2 mb-2"
                   suppressHydrationWarning
                 >
                   {mounted ? formatTime(j.scheduled_at) : ""}
                 </div>
-                <div className="border border-[#1f1f24] rounded-xl px-4 py-3 flex items-center gap-3">
+                <div className="border border-line rounded-xl px-4 py-3 flex items-center gap-3">
                   <div className="w-9 h-9 rounded-lg bg-black flex items-center justify-center shrink-0">
                     <svg
                       className="w-4 h-4 text-zinc-400"

@@ -61,7 +61,7 @@ function statusColor(status: string): string {
     status === "canceled"
   )
     return "text-rose-700 bg-rose-50 border-rose-200";
-  return "text-zinc-300 bg-black border-[#1f1f24]";
+  return "text-zinc-300 bg-black border-line";
 }
 
 export default function CallsClient() {
@@ -107,14 +107,14 @@ export default function CallsClient() {
         {!phone.configured && (
           <Badge
             variant="outline"
-            className="text-xs text-zinc-400 bg-black border border-[#1f1f24] rounded-full px-3 py-1 font-normal"
+            className="text-xs text-zinc-400 bg-black border border-line rounded-full px-3 py-1 font-normal"
           >
             Calling not configured. Connect Twilio Voice in Settings → Calling.
           </Badge>
         )}
       </div>
 
-      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
         {loading ? (
           <div className="p-10 text-center text-sm text-zinc-500">Loading…</div>
         ) : calls.length === 0 ? (
@@ -123,7 +123,7 @@ export default function CallsClient() {
           </div>
         ) : (
           <Table>
-            <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-[#1f1f24]">
+            <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-line">
               <TableRow className="hover:bg-transparent">
                 <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">When</TableHead>
                 <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Direction</TableHead>
@@ -134,7 +134,7 @@ export default function CallsClient() {
                 <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Recording</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody className="divide-y divide-[#1f1f24]">
+            <TableBody className="divide-y divide-line">
               {calls.map((c) => {
                 const otherNumber =
                   c.direction === "outbound" ? c.to_phone : c.from_phone;

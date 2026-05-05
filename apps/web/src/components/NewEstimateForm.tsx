@@ -255,7 +255,7 @@ export default function NewEstimateForm() {
                 type="button"
                 variant="ghost"
                 onClick={() => setShowNewCustomer(true)}
-                className="text-eyebrow uppercase text-zinc-500 border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5 h-auto"
+                className="text-eyebrow uppercase text-zinc-500 border-line hover:bg-black rounded-full px-3 py-1.5 h-auto"
               >
                 + Create New Customer
               </Button>
@@ -296,7 +296,7 @@ export default function NewEstimateForm() {
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Spring window cleaning estimate"
-                className="w-full border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12] h-auto"
+                className="w-full border-line rounded-xl px-4 py-2 text-sm bg-card h-auto"
               />
             </Field>
             <div className="grid grid-cols-2 gap-3">
@@ -305,7 +305,7 @@ export default function NewEstimateForm() {
                   type="date"
                   value={validUntil}
                   onChange={(e) => setValidUntil(e.target.value)}
-                  className="w-full border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12] h-auto"
+                  className="w-full border-line rounded-xl px-4 py-2 text-sm bg-card h-auto"
                 />
               </Field>
               <Field label="Sold By">
@@ -315,7 +315,7 @@ export default function NewEstimateForm() {
                   onChange={(e) =>
                     setSoldById(e.target.value ? Number(e.target.value) : "")
                   }
-                  className="w-full border border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12]"
+                  className="w-full border border-line rounded-xl px-4 py-2 text-sm bg-card"
                 >
                   <option value="">Select salesperson…</option>
                   {staff.map((s) => (
@@ -333,7 +333,7 @@ export default function NewEstimateForm() {
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
                 placeholder="Anything the customer should know…"
-                className="w-full border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12]"
+                className="w-full border-line rounded-xl px-4 py-2 text-sm bg-card"
               />
             </Field>
           </Card>
@@ -377,7 +377,7 @@ export default function NewEstimateForm() {
                     value={signatureName}
                     onChange={(e) => setSignatureName(e.target.value)}
                     placeholder="Printed name"
-                    className="w-full border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12] h-auto"
+                    className="w-full border-line rounded-xl px-4 py-2 text-sm bg-card h-auto"
                   />
                 </div>
               )}
@@ -395,7 +395,7 @@ export default function NewEstimateForm() {
                 type="button"
                 variant="ghost"
                 onClick={() => addItem()}
-                className="text-eyebrow uppercase text-zinc-500 border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5 h-auto"
+                className="text-eyebrow uppercase text-zinc-500 border-line hover:bg-black rounded-full px-3 py-1.5 h-auto"
               >
                 + Add item
               </Button>
@@ -408,7 +408,7 @@ export default function NewEstimateForm() {
                   type="button"
                   variant="ghost"
                   onClick={() => addItem(p)}
-                  className="text-xs bg-black hover:bg-[#1f1f24] text-zinc-300 rounded-full px-3 py-1 h-auto"
+                  className="text-xs bg-black hover:bg-line text-zinc-300 rounded-full px-3 py-1 h-auto"
                 >
                   + {p}
                 </Button>
@@ -419,7 +419,7 @@ export default function NewEstimateForm() {
               {items.map((it, idx) => (
                 <li
                   key={it.key}
-                  className="rounded-xl border border-[#1f1f24] p-3 space-y-2 bg-[#0f0f12]"
+                  className="rounded-xl border border-line p-3 space-y-2 bg-card"
                 >
                   <div className="flex items-start gap-2">
                     <Input
@@ -429,7 +429,7 @@ export default function NewEstimateForm() {
                         updateItem(it.key, { title: e.target.value })
                       }
                       placeholder="Item title"
-                      className="flex-1 border-[#1f1f24] rounded-lg px-3 py-2 text-sm h-auto"
+                      className="flex-1 border-line rounded-lg px-3 py-2 text-sm h-auto"
                     />
                     {items.length > 1 && (
                       <Button
@@ -450,7 +450,7 @@ export default function NewEstimateForm() {
                       updateItem(it.key, { description: e.target.value })
                     }
                     placeholder="Description (optional)"
-                    className="w-full border-[#1f1f24] rounded-lg px-3 py-2 text-sm h-auto"
+                    className="w-full border-line rounded-lg px-3 py-2 text-sm h-auto"
                   />
                   <div className="grid grid-cols-3 gap-2">
                     <div>
@@ -465,7 +465,7 @@ export default function NewEstimateForm() {
                         onChange={(e) =>
                           updateItem(it.key, { quantity: e.target.value })
                         }
-                        className="w-full border-[#1f1f24] rounded-lg px-3 py-2 text-sm h-auto"
+                        className="w-full border-line rounded-lg px-3 py-2 text-sm h-auto"
                       />
                     </div>
                     <div>
@@ -480,7 +480,7 @@ export default function NewEstimateForm() {
                         onChange={(e) =>
                           updateItem(it.key, { price: e.target.value })
                         }
-                        className="w-full border-[#1f1f24] rounded-lg px-3 py-2 text-sm h-auto"
+                        className="w-full border-line rounded-lg px-3 py-2 text-sm h-auto"
                         placeholder="0.00"
                       />
                     </div>
@@ -522,7 +522,7 @@ export default function NewEstimateForm() {
                     min="0"
                     value={taxRate}
                     onChange={(e) => setTaxRate(e.target.value)}
-                    className="ml-2 w-20 border-[#1f1f24] rounded-lg px-2 py-1 text-sm h-auto"
+                    className="ml-2 w-20 border-line rounded-lg px-2 py-1 text-sm h-auto"
                   />
                   <span className="ml-1 text-zinc-500">%</span>
                 </div>
@@ -530,7 +530,7 @@ export default function NewEstimateForm() {
                   {formatPrice(taxCents)}
                 </div>
               </div>
-              <div className="border-t border-[#1f1f24] pt-2">
+              <div className="border-t border-line pt-2">
                 <Row
                   label={
                     <span className="text-base font-extrabold text-white tracking-tight">
@@ -566,7 +566,7 @@ export default function NewEstimateForm() {
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5 shadow-sm">
+    <div className="bg-card border border-line rounded-2xl p-5 shadow-sm">
       {children}
     </div>
   );
@@ -632,14 +632,14 @@ function RadioOption({
         "w-full text-left rounded-xl border p-3 h-auto block " +
         (checked
           ? "border-slate-900 bg-black"
-          : "border-[#1f1f24] hover:border-[#2a2a32]")
+          : "border-line hover:border-line-strong")
       }
     >
       <div className="flex items-start gap-3">
         <span
           className={
             "mt-0.5 inline-flex h-4 w-4 shrink-0 rounded-full border-2 " +
-            (checked ? "border-slate-900" : "border-[#2a2a32]")
+            (checked ? "border-slate-900" : "border-line-strong")
           }
         >
           {checked && (
@@ -701,13 +701,13 @@ function CustomerPicker({
         }}
         onFocus={() => setOpen(true)}
         placeholder="Search"
-        className="w-full border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12] pl-9 h-auto"
+        className="w-full border-line rounded-xl px-4 py-2 text-sm bg-card pl-9 h-auto"
       />
       <span className="absolute left-3 top-2.5 text-zinc-500" aria-hidden>
         ⌕
       </span>
       {open && suggestions.length > 0 && !selectedId && (
-        <div className="absolute z-30 left-0 right-0 mt-1 bg-[#0f0f12] border border-[#1f1f24] rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+        <div className="absolute z-30 left-0 right-0 mt-1 bg-card border border-line rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
           {suggestions.map((c) => (
             <Button
               key={c.id}
@@ -781,7 +781,7 @@ function NewCustomerModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <form
         onSubmit={save}
-        className="bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4"
+        className="bg-card rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4"
       >
         <div className="flex items-start justify-between">
           <h3 className="text-base font-extrabold text-white tracking-tight">
@@ -802,7 +802,7 @@ function NewCustomerModal({
               type="text"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm h-auto"
+              className="w-full border-line rounded-xl px-3 py-2 text-sm h-auto"
               autoFocus
             />
           </Field>
@@ -811,7 +811,7 @@ function NewCustomerModal({
               type="text"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
-              className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm h-auto"
+              className="w-full border-line rounded-xl px-3 py-2 text-sm h-auto"
             />
           </Field>
         </div>
@@ -820,7 +820,7 @@ function NewCustomerModal({
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm h-auto"
+            className="w-full border-line rounded-xl px-3 py-2 text-sm h-auto"
           />
         </Field>
         <Field label="Email">
@@ -828,7 +828,7 @@ function NewCustomerModal({
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm h-auto"
+            className="w-full border-line rounded-xl px-3 py-2 text-sm h-auto"
           />
         </Field>
         <Field label="Address">
@@ -836,7 +836,7 @@ function NewCustomerModal({
             type="text"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm h-auto"
+            className="w-full border-line rounded-xl px-3 py-2 text-sm h-auto"
           />
         </Field>
         {err && <p className="text-sm text-rose-600">{err}</p>}
@@ -943,7 +943,7 @@ function SignaturePad({
 
   return (
     <div className="space-y-2">
-      <div className="border border-[#2a2a32] rounded-xl bg-[#0f0f12]">
+      <div className="border border-line-strong rounded-xl bg-card">
         <canvas
           ref={canvasRef}
           onPointerDown={start}

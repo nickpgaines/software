@@ -99,8 +99,8 @@ export default function MessagesClient() {
     conversations.find((c) => c.id === selectedId) || null;
 
   return (
-    <div className="flex bg-[#0f0f12] border border-[#1f1f24] rounded-2xl overflow-hidden h-[calc(100vh-9rem)] min-h-[480px] shadow-sm">
-      <aside className="w-80 shrink-0 border-r border-[#1f1f24] flex flex-col">
+    <div className="flex bg-card border border-line rounded-2xl overflow-hidden h-[calc(100vh-9rem)] min-h-[480px] shadow-sm">
+      <aside className="w-80 shrink-0 border-r border-line flex flex-col">
         <div className="px-4 pt-4 pb-3 flex items-center justify-between">
           <h2 className="text-lg font-extrabold text-white tracking-tight">Messages</h2>
           <Button
@@ -130,7 +130,7 @@ export default function MessagesClient() {
               placeholder="Search conversations..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full h-auto bg-black border-[#1f1f24] rounded-full pl-9 pr-3 py-2 text-sm focus-visible:ring-zinc-500"
+              className="w-full h-auto bg-black border-line rounded-full pl-9 pr-3 py-2 text-sm focus-visible:ring-zinc-500"
             />
             <svg
               className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500"
@@ -151,13 +151,13 @@ export default function MessagesClient() {
             <Checkbox
               checked={unreadOnly}
               onCheckedChange={(checked) => setUnreadOnly(checked === true)}
-              className="border-[#2a2a32]"
+              className="border-line-strong"
             />
             Unread only
           </Label>
         </div>
 
-        <div className="flex-1 overflow-y-auto border-t border-[#1f1f24]">
+        <div className="flex-1 overflow-y-auto border-t border-line">
           {filtered.length === 0 ? (
             <div className="p-6 text-center text-sm text-zinc-500">
               {conversations.length === 0
@@ -165,7 +165,7 @@ export default function MessagesClient() {
                 : "No matching conversations."}
             </div>
           ) : (
-            <ul className="divide-y divide-[#1f1f24]">
+            <ul className="divide-y divide-line">
               {filtered.map((c) => (
                 <li key={c.id}>
                   <Button
@@ -177,7 +177,7 @@ export default function MessagesClient() {
                       (selectedId === c.id ? "bg-black" : "")
                     }
                   >
-                    <div className="w-9 h-9 rounded-full bg-[#1f1f24] text-zinc-300 flex items-center justify-center text-xs font-semibold shrink-0">
+                    <div className="w-9 h-9 rounded-full bg-line text-zinc-300 flex items-center justify-center text-xs font-semibold shrink-0">
                       {initials(c.name)}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -320,8 +320,8 @@ function Thread({
 
   return (
     <>
-      <header className="px-5 py-3 border-b border-[#1f1f24] flex items-center gap-3">
-        <div className="w-9 h-9 rounded-full bg-[#1f1f24] text-zinc-300 flex items-center justify-center text-xs font-semibold">
+      <header className="px-5 py-3 border-b border-line flex items-center gap-3">
+        <div className="w-9 h-9 rounded-full bg-line text-zinc-300 flex items-center justify-center text-xs font-semibold">
           {initials(conversation.name)}
         </div>
         <div className="flex-1 min-w-0">
@@ -360,7 +360,7 @@ function Thread({
                           ? failed
                             ? "bg-rose-100 border border-rose-200 text-rose-900 rounded-br-sm"
                             : "bg-slate-900 text-white rounded-br-sm"
-                          : "bg-[#0f0f12] border border-[#1f1f24] text-white rounded-bl-sm")
+                          : "bg-card border border-line text-white rounded-bl-sm")
                       }
                     >
                       <div>{m.body}</div>
@@ -393,7 +393,7 @@ function Thread({
         )}
       </div>
 
-      <div className="border-t border-[#1f1f24]">
+      <div className="border-t border-line">
         {(drafting || draftError) && (
           <div className="px-4 pt-2 text-xs">
             {drafting && (
@@ -435,7 +435,7 @@ function Thread({
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder="Type a message…"
-            className="flex-1 h-auto border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] focus-visible:ring-zinc-500"
+            className="flex-1 h-auto border-line rounded-full px-4 py-2 text-sm bg-card focus-visible:ring-zinc-500"
           />
           <Button
             type="submit"

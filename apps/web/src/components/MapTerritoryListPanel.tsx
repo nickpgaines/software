@@ -46,8 +46,8 @@ export default function MapTerritoryListPanel({
   }
 
   return (
-    <div className="absolute top-4 right-16 z-10 w-72 max-h-[70vh] flex flex-col rounded-lg border border-[#1f1f24] bg-[#0f0f12] shadow-md">
-      <div className="px-4 py-3 border-b border-[#1f1f24] flex items-center justify-between">
+    <div className="absolute top-4 right-16 z-10 w-72 max-h-[70vh] flex flex-col rounded-lg border border-line bg-card shadow-md">
+      <div className="px-4 py-3 border-b border-line flex items-center justify-between">
         <h3 className="font-extrabold text-white tracking-tight text-sm">Territories</h3>
         <Button
           variant="ghost"

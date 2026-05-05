@@ -119,7 +119,7 @@ export default function LeadsIntegrationsClient({
         </div>
       )}
 
-      <div className="border border-[#1f1f24] rounded-2xl overflow-hidden">
+      <div className="border border-line rounded-2xl overflow-hidden">
         <div className="p-6 flex items-start gap-5">
           <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
             <MetaLogo />
@@ -178,7 +178,7 @@ export default function LeadsIntegrationsClient({
           </div>
         </div>
 
-        <div className="border-t border-[#1f1f24] p-6">
+        <div className="border-t border-line p-6">
           <div className="flex items-start justify-between gap-4 mb-4">
             <div>
               <h4 className="font-extrabold text-white tracking-tight">Connected pages</h4>
@@ -192,7 +192,7 @@ export default function LeadsIntegrationsClient({
                 variant="ghost"
                 onClick={refreshPages}
                 disabled={busy}
-                className="h-auto gap-1.5 text-xs text-zinc-400 hover:text-white hover:bg-transparent border border-[#1f1f24] px-3 py-1.5 rounded-full font-bold"
+                className="h-auto gap-1.5 text-xs text-zinc-400 hover:text-white hover:bg-transparent border border-line px-3 py-1.5 rounded-full font-bold"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 Refresh pages
@@ -201,7 +201,7 @@ export default function LeadsIntegrationsClient({
           </div>
 
           {pages.length === 0 ? (
-            <div className="border border-dashed border-[#1f1f24] rounded-xl p-12 flex flex-col items-center text-center">
+            <div className="border border-dashed border-line rounded-xl p-12 flex flex-col items-center text-center">
               <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
                 <MetaLogo />
               </div>
@@ -218,7 +218,7 @@ export default function LeadsIntegrationsClient({
               {pages.map((p) => (
                 <div
                   key={p.id}
-                  className="border border-[#1f1f24] rounded-lg p-3 flex items-center justify-between gap-3"
+                  className="border border-line rounded-lg p-3 flex items-center justify-between gap-3"
                 >
                   <div className="min-w-0">
                     <div className="font-bold text-white tracking-tight truncate">
@@ -236,12 +236,12 @@ export default function LeadsIntegrationsClient({
                     onClick={() => togglePage(p.id, !p.enabled)}
                     className={
                       "relative w-10 h-6 p-0 rounded-full shrink-0 hover:bg-current " +
-                      (p.enabled ? "bg-emerald-500 hover:bg-emerald-500" : "bg-[#2a2a32] hover:bg-[#2a2a32]")
+                      (p.enabled ? "bg-emerald-500 hover:bg-emerald-500" : "bg-line-strong hover:bg-line-strong")
                     }
                   >
                     <span
                       className={
-                        "absolute top-0.5 left-0.5 w-5 h-5 bg-[#0f0f12] rounded-full shadow transition-transform " +
+                        "absolute top-0.5 left-0.5 w-5 h-5 bg-card rounded-full shadow transition-transform " +
                         (p.enabled ? "translate-x-4" : "")
                       }
                     />
