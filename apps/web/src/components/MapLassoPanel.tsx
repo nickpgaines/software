@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Phone, Send, X } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 
 export type LassoCustomer = {
   id: number;
@@ -124,13 +126,14 @@ export default function MapLassoPanel({
       <div className="absolute top-4 right-16 z-10 w-80 bg-[#0f0f12] border border-[#1f1f24] rounded-lg shadow-md">
         <div className="px-4 py-3 border-b border-[#1f1f24] flex items-center justify-between">
           <h3 className="font-extrabold text-white tracking-tight text-sm">Blast sent</h3>
-          <button
+          <Button
+            variant="ghost"
             onClick={onClose}
-            className="text-zinc-500 hover:text-zinc-300"
+            className="h-auto w-auto p-0 text-zinc-500 hover:text-zinc-300 hover:bg-transparent"
             aria-label="Close"
           >
             <X className="h-4 w-4" />
-          </button>
+          </Button>
         </div>
         <div className="p-4 space-y-2 text-sm">
           <Stat label="Sent" value={result.sent} tone="ok" />
@@ -146,12 +149,13 @@ export default function MapLassoPanel({
           )}
         </div>
         <div className="px-4 py-3 border-t border-[#1f1f24] flex justify-end">
-          <button
+          <Button
+            variant="ghost"
             onClick={onClose}
-            className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-1.5 font-bold"
+            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-1.5 font-bold"
           >
             Done
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -163,14 +167,15 @@ export default function MapLassoPanel({
         <h3 className="font-extrabold text-white tracking-tight text-sm">
           Selected customers
         </h3>
-        <button
+        <Button
+          variant="ghost"
           onClick={onClose}
-          className="text-zinc-500 hover:text-zinc-300"
+          className="h-auto w-auto p-0 text-zinc-500 hover:text-zinc-300 hover:bg-transparent"
           aria-label="Close"
           disabled={sending}
         >
           <X className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
 
       <div className="px-4 pt-3 pb-2 text-xs text-zinc-400">
@@ -196,16 +201,17 @@ export default function MapLassoPanel({
                   key={c.id}
                   className="flex items-center gap-2 px-3 py-2 text-sm"
                 >
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
                     onClick={() => removeCustomer(c.id)}
                     disabled={sending}
-                    className="text-rose-500 hover:text-rose-700 disabled:opacity-40 shrink-0"
+                    className="h-auto w-auto p-0 text-rose-500 hover:text-rose-700 hover:bg-transparent shrink-0"
                     aria-label={`Remove ${c.name}`}
                     title="Remove from blast"
                   >
                     <X className="h-3.5 w-3.5" />
-                  </button>
+                  </Button>
                   <span className="flex-1 truncate text-white">
                     {c.name || "Unnamed"}
                   </span>
@@ -230,7 +236,7 @@ export default function MapLassoPanel({
         <div className="text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
           Message
         </div>
-        <textarea
+        <Textarea
           ref={textareaRef}
           value={body}
           onChange={(e) =>
@@ -240,20 +246,21 @@ export default function MapLassoPanel({
           maxLength={MAX_LEN}
           placeholder="Hey {first_name}, we're running a special this month — interested?"
           disabled={sending}
-          className="w-full border border-[#1f1f24] rounded-xl px-3 py-2 text-sm bg-[#0f0f12] resize-y"
+          className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm bg-[#0f0f12] resize-y"
         />
         <div className="flex flex-wrap items-center gap-1.5 mt-2">
           {MERGE_TAGS.map((t) => (
-            <button
+            <Button
               key={t.token}
               type="button"
+              variant="ghost"
               onClick={() => insertTag(t.token)}
               disabled={sending}
-              className="text-xs bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 rounded-full px-2.5 py-1 disabled:opacity-50"
+              className="h-auto text-xs bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-900 rounded-full px-2.5 py-1 font-bold"
               title={`Insert ${t.token}`}
             >
               {t.label} +
-            </button>
+            </Button>
           ))}
           <span className="ml-auto text-[11px] text-zinc-500">
             {charCount}/{MAX_LEN} · {segments} SMS
@@ -264,17 +271,19 @@ export default function MapLassoPanel({
       </div>
 
       <div className="px-4 py-3 border-t border-[#1f1f24] flex justify-end gap-2">
-        <button
+        <Button
+          variant="ghost"
           onClick={onClose}
           disabled={sending}
-          className="text-sm text-zinc-400 font-bold hover:text-white disabled:opacity-50"
+          className="h-auto text-sm text-zinc-400 font-bold hover:text-white hover:bg-transparent"
         >
           Cancel
-        </button>
-        <button
+        </Button>
+        <Button
+          variant="ghost"
           onClick={send}
           disabled={sending || withPhone.length === 0 || !body.trim()}
-          className="inline-flex items-center gap-1.5 text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-4 py-1.5 font-bold"
+          className="h-auto gap-1.5 text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-4 py-1.5 font-bold"
         >
           <Send className="h-3.5 w-3.5" />
           {sending
@@ -282,7 +291,7 @@ export default function MapLassoPanel({
             : `Send to ${withPhone.length} ${
                 withPhone.length === 1 ? "person" : "people"
               }`}
-        </button>
+        </Button>
       </div>
     </div>
   );

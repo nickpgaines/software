@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { staffColorHex } from "@/lib/staff-colors";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export type Staff = {
   id: number;
@@ -113,20 +116,21 @@ export default function MapTerritoryModal({
           <h3 className="font-extrabold text-white tracking-tight">
             {draft.id ? "Reassign territory" : "Assign territory"}
           </h3>
-          <button
+          <Button
+            variant="ghost"
             onClick={onClose}
-            className="text-zinc-500 hover:text-zinc-300 text-2xl leading-none"
+            className="h-auto w-auto p-0 text-zinc-500 hover:text-zinc-300 hover:bg-transparent text-2xl leading-none"
             aria-label="Close"
           >
             ×
-          </button>
+          </Button>
         </div>
 
         <div className="p-5 space-y-4">
           <div ref={ref} className="relative">
-            <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
+            <Label className="block text-xs font-normal uppercase tracking-wide text-zinc-500 mb-1.5">
               Assign to Employee
-            </label>
+            </Label>
             <div className="min-h-[42px] flex flex-wrap items-center gap-1.5 border border-[#1f1f24] rounded-2xl px-2 py-1.5 bg-[#0f0f12]">
               {picked && (
                 <span
@@ -137,18 +141,19 @@ export default function MapTerritoryModal({
                     {initials(picked.name)}
                   </span>
                   {picked.name}
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
                     onClick={() => setStaffId(null)}
-                    className="text-white/80 hover:text-white"
+                    className="h-auto w-auto p-0 text-white/80 hover:text-white hover:bg-transparent"
                     aria-label={`Remove ${picked.name}`}
                   >
                     ×
-                  </button>
+                  </Button>
                 </span>
               )}
               {!picked && (
-                <input
+                <Input
                   type="text"
                   value={query}
                   onChange={(e) => {
@@ -157,22 +162,23 @@ export default function MapTerritoryModal({
                   }}
                   onFocus={() => setOpen(true)}
                   placeholder="Search team…"
-                  className="flex-1 min-w-[100px] outline-none text-sm bg-transparent px-2"
+                  className="flex-1 h-auto min-w-[100px] outline-none text-sm bg-transparent px-2 border-0 focus-visible:ring-0"
                 />
               )}
             </div>
             {open && !picked && suggestions.length > 0 && (
               <div className="absolute z-20 left-0 right-0 mt-1 bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-lg overflow-hidden">
                 {suggestions.map((s) => (
-                  <button
+                  <Button
                     key={s.id}
                     type="button"
+                    variant="ghost"
                     onClick={() => {
                       setStaffId(s.id);
                       setQuery("");
                       setOpen(false);
                     }}
-                    className="w-full text-left px-4 py-2 hover:bg-black text-sm flex items-center gap-2"
+                    className="w-full h-auto justify-start text-left px-4 py-2 hover:bg-black text-sm gap-2 rounded-none"
                   >
                     <span
                       className="w-6 h-6 rounded-full flex items-center justify-center text-xs font-extrabold text-white tracking-tight"
@@ -181,7 +187,7 @@ export default function MapTerritoryModal({
                       {initials(s.name)}
                     </span>
                     {s.name}
-                  </button>
+                  </Button>
                 ))}
               </div>
             )}
@@ -195,31 +201,34 @@ export default function MapTerritoryModal({
 
         <div className="px-5 py-3 border-t border-[#1f1f24] flex items-center justify-between gap-2">
           {draft.id && onDelete && (
-            <button
+            <Button
+              variant="ghost"
               onClick={() => {
                 if (confirm("Delete this territory?")) onDelete(draft.id!);
               }}
-              className="text-sm text-rose-600 hover:text-rose-700 px-2"
+              className="h-auto text-sm text-rose-600 hover:text-rose-700 hover:bg-transparent px-2"
             >
               Delete
-            </button>
+            </Button>
           )}
           <div className="flex-1" />
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={onClose}
-            className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-zinc-300"
+            className="h-auto text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-zinc-300 font-bold"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="ghost"
             onClick={save}
             disabled={saving || staffId == null}
-            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
+            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
           >
             {saving ? "Saving…" : draft.id ? "Save" : "Continue"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
