@@ -5,6 +5,7 @@ import {
   normalizeUSPhone,
   verifyTwilioSignature,
 } from "@/lib/sms";
+import { recordInboundMessage } from "@/lib/usage";
 
 export const dynamic = "force-dynamic";
 
@@ -85,6 +86,15 @@ export async function POST(req: Request) {
        VALUES (?, ?, ?, 'inbound', 'received', ?, ?, ?)`
     )
     .run(companyId, match.id, body, providerSid, toPhone, normalizedFrom);
+
+  try {
+    await recordInboundMessage(companyId);
+  } catch (e) {
+    console.error(
+      `[messages/webhook] Failed to record inbound usage for company ${companyId}:`,
+      e
+    );
+  }
 
   return new NextResponse(TWIML_OK, { status: 200, headers: TWIML_HEADERS });
 }

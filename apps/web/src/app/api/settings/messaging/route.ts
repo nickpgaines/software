@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb, type Company, type MessagingSettings } from "@/lib/db";
 import { normalizeUSPhone } from "@/lib/sms";
 import { requireCompanyId } from "@/lib/auth";
+import { getUsageStatus } from "@/lib/usage";
 
 export const dynamic = "force-dynamic";
 
@@ -17,11 +18,22 @@ type PublicSettings = {
   // BYO credentials are not used.
   platform_phone_number: string | null;
   platform_a2p_status: string | null;
+  // Per-tenant usage for the current calendar month. plan_name is null when
+  // no plan is assigned; cap_limit is null on plans without included caps
+  // (or while plan limits are still placeholder values).
+  usage_period: string;
+  usage_outbound_count: number;
+  usage_inbound_count: number;
+  plan_key: string | null;
+  plan_name: string | null;
+  cap_limit: number | null;
+  remaining: number | null;
 };
 
 function toPublic(
   s: MessagingSettings,
-  platform: { phone: string | null; a2pStatus: string | null }
+  platform: { phone: string | null; a2pStatus: string | null },
+  usage: Awaited<ReturnType<typeof getUsageStatus>>
 ): PublicSettings {
   const sid = s.account_sid;
   const masked =
@@ -37,6 +49,13 @@ function toPublic(
     updated_at: s.updated_at,
     platform_phone_number: platform.phone,
     platform_a2p_status: platform.a2pStatus,
+    usage_period: usage.period,
+    usage_outbound_count: usage.outboundCount,
+    usage_inbound_count: usage.inboundCount,
+    plan_key: usage.plan?.key ?? null,
+    plan_name: usage.plan?.name ?? null,
+    cap_limit: usage.capLimit,
+    remaining: usage.remaining,
   };
 }
 
@@ -95,7 +114,8 @@ export async function GET() {
   const companyId = await requireCompanyId();
   const s = await readSettings(companyId);
   const platform = await readPlatformFields(companyId);
-  return NextResponse.json(toPublic(s, platform), {
+  const usage = await getUsageStatus(companyId);
+  return NextResponse.json(toPublic(s, platform, usage), {
     headers: NO_CACHE_HEADERS,
   });
 }
@@ -184,7 +204,8 @@ export async function PUT(req: Request) {
     updated_at: new Date().toISOString(),
   };
   const platform = await readPlatformFields(companyId);
-  return NextResponse.json(toPublic(updated, platform), {
+  const usage = await getUsageStatus(companyId);
+  return NextResponse.json(toPublic(updated, platform, usage), {
     headers: NO_CACHE_HEADERS,
   });
 }

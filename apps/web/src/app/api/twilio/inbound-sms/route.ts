@@ -5,6 +5,7 @@ import {
   findCompanyByPlatformNumber,
   getPlatformConfig,
 } from "@/lib/twilio-platform";
+import { recordInboundMessage } from "@/lib/usage";
 
 // Inbound webhook for SMS sent to platform-managed Twilio numbers. All
 // platform numbers share the master account's AccountSid, so we identify
@@ -95,6 +96,16 @@ export async function POST(req: Request) {
        VALUES (?, ?, ?, 'inbound', 'received', ?, ?, ?)`
     )
     .run(company.id, match.id, body, providerSid, toPhone, normalizedFrom);
+
+  try {
+    await recordInboundMessage(company.id);
+  } catch (e) {
+    // Metering must never reject a Twilio webhook — log and continue.
+    console.error(
+      `[twilio/inbound-sms] Failed to record inbound usage for company ${company.id}:`,
+      e
+    );
+  }
 
   return new NextResponse(TWIML_OK, { status: 200, headers: TWIML_HEADERS });
 }

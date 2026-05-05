@@ -538,6 +538,7 @@ async function init(): Promise<void> {
     ["platform_phone_number", "TEXT"],
     ["platform_phone_sid", "TEXT"],
     ["a2p_campaign_status", "TEXT"],
+    ["plan_key", "TEXT"],
   ];
   for (const [col, def] of companyAdds) {
     await alterAddColumn("company", col, def, companyCols);
@@ -686,6 +687,24 @@ async function init(): Promise<void> {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     INSERT OR IGNORE INTO messaging_settings (id) VALUES (1);
+
+    -- Per-tenant message metering. One row per (company, calendar month).
+    -- Period is YYYY-MM in UTC; counters are upserted on each successful
+    -- send (outbound) or webhook receipt (inbound). Cap enforcement reads
+    -- this table together with the company's plan_key to decide whether
+    -- a send is within the included quota, in overage, or hard-capped.
+    CREATE TABLE IF NOT EXISTS message_usage (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      company_id INTEGER NOT NULL REFERENCES company(id) ON DELETE CASCADE,
+      period TEXT NOT NULL,
+      outbound_count INTEGER NOT NULL DEFAULT 0,
+      inbound_count INTEGER NOT NULL DEFAULT 0,
+      mms_count INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(company_id, period)
+    );
+    CREATE INDEX IF NOT EXISTS idx_message_usage_company_period
+      ON message_usage(company_id, period);
 
     CREATE TABLE IF NOT EXISTS calls (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1685,6 +1704,17 @@ export type Company = {
   platform_phone_number: string | null;
   platform_phone_sid: string | null;
   a2p_campaign_status: "pending" | "active" | "failed" | null;
+  plan_key: string | null;
+};
+
+export type MessageUsage = {
+  id: number;
+  company_id: number;
+  period: string;
+  outbound_count: number;
+  inbound_count: number;
+  mms_count: number;
+  updated_at: string;
 };
 
 export type MessageStatus =

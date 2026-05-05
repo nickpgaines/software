@@ -1672,6 +1672,13 @@ type MessagingStatus = {
   updated_at: string;
   platform_phone_number: string | null;
   platform_a2p_status: string | null;
+  usage_period: string;
+  usage_outbound_count: number;
+  usage_inbound_count: number;
+  plan_key: string | null;
+  plan_name: string | null;
+  cap_limit: number | null;
+  remaining: number | null;
 };
 
 function formatUSPhone(e164: string): string {
@@ -1778,6 +1785,10 @@ function MessagingPanel() {
             Active. SMS and voice routed through this number.
           </div>
         </div>
+      )}
+
+      {status && (
+        <UsagePanel status={status} />
       )}
 
       <div
@@ -1933,6 +1944,76 @@ type CallingStatus = {
   has_business_number: boolean;
   business_number: string | null;
 };
+
+function UsagePanel({ status }: { status: MessagingStatus }) {
+  const cap = status.cap_limit;
+  const used = status.usage_outbound_count;
+  const planLabel = status.plan_name ?? "No plan";
+  const periodLabel = (() => {
+    const [yr, mo] = status.usage_period.split("-").map(Number);
+    if (!yr || !mo) return status.usage_period;
+    return new Date(Date.UTC(yr, mo - 1, 1)).toLocaleString("default", {
+      month: "long",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+  })();
+
+  const pct =
+    cap !== null && cap > 0 ? Math.min(100, Math.round((used / cap) * 100)) : 0;
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white p-4">
+      <div className="flex items-baseline justify-between">
+        <div className="text-xs uppercase tracking-wide text-slate-500 font-semibold">
+          Messages this month
+        </div>
+        <div className="text-xs text-slate-500">{periodLabel}</div>
+      </div>
+      <div className="mt-1 text-2xl font-semibold text-slate-900 tabular-nums">
+        {used.toLocaleString()}
+        {cap !== null && (
+          <span className="text-slate-400 text-base font-normal">
+            {" "}
+            / {cap.toLocaleString()}
+          </span>
+        )}
+      </div>
+      {cap !== null ? (
+        <>
+          <div className="mt-3 h-2 rounded-full bg-slate-100 overflow-hidden">
+            <div
+              className={
+                "h-full transition-all " +
+                (pct >= 90
+                  ? "bg-rose-500"
+                  : pct >= 75
+                  ? "bg-amber-500"
+                  : "bg-emerald-500")
+              }
+              style={{ width: `${pct}%` }}
+            />
+          </div>
+          <div className="mt-2 text-xs text-slate-500">
+            {planLabel}
+            {status.remaining !== null &&
+              ` · ${status.remaining.toLocaleString()} remaining`}
+          </div>
+        </>
+      ) : (
+        <div className="mt-2 text-xs text-slate-500">
+          {status.plan_name
+            ? `${planLabel} · no monthly cap configured`
+            : "No plan assigned · usage tracked but uncapped"}
+        </div>
+      )}
+      <div className="mt-2 text-xs text-slate-400">
+        Inbound this month: {status.usage_inbound_count.toLocaleString()}{" "}
+        (not counted against cap)
+      </div>
+    </div>
+  );
+}
 
 function CallingPanel() {
   const [status, setStatus] = useState<CallingStatus | null>(null);

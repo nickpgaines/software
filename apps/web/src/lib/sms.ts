@@ -1,6 +1,7 @@
 import crypto from "node:crypto";
 import { getDb, type Company, type MessagingSettings } from "@/lib/db";
 import { hasPlatformSms, sendPlatformSms } from "@/lib/twilio-platform";
+import { decideSend, recordOutboundMessage } from "@/lib/usage";
 
 export type SmsSendResult =
   | { ok: true; sid: string; status: string }
@@ -85,25 +86,58 @@ export async function getCompanyMessagingStatus(companyId: number): Promise<{
   return { configured: false, fromPhone: null, source: "none" };
 }
 
-// High-level send: prefer the platform-managed Twilio subaccount if the
+// High-level send: prefer the platform-managed Twilio number if the
 // company has been provisioned, otherwise fall back to the company's BYO
-// credentials. Callers should use this instead of sendSms() directly so the
-// BYO escape hatch keeps working for any tenant without a platform number.
+// credentials. Callers should use this instead of sendSms() directly so
+// the BYO escape hatch keeps working for any tenant without a platform
+// number, and so per-tenant usage metering is recorded uniformly.
+//
+// Cap enforcement: before sending, we ask decideSend() whether the
+// company is within their plan's monthly outbound quota. If they are over
+// a hard cap, we refuse the send. Otherwise we send and increment the
+// usage counter on success. With placeholder plans (no caps set) this is
+// effectively a no-op gate.
 export async function sendCompanySms(args: {
   companyId: number;
   to: string;
   body: string;
 }): Promise<SmsSendResult> {
   const { companyId, to, body } = args;
+
+  const decision = await decideSend(companyId);
+  if (!decision.allow) {
+    return {
+      ok: false,
+      error:
+        "You've reached your monthly message limit. Upgrade your plan to keep sending.",
+    };
+  }
+
   const db = await getDb();
   const company = await db
     .prepare("SELECT * FROM company WHERE id = ? LIMIT 1")
     .get<Company>(companyId);
+
+  let result: SmsSendResult;
   if (company && hasPlatformSms(company)) {
-    return sendPlatformSms({ company, to, body });
+    result = await sendPlatformSms({ company, to, body });
+  } else {
+    const settings = await getMessagingSettings(companyId);
+    result = await sendSms({ settings, to, body });
   }
-  const settings = await getMessagingSettings(companyId);
-  return sendSms({ settings, to, body });
+
+  if (result.ok) {
+    try {
+      await recordOutboundMessage(companyId);
+    } catch (e) {
+      // Metering must never block message delivery — log and move on.
+      console.error(
+        `[sms] Failed to record outbound usage for company ${companyId}:`,
+        e
+      );
+    }
+  }
+  return result;
 }
 
 export async function sendSms(args: {
