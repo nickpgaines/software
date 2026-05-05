@@ -316,16 +316,30 @@ type Overview = {
 function OverviewPanel({ qs }: { qs: string }) {
   const [data, setData] = useState<Overview | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [arrMode, setArrMode] = useState<"net" | "gross">("net");
   const [mixMode, setMixMode] = useState<"collected" | "generated">("collected");
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setError(null);
     fetch(`/api/reports/overview?${qs}`)
-      .then((r) => r.json())
-      .then((d: Overview) => {
+      .then(async (r) => {
+        const body = await r.json().catch(() => ({}));
+        if (!r.ok || !body || !body.company_revenue) {
+          throw new Error(
+            (body && (body.error || body.message)) ||
+              `Overview failed (HTTP ${r.status})`,
+          );
+        }
+        return body as Overview;
+      })
+      .then((d) => {
         if (!cancelled) setData(d);
+      })
+      .catch((e: unknown) => {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -335,9 +349,15 @@ function OverviewPanel({ qs }: { qs: string }) {
     };
   }, [qs]);
 
-  if (loading && !data)
+  if (loading && !data && !error)
     return (
       <p className="text-sm text-zinc-500 py-10 text-center">Loading…</p>
+    );
+  if (error)
+    return (
+      <p className="text-sm text-red-400 py-10 text-center font-bold">
+        {error}
+      </p>
     );
   if (!data) return null;
 
