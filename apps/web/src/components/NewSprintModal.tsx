@@ -1,6 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 type View = "sales" | "tech";
 type Duration = "1d" | "1w" | "2w" | "1m" | "custom";
@@ -145,9 +149,10 @@ export default function NewSprintModal({
       >
         <div className="px-6 py-4 border-b border-[#1f1f24] flex items-center justify-between">
           <h3 className="text-xl font-bold text-white">New Sprint</h3>
-          <button
+          <Button
+            variant="ghost"
             onClick={onClose}
-            className="w-8 h-8 rounded-full hover:bg-black text-zinc-400 flex items-center justify-center"
+            className="w-8 h-8 h-auto p-0 rounded-full hover:bg-black text-zinc-400 flex items-center justify-center"
             aria-label="Close"
           >
             <svg
@@ -162,77 +167,78 @@ export default function NewSprintModal({
               <line x1="6" y1="6" x2="18" y2="18" />
               <line x1="18" y1="6" x2="6" y2="18" />
             </svg>
-          </button>
+          </Button>
         </div>
         <div className="px-6 py-5 space-y-5">
           <div>
-            <label className="block text-sm font-extrabold text-white tracking-tight mb-1">
+            <Label className="block text-sm font-extrabold text-white tracking-tight mb-1">
               Sprint Name <span className="text-rose-500">*</span>
-            </label>
-            <input
+            </Label>
+            <Input
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Q1 Sales Competition"
-              className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200"
+              className="w-full border-[#1f1f24] rounded-full px-4 py-2 h-auto text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200"
             />
           </div>
           <div>
-            <label className="block text-sm font-extrabold text-white tracking-tight mb-1">
+            <Label className="block text-sm font-extrabold text-white tracking-tight mb-1">
               Description
-            </label>
-            <textarea
+            </Label>
+            <Textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional description of the sprint…"
               rows={3}
-              className="w-full border border-[#1f1f24] rounded-2xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200"
+              className="w-full border-[#1f1f24] rounded-2xl px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200"
             />
           </div>
           <div>
-            <label className="block text-sm font-extrabold text-white tracking-tight mb-2">
+            <Label className="block text-sm font-extrabold text-white tracking-tight mb-2">
               Sprint Duration <span className="text-rose-500">*</span>
-            </label>
+            </Label>
             <div className="flex flex-wrap items-center gap-1 bg-black border border-[#1f1f24] rounded-full p-1 text-sm w-fit">
               {DURATIONS.map((d) => (
-                <button
+                <Button
                   key={d.key}
+                  variant="ghost"
                   onClick={() => pickDuration(d.key)}
                   className={
-                    "px-3 py-1 rounded-full transition whitespace-nowrap " +
+                    "px-3 py-1 h-auto rounded-full whitespace-nowrap " +
                     (duration === d.key
                       ? "bg-[#0f0f12] text-white shadow-sm"
                       : "text-zinc-400 hover:text-white")
                   }
                 >
                   {d.label}
-                </button>
+                </Button>
               ))}
             </div>
             {duration === "custom" && (
               <div className="grid grid-cols-2 gap-3 mt-3">
                 <div>
-                  <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1">
+                  <Label className="block text-xs font-normal uppercase tracking-wide text-zinc-500 mb-1">
                     Start
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     type="date"
                     value={start}
                     max={end}
                     onChange={(e) => setStart(e.target.value)}
-                    className="w-full border border-[#1f1f24] rounded-full px-3 py-1.5 text-sm"
+                    className="w-full border-[#1f1f24] rounded-full px-3 py-1.5 h-auto text-sm"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1">
+                  <Label className="block text-xs font-normal uppercase tracking-wide text-zinc-500 mb-1">
                     End
-                  </label>
-                  <input
+                  </Label>
+                  <Input
                     type="date"
                     value={end}
                     min={start}
                     onChange={(e) => setEnd(e.target.value)}
-                    className="w-full border border-[#1f1f24] rounded-full px-3 py-1.5 text-sm"
+                    className="w-full border-[#1f1f24] rounded-full px-3 py-1.5 h-auto text-sm"
                   />
                 </div>
               </div>
@@ -245,16 +251,17 @@ export default function NewSprintModal({
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <label className="block text-sm font-extrabold text-white tracking-tight">
+              <Label className="block text-sm font-extrabold text-white tracking-tight">
                 Prizes (Optional)
-              </label>
-              <button
+              </Label>
+              <Button
+                variant="ghost"
                 type="button"
                 onClick={addPrize}
-                className="text-sm bg-sky-100 hover:bg-sky-200 text-sky-700 rounded-full px-3 py-1 inline-flex items-center gap-1"
+                className="text-sm bg-sky-100 hover:bg-sky-200 text-sky-700 rounded-full px-3 py-1 h-auto inline-flex items-center gap-1"
               >
                 <span className="text-base leading-none">+</span> Add Prize
-              </button>
+              </Button>
             </div>
             <div className="space-y-2">
               {prizes.map((p, i) => (
@@ -273,6 +280,7 @@ export default function NewSprintModal({
                   >
                     {p.place}
                   </span>
+                  {/* Native <select> retained — no Select primitive migration in this batch */}
                   <select
                     value={p.place}
                     onChange={(e) =>
@@ -286,21 +294,22 @@ export default function NewSprintModal({
                       </option>
                     ))}
                   </select>
-                  <input
+                  <Input
                     value={p.title}
                     onChange={(e) => updatePrize(i, { title: e.target.value })}
                     placeholder="Prize title (e.g., $500 Bonus)"
-                    className="flex-1 border border-[#1f1f24] rounded-full px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-sky-200"
+                    className="flex-1 border-[#1f1f24] rounded-full px-3 py-1.5 h-auto text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200"
                   />
                   {prizes.length > 1 && (
-                    <button
+                    <Button
+                      variant="ghost"
                       type="button"
                       onClick={() => removePrize(i)}
-                      className="text-zinc-500 hover:text-rose-500 px-1"
+                      className="text-zinc-500 hover:text-rose-500 px-1 h-auto p-0"
                       aria-label="Remove prize"
                     >
                       ×
-                    </button>
+                    </Button>
                   )}
                 </div>
               ))}
@@ -315,20 +324,22 @@ export default function NewSprintModal({
         </div>
 
         <div className="px-6 py-4 border-t border-[#1f1f24] flex justify-end gap-2">
-          <button
+          <Button
+            variant="ghost"
             onClick={onClose}
             disabled={submitting}
-            className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-zinc-300"
+            className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 h-auto text-zinc-300"
           >
             Cancel
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             onClick={submit}
             disabled={submitting || !name.trim()}
-            className="text-sm bg-sky-500 hover:bg-sky-600 disabled:bg-sky-200 text-white rounded-full px-4 py-2"
+            className="text-sm bg-sky-500 hover:bg-sky-600 disabled:bg-sky-200 text-white rounded-full px-4 py-2 h-auto"
           >
             {submitting ? "Creating…" : "Create Sprint"}
-          </button>
+          </Button>
         </div>
       </div>
     </div>
