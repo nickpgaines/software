@@ -2,6 +2,9 @@
 
 import { APIProvider, useMapsLibrary } from "@vis.gl/react-google-maps";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 const BIAS_CENTER = { lat: 32.7765, lng: -79.9311 };
@@ -137,7 +140,7 @@ function AddressFieldsInner({
     <div ref={containerRef} className="space-y-3">
       <Field show={label} label="Address" required>
         <div className="relative">
-          <input
+          <Input
             type="text"
             value={value.address_line1}
             onChange={(e) =>
@@ -165,7 +168,7 @@ function AddressFieldsInner({
             placeholder="Start typing an address…"
             className={
               inputClassName ||
-              "w-full border border-[#2a2a32] rounded px-3 py-2 text-sm"
+              "w-full h-auto border-[#2a2a32] rounded px-3 py-2 text-sm"
             }
             autoComplete="off"
             required
@@ -179,27 +182,28 @@ function AddressFieldsInner({
             <ul className="absolute z-30 left-0 right-0 mt-1 bg-[#0f0f12] border border-[#1f1f24] rounded-lg shadow-lg overflow-hidden max-h-64 overflow-y-auto">
               {predictions.map((p, i) => (
                 <li key={p.id}>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
                     onMouseDown={(e) => {
                       e.preventDefault();
                       pick(p);
                     }}
                     onMouseEnter={() => setHighlight(i)}
                     className={
-                      "w-full text-left px-3 py-2 text-sm " +
+                      "w-full h-auto justify-start flex-col items-start gap-0 text-left whitespace-normal px-3 py-2 text-sm rounded-none " +
                       (i === highlight
                         ? "bg-black text-white"
                         : "text-zinc-300 hover:bg-black")
                     }
                   >
-                    <div className="font-bold truncate">{p.mainText}</div>
+                    <div className="font-bold truncate w-full">{p.mainText}</div>
                     {p.secondaryText && (
-                      <div className="text-xs text-zinc-400 truncate">
+                      <div className="text-xs text-zinc-400 truncate w-full font-normal">
                         {p.secondaryText}
                       </div>
                     )}
-                  </button>
+                  </Button>
                 </li>
               ))}
             </ul>
@@ -236,12 +240,12 @@ function ManualFields({
 }) {
   const cls =
     inputClassName ||
-    "w-full border border-[#2a2a32] rounded px-3 py-2 text-sm";
+    "w-full h-auto border-[#2a2a32] rounded px-3 py-2 text-sm";
   return (
     <>
       {!skipLine1 && (
         <Field show={label} label="Address">
-          <input
+          <Input
             type="text"
             value={value.address_line1}
             onChange={(e) =>
@@ -265,7 +269,7 @@ function ManualFields({
       )}
       <div className="grid grid-cols-2 gap-3">
         <Field show={label} label="Unit">
-          <input
+          <Input
             type="text"
             value={value.unit}
             onChange={(e) =>
@@ -281,7 +285,7 @@ function ManualFields({
           />
         </Field>
         <Field show={label} label="Zip">
-          <input
+          <Input
             type="text"
             value={value.zip}
             onChange={(e) =>
@@ -295,7 +299,7 @@ function ManualFields({
       </div>
       <div className="grid grid-cols-[1fr_80px] gap-3">
         <Field show={label} label="City">
-          <input
+          <Input
             type="text"
             value={value.city}
             onChange={(e) =>
@@ -306,7 +310,7 @@ function ManualFields({
           />
         </Field>
         <Field show={label} label="State">
-          <input
+          <Input
             type="text"
             value={value.state}
             onChange={(e) =>
@@ -340,10 +344,10 @@ function Field({
   if (!show) return <>{children}</>;
   return (
     <div>
-      <label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
+      <Label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
         {label}
         {required && <span className="text-red-500 ml-0.5">*</span>}
-      </label>
+      </Label>
       {children}
     </div>
   );
