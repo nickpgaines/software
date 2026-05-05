@@ -2,10 +2,169 @@
 @tailwind components;
 @tailwind utilities;
 
+/* =============================================================================
+   Design tokens — single source of truth.
+   Tailwind theme extensions in tailwind.config.ts reference these vars; the
+   PULSE TypeScript object in components/pulse/theme.ts also references them
+   via var(--…) strings. To change a value, change it ONCE here.
+   See /DESIGN_SYSTEM.md for the canonical role of each token.
+   ============================================================================= */
+
+:root {
+  /* Surfaces ---------------------------------------------------------------- */
+  --color-canvas: #000000;        /* page bg */
+  --color-elevated: #0a0a0a;      /* secondary surfaces (search button, schedule rows, range pill track) */
+  --color-card: #0f0f12;          /* card surface */
+  --color-divider: #18181b;       /* sidebar dividers */
+  --color-line: #1f1f24;          /* default border */
+  --color-line-strong: #2a2a32;   /* input borders, profile chip */
+
+  /* Foreground (text) ------------------------------------------------------- */
+  --color-fg: #ffffff;            /* primary text */
+  --color-fg-muted: #a1a1aa;      /* zinc-400 */
+  --color-fg-subtle: #71717a;     /* zinc-500 — labels, hints */
+  --color-fg-dim: #52525b;        /* zinc-600 — placeholders, axis labels */
+
+  /* Accents ----------------------------------------------------------------- */
+  --color-violet: #8b5cf6;
+  --color-violet-soft: #a78bfa;
+  --color-violet-glow: rgba(139, 92, 246, 0.35);
+  --color-green: #22c55e;
+  --color-red: #ef4444;
+  --color-cyan: #22d3ee;
+
+  /* Layout ------------------------------------------------------------------ */
+  --layout-sidebar-width: 15rem;   /* 240px */
+  --layout-app-max-width: 1440px;
+
+  /* Font family ------------------------------------------------------------- */
+  --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
+    "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+
+  /* Shadows ----------------------------------------------------------------- */
+  --shadow-glow-violet: 0 0 16px rgba(139, 92, 246, 0.35);
+  --shadow-glow-violet-sm: 0 0 12px rgba(139, 92, 246, 0.35);
+  --shadow-glow-green: 0 0 8px #22c55e;
+  --shadow-menu: 0 12px 28px -8px rgba(0, 0, 0, 0.5);
+  --shadow-tooltip: 0 8px 24px -8px rgba(0, 0, 0, 0.6);
+}
+
+/* =============================================================================
+   shadcn/ui bridge variables.
+   shadcn/ui's CLI generates components that reference a fixed set of CSS
+   variable names (--background, --foreground, --card, etc.). Those names
+   differ from our Pulse token names (--color-canvas, --color-fg, --color-card),
+   so without this bridge, generated components would fall back to `unset`
+   and render broken.
+
+   This block re-exports our Pulse tokens under the names shadcn expects,
+   keeping the --color-* tokens above as the single source of truth — change
+   a Pulse token and every shadcn component automatically picks it up.
+
+   Note on HSL: shadcn's CLI by default generates Tailwind colors wrapped
+   as `hsl(var(--background))`. Our tokens are full color values, not HSL
+   channels, so the first time we generate a shadcn component we'll also
+   need to update the auto-added Tailwind entries from
+   `hsl(var(--background))` → `var(--background)` (drop the hsl wrapper).
+   ============================================================================= */
+:root {
+  --background: var(--color-canvas);
+  --foreground: var(--color-fg);
+
+  --card: var(--color-card);
+  --card-foreground: var(--color-fg);
+
+  --popover: var(--color-card);
+  --popover-foreground: var(--color-fg);
+
+  --primary: var(--color-violet);
+  --primary-foreground: var(--color-fg);
+
+  --secondary: var(--color-elevated);
+  --secondary-foreground: var(--color-fg);
+
+  --muted: var(--color-line);
+  --muted-foreground: var(--color-fg-muted);
+
+  --accent: var(--color-line-strong);
+  --accent-foreground: var(--color-fg);
+
+  --destructive: var(--color-red);
+  --destructive-foreground: var(--color-fg);
+
+  --border: var(--color-line);
+  --input: var(--color-line-strong);
+  --ring: var(--color-violet);
+
+  --radius: 1rem;
+}
+
 html, body {
   height: 100%;
 }
 
+/* Pulse dark canvas applied at the document root so the browser's
+   overscroll/bounce area (above the top, below the bottom) shows the
+   same color as the dashboard instead of the default white. */
+html {
+  background-color: var(--color-canvas);
+}
+
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  background-color: var(--color-canvas);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Form-control defaults. Any text-y input/textarea/select that doesn't
+   set its own bg via a Tailwind utility class gets the dark Pulse styling
+   forced. The :not([class*="bg-"]) selector skips inputs that opt-in to
+   a custom background. The !important wins against Tailwind's text-* /
+   border-* utilities that don't touch bg-color, and against browser
+   user-agent default styles that paint inputs white in light mode. */
+input:not([class*="bg-"]):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="reset"]):not([type="button"]):not([type="file"]),
+textarea:not([class*="bg-"]),
+select:not([class*="bg-"]) {
+  background-color: var(--color-canvas) !important;
+  color: var(--color-fg);
+  color-scheme: dark;
+}
+
+input:not([class*="text-"]):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="reset"]):not([type="button"]):not([type="file"]),
+textarea:not([class*="text-"]),
+select:not([class*="text-"]) {
+  color: var(--color-fg);
+  color-scheme: dark;
+}
+
+input:not([class*="font-"]):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="reset"]):not([type="button"]):not([type="file"]),
+textarea:not([class*="font-"]),
+select:not([class*="font-"]) {
+  font-weight: 700;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--color-fg-dim);
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active,
+textarea:-webkit-autofill,
+textarea:-webkit-autofill:hover,
+textarea:-webkit-autofill:focus,
+textarea:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--color-canvas) inset !important;
+  -webkit-text-fill-color: var(--color-fg) !important;
+  caret-color: var(--color-fg) !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--color-violet);
 }

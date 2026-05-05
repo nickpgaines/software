@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { APIProvider, Map, Marker } from "@vis.gl/react-google-maps";
+import { Button } from "@/components/ui/button";
 
 const KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
@@ -139,63 +140,64 @@ export default function CustomerCard({
       : preferredAddress;
 
   return (
-    <div className="border border-slate-200 rounded-2xl bg-white overflow-hidden">
+    <div className="border border-[#1f1f24] rounded-2xl bg-[#0f0f12] overflow-hidden">
       <div className="grid grid-cols-1 md:grid-cols-[1fr_320px]">
         <div className="p-5 space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h3 className="text-xl font-semibold text-slate-900 truncate">
+              <h3 className="text-[40px] font-extrabold tracking-tight leading-none text-white truncate">
                 {customer.name || "Customer"}
               </h3>
             </div>
-            <button
+            <Button
+              variant="ghost"
               type="button"
               onClick={onRemove}
-              className="text-xs text-slate-500 hover:text-rose-600 border border-slate-200 hover:border-rose-200 rounded-full px-3 py-1.5 whitespace-nowrap"
+              className="h-auto p-0 text-xs text-zinc-400 hover:text-rose-600 border border-[#1f1f24] hover:border-rose-200 rounded-full px-3 py-1.5 whitespace-nowrap"
               aria-label="Remove selected customer"
             >
               Remove
-            </button>
+            </Button>
           </div>
 
           <dl className="space-y-2.5 text-sm">
             <Row label="Address">
               {displayedAddress ? (
-                <span className="text-slate-700 break-words">
+                <span className="text-zinc-300 break-words">
                   {displayedAddress}
                 </span>
               ) : (
-                <span className="text-slate-400">—</span>
+                <span className="text-zinc-500">—</span>
               )}
             </Row>
             <Row label="Phone">
               {customer.phone ? (
                 <a
                   href={`tel:${customer.phone}`}
-                  className="text-slate-700 hover:text-slate-900 hover:underline"
+                  className="text-zinc-300 hover:text-white hover:underline"
                 >
                   {formatPhone(customer.phone)}
                 </a>
               ) : (
-                <span className="text-slate-400">—</span>
+                <span className="text-zinc-500">—</span>
               )}
             </Row>
             <Row label="Email">
               {customer.email ? (
                 <a
                   href={`mailto:${customer.email}`}
-                  className="text-slate-700 hover:text-slate-900 hover:underline break-all"
+                  className="text-zinc-300 hover:text-white hover:underline break-all"
                 >
                   {customer.email}
                 </a>
               ) : (
-                <span className="text-slate-400">—</span>
+                <span className="text-zinc-500">—</span>
               )}
             </Row>
           </dl>
         </div>
 
-        <div className="bg-slate-100 md:border-l border-slate-200 min-h-[220px]">
+        <div className="bg-black md:border-l border-[#1f1f24] min-h-[220px]">
           {geo.status === "ok" ? (
             <CustomerMap lat={geo.lat} lng={geo.lng} />
           ) : (
@@ -221,7 +223,7 @@ function Row({
 }) {
   return (
     <div className="grid grid-cols-[80px_1fr] gap-2">
-      <dt className="text-xs uppercase tracking-wide text-slate-400 pt-0.5">
+      <dt className="text-xs uppercase tracking-wide text-zinc-500 pt-0.5">
         {label}
       </dt>
       <dd className="min-w-0">{children}</dd>
@@ -260,7 +262,7 @@ function MapPlaceholder({
   message: string;
 }) {
   return (
-    <div className="w-full h-full min-h-[220px] flex items-center justify-center px-4 py-8 text-sm text-slate-500 text-center">
+    <div className="w-full h-full min-h-[220px] flex items-center justify-center px-4 py-8 text-sm text-zinc-400 font-bold text-center">
       {status === "loading" ? (
         <span>Looking up address…</span>
       ) : (

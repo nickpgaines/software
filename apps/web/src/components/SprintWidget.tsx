@@ -59,7 +59,7 @@ function useCountdown(endIso: string) {
 
 function placeColor(place: number) {
   if (place === 1) return "bg-gradient-to-br from-amber-300 to-amber-500 ring-amber-200";
-  if (place === 2) return "bg-gradient-to-br from-slate-300 to-slate-500 ring-slate-200";
+  if (place === 2) return "bg-gradient-to-br from-slate-300 to-slate-500 ring-[#1f1f24]";
   if (place === 3) return "bg-gradient-to-br from-orange-300 to-orange-500 ring-orange-200";
   return "bg-gradient-to-br from-slate-200 to-slate-400 ring-slate-100";
 }
@@ -92,12 +92,12 @@ export default function SprintWidget({
   for (const p of sprint.prizes) prizesByPlace.set(p.place, p.title);
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5">
+    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm p-5">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
-          <h3 className="text-xl font-bold text-slate-900">{sprint.name}</h3>
+          <h3 className="text-xl font-bold text-white">{sprint.name}</h3>
           {sprint.description && (
-            <p className="text-sm text-slate-500 mt-0.5">{sprint.description}</p>
+            <p className="text-sm text-zinc-400 mt-2 font-bold">{sprint.description}</p>
           )}
           <div className="flex items-center gap-2 mt-2 text-sm">
             <span className="inline-flex items-center gap-1 text-sky-600">
@@ -162,7 +162,7 @@ export default function SprintWidget({
       </div>
 
       {top.length === 0 ? (
-        <div className="text-center text-sm text-slate-400 py-6">
+        <div className="text-center text-sm text-zinc-500 py-6">
           No standings yet — sales in this window will show up here.
         </div>
       ) : (
@@ -178,17 +178,17 @@ export default function SprintWidget({
                 }
               >
                 <div className="flex items-center justify-between mb-3">
-                  <span className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center font-bold">
+                  <span className="w-8 h-8 rounded-full bg-[#0f0f12]/30 flex items-center justify-center font-bold">
                     {place}
                   </span>
                   {prize && (
-                    <span className="text-xs bg-white/30 rounded-full px-2 py-0.5 font-semibold">
+                    <span className="text-xs bg-[#0f0f12]/30 rounded-full px-2 py-0.5 font-semibold">
                       {prize}
                     </span>
                   )}
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-white/30 flex items-center justify-center font-semibold overflow-hidden">
+                  <div className="w-10 h-10 rounded-full bg-[#0f0f12]/30 flex items-center justify-center font-semibold overflow-hidden">
                     {s.photo_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img

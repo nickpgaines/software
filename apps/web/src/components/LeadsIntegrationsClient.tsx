@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 type PageRow = {
   id: number;
@@ -101,8 +102,8 @@ export default function LeadsIntegrationsClient({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-slate-900">Integrations</h2>
-        <p className="text-sm text-slate-500">Connect Meta and other lead sources</p>
+        <h2 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Integrations</h2>
+        <p className="text-sm text-zinc-400 font-bold">Connect Meta and other lead sources</p>
       </div>
 
       {banner && (
@@ -118,14 +119,14 @@ export default function LeadsIntegrationsClient({
         </div>
       )}
 
-      <div className="border border-slate-200 rounded-2xl overflow-hidden">
+      <div className="border border-[#1f1f24] rounded-2xl overflow-hidden">
         <div className="p-6 flex items-start gap-5">
           <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
             <MetaLogo />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="text-2xl font-bold text-slate-900">
+              <h3 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
                 Meta Lead Ads
               </h3>
               <span
@@ -133,18 +134,18 @@ export default function LeadsIntegrationsClient({
                   "text-xs px-2 py-0.5 rounded-full " +
                   (connected
                     ? "bg-emerald-50 text-emerald-700"
-                    : "bg-slate-100 text-slate-600")
+                    : "bg-black text-zinc-400")
                 }
               >
                 {connected ? "Connected" : "Not connected"}
               </span>
             </div>
-            <p className="text-sm text-slate-600 mt-2 max-w-xl">
+            <p className="text-sm text-zinc-400 mt-3 font-bold max-w-xl">
               Pipe Meta Lead Ads straight into your pipeline. Authorize once,
               pick the pages you want, and new leads show up automatically.
             </p>
             {connected && (userName || connectedAt) && (
-              <p className="text-xs text-slate-500 mt-2">
+              <p className="text-xs text-zinc-400 mt-2">
                 {userName ? `Authorized as ${userName}` : null}
                 {userName && connectedAt ? " · " : ""}
                 {connectedAt
@@ -155,56 +156,59 @@ export default function LeadsIntegrationsClient({
           </div>
           <div className="shrink-0">
             {connected ? (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={disconnect}
                 disabled={busy}
-                className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-sm font-medium px-5 py-2.5 rounded-lg"
+                className="h-auto bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold px-5 py-2.5 rounded-lg"
               >
                 Disconnect
-              </button>
+              </Button>
             ) : (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={connect}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg"
+                className="h-auto bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg"
               >
                 Connect Meta
-              </button>
+              </Button>
             )}
           </div>
         </div>
 
-        <div className="border-t border-slate-200 p-6">
+        <div className="border-t border-[#1f1f24] p-6">
           <div className="flex items-start justify-between gap-4 mb-4">
             <div>
-              <h4 className="font-semibold text-slate-900">Connected pages</h4>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <h4 className="font-extrabold text-white tracking-tight">Connected pages</h4>
+              <p className="text-xs text-zinc-400 mt-0.5">
                 Leads from these pages flow into your pipeline.
               </p>
             </div>
             {connected && (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={refreshPages}
                 disabled={busy}
-                className="inline-flex items-center gap-1.5 text-xs text-slate-600 hover:text-slate-900 border border-slate-200 px-3 py-1.5 rounded-full disabled:opacity-50"
+                className="h-auto gap-1.5 text-xs text-zinc-400 hover:text-white hover:bg-transparent border border-[#1f1f24] px-3 py-1.5 rounded-full font-bold"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 Refresh pages
-              </button>
+              </Button>
             )}
           </div>
 
           {pages.length === 0 ? (
-            <div className="border border-dashed border-slate-200 rounded-xl p-12 flex flex-col items-center text-center">
+            <div className="border border-dashed border-[#1f1f24] rounded-xl p-12 flex flex-col items-center text-center">
               <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
                 <MetaLogo />
               </div>
-              <p className="mt-3 font-semibold text-slate-900">
+              <p className="mt-3 font-extrabold text-white tracking-tight">
                 No pages connected yet
               </p>
-              <p className="text-sm text-slate-500 mt-1">
+              <p className="text-sm text-zinc-400 mt-3 font-bold">
                 Authorize Meta above to pick the pages you want to receive leads
                 from.
               </p>
@@ -214,33 +218,34 @@ export default function LeadsIntegrationsClient({
               {pages.map((p) => (
                 <div
                   key={p.id}
-                  className="border border-slate-200 rounded-lg p-3 flex items-center justify-between gap-3"
+                  className="border border-[#1f1f24] rounded-lg p-3 flex items-center justify-between gap-3"
                 >
                   <div className="min-w-0">
-                    <div className="font-medium text-slate-900 truncate">
+                    <div className="font-bold text-white tracking-tight truncate">
                       {p.page_name}
                     </div>
-                    <div className="text-xs text-slate-500 truncate">
+                    <div className="text-xs text-zinc-400 truncate">
                       Page ID: {p.page_id}
                     </div>
                   </div>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
                     role="switch"
                     aria-checked={p.enabled}
                     onClick={() => togglePage(p.id, !p.enabled)}
                     className={
-                      "relative w-10 h-6 rounded-full shrink-0 transition-colors " +
-                      (p.enabled ? "bg-emerald-500" : "bg-slate-300")
+                      "relative w-10 h-6 p-0 rounded-full shrink-0 hover:bg-current " +
+                      (p.enabled ? "bg-emerald-500 hover:bg-emerald-500" : "bg-[#2a2a32] hover:bg-[#2a2a32]")
                     }
                   >
                     <span
                       className={
-                        "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform " +
+                        "absolute top-0.5 left-0.5 w-5 h-5 bg-[#0f0f12] rounded-full shadow transition-transform " +
                         (p.enabled ? "translate-x-4" : "")
                       }
                     />
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>
@@ -249,12 +254,12 @@ export default function LeadsIntegrationsClient({
       </div>
 
       {!configured && (
-        <div className="text-xs text-slate-500">
+        <div className="text-xs text-zinc-400">
           Heads up: Meta credentials aren&rsquo;t set on the server. Add{" "}
-          <code className="bg-slate-100 px-1 rounded">META_APP_ID</code>,{" "}
-          <code className="bg-slate-100 px-1 rounded">META_APP_SECRET</code>,{" "}
+          <code className="bg-black px-1 rounded">META_APP_ID</code>,{" "}
+          <code className="bg-black px-1 rounded">META_APP_SECRET</code>,{" "}
           and{" "}
-          <code className="bg-slate-100 px-1 rounded">
+          <code className="bg-black px-1 rounded">
             META_WEBHOOK_VERIFY_TOKEN
           </code>{" "}
           to enable the connect flow.

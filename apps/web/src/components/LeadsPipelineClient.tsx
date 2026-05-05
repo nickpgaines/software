@@ -3,6 +3,17 @@
 import { useMemo, useState } from "react";
 import { Search, Filter, LayoutGrid, List, Settings, Plus, Sparkles } from "lucide-react";
 import type { Lead, LeadStage } from "@/lib/db";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const STAGES: { key: LeadStage; label: string; accent: string; text: string }[] = [
   { key: "new", label: "NEW", accent: "bg-blue-500", text: "text-blue-600" },
@@ -99,86 +110,91 @@ export default function LeadsPipelineClient({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-slate-900">Pipeline</h2>
-        <p className="text-sm text-slate-500">
+        <h2 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Pipeline</h2>
+        <p className="text-sm text-zinc-400 font-bold">
           Track and move leads through the sales pipeline
         </p>
       </div>
 
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 z-10" />
+          <Input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by name, email, phone, or address..."
-            className="w-full bg-white border border-slate-200 rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+            className="w-full h-auto bg-[#0f0f12] border-[#1f1f24] rounded-lg pl-10 pr-4 py-2.5 text-sm focus-visible:ring-[#2a2a32]"
           />
         </div>
-        <button
+        <Button
           type="button"
-          className="p-2.5 rounded-lg border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+          variant="ghost"
+          className="h-auto p-2.5 rounded-lg border border-[#1f1f24] text-zinc-400 hover:text-white hover:bg-black"
         >
           <Filter className="w-4 h-4" />
-        </button>
+        </Button>
       </div>
 
       <div className="flex items-center justify-between">
-        <div className="inline-flex border border-slate-200 rounded-lg overflow-hidden bg-white">
-          <button
+        <div className="inline-flex border border-[#1f1f24] rounded-lg overflow-hidden bg-[#0f0f12]">
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => setView("board")}
             className={
-              "px-3 py-2 " +
+              "h-auto rounded-none px-3 py-2 hover:bg-transparent " +
               (view === "board"
                 ? "text-sky-500"
-                : "text-slate-400 hover:text-slate-700")
+                : "text-zinc-500 hover:text-zinc-300")
             }
             aria-label="Board view"
           >
             <LayoutGrid className="w-4 h-4" />
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => setView("list")}
             className={
-              "px-3 py-2 border-l border-slate-200 " +
+              "h-auto rounded-none px-3 py-2 border-l border-[#1f1f24] hover:bg-transparent " +
               (view === "list"
                 ? "text-sky-500"
-                : "text-slate-400 hover:text-slate-700")
+                : "text-zinc-500 hover:text-zinc-300")
             }
             aria-label="List view"
           >
             <List className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
         <div className="flex items-center gap-2">
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => setShowNew(true)}
-            className="inline-flex items-center gap-1.5 bg-sky-400 hover:bg-sky-500 text-white text-sm font-medium px-4 py-2 rounded-full"
+            className="h-auto gap-1.5 bg-sky-400 hover:bg-sky-500 text-white text-sm font-bold px-4 py-2 rounded-full"
           >
             <Plus className="w-4 h-4" />
             New Lead
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="p-2 rounded-full border border-slate-200 text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+            variant="ghost"
+            className="h-auto p-2 rounded-full border border-[#1f1f24] text-zinc-400 hover:text-white hover:bg-black"
           >
             <Settings className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
       </div>
 
       <div>
-        <div className="inline-flex bg-white border border-sky-200 text-sky-600 px-4 py-1 rounded-full text-sm font-medium">
+        <div className="inline-flex bg-[#0f0f12] border border-sky-200 text-sky-600 px-4 py-1 rounded-full text-sm font-bold">
           Leads
         </div>
       </div>
 
       {view === "board" ? (
-        <div className="border border-slate-200 rounded-2xl p-4 overflow-x-auto">
+        <div className="border border-[#1f1f24] rounded-2xl p-4 overflow-x-auto">
           <div className="grid gap-4 min-w-[900px] grid-cols-4">
             {STAGES.map((s) => {
               const stageLeads = filtered.filter((l) => l.stage === s.key);
@@ -196,7 +212,7 @@ export default function LeadsPipelineClient({
                   }}
                   className="flex flex-col gap-3"
                 >
-                  <div className="rounded-xl border border-slate-200 bg-white p-4">
+                  <div className="rounded-xl border border-[#1f1f24] bg-[#0f0f12] p-4">
                     <div className="flex items-start gap-3">
                       <span
                         className={`w-1 h-8 rounded-full ${s.accent} shrink-0`}
@@ -205,22 +221,22 @@ export default function LeadsPipelineClient({
                         <div className={`text-xs font-semibold ${s.text}`}>
                           {s.label}
                         </div>
-                        <div className="text-xs text-slate-500">
+                        <div className="text-xs text-zinc-400">
                           {stageLeads.length === 0 ? "Empty" : ""}
                         </div>
                       </div>
-                      <div className="text-slate-400 font-medium">
+                      <div className="text-zinc-500 font-bold">
                         {stageLeads.length}
                       </div>
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-dashed border-slate-200 p-3 min-h-[200px]">
+                  <div className="rounded-xl border border-dashed border-[#1f1f24] p-3 min-h-[200px]">
                     {stageLeads.length === 0 ? (
                       s.key === "new" ? (
                         <EmptyNewHint />
                       ) : (
-                        <p className="text-xs text-slate-400 px-2 py-1">
+                        <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 px-2 py-1">
                           No leads in this stage.
                         </p>
                       )
@@ -245,7 +261,7 @@ export default function LeadsPipelineClient({
               );
             })}
           </div>
-          <div className="flex items-center justify-between text-xs text-slate-500 mt-4 pt-3 border-t border-slate-100">
+          <div className="flex items-center justify-between text-xs text-zinc-400 mt-4 pt-3 border-t border-[#1f1f24]">
             <span>{filtered.length} total leads</span>
             <span>
               Each lane loads 50 at a time. Scroll within a lane and click
@@ -277,8 +293,8 @@ function EmptyNewHint() {
         <Sparkles className="w-4 h-4" />
       </div>
       <div>
-        <p className="font-semibold text-slate-900 text-sm">No leads yet</p>
-        <p className="text-xs text-slate-500 mt-0.5">
+        <p className="font-extrabold text-white tracking-tight text-sm">No leads yet</p>
+        <p className="text-xs text-zinc-400 mt-0.5">
           Publish your web form and new leads will land here first.
         </p>
       </div>
@@ -303,21 +319,21 @@ function LeadCard({
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
       className={
-        "rounded-lg border border-slate-200 bg-white p-3 cursor-grab active:cursor-grabbing " +
+        "rounded-lg border border-[#1f1f24] bg-[#0f0f12] p-3 cursor-grab active:cursor-grabbing " +
         (isDragging ? "opacity-50" : "")
       }
     >
-      <div className="font-medium text-sm text-slate-900 truncate">
+      <div className="font-medium text-sm text-white truncate">
         {leadName(lead)}
       </div>
       {lead.email && (
-        <div className="text-xs text-slate-500 truncate">{lead.email}</div>
+        <div className="text-xs text-zinc-400 truncate">{lead.email}</div>
       )}
       {lead.phone && (
-        <div className="text-xs text-slate-500 truncate">{lead.phone}</div>
+        <div className="text-xs text-zinc-400 truncate">{lead.phone}</div>
       )}
       {lead.source_page_name && (
-        <div className="text-[10px] uppercase tracking-wide text-slate-400 mt-2">
+        <div className="text-[10px] uppercase tracking-wide text-zinc-500 mt-2">
           {lead.source_page_name}
         </div>
       )}
@@ -328,43 +344,43 @@ function LeadCard({
 function ListView({ leads }: { leads: Lead[] }) {
   if (leads.length === 0) {
     return (
-      <div className="border border-dashed border-slate-200 rounded-2xl p-12 text-center text-sm text-slate-500">
+      <div className="border border-dashed border-[#1f1f24] rounded-2xl p-12 text-center text-sm text-zinc-400 font-bold">
         No leads match your filters.
       </div>
     );
   }
   return (
-    <div className="border border-slate-200 rounded-2xl overflow-hidden">
-      <table className="w-full text-sm">
-        <thead className="bg-slate-50 text-xs uppercase text-slate-500">
-          <tr>
-            <th className="text-left px-4 py-3">Name</th>
-            <th className="text-left px-4 py-3">Email</th>
-            <th className="text-left px-4 py-3">Phone</th>
-            <th className="text-left px-4 py-3">Stage</th>
-            <th className="text-left px-4 py-3">Source</th>
-            <th className="text-left px-4 py-3">Created</th>
-          </tr>
-        </thead>
-        <tbody>
+    <div className="border border-[#1f1f24] rounded-2xl overflow-hidden">
+      <Table>
+        <TableHeader className="bg-black text-xs uppercase text-zinc-400">
+          <TableRow className="border-0 hover:bg-transparent">
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Name</TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Email</TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Phone</TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Stage</TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Source</TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Created</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {leads.map((l) => (
-            <tr key={l.id} className="border-t border-slate-100">
-              <td className="px-4 py-3 text-slate-900 font-medium">
+            <TableRow key={l.id} className="border-t border-b-0 border-[#1f1f24] hover:bg-transparent">
+              <TableCell className="px-4 py-3 text-white font-bold">
                 {leadName(l)}
-              </td>
-              <td className="px-4 py-3 text-slate-600">{l.email ?? "—"}</td>
-              <td className="px-4 py-3 text-slate-600">{l.phone ?? "—"}</td>
-              <td className="px-4 py-3 text-slate-600">{l.stage}</td>
-              <td className="px-4 py-3 text-slate-600">
+              </TableCell>
+              <TableCell className="px-4 py-3 text-zinc-400">{l.email ?? "—"}</TableCell>
+              <TableCell className="px-4 py-3 text-zinc-400">{l.phone ?? "—"}</TableCell>
+              <TableCell className="px-4 py-3 text-zinc-400">{l.stage}</TableCell>
+              <TableCell className="px-4 py-3 text-zinc-400">
                 {l.source_page_name || l.source}
-              </td>
-              <td className="px-4 py-3 text-slate-500 text-xs">
+              </TableCell>
+              <TableCell className="px-4 py-3 text-zinc-400 text-xs">
                 {new Date(l.created_at).toLocaleDateString()}
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }
@@ -411,54 +427,50 @@ function NewLeadDialog({
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl p-6 w-full max-w-md"
+        className="bg-[#0f0f12] rounded-2xl p-6 w-full max-w-md"
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="text-lg font-semibold text-slate-900 mb-4">New lead</h3>
+        <h3 className="text-lg font-extrabold text-white tracking-tight mb-4">New lead</h3>
         <form onSubmit={submit} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <Field label="First name">
-              <input
+              <Input
                 value={first}
                 onChange={(e) => setFirst(e.target.value)}
-                className="input"
               />
             </Field>
             <Field label="Last name">
-              <input
+              <Input
                 value={last}
                 onChange={(e) => setLast(e.target.value)}
-                className="input"
               />
             </Field>
           </div>
           <Field label="Email">
-            <input
+            <Input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="input"
             />
           </Field>
           <Field label="Phone">
-            <input
+            <Input
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="input"
             />
           </Field>
           <Field label="Address">
-            <input
+            <Input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              className="input"
             />
           </Field>
           <Field label="Stage">
+            {/* Native <select> kept: deferred Select migration (see Batch 5 flag). */}
             <select
               value={stage}
               onChange={(e) => setStage(e.target.value as LeadStage)}
-              className="input"
+              className="block w-full rounded-lg border border-line-strong bg-canvas px-3 py-2 text-sm"
             >
               {STAGES.map((s) => (
                 <option key={s.key} value={s.key}>
@@ -469,37 +481,24 @@ function NewLeadDialog({
           </Field>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex justify-end gap-2 pt-2">
-            <button
+            <Button
               type="button"
+              variant="ghost"
               onClick={onClose}
-              className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900"
+              className="h-auto px-4 py-2 text-sm text-zinc-400 font-bold hover:text-white hover:bg-transparent"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
+              variant="ghost"
               disabled={submitting}
-              className="px-4 py-2 text-sm bg-sky-400 hover:bg-sky-500 text-white rounded-full disabled:opacity-50"
+              className="h-auto px-4 py-2 text-sm bg-sky-400 hover:bg-sky-500 text-white rounded-full font-bold"
             >
               {submitting ? "Saving…" : "Create"}
-            </button>
+            </Button>
           </div>
         </form>
-        <style jsx>{`
-          .input {
-            display: block;
-            width: 100%;
-            border: 1px solid rgb(226 232 240);
-            border-radius: 0.5rem;
-            padding: 0.5rem 0.75rem;
-            font-size: 0.875rem;
-          }
-          .input:focus {
-            outline: none;
-            border-color: rgb(148 163 184);
-            box-shadow: 0 0 0 2px rgb(203 213 225);
-          }
-        `}</style>
       </div>
     </div>
   );
@@ -513,11 +512,11 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block text-sm">
-      <span className="text-xs font-medium text-slate-600 mb-1 block">
+    <Label className="block text-sm font-normal">
+      <span className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2 block">
         {label}
       </span>
       {children}
-    </label>
+    </Label>
   );
 }

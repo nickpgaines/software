@@ -2,6 +2,11 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 type Tab =
   | "profile"
@@ -60,29 +65,30 @@ function SettingsTabsInner({ username }: { username: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="border-b border-slate-200">
+      <div className="border-b border-[#1f1f24]">
         <nav className="-mb-px flex gap-6 overflow-x-auto">
           {TABS.map((t) => {
             const active = tab === t.key;
             return (
-              <button
+              <Button
                 key={t.key}
+                variant="ghost"
                 onClick={() => changeTab(t.key)}
                 className={
-                  "whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-medium transition " +
+                  "h-auto rounded-none whitespace-nowrap border-b-2 px-1 pb-3 text-sm font-bold hover:bg-transparent " +
                   (active
-                    ? "border-slate-900 text-slate-900"
-                    : "border-transparent text-slate-500 hover:text-slate-700")
+                    ? "border-slate-900 text-white"
+                    : "border-transparent text-zinc-400 hover:text-zinc-300")
                 }
               >
                 {t.label}
-              </button>
+              </Button>
             );
           })}
         </nav>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-2xl p-5 sm:p-6 shadow-sm">
+      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5 sm:p-6 shadow-sm">
         {tab === "profile" && <ProfilePanel username={username} />}
         {tab === "company" && <CompanyPanel />}
         {tab === "payments" && <PaymentsPanel />}
@@ -232,18 +238,18 @@ function ProfilePanel({ username }: { username: string }) {
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">Profile</h2>
-        <p className="text-sm text-slate-500 mt-1">
+        <h2 className="text-lg font-extrabold text-white tracking-tight">Profile</h2>
+        <p className="text-sm text-zinc-400 mt-3 font-bold">
           Your account information.
         </p>
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-400">Loading…</p>
+        <p className="text-sm text-zinc-500">Loading…</p>
       ) : (
         <>
           <div className="flex items-start gap-5">
-            <div className="w-[120px] h-[120px] rounded-2xl bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+            <div className="w-[120px] h-[120px] rounded-2xl bg-black border border-[#1f1f24] flex items-center justify-center overflow-hidden shrink-0">
               {photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -252,44 +258,46 @@ function ProfilePanel({ username }: { username: string }) {
                   className="w-full h-full object-cover"
                 />
               ) : (
-                <span className="text-3xl text-slate-400">
+                <span className="text-3xl text-zinc-500">
                   {(displayName[0] || "?").toUpperCase()}
                 </span>
               )}
             </div>
             <div className="flex-1 space-y-2">
               <div className="flex flex-wrap gap-2">
-                <input
+                <Input
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
                   onChange={onPickFile}
                   className="hidden"
                 />
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={photoBusy || isAdminEnv}
-                  className="text-sm border border-slate-300 hover:border-slate-400 rounded-full px-4 py-2 text-slate-700 disabled:opacity-50"
+                  className="h-auto text-sm border border-[#2a2a32] hover:border-slate-400 rounded-full px-4 py-2 text-zinc-300 hover:bg-transparent"
                 >
                   {photoBusy
                     ? "Loading…"
                     : photoUrl
                     ? "Change photo"
                     : "Add photo"}
-                </button>
+                </Button>
                 {photoUrl && !isAdminEnv && (
-                  <button
+                  <Button
+                    variant="ghost"
                     type="button"
                     onClick={() => setPhotoUrl(null)}
-                    className="text-sm text-slate-500 hover:text-slate-900"
+                    className="h-auto text-sm text-zinc-400 font-bold hover:text-white hover:bg-transparent"
                   >
                     Remove
-                  </button>
+                  </Button>
                 )}
               </div>
               {isAdminEnv && (
-                <p className="text-xs text-slate-400">
+                <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
                   This is the built-in admin account. Create an employee record to
                   manage your own profile.
                 </p>
@@ -298,14 +306,15 @@ function ProfilePanel({ username }: { username: string }) {
                 <p className="text-xs text-rose-600">{photoError}</p>
               )}
               {dirty && !isAdminEnv && (
-                <button
+                <Button
+                  variant="ghost"
                   type="button"
                   onClick={save}
                   disabled={saving}
-                  className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-4 py-2 font-medium"
+                  className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-4 py-2 font-bold"
                 >
                   {saving ? "Saving…" : "Save photo"}
-                </button>
+                </Button>
               )}
               {savedAt && !saving && !dirty && (
                 <p className="text-xs text-emerald-600">Saved</p>
@@ -320,9 +329,9 @@ function ProfilePanel({ username }: { username: string }) {
           </dl>
 
           {!isAdminEnv && (
-            <p className="text-xs text-slate-400">
+            <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
               To change your name, email, or password, edit your record from
-              the <span className="font-medium">Employees</span> page.
+              the <span className="font-bold">Employees</span> page.
             </p>
           )}
         </>
@@ -334,10 +343,10 @@ function ProfilePanel({ username }: { username: string }) {
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-slate-400 mb-1">
+      <dt className="text-xs uppercase tracking-wide text-zinc-500 mb-1">
         {label}
       </dt>
-      <dd className="text-sm font-medium text-slate-900 bg-slate-50 border border-slate-200 rounded-full px-4 py-2">
+      <dd className="text-sm font-bold text-white tracking-tight bg-black border border-[#1f1f24] rounded-full px-4 py-2">
         {value}
       </dd>
     </div>
@@ -393,50 +402,51 @@ function CompanyPanel() {
   return (
     <form onSubmit={save} className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">Company</h2>
-        <p className="text-sm text-slate-500 mt-1">
+        <h2 className="text-lg font-extrabold text-white tracking-tight">Company</h2>
+        <p className="text-sm text-zinc-400 mt-3 font-bold">
           Information that appears on invoices and customer-facing materials.
         </p>
       </div>
       <Field label="Company name">
-        <input
+        <Input
           type="text"
           value={name}
           disabled={loading}
           onChange={(e) => setName(e.target.value)}
-          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
           placeholder="Acme Window Cleaning"
         />
       </Field>
       <Field label="Address">
-        <input
+        <Input
           type="text"
           value={address}
           disabled={loading}
           onChange={(e) => setAddress(e.target.value)}
-          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
           placeholder="123 Main St, Springfield, IL"
         />
       </Field>
       <Field label="Phone">
-        <input
+        <Input
           type="tel"
           value={phone}
           disabled={loading}
           onChange={(e) => setPhone(e.target.value)}
-          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
           placeholder="(555) 555-5555"
         />
       </Field>
       {error && <p className="text-sm text-rose-600">{error}</p>}
       <div className="flex items-center gap-3 pt-2">
-        <button
+        <Button
+          variant="ghost"
           type="submit"
           disabled={saving || loading}
-          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+          className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
         >
           {saving ? "Saving…" : "Save changes"}
-        </button>
+        </Button>
         {savedAt && !saving && (
           <span className="text-xs text-emerald-600">Saved</span>
         )}
@@ -542,18 +552,18 @@ function PaymentsPanel() {
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">Payments</h2>
-        <p className="text-sm text-slate-500 mt-1">
+        <h2 className="text-lg font-extrabold text-white tracking-tight">Payments</h2>
+        <p className="text-sm text-zinc-400 mt-3 font-bold">
           Connect a Stripe account to accept card payments. Money is paid out
           to the bank account on file with Stripe.
         </p>
       </div>
 
       {loading ? (
-        <p className="text-sm text-slate-400">Loading…</p>
+        <p className="text-sm text-zinc-500">Loading…</p>
       ) : !status?.configured ? (
         <div className="border border-amber-200 bg-amber-50 rounded-2xl px-4 py-3">
-          <p className="text-sm text-amber-800 font-medium">
+          <p className="text-sm text-amber-800 font-bold">
             Stripe platform keys aren&apos;t configured.
           </p>
           <p className="text-xs text-amber-700 mt-1">
@@ -563,27 +573,29 @@ function PaymentsPanel() {
           </p>
         </div>
       ) : !status.connected ? (
-        <div className="border border-slate-200 rounded-2xl px-4 py-4 space-y-4">
+        <div className="border border-[#1f1f24] rounded-2xl px-4 py-4 space-y-4">
           <div>
-            <p className="text-sm font-medium text-slate-900">
+            <p className="text-sm font-bold text-white tracking-tight">
               No Stripe account connected
             </p>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-zinc-400 mt-1">
               Already use Stripe? Sign in to connect your existing account.
               Otherwise, create a new one — we&apos;ll guide you through bank
               and ID verification in a few minutes.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row gap-2">
-            <button
+            <Button
+              variant="ghost"
               type="button"
               onClick={startConnect}
               disabled={working}
-              className="text-sm bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+              className="h-auto text-sm bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
             >
               {working ? "Opening Stripe…" : "Create new Stripe account"}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
               type="button"
               onClick={startOAuth}
               disabled={working || !status.oauth_configured}
@@ -592,13 +604,13 @@ function PaymentsPanel() {
                   ? undefined
                   : "Set STRIPE_CONNECT_CLIENT_ID to enable sign-in"
               }
-              className="text-sm border border-slate-300 bg-white hover:bg-slate-50 disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed text-slate-700 rounded-full px-5 py-2 font-medium"
+              className="h-auto text-sm border border-[#2a2a32] bg-[#0f0f12] hover:bg-black disabled:bg-black disabled:text-zinc-500 disabled:cursor-not-allowed text-zinc-300 rounded-full px-5 py-2 font-bold"
             >
               Sign in to existing Stripe
-            </button>
+            </Button>
           </div>
           {!status.oauth_configured && (
-            <p className="text-xs text-slate-400">
+            <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
               The &ldquo;Sign in&rdquo; option is unavailable until{" "}
               <code>STRIPE_CONNECT_CLIENT_ID</code> is set in the deployment
               environment.
@@ -606,7 +618,7 @@ function PaymentsPanel() {
           )}
         </div>
       ) : (
-        <div className="border border-slate-200 rounded-2xl px-4 py-4 space-y-3">
+        <div className="border border-[#1f1f24] rounded-2xl px-4 py-4 space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div>
               <div className="flex items-center gap-2">
@@ -618,16 +630,16 @@ function PaymentsPanel() {
                       : "bg-amber-500")
                   }
                 />
-                <p className="text-sm font-medium text-slate-900">
+                <p className="text-sm font-bold text-white tracking-tight">
                   {status.business_name ||
                     status.email ||
                     "Connected Stripe account"}
                 </p>
               </div>
-              <p className="text-xs text-slate-500 mt-1 font-mono">
+              <p className="text-xs text-zinc-400 mt-1 font-mono">
                 {status.account_id}
                 {status.account_type && (
-                  <span className="ml-2 inline-block px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-[10px] uppercase tracking-wide font-sans not-italic">
+                  <span className="ml-2 inline-block px-2 py-0.5 rounded-full bg-black text-zinc-400 text-[10px] uppercase tracking-wide font-sans not-italic">
                     {status.account_type === "standard"
                       ? "Existing account"
                       : "New account"}
@@ -635,14 +647,15 @@ function PaymentsPanel() {
                 )}
               </p>
             </div>
-            <button
+            <Button
+              variant="ghost"
               type="button"
               onClick={load}
-              className="text-xs text-slate-500 hover:text-slate-900"
+              className="h-auto text-xs text-zinc-400 hover:text-white hover:bg-transparent"
               title="Re-check status"
             >
               Refresh
-            </button>
+            </Button>
           </div>
 
           <dl className="grid grid-cols-3 gap-2 pt-1">
@@ -659,14 +672,15 @@ function PaymentsPanel() {
                 Stripe still needs more information before this account can
                 accept payments or receive payouts.
               </p>
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 onClick={startConnect}
                 disabled={working}
-                className="mt-2 text-xs bg-amber-600 hover:bg-amber-500 disabled:bg-slate-400 text-white rounded-full px-3 py-1.5 font-medium"
+                className="h-auto mt-2 text-xs bg-amber-600 hover:bg-amber-500 disabled:bg-slate-400 text-white rounded-full px-3 py-1.5 font-bold"
               >
                 {working ? "Opening Stripe…" : "Finish onboarding"}
-              </button>
+              </Button>
             </div>
           )}
 
@@ -679,14 +693,15 @@ function PaymentsPanel() {
             >
               Open Stripe dashboard ↗
             </a>
-            <button
+            <Button
+              variant="ghost"
               type="button"
               onClick={disconnect}
               disabled={working}
-              className="text-xs text-rose-600 hover:text-rose-500 disabled:opacity-50"
+              className="h-auto text-xs text-rose-600 hover:text-rose-500 hover:bg-transparent"
             >
               Disconnect
-            </button>
+            </Button>
           </div>
         </div>
       )}
@@ -703,20 +718,20 @@ function Capability({ ok, label }: { ok: boolean; label: string }) {
         "rounded-xl px-3 py-2 text-center " +
         (ok
           ? "bg-emerald-50 border border-emerald-200"
-          : "bg-slate-50 border border-slate-200")
+          : "bg-black border border-[#1f1f24]")
       }
     >
       <div
         className={
-          "text-xs font-medium " +
-          (ok ? "text-emerald-700" : "text-slate-500")
+          "text-xs font-bold " +
+          (ok ? "text-emerald-700" : "text-zinc-400")
         }
       >
         {label}
       </div>
       <div
         className={
-          "text-xs mt-0.5 " + (ok ? "text-emerald-600" : "text-slate-400")
+          "text-xs mt-0.5 " + (ok ? "text-emerald-600" : "text-zinc-500")
         }
       >
         {ok ? "Enabled" : "Pending"}
@@ -918,21 +933,22 @@ function SubscriptionsPanel() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">
+          <h2 className="text-lg font-extrabold text-white tracking-tight">
             Subscriptions
           </h2>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-zinc-400 mt-3 font-bold">
             Create subscription templates to send to customers or accept on a
             customer&apos;s device.
           </p>
         </div>
         {editingId === null && (
-          <button
+          <Button
+            variant="ghost"
             onClick={startNew}
-            className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 font-medium"
+            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 font-bold"
           >
             New template
-          </button>
+          </Button>
         )}
       </div>
 
@@ -945,46 +961,47 @@ function SubscriptionsPanel() {
       {editingId !== null && (
         <form
           onSubmit={saveTemplate}
-          className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4"
+          className="space-y-4 rounded-xl border border-[#1f1f24] bg-black p-4"
         >
-          <h3 className="text-sm font-semibold text-slate-900">
+          <h3 className="text-sm font-extrabold text-white tracking-tight">
             {editingId === "new" ? "New template" : "Edit template"}
           </h3>
           <Field label="Name">
-            <input
+            <Input
               type="text"
               value={form.name}
               onChange={(e) => setForm({ ...form, name: e.target.value })}
-              className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+              className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
               placeholder="Monthly Window Cleaning"
               autoFocus
             />
           </Field>
           <Field label="Description">
-            <textarea
+            <Textarea
               value={form.description}
               onChange={(e) =>
                 setForm({ ...form, description: e.target.value })
               }
               rows={2}
-              className="w-full border border-slate-200 rounded-2xl px-4 py-2 text-sm bg-white"
+              className="w-full border-[#1f1f24] rounded-2xl px-4 py-2 text-sm bg-[#0f0f12]"
               placeholder="Includes interior + exterior windows…"
             />
           </Field>
-          <p className="text-xs text-slate-500 -mt-1">
+          <p className="text-xs text-zinc-400 -mt-1">
             Price and billing interval are set per customer when you create a
             subscription from this template — no need to make a separate
             template per price point.
           </p>
-          <div className="space-y-3 pt-2 border-t border-slate-200">
+          <div className="space-y-3 pt-2 border-t border-[#1f1f24]">
             <div>
-              <label className="block text-sm font-medium text-slate-900 mb-1">
+              <Label className="block mb-1 text-white tracking-tight">
                 Terms
-              </label>
-              <p className="text-xs text-slate-500 mb-2">
+              </Label>
+              <p className="text-xs text-zinc-400 mb-2">
                 Optional terms shown to the customer when this subscription
                 is sent or accepted.
               </p>
+              {/* Native <select> kept: Radix Select forbids empty-string item values, breaking the "Select terms (optional)" sentinel. */}
               <select
                 value={form.terms_id ?? ""}
                 onChange={(e) =>
@@ -993,7 +1010,7 @@ function SubscriptionsPanel() {
                     terms_id: e.target.value ? Number(e.target.value) : null,
                   })
                 }
-                className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+                className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
               >
                 <option value="">Select terms (optional)</option>
                 {terms.map((t) => (
@@ -1002,17 +1019,19 @@ function SubscriptionsPanel() {
                   </option>
                 ))}
               </select>
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 onClick={() => setShowTermsModal(true)}
-                className="mt-2 text-sm font-medium text-indigo-600 hover:text-indigo-700"
+                className="h-auto mt-2 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-transparent"
               >
                 Create new terms +
-              </button>
+              </Button>
             </div>
-            <label className="inline-flex items-center gap-3 text-sm text-slate-700">
+            <Label className="inline-flex items-center gap-3 text-zinc-300">
               <span>Require signature</span>
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 role="switch"
                 aria-checked={form.require_signature}
@@ -1023,58 +1042,61 @@ function SubscriptionsPanel() {
                   })
                 }
                 className={
-                  "relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition " +
-                  (form.require_signature ? "bg-indigo-600" : "bg-slate-300")
+                  "relative h-5 w-9 shrink-0 items-center rounded-full p-0 " +
+                  (form.require_signature
+                    ? "bg-indigo-600 hover:bg-indigo-600"
+                    : "bg-[#2a2a32] hover:bg-[#2a2a32]")
                 }
               >
                 <span
                   className={
-                    "inline-block h-4 w-4 transform rounded-full bg-white transition " +
+                    "inline-block h-4 w-4 transform rounded-full bg-[#0f0f12] transition " +
                     (form.require_signature ? "translate-x-4" : "translate-x-0.5")
                   }
                 />
-              </button>
-            </label>
+              </Button>
+            </Label>
           </div>
-          <label className="inline-flex items-center gap-2 text-sm text-slate-700">
-            <input
-              type="checkbox"
+          <Label className="inline-flex items-center gap-2 text-zinc-300">
+            <Checkbox
               checked={form.active}
-              onChange={(e) => setForm({ ...form, active: e.target.checked })}
+              onCheckedChange={(c) => setForm({ ...form, active: c === true })}
             />
             Active
-          </label>
+          </Label>
           <div className="flex items-center gap-3 pt-1">
-            <button
+            <Button
+              variant="ghost"
               type="submit"
               disabled={saving}
-              className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+              className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
             >
               {saving ? "Saving…" : "Save template"}
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="ghost"
               type="button"
               onClick={cancelEdit}
-              className="text-sm text-slate-600 hover:text-slate-900"
+              className="h-auto text-sm text-zinc-400 font-bold hover:text-white hover:bg-transparent"
             >
               Cancel
-            </button>
+            </Button>
           </div>
         </form>
       )}
 
       <div>
-        <h3 className="text-sm font-semibold text-slate-900 mb-3">
+        <h3 className="text-sm font-extrabold text-white tracking-tight mb-3">
           Templates
         </h3>
         {loading && templates.length === 0 ? (
-          <p className="text-sm text-slate-500">Loading…</p>
+          <p className="text-sm text-zinc-400 font-bold">Loading…</p>
         ) : templates.length === 0 ? (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-zinc-400 font-bold">
             No templates yet. Create one to get started.
           </p>
         ) : (
-          <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200">
+          <ul className="divide-y divide-[#1f1f24] rounded-xl border border-[#1f1f24]">
             {templates.map((t) => (
               <li
                 key={t.id}
@@ -1082,44 +1104,47 @@ function SubscriptionsPanel() {
               >
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm font-medium text-slate-900 truncate">
+                    <span className="text-sm font-bold text-white tracking-tight truncate">
                       {t.name}
                     </span>
                     {t.active === 0 && (
-                      <span className="text-[10px] uppercase tracking-wide text-slate-500 bg-slate-100 rounded-full px-2 py-0.5">
+                      <span className="text-[10px] uppercase tracking-wide text-zinc-400 bg-black rounded-full px-2 py-0.5">
                         Inactive
                       </span>
                     )}
                   </div>
-                  <div className="text-xs text-slate-500 mt-0.5">
+                  <div className="text-xs text-zinc-400 mt-0.5">
                     Price &amp; cadence set per customer
                   </div>
                   {t.description && (
-                    <p className="text-xs text-slate-500 mt-1 line-clamp-2">
+                    <p className="text-xs text-zinc-400 mt-1 line-clamp-2">
                       {t.description}
                     </p>
                   )}
                 </div>
                 <div className="flex flex-wrap items-center gap-2 shrink-0">
-                  <button
+                  <Button
+                    variant="ghost"
                     onClick={() => setActionTpl(t)}
                     disabled={t.active === 0}
-                    className="text-xs bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white rounded-full px-3 py-1.5 font-medium"
+                    className="h-auto text-xs bg-slate-900 hover:bg-slate-800 disabled:bg-[#2a2a32] text-white rounded-full px-3 py-1.5 font-bold"
                   >
                     Send / Accept
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="ghost"
                     onClick={() => startEdit(t)}
-                    className="text-xs text-slate-600 hover:text-slate-900"
+                    className="h-auto text-xs text-zinc-400 hover:text-white hover:bg-transparent"
                   >
                     Edit
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    variant="ghost"
                     onClick={() => deleteTemplate(t.id)}
-                    className="text-xs text-rose-600 hover:text-rose-700"
+                    className="h-auto text-xs text-rose-600 hover:text-rose-700 hover:bg-transparent"
                   >
                     Delete
-                  </button>
+                  </Button>
                 </div>
               </li>
             ))}
@@ -1191,10 +1216,10 @@ function RecentSubscriptions({
 
   return (
     <div>
-      <h3 className="text-sm font-semibold text-slate-900 mb-3">
+      <h3 className="text-sm font-extrabold text-white tracking-tight mb-3">
         Recent subscriptions
       </h3>
-      <ul className="divide-y divide-slate-200 rounded-xl border border-slate-200">
+      <ul className="divide-y divide-[#1f1f24] rounded-xl border border-[#1f1f24]">
         {subscriptions.slice(0, 10).map((s) => {
           const cust = customerMap.get(s.customer_id);
           return (
@@ -1203,10 +1228,10 @@ function RecentSubscriptions({
               className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4"
             >
               <div className="min-w-0">
-                <div className="text-sm font-medium text-slate-900 truncate">
+                <div className="text-sm font-bold text-white tracking-tight truncate">
                   {cust?.name || `Customer #${s.customer_id}`}
                 </div>
-                <div className="text-xs text-slate-500 mt-0.5">
+                <div className="text-xs text-zinc-400 mt-0.5">
                   {s.name} · {formatPrice(s.price_cents)} /{" "}
                   {INTERVAL_LABELS[s.interval].toLowerCase()}
                 </div>
@@ -1215,27 +1240,30 @@ function RecentSubscriptions({
                 <StatusBadge status={s.status} />
                 {s.status === "pending" && (
                   <>
-                    <button
+                    <Button
+                      variant="ghost"
                       onClick={() => updateStatus(s.id, "active")}
-                      className="text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-3 py-1.5 font-medium"
+                      className="h-auto text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-3 py-1.5 font-bold"
                     >
                       Mark accepted
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      variant="ghost"
                       onClick={() => updateStatus(s.id, "declined")}
-                      className="text-xs text-slate-600 hover:text-slate-900"
+                      className="h-auto text-xs text-zinc-400 hover:text-white hover:bg-transparent"
                     >
                       Decline
-                    </button>
+                    </Button>
                   </>
                 )}
                 {s.status === "active" && (
-                  <button
+                  <Button
+                    variant="ghost"
                     onClick={() => updateStatus(s.id, "canceled")}
-                    className="text-xs text-rose-600 hover:text-rose-700"
+                    className="h-auto text-xs text-rose-600 hover:text-rose-700 hover:bg-transparent"
                   >
                     Cancel
-                  </button>
+                  </Button>
                 )}
               </div>
             </li>
@@ -1250,7 +1278,7 @@ function StatusBadge({ status }: { status: CustomerSubscription["status"] }) {
   const styles: Record<CustomerSubscription["status"], string> = {
     pending: "bg-amber-100 text-amber-800",
     active: "bg-emerald-100 text-emerald-800",
-    declined: "bg-slate-100 text-slate-600",
+    declined: "bg-black text-zinc-400",
     canceled: "bg-rose-100 text-rose-700",
   };
   return (
@@ -1334,34 +1362,36 @@ function SendOrAcceptModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between gap-3">
           <div>
-            <h3 className="text-base font-semibold text-slate-900">
+            <h3 className="text-base font-extrabold text-white tracking-tight">
               {template.name}
             </h3>
           </div>
-          <button
+          <Button
+            variant="ghost"
             onClick={onClose}
-            className="text-sm text-slate-400 hover:text-slate-700"
+            className="h-auto text-sm text-zinc-500 hover:text-zinc-300 hover:bg-transparent"
           >
             ✕
-          </button>
+          </Button>
         </div>
 
         {template.description && (
-          <p className="text-sm text-slate-600 whitespace-pre-wrap">
+          <p className="text-sm text-zinc-400 font-bold whitespace-pre-wrap">
             {template.description}
           </p>
         )}
 
         <Field label="Customer">
+          {/* Native <select> kept: Radix Select forbids empty-string item values, breaking the "Select customer…" sentinel. */}
           <select
             value={customerId}
             onChange={(e) =>
               setCustomerId(e.target.value ? Number(e.target.value) : "")
             }
-            className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+            className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
           >
             <option value="">Select customer…</option>
             {customers.map((c) => (
@@ -1374,23 +1404,24 @@ function SendOrAcceptModal({
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="Price (USD)">
-            <input
+            <Input
               type="number"
               step="0.01"
               min="0"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
               placeholder="49.00"
-              className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+              className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
             />
           </Field>
           <Field label="Billing interval">
+            {/* Native <select> kept: Radix Select forbids empty-string item values; preserved for consistency with the customer select sentinel pattern. */}
             <select
               value={interval}
               onChange={(e) =>
                 setInterval(e.target.value as SubscriptionInterval)
               }
-              className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+              className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
             >
               {(
                 Object.entries(INTERVAL_LABELS) as [
@@ -1408,10 +1439,10 @@ function SendOrAcceptModal({
 
         {linkedTerms && (
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-400 mb-1.5">
+            <div className="text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
               Terms — {linkedTerms.name}
             </div>
-            <div className="text-xs text-slate-700 bg-slate-50 border border-slate-200 rounded-xl p-3 max-h-40 overflow-y-auto whitespace-pre-wrap">
+            <div className="text-xs text-zinc-300 bg-black border border-[#1f1f24] rounded-xl p-3 max-h-40 overflow-y-auto whitespace-pre-wrap">
               {linkedTerms.body}
             </div>
           </div>
@@ -1419,18 +1450,18 @@ function SendOrAcceptModal({
 
         {requireSignature && (
           <div className="space-y-2">
-            <div className="text-xs uppercase tracking-wide text-slate-400">
+            <div className="text-xs uppercase tracking-wide text-zinc-500">
               Customer signature
             </div>
             <SignaturePad value={signatureData} onChange={setSignatureData} />
-            <input
+            <Input
               type="text"
               value={signatureName}
               onChange={(e) => setSignatureName(e.target.value)}
               placeholder="Printed name"
-              className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+              className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
             />
-            <p className="text-[11px] text-slate-400">
+            <p className="text-[11px] text-zinc-500">
               Required for &quot;Accept on device&quot;. Not needed for
               &quot;Send to customer&quot; — the customer will sign on their end.
             </p>
@@ -1440,22 +1471,24 @@ function SendOrAcceptModal({
         {err && <p className="text-sm text-rose-600">{err}</p>}
 
         <div className="flex flex-col sm:flex-row gap-2 pt-2">
-          <button
+          <Button
+            variant="ghost"
             onClick={() => submit("send")}
             disabled={submitting}
-            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-4 py-2 font-medium flex-1"
+            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-4 py-2 font-bold flex-1"
           >
             Send to customer
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             onClick={() => submit("accept")}
             disabled={submitting}
-            className="text-sm bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white rounded-full px-4 py-2 font-medium flex-1"
+            className="h-auto text-sm bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white rounded-full px-4 py-2 font-bold flex-1"
           >
             Accept on device
-          </button>
+          </Button>
         </div>
-        <p className="text-xs text-slate-400">
+        <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
           &quot;Send&quot; messages the customer with the offer.
           &quot;Accept on device&quot; activates it immediately for in-person
           sign-ups.
@@ -1503,53 +1536,56 @@ function CreateTermsModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <form
         onSubmit={save}
-        className="bg-white rounded-2xl shadow-xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto"
+        className="bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-lg p-5 space-y-4 max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-start justify-between gap-3">
-          <h3 className="text-base font-semibold text-slate-900">New terms</h3>
-          <button
+          <h3 className="text-base font-extrabold text-white tracking-tight">New terms</h3>
+          <Button
+            variant="ghost"
             type="button"
             onClick={onClose}
-            className="text-sm text-slate-400 hover:text-slate-700"
+            className="h-auto text-sm text-zinc-500 hover:text-zinc-300 hover:bg-transparent"
           >
             ✕
-          </button>
+          </Button>
         </div>
         <Field label="Name">
-          <input
+          <Input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Standard subscription terms"
-            className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+            className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
             autoFocus
           />
         </Field>
         <Field label="Body">
-          <textarea
+          <Textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={10}
             placeholder="Enter the full terms the customer will see and sign…"
-            className="w-full border border-slate-200 rounded-2xl px-4 py-2 text-sm bg-white font-mono"
+            className="w-full border-[#1f1f24] rounded-2xl px-4 py-2 text-sm bg-[#0f0f12] font-mono"
           />
         </Field>
         {err && <p className="text-sm text-rose-600">{err}</p>}
         <div className="flex items-center gap-3 pt-1">
-          <button
+          <Button
+            variant="ghost"
             type="submit"
             disabled={saving}
-            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
           >
             {saving ? "Saving…" : "Save terms"}
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             type="button"
             onClick={onClose}
-            className="text-sm text-slate-600 hover:text-slate-900"
+            className="h-auto text-sm text-zinc-400 font-bold hover:text-white hover:bg-transparent"
           >
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
     </div>
@@ -1636,7 +1672,7 @@ function SignaturePad({
 
   return (
     <div className="space-y-2">
-      <div className="border border-slate-300 rounded-xl bg-white">
+      <div className="border border-[#2a2a32] rounded-xl bg-[#0f0f12]">
         <canvas
           ref={canvasRef}
           onPointerDown={start}
@@ -1648,13 +1684,14 @@ function SignaturePad({
         />
       </div>
       <div className="flex items-center justify-between">
-        <button
+        <Button
+          variant="ghost"
           type="button"
           onClick={clear}
-          className="text-xs text-slate-500 hover:text-slate-900"
+          className="h-auto text-xs text-zinc-400 hover:text-white hover:bg-transparent"
         >
           Clear
-        </button>
+        </Button>
         {value && (
           <span className="text-xs text-emerald-600">Signature captured</span>
         )}
@@ -1758,8 +1795,8 @@ function MessagingPanel() {
   return (
     <form onSubmit={save} className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">Messaging</h2>
-        <p className="text-sm text-slate-500 mt-1">
+        <h2 className="text-lg font-extrabold text-white tracking-tight">Messaging</h2>
+        <p className="text-sm text-zinc-400 mt-3 font-bold">
           {onPlatform
             ? "Your business has a phone number for texting and calling customers. It's ready to use from the Messages tab."
             : "Connect your Twilio account to send and receive SMS from the Messages tab."}
@@ -1767,14 +1804,14 @@ function MessagingPanel() {
       </div>
 
       {onPlatform && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-          <div className="text-xs uppercase tracking-wide text-emerald-700 font-semibold">
+        <div className="rounded-xl border border-[#1f1f24] bg-black p-4">
+          <div className="text-[11px] uppercase tracking-[0.18em] text-zinc-500 font-extrabold">
             Your number
           </div>
-          <div className="mt-1 text-2xl font-semibold text-slate-900 font-mono">
+          <div className="mt-1 text-2xl font-black text-white font-mono tabular-nums tracking-tight">
             {formatUSPhone(platformPhone!)}
           </div>
-          <div className="mt-2 text-xs text-emerald-700">
+          <div className="mt-2 text-xs text-emerald-400 font-bold">
             Active. SMS and voice routed through this number.
           </div>
         </div>
@@ -1782,10 +1819,10 @@ function MessagingPanel() {
 
       <div
         className={
-          "flex items-center gap-2 text-xs font-medium rounded-full px-3 py-1 w-fit " +
+          "flex items-center gap-2 text-xs font-bold rounded-full px-3 py-1 w-fit " +
           (status?.configured
             ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-            : "bg-slate-100 text-slate-600 border border-slate-200")
+            : "bg-black text-zinc-400 border border-[#1f1f24]")
         }
       >
         <span
@@ -1796,23 +1833,23 @@ function MessagingPanel() {
         />
         {status?.configured ? "Connected" : "Not connected"}
         {!onPlatform && status?.from_number && (
-          <span className="text-slate-500 font-normal">
+          <span className="text-zinc-400 font-normal">
             · {status.from_number}
           </span>
         )}
       </div>
 
       {!onPlatform && (
-        <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3 text-sm">
-          <div className="font-medium text-slate-900">Setup steps</div>
-          <ol className="list-decimal list-inside space-y-1 text-slate-600">
+        <div className="rounded-xl border border-[#1f1f24] bg-black p-4 space-y-3 text-sm">
+          <div className="font-bold text-white tracking-tight">Setup steps</div>
+          <ol className="list-decimal list-inside space-y-1 text-zinc-400">
             <li>
               Sign up at{" "}
               <a
                 href="https://www.twilio.com/try-twilio"
                 target="_blank"
                 rel="noreferrer"
-                className="text-slate-900 underline"
+                className="text-white underline"
               >
                 twilio.com
               </a>{" "}
@@ -1826,78 +1863,80 @@ function MessagingPanel() {
             <li>Paste them below along with the number you bought.</li>
             <li>
               In Twilio, open your number&apos;s settings and set{" "}
-              <span className="font-medium">A message comes in</span> to the
+              <span className="font-bold">A message comes in</span> to the
               webhook URL below (HTTP POST).
             </li>
           </ol>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-400 mb-1.5">
+            <div className="text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
               Inbound webhook URL
             </div>
             <div className="flex gap-2">
-              <input
+              <Input
                 type="text"
                 readOnly
                 value={webhookUrl}
-                className="flex-1 border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono text-xs"
+                className="h-auto flex-1 border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono text-xs"
               />
-              <button
+              <Button
+                variant="ghost"
                 type="button"
                 onClick={copyWebhook}
-                className="text-sm bg-white border border-slate-200 hover:bg-slate-100 rounded-full px-4 py-2 font-medium"
+                className="h-auto text-sm bg-[#0f0f12] border border-[#1f1f24] hover:bg-black rounded-full px-4 py-2 font-bold"
               >
                 {copied ? "Copied" : "Copy"}
-              </button>
+              </Button>
             </div>
           </div>
         </div>
       )}
 
       {onPlatform && (
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={() => setShowAdvanced((v) => !v)}
-          className="text-xs text-slate-500 hover:text-slate-700 underline"
+          className="h-auto p-0 text-xs text-zinc-500 hover:text-zinc-300 hover:bg-transparent underline font-bold"
         >
           {showAdvanced
             ? "Hide advanced options"
             : "Advanced: bring your own Twilio account"}
-        </button>
+        </Button>
       )}
 
       {(!onPlatform || showAdvanced) && (
         <>
       <Field label="Account SID">
-        <input
+        <Input
           type="text"
           value={accountSid}
           disabled={loading}
           onChange={(e) => setAccountSid(e.target.value)}
-          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
           placeholder={
             status?.account_sid_masked || "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
           }
         />
       </Field>
       <Field label="Auth Token">
-        <input
+        <Input
           type="password"
           value={authToken}
           disabled={loading}
           onChange={(e) => setAuthToken(e.target.value)}
-          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
           placeholder={
             status?.auth_token_set ? "•••••••••••••••• (saved)" : "Auth Token"
           }
         />
       </Field>
       <Field label="From number">
-        <input
+        <Input
           type="tel"
           value={fromNumber}
           disabled={loading}
           onChange={(e) => setFromNumber(e.target.value)}
-          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
           placeholder="e.g. +18435551234 (your Twilio number)"
         />
       </Field>
@@ -1907,13 +1946,14 @@ function MessagingPanel() {
       {error && <p className="text-sm text-rose-600">{error}</p>}
       {(!onPlatform || showAdvanced) && (
         <div className="flex items-center gap-3 pt-2">
-          <button
+          <Button
+            variant="ghost"
             type="submit"
             disabled={saving || loading}
-            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
           >
             {saving ? "Saving…" : "Save changes"}
-          </button>
+          </Button>
           {savedAt && !saving && (
             <span className="text-xs text-emerald-600">Saved</span>
           )}
@@ -1998,8 +2038,8 @@ function CallingPanel() {
   return (
     <form onSubmit={save} className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">Calling</h2>
-        <p className="text-sm text-slate-500 mt-1">
+        <h2 className="text-lg font-extrabold text-white tracking-tight">Calling</h2>
+        <p className="text-sm text-zinc-400 mt-3 font-bold">
           Place and receive calls from the browser using your Twilio number.
           Calls can be recorded automatically and saved to the call log.
         </p>
@@ -2007,10 +2047,10 @@ function CallingPanel() {
 
       <div
         className={
-          "flex items-center gap-2 text-xs font-medium rounded-full px-3 py-1 w-fit " +
+          "flex items-center gap-2 text-xs font-bold rounded-full px-3 py-1 w-fit " +
           (status?.configured
             ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-            : "bg-slate-100 text-slate-600 border border-slate-200")
+            : "bg-black text-zinc-400 border border-[#1f1f24]")
         }
       >
         <span
@@ -2021,7 +2061,7 @@ function CallingPanel() {
         />
         {status?.configured ? "Connected" : "Not connected"}
         {status?.business_number && (
-          <span className="text-slate-500 font-normal">
+          <span className="text-zinc-400 font-normal">
             · {status.business_number}
           </span>
         )}
@@ -2034,12 +2074,12 @@ function CallingPanel() {
         </div>
       )}
 
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3 text-sm">
-        <div className="font-medium text-slate-900">Setup steps</div>
-        <ol className="list-decimal list-inside space-y-1 text-slate-600">
+      <div className="rounded-xl border border-[#1f1f24] bg-black p-4 space-y-3 text-sm">
+        <div className="font-bold text-white tracking-tight">Setup steps</div>
+        <ol className="list-decimal list-inside space-y-1 text-zinc-400">
           <li>
             In the Twilio Console, go to{" "}
-            <span className="font-medium">Account → API keys & tokens</span>{" "}
+            <span className="font-bold">Account → API keys & tokens</span>{" "}
             and click <strong>Create API key</strong>. Type:{" "}
             <span className="font-mono">Standard</span>. Copy the{" "}
             <span className="font-mono">SID</span> (starts with{" "}
@@ -2048,47 +2088,47 @@ function CallingPanel() {
             once.
           </li>
           <li>
-            In Twilio, go to <span className="font-medium">Voice → Manage → TwiML Apps</span>{" "}
+            In Twilio, go to <span className="font-bold">Voice → Manage → TwiML Apps</span>{" "}
             and click <strong>Create new TwiML App</strong>. Set the{" "}
-            <span className="font-medium">Voice → Request URL</span> to the
+            <span className="font-bold">Voice → Request URL</span> to the
             URL below (HTTP POST). Save and copy the App SID (starts with{" "}
             <span className="font-mono">AP</span>).
           </li>
           <li>Paste all three values below.</li>
         </ol>
         <div>
-          <div className="text-xs uppercase tracking-wide text-slate-400 mb-1.5">
+          <div className="text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
             TwiML App Voice URL
           </div>
-          <input
+          <Input
             type="text"
             readOnly
             value={twimlVoiceUrl}
             onFocus={(e) => e.currentTarget.select()}
-            className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono text-xs"
+            className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono text-xs"
           />
         </div>
       </div>
 
       <Field label="API Key SID">
-        <input
+        <Input
           type="text"
           value={apiKeySid}
           disabled={loading}
           onChange={(e) => setApiKeySid(e.target.value)}
-          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
           placeholder={
             status?.api_key_sid_masked || "SKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
           }
         />
       </Field>
       <Field label="API Key Secret">
-        <input
+        <Input
           type="password"
           value={apiKeySecret}
           disabled={loading}
           onChange={(e) => setApiKeySecret(e.target.value)}
-          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
           placeholder={
             status?.api_key_secret_set
               ? "•••••••••••••••• (saved)"
@@ -2097,37 +2137,37 @@ function CallingPanel() {
         />
       </Field>
       <Field label="TwiML App SID">
-        <input
+        <Input
           type="text"
           value={twimlAppSid}
           disabled={loading}
           onChange={(e) => setTwimlAppSid(e.target.value)}
-          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
           placeholder={
             status?.twiml_app_sid_masked || "APxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
           }
         />
       </Field>
 
-      <label className="flex items-center gap-2 text-sm text-slate-700">
-        <input
-          type="checkbox"
+      <Label className="flex items-center gap-2 text-zinc-300">
+        <Checkbox
           checked={recordCalls}
-          onChange={(e) => setRecordCalls(e.target.checked)}
-          className="rounded border-slate-300 text-slate-900 focus:ring-slate-400"
+          onCheckedChange={(c) => setRecordCalls(c === true)}
+          className="rounded border-[#2a2a32] text-white focus:ring-zinc-500"
         />
         Record calls
-      </label>
+      </Label>
 
       {error && <p className="text-sm text-rose-600">{error}</p>}
       <div className="flex items-center gap-3 pt-2">
-        <button
+        <Button
+          variant="ghost"
           type="submit"
           disabled={saving || loading}
-          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+          className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
         >
           {saving ? "Saving…" : "Save changes"}
-        </button>
+        </Button>
         {savedAt && !saving && (
           <span className="text-xs text-emerald-600">Saved</span>
         )}
@@ -2203,8 +2243,8 @@ function EmailPanel() {
   return (
     <form onSubmit={save} className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">Email</h2>
-        <p className="text-sm text-slate-500 mt-1">
+        <h2 className="text-lg font-extrabold text-white tracking-tight">Email</h2>
+        <p className="text-sm text-zinc-400 mt-3 font-bold">
           Connect your Resend account to send email blasts to customers,
           subscribers, and prospects.
         </p>
@@ -2212,10 +2252,10 @@ function EmailPanel() {
 
       <div
         className={
-          "flex items-center gap-2 text-xs font-medium rounded-full px-3 py-1 w-fit " +
+          "flex items-center gap-2 text-xs font-bold rounded-full px-3 py-1 w-fit " +
           (status?.configured
             ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-            : "bg-slate-100 text-slate-600 border border-slate-200")
+            : "bg-black text-zinc-400 border border-[#1f1f24]")
         }
       >
         <span
@@ -2226,22 +2266,22 @@ function EmailPanel() {
         />
         {status?.configured ? "Connected" : "Not connected"}
         {status?.from_address && (
-          <span className="text-slate-500 font-normal">
+          <span className="text-zinc-400 font-normal">
             · {status.from_address}
           </span>
         )}
       </div>
 
-      <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3 text-sm">
-        <div className="font-medium text-slate-900">Setup steps</div>
-        <ol className="list-decimal list-inside space-y-1 text-slate-600">
+      <div className="rounded-xl border border-[#1f1f24] bg-black p-4 space-y-3 text-sm">
+        <div className="font-bold text-white tracking-tight">Setup steps</div>
+        <ol className="list-decimal list-inside space-y-1 text-zinc-400">
           <li>
             Sign up at{" "}
             <a
               href="https://resend.com"
               target="_blank"
               rel="noreferrer"
-              className="text-slate-900 underline"
+              className="text-white underline"
             >
               resend.com
             </a>
@@ -2262,12 +2302,12 @@ function EmailPanel() {
       </div>
 
       <Field label="Resend API key">
-        <input
+        <Input
           type="password"
           value={apiKey}
           disabled={loading}
           onChange={(e) => setApiKey(e.target.value)}
-          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white font-mono"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] font-mono"
           placeholder={
             status?.api_key_set
               ? `${status.api_key_prefix || "re_"}…  (saved)`
@@ -2276,45 +2316,46 @@ function EmailPanel() {
         />
       </Field>
       <Field label="From address">
-        <input
+        <Input
           type="email"
           value={fromAddress}
           disabled={loading}
           onChange={(e) => setFromAddress(e.target.value)}
-          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
           placeholder="hello@yourcompany.com"
         />
       </Field>
       <Field label="From name">
-        <input
+        <Input
           type="text"
           value={fromName}
           disabled={loading}
           onChange={(e) => setFromName(e.target.value)}
-          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
           placeholder="Acme Window Cleaning"
         />
       </Field>
       <Field label="Reply-to (optional)">
-        <input
+        <Input
           type="email"
           value={replyTo}
           disabled={loading}
           onChange={(e) => setReplyTo(e.target.value)}
-          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+          className="h-auto w-full border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
           placeholder="support@yourcompany.com"
         />
       </Field>
 
       {error && <p className="text-sm text-rose-600">{error}</p>}
       <div className="flex items-center gap-3 pt-2">
-        <button
+        <Button
+          variant="ghost"
           type="submit"
           disabled={saving || loading}
-          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+          className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
         >
           {saving ? "Saving…" : "Save changes"}
-        </button>
+        </Button>
         {savedAt && !saving && (
           <span className="text-xs text-emerald-600">Saved</span>
         )}
@@ -2406,8 +2447,8 @@ function AiPanel() {
   return (
     <form onSubmit={save} className="space-y-5">
       <div>
-        <h2 className="text-lg font-semibold text-slate-900">AI</h2>
-        <p className="text-sm text-slate-500 mt-1">
+        <h2 className="text-lg font-extrabold text-white tracking-tight">AI</h2>
+        <p className="text-sm text-zinc-400 mt-3 font-bold">
           Claude drafts replies in the Messages tab. The AI reads the recent
           conversation and writes a suggested reply you can edit before sending.
           Claude is included with your account — no API key required.
@@ -2416,10 +2457,10 @@ function AiPanel() {
 
       <div
         className={
-          "flex items-center gap-2 text-xs font-medium rounded-full px-3 py-1 w-fit " +
+          "flex items-center gap-2 text-xs font-bold rounded-full px-3 py-1 w-fit " +
           (status?.configured
             ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-            : "bg-slate-100 text-slate-600 border border-slate-200")
+            : "bg-black text-zinc-400 border border-[#1f1f24]")
         }
       >
         <span
@@ -2430,39 +2471,40 @@ function AiPanel() {
         />
         {status?.configured ? "Active" : "Unavailable"}
         {status?.configured && status?.model && (
-          <span className="text-slate-500 font-normal">· {status.model}</span>
+          <span className="text-zinc-400 font-normal">· {status.model}</span>
         )}
       </div>
 
       {usage && (
-        <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+        <div className="rounded-xl border border-[#1f1f24] bg-black p-4 space-y-2">
           <div className="flex items-baseline justify-between">
-            <div className="text-sm font-medium text-slate-900">
+            <div className="text-sm font-bold text-white tracking-tight">
               Drafts this month
             </div>
-            <div className="text-sm text-slate-600">
-              <span className="font-medium text-slate-900">{usage.used}</span>
-              <span className="text-slate-400"> / {usage.limit}</span>
+            <div className="text-sm text-zinc-400 font-bold">
+              <span className="text-white tabular-nums">{usage.used}</span>
+              <span className="text-zinc-500"> / {usage.limit}</span>
             </div>
           </div>
-          <div className="h-2 w-full rounded-full bg-slate-100 overflow-hidden">
+          <div className="h-2 w-full rounded-full bg-[#1f1f24] overflow-hidden">
             <div
               className={`h-full ${usageBarColor} transition-all`}
               style={{ width: `${usagePct}%` }}
             />
           </div>
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-zinc-500 font-bold">
             Resets on the 1st of every month. {usage.remaining} drafts left.
           </p>
         </div>
       )}
 
       <Field label="Model">
+        {/* Native <select> kept: Radix Select forbids empty-string item values; preserved for consistency with sibling sentinel selects in this file. */}
         <select
           value={model}
           disabled={loading}
           onChange={(e) => setModel(e.target.value)}
-          className="w-full border border-slate-200 rounded-full px-4 py-2 text-sm bg-white"
+          className="w-full border border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
         >
           {Object.entries(AI_MODEL_LABELS).map(([id, label]) => (
             <option key={id} value={id}>
@@ -2472,17 +2514,17 @@ function AiPanel() {
         </select>
       </Field>
       <Field label="Company voice (optional)">
-        <textarea
+        <Textarea
           value={voice}
           disabled={loading}
           onChange={(e) => setVoice(e.target.value)}
           rows={4}
-          className="w-full border border-slate-200 rounded-2xl px-4 py-2 text-sm bg-white"
+          className="w-full border-[#1f1f24] rounded-2xl px-4 py-2 text-sm bg-[#0f0f12]"
           placeholder={
             "e.g. Friendly and concise. Never defensive. If a customer complains, always offer a free re-clean and a callback within 24 hours."
           }
         />
-        <p className="text-xs text-slate-400 mt-1">
+        <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mt-2">
           Used as part of the prompt for every drafted reply. Describe tone,
           policies, and how you want to handle complaints.
         </p>
@@ -2490,13 +2532,14 @@ function AiPanel() {
 
       {error && <p className="text-sm text-rose-600">{error}</p>}
       <div className="flex items-center gap-3 pt-2">
-        <button
+        <Button
+          variant="ghost"
           type="submit"
           disabled={saving || loading}
-          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+          className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
         >
           {saving ? "Saving…" : "Save changes"}
-        </button>
+        </Button>
         {savedAt && !saving && (
           <span className="text-xs text-emerald-600">Saved</span>
         )}
@@ -2508,7 +2551,7 @@ function AiPanel() {
 function BillingPanel() {
   return (
     <div className="space-y-2 py-12 text-center">
-      <div className="mx-auto w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+      <div className="mx-auto w-12 h-12 rounded-full bg-black flex items-center justify-center text-zinc-500">
         <svg
           className="w-5 h-5"
           viewBox="0 0 24 24"
@@ -2522,8 +2565,8 @@ function BillingPanel() {
           <line x1="2" y1="10" x2="22" y2="10" />
         </svg>
       </div>
-      <h2 className="text-lg font-semibold text-slate-900">Billing</h2>
-      <p className="text-sm text-slate-500">Coming soon.</p>
+      <h2 className="text-lg font-extrabold text-white tracking-tight">Billing</h2>
+      <p className="text-sm text-zinc-400 font-bold">Coming soon.</p>
     </div>
   );
 }
@@ -2537,9 +2580,9 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-xs uppercase tracking-wide text-slate-400 mb-1.5">
+      <Label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1.5 font-normal">
         {label}
-      </label>
+      </Label>
       {children}
     </div>
   );

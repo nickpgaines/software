@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import EmployeeSchedulingModal from "./EmployeeSchedulingModal";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type Job = {
   id: number;
@@ -183,40 +185,41 @@ export default function CalendarClient() {
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div>
-          <h1 className="text-3xl font-bold text-slate-900">Schedule</h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Schedule</h1>
+          <p className="text-sm text-zinc-500 mt-1">
             Drag, plan, and dispatch your jobs.
           </p>
         </div>
-        <div className="flex items-center gap-1 bg-slate-100 rounded-full p-1 text-sm">
+        <div className="flex items-center gap-1 bg-black rounded-full p-1 text-sm">
           {(["day", "week", "month"] as View[]).map((v) => (
-            <button
+            <Button
               key={v}
+              variant="ghost"
               onClick={() => setView(v)}
               className={
-                "px-4 py-1.5 rounded-full transition capitalize " +
+                "h-auto px-4 py-1.5 rounded-full capitalize font-bold hover:bg-transparent " +
                 (view === v
-                  ? "bg-white text-slate-900 shadow-sm"
-                  : "text-slate-500 hover:text-slate-900")
+                  ? "bg-[#0f0f12] text-white shadow-sm"
+                  : "text-zinc-400 hover:text-white")
               }
             >
               {v}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="relative w-full sm:w-72">
-          <input
+          <Input
             type="search"
             placeholder="Search customers..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-white border border-slate-200 rounded-full pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400"
+            className="w-full h-auto bg-[#0f0f12] border-[#1f1f24] rounded-full pl-10 pr-4 py-2.5 text-sm focus-visible:ring-zinc-500"
           />
           <svg
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400"
+            className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
@@ -229,10 +232,11 @@ export default function CalendarClient() {
           </svg>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => setSchedulingOpen(true)}
-            className="inline-flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-full px-4 py-2 text-sm text-slate-700"
+            className="h-auto gap-2 border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-sm text-zinc-300 font-bold"
           >
             <svg
               className="w-4 h-4"
@@ -249,10 +253,11 @@ export default function CalendarClient() {
               <line x1="23" y1="11" x2="17" y2="11" />
             </svg>
             Employee Scheduling
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="inline-flex items-center gap-2 border border-slate-200 bg-white hover:bg-slate-50 rounded-full px-4 py-2 text-sm text-slate-700"
+            variant="ghost"
+            className="h-auto gap-2 border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-sm text-zinc-300 font-bold"
             title="Coming soon"
           >
             <svg
@@ -268,17 +273,17 @@ export default function CalendarClient() {
               <circle cx="12" cy="10" r="3" />
             </svg>
             Route Optimization
-          </button>
+          </Button>
           <Link
             href="/schedule/new"
-            className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 text-sm font-medium shadow-sm"
+            className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 text-sm font-bold shadow-sm"
           >
             <span className="text-base leading-none">+</span> New Job
           </Link>
         </div>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl overflow-hidden">
         {view === "week" && (
           <WeekView
             start={startOfWeek(cursor)}
@@ -302,28 +307,31 @@ export default function CalendarClient() {
       </div>
 
       <div className="flex items-center justify-center">
-        <div className="inline-flex items-center gap-2 bg-white border border-slate-200 rounded-full px-2 py-1 text-sm text-slate-700">
-          <button
+        <div className="inline-flex items-center gap-2 bg-[#0f0f12] border border-[#1f1f24] rounded-full px-2 py-1 text-sm text-zinc-300 font-bold">
+          <Button
+            variant="ghost"
             onClick={() => navigate(-1)}
-            className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center"
+            className="w-8 h-8 p-0 rounded-full hover:bg-black"
             aria-label="Previous"
           >
             ‹
-          </button>
-          <span className="px-3 font-medium">{navLabel}</span>
-          <button
+          </Button>
+          <span className="px-3 font-bold">{navLabel}</span>
+          <Button
+            variant="ghost"
             onClick={() => navigate(1)}
-            className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center"
+            className="w-8 h-8 p-0 rounded-full hover:bg-black"
             aria-label="Next"
           >
             ›
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             onClick={() => setCursor(startOfDay(new Date()))}
-            className="ml-1 px-3 py-1 rounded-full text-xs text-slate-500 hover:text-slate-900 hover:bg-slate-100"
+            className="h-auto ml-1 px-3 py-1 rounded-full text-xs text-zinc-400 hover:text-white hover:bg-black font-bold"
           >
             Today
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -351,7 +359,7 @@ function NowLine({ now }: { now: Date }) {
       style={{ top: `${top}px` }}
     >
       <div className="flex items-center">
-        <span className="-ml-12 w-12 text-right pr-2 text-[10px] font-medium text-slate-500">
+        <span className="-ml-12 w-12 text-right pr-2 text-[10px] font-medium text-zinc-400">
           {now.toLocaleTimeString(undefined, {
             hour: "numeric",
             minute: "2-digit",
@@ -376,7 +384,7 @@ function jobsByDay(jobs: Job[], days: Date[]) {
 // is handled separately because it's not a unified-status state.
 function jobStatusColors(job: Job) {
   if (job.status === "cancelled") {
-    return "bg-slate-100 border-slate-200 text-slate-500 line-through border-l-4 border-l-slate-400";
+    return "bg-black border-[#1f1f24] text-zinc-400 line-through border-l-4 border-l-slate-400";
   }
   switch (job.job_status) {
     case "completed_paid":
@@ -389,7 +397,7 @@ function jobStatusColors(job: Job) {
       return "bg-amber-50 border-amber-200 text-amber-900 border-l-4 border-l-amber-500";
     case "scheduled":
     default:
-      return "bg-slate-50 border-slate-200 text-slate-700 border-l-4 border-l-slate-300";
+      return "bg-black border-[#1f1f24] text-zinc-300 border-l-4 border-l-slate-300";
   }
 }
 
@@ -544,7 +552,7 @@ function WeekView({
   return (
     <div className="overflow-x-auto">
       <div className="min-w-[760px]">
-        <div className="grid grid-cols-[64px_repeat(7,1fr)] border-b border-slate-200">
+        <div className="grid grid-cols-[64px_repeat(7,1fr)] border-b border-[#1f1f24]">
           <div />
           {days.map((d) => {
             const isToday = sameDay(d, today);
@@ -553,7 +561,7 @@ function WeekView({
                 key={d.toISOString()}
                 className={
                   "px-3 py-2 text-center text-xs " +
-                  (isToday ? "text-slate-900 bg-slate-50" : "text-slate-500")
+                  (isToday ? "text-white bg-black" : "text-zinc-400")
                 }
               >
                 <div className="uppercase tracking-wide">
@@ -561,8 +569,8 @@ function WeekView({
                 </div>
                 <div
                   className={
-                    "text-base font-semibold mt-0.5 " +
-                    (isToday ? "text-slate-900" : "text-slate-900")
+                    "text-[15px] font-extrabold tracking-tight mt-0.5 " +
+                    (isToday ? "text-white" : "text-white")
                   }
                 >
                   {d.getDate()}
@@ -572,12 +580,12 @@ function WeekView({
           })}
         </div>
         <div className="grid grid-cols-[64px_repeat(7,1fr)] grid-rows-1">
-          <div className="border-r border-slate-200">
+          <div className="border-r border-[#1f1f24]">
             {HOURS.map((h) => (
               <div
                 key={h}
                 style={{ height: `${HOUR_PX}px` }}
-                className="text-[10px] text-slate-400 pr-2 text-right -translate-y-1.5"
+                className="text-[10px] text-zinc-500 pr-2 text-right -translate-y-1.5"
               >
                 {formatHour(h)}
               </div>
@@ -593,15 +601,15 @@ function WeekView({
               <div
                 key={d.toISOString()}
                 className={
-                  "relative border-r border-slate-200 last:border-r-0 " +
-                  (isToday ? "bg-slate-50" : "")
+                  "relative border-r border-[#1f1f24] last:border-r-0 " +
+                  (isToday ? "bg-black" : "")
                 }
                 style={{ height: `${HOURS.length * HOUR_PX}px` }}
               >
                 {HOURS.map((h, hi) => (
                   <div
                     key={h}
-                    className="border-b border-slate-100"
+                    className="border-b border-[#1f1f24]"
                     style={{ height: `${HOUR_PX}px` }}
                   />
                 ))}
@@ -645,25 +653,25 @@ function DayView({
   const isToday = sameDay(day, startOfDay(now));
   return (
     <div className="grid grid-cols-[80px_1fr]">
-      <div className="border-r border-slate-200 pt-3">
+      <div className="border-r border-[#1f1f24] pt-3">
         {HOURS.map((h) => (
           <div
             key={h}
             style={{ height: `${HOUR_PX}px` }}
-            className="text-xs text-slate-400 pr-3 text-right -translate-y-1.5"
+            className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 pr-3 text-right -translate-y-1.5"
           >
             {formatHour(h)}
           </div>
         ))}
       </div>
       <div
-        className={"relative " + (isToday ? "bg-slate-50" : "")}
+        className={"relative " + (isToday ? "bg-black" : "")}
         style={{ height: `${HOURS.length * HOUR_PX}px` }}
       >
         {HOURS.map((h) => (
           <div
             key={h}
-            className="border-b border-slate-100"
+            className="border-b border-[#1f1f24]"
             style={{ height: `${HOUR_PX}px` }}
           />
         ))}
@@ -700,11 +708,11 @@ function MonthView({
   const weekDayHeaders = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   return (
     <div>
-      <div className="grid grid-cols-7 border-b border-slate-200 bg-slate-50">
+      <div className="grid grid-cols-7 border-b border-[#1f1f24] bg-black">
         {weekDayHeaders.map((d) => (
           <div
             key={d}
-            className="text-xs font-medium text-slate-500 uppercase tracking-wide text-center py-2"
+            className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 uppercase tracking-wide text-center py-2"
           >
             {d}
           </div>
@@ -720,15 +728,15 @@ function MonthView({
               key={d.toISOString()}
               onClick={() => onPickDay(d)}
               className={
-                "border-b border-r border-slate-200 last:border-r-0 text-left p-2 min-h-[110px] hover:bg-slate-50 transition " +
-                (inMonth ? "" : "bg-slate-50/40 text-slate-400 ") +
-                (isToday ? "bg-slate-50" : "")
+                "border-b border-r border-[#1f1f24] last:border-r-0 text-left p-2 min-h-[110px] hover:bg-black transition " +
+                (inMonth ? "" : "bg-black/40 text-zinc-500 ") +
+                (isToday ? "bg-black" : "")
               }
             >
               <div
                 className={
                   "text-sm font-semibold mb-1 " +
-                  (isToday ? "text-slate-900" : "")
+                  (isToday ? "text-white" : "")
                 }
               >
                 {d.getDate()}
@@ -743,7 +751,7 @@ function MonthView({
                   </div>
                 ))}
                 {items.length > 3 && (
-                  <div className="text-[11px] text-slate-400">
+                  <div className="text-[11px] text-zinc-500">
                     +{items.length - 3} more
                   </div>
                 )}

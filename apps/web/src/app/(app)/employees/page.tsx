@@ -2,6 +2,14 @@ import Link from "next/link";
 import { Plus, User } from "lucide-react";
 import { getDb, type Staff } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export const dynamic = "force-dynamic";
 
@@ -51,58 +59,58 @@ export default async function EmployeesPage() {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-slate-900">Employees</h1>
+        <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Employees</h1>
         <Link
           href="/employees/new"
-          className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-md px-4 py-2 text-sm font-medium"
+          className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-md px-4 py-2 text-sm font-bold"
         >
-          <span className="w-5 h-5 rounded-full bg-white/15 flex items-center justify-center">
+          <span className="w-5 h-5 rounded-full bg-[#0f0f12]/15 flex items-center justify-center">
             <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
           </span>
           Add Employee
         </Link>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
+      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
         {employees.length === 0 ? (
-          <div className="p-12 text-center text-sm text-slate-500">
+          <div className="p-12 text-center text-sm text-zinc-400 font-bold">
             No employees yet. Click &ldquo;Add Employee&rdquo; to add your
             first team member.
           </div>
         ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-slate-200 text-left">
-                <th className="px-4 py-3 w-14"></th>
-                <th className="px-4 py-3 text-sm font-medium text-slate-500">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-b border-[#1f1f24] text-left hover:bg-transparent">
+                <TableHead className="h-auto px-4 py-3 w-14"></TableHead>
+                <TableHead className="h-auto px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
                   Name
-                </th>
-                <th className="px-4 py-3 text-sm font-medium text-slate-500">
+                </TableHead>
+                <TableHead className="h-auto px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
                   Role
-                </th>
-                <th className="px-4 py-3 text-sm font-medium text-slate-500">
+                </TableHead>
+                <TableHead className="h-auto px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
                   Phone
-                </th>
-                <th className="px-4 py-3 text-sm font-medium text-slate-500">
+                </TableHead>
+                <TableHead className="h-auto px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
                   Email
-                </th>
-                <th className="px-4 py-3 text-sm font-medium text-slate-500">
+                </TableHead>
+                <TableHead className="h-auto px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
                   Created
-                </th>
-                <th className="px-4 py-3 w-20"></th>
-              </tr>
-            </thead>
-            <tbody>
+                </TableHead>
+                <TableHead className="h-auto px-4 py-3 w-20"></TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {employees.map((e) => {
                 const role =
                   PERMISSION_LABELS[e.permission_level] || "Manager";
                 return (
-                  <tr
+                  <TableRow
                     key={e.id}
-                    className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
+                    className="border-b border-[#1f1f24] last:border-0 hover:bg-black"
                   >
-                    <td className="px-4 py-4">
-                      <div className="w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center overflow-hidden">
+                    <TableCell className="px-4 py-4">
+                      <div className="w-10 h-10 rounded-full bg-black border border-[#1f1f24] flex items-center justify-center overflow-hidden">
                         {e.photo_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -112,38 +120,38 @@ export default async function EmployeesPage() {
                           />
                         ) : (
                           <User
-                            className="w-5 h-5 text-slate-400"
+                            className="w-5 h-5 text-zinc-500"
                             strokeWidth={1.5}
                           />
                         )}
                       </div>
-                    </td>
-                    <td className="px-4 py-4 text-sm font-semibold text-slate-900">
+                    </TableCell>
+                    <TableCell className="px-4 py-4 text-sm font-extrabold text-white tracking-tight">
                       {displayName(e)}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-slate-500">{role}</td>
-                    <td className="px-4 py-4 text-sm text-slate-500">
+                    </TableCell>
+                    <TableCell className="px-4 py-4 text-sm text-zinc-400 font-bold">{role}</TableCell>
+                    <TableCell className="px-4 py-4 text-sm text-zinc-400 font-bold">
                       {formatPhone(e.phone)}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-slate-500">
+                    </TableCell>
+                    <TableCell className="px-4 py-4 text-sm text-zinc-400 font-bold">
                       {e.email || "—"}
-                    </td>
-                    <td className="px-4 py-4 text-sm text-slate-500">
+                    </TableCell>
+                    <TableCell className="px-4 py-4 text-sm text-zinc-400 font-bold">
                       {formatDate(e.created_at)}
-                    </td>
-                    <td className="px-4 py-4 text-right">
+                    </TableCell>
+                    <TableCell className="px-4 py-4 text-right">
                       <Link
                         href={`/employees/${e.id}/edit`}
-                        className="text-sm text-slate-900 hover:underline"
+                        className="text-sm text-white hover:underline"
                       >
                         Edit
                       </Link>
-                    </td>
-                  </tr>
+                    </TableCell>
+                  </TableRow>
                 );
               })}
-            </tbody>
-          </table>
+            </TableBody>
+          </Table>
         )}
       </div>
     </div>

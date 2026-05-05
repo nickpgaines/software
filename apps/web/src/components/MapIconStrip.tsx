@@ -10,6 +10,7 @@ import {
   SlidersHorizontal,
   Users,
 } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 type StyleMode = "satellite" | "streets";
 
@@ -48,14 +49,15 @@ export default function MapIconStrip({
   const StyleIcon = satelliteActive ? Satellite : MapIcon;
 
   const buttonBase =
-    "flex h-10 w-10 items-center justify-center rounded-md transition-colors";
+    "h-10 w-10 p-0 rounded-md transition-colors";
   const activeClasses = "bg-slate-900 text-white hover:bg-slate-800";
   const inactiveClasses =
-    "text-slate-700 hover:bg-slate-100 hover:text-slate-900";
+    "text-zinc-300 hover:bg-black hover:text-white";
 
   return (
-    <div className="absolute top-4 right-4 z-10 flex w-12 flex-col items-center gap-2 rounded-lg border border-slate-200 bg-white p-1 shadow-md">
-      <button
+    <div className="absolute top-4 right-4 z-10 flex w-12 flex-col items-center gap-2 rounded-lg border border-[#1f1f24] bg-[#0f0f12] p-1 shadow-md">
+      <Button
+        variant="ghost"
         type="button"
         onClick={onToggleStyle}
         title="Toggle satellite view"
@@ -67,8 +69,9 @@ export default function MapIconStrip({
         }
       >
         <StyleIcon className="h-5 w-5" />
-      </button>
-      <button
+      </Button>
+      <Button
+        variant="ghost"
         type="button"
         onClick={onTogglePins}
         title="Show/hide pins"
@@ -79,8 +82,9 @@ export default function MapIconStrip({
         }
       >
         <MapPin className="h-5 w-5" />
-      </button>
-      <button
+      </Button>
+      <Button
+        variant="ghost"
         type="button"
         onClick={onToggleCustomerPins}
         title="Show/hide customers"
@@ -93,8 +97,9 @@ export default function MapIconStrip({
         }
       >
         <Users className="h-5 w-5" />
-      </button>
-      <button
+      </Button>
+      <Button
+        variant="ghost"
         type="button"
         onClick={onToggleDrawTerritory}
         title={drawingTerritory ? "Cancel drawing" : "Draw territory"}
@@ -107,8 +112,9 @@ export default function MapIconStrip({
         }
       >
         <Hexagon className="h-5 w-5" />
-      </button>
-      <button
+      </Button>
+      <Button
+        variant="ghost"
         type="button"
         onClick={onToggleTerritoryList}
         title="Edit territory"
@@ -121,8 +127,9 @@ export default function MapIconStrip({
         }
       >
         <Pencil className="h-5 w-5" />
-      </button>
-      <button
+      </Button>
+      <Button
+        variant="ghost"
         type="button"
         onClick={onToggleFilter}
         title="Filters"
@@ -133,8 +140,9 @@ export default function MapIconStrip({
         }
       >
         <SlidersHorizontal className="h-5 w-5" />
-      </button>
-      <button
+      </Button>
+      <Button
+        variant="ghost"
         type="button"
         onClick={onToggleLasso}
         title={drawingLasso ? "Cancel lasso" : "Lasso customers for text blast"}
@@ -149,7 +157,7 @@ export default function MapIconStrip({
         }
       >
         <Lasso className="h-5 w-5" />
-      </button>
+      </Button>
     </div>
   );
 }

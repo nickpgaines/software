@@ -2,6 +2,9 @@
 
 import { X } from "lucide-react";
 import { staffColorHex } from "@/lib/staff-colors";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 export type DateRange =
   | "all"
@@ -71,16 +74,17 @@ export default function MapFilterPanel({
   }
 
   return (
-    <div className="absolute top-4 right-16 z-10 w-72 max-h-[80vh] flex flex-col rounded-lg border border-slate-200 bg-white shadow-md">
-      <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-        <h3 className="font-semibold text-slate-900 text-sm">Filters</h3>
-        <button
+    <div className="absolute top-4 right-16 z-10 w-72 max-h-[80vh] flex flex-col rounded-lg border border-[#1f1f24] bg-[#0f0f12] shadow-md">
+      <div className="px-4 py-3 border-b border-[#1f1f24] flex items-center justify-between">
+        <h3 className="font-extrabold text-white tracking-tight text-sm">Filters</h3>
+        <Button
+          variant="ghost"
           onClick={onClose}
-          className="text-slate-400 hover:text-slate-700"
+          className="h-auto w-auto p-0 text-zinc-500 hover:text-zinc-300 hover:bg-transparent"
           aria-label="Close"
         >
           <X className="h-4 w-4" />
-        </button>
+        </Button>
       </div>
 
       <div className="overflow-y-auto p-4 space-y-5">
@@ -102,10 +106,11 @@ export default function MapFilterPanel({
         <Section label="Date">
           <div className="space-y-1">
             {DATE_RANGES.map((r) => (
-              <label
+              <Label
                 key={r.key}
-                className="flex items-center gap-2 text-sm cursor-pointer py-1"
+                className="flex items-center gap-2 text-sm cursor-pointer py-1 font-normal"
               >
+                {/* Native <input type="radio"> kept: no Radio primitive in components/ui yet. */}
                 <input
                   type="radio"
                   name="map-filter-date"
@@ -113,55 +118,57 @@ export default function MapFilterPanel({
                   onChange={() => onChangeDateRange(r.key)}
                   className="accent-slate-900"
                 />
-                <span className="text-slate-700">{r.label}</span>
-              </label>
+                <span className="text-zinc-300">{r.label}</span>
+              </Label>
             ))}
           </div>
         </Section>
 
         <Section label="Employee">
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => onChangeEmployeeIds(null)}
             className={
-              "text-xs px-2 py-1 rounded-full mb-2 " +
+              "h-auto text-xs px-2 py-1 rounded-full mb-2 font-bold " +
               (allEmployees
-                ? "bg-slate-900 text-white"
-                : "bg-slate-100 text-slate-600 hover:bg-slate-200")
+                ? "bg-slate-900 text-white hover:bg-slate-900"
+                : "bg-black text-zinc-400 hover:bg-[#1f1f24]")
             }
           >
             All employees
-          </button>
+          </Button>
           <div className="flex flex-wrap gap-1.5">
             {staff.length === 0 && (
-              <p className="text-xs text-slate-400">No employees yet.</p>
+              <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">No employees yet.</p>
             )}
             {staff.map((s) => {
               const active =
                 !allEmployees && selectedEmployeeIds!.includes(s.id);
               return (
-                <button
+                <Button
                   key={s.id}
                   type="button"
+                  variant="ghost"
                   onClick={() => toggleEmployee(s.id)}
                   className={
-                    "inline-flex items-center gap-1.5 rounded-full pl-1 pr-2 py-0.5 text-xs border transition " +
+                    "h-auto gap-1.5 rounded-full pl-1 pr-2 py-0.5 text-xs border font-bold " +
                     (active
-                      ? "border-transparent text-white"
-                      : "border-slate-200 text-slate-700 hover:bg-slate-50")
+                      ? "border-transparent text-white hover:bg-current"
+                      : "border-[#1f1f24] text-zinc-300 hover:bg-black")
                   }
                   style={
                     active ? { backgroundColor: staffColorHex(s.color) } : {}
                   }
                 >
                   <span
-                    className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-semibold text-white"
+                    className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white tracking-tight"
                     style={{ backgroundColor: staffColorHex(s.color) }}
                   >
                     {initials(s.name)}
                   </span>
                   {s.name}
-                </button>
+                </Button>
               );
             })}
           </div>
@@ -180,7 +187,7 @@ function Section({
 }) {
   return (
     <div>
-      <div className="text-xs uppercase tracking-wide text-slate-400 mb-2">
+      <div className="text-xs uppercase tracking-wide text-zinc-500 mb-2">
         {label}
       </div>
       {children}
@@ -200,18 +207,16 @@ function CheckRow({
   swatch: string;
 }) {
   return (
-    <label className="flex items-center gap-2 text-sm cursor-pointer py-1">
-      <input
-        type="checkbox"
+    <Label className="flex items-center gap-2 text-sm cursor-pointer py-1 font-normal">
+      <Checkbox
         checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
-        className="accent-slate-900"
+        onCheckedChange={(c) => onChange(c === true)}
       />
       <span
         className="w-3.5 h-3.5 rounded-full border border-white shadow-sm"
         style={{ backgroundColor: swatch }}
       />
-      <span className="text-slate-700">{label}</span>
-    </label>
+      <span className="text-zinc-300">{label}</span>
+    </Label>
   );
 }

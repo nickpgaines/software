@@ -2,6 +2,11 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 type Customer = {
   id: number;
@@ -207,19 +212,20 @@ export default function NewEstimateForm() {
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">
+          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
             New Estimate
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-zinc-400 mt-3 font-bold">
             Build a quote for a customer and send it for approval, or accept it
             on their device.
           </p>
         </div>
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={submit}
           disabled={!canSubmit}
-          className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2.5 text-sm font-medium shadow-sm"
+          className="inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2.5 text-sm font-bold shadow-sm h-auto"
         >
           <span aria-hidden>⊕</span>
           {submitting
@@ -229,7 +235,7 @@ export default function NewEstimateForm() {
               : acceptMode === "accept"
                 ? "Accept Estimate"
                 : "Save Draft"}
-        </button>
+        </Button>
       </div>
 
       {error && (
@@ -242,16 +248,17 @@ export default function NewEstimateForm() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 className="text-base font-extrabold text-white tracking-tight">
                 Customer
               </h2>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => setShowNewCustomer(true)}
-                className="text-sm font-medium text-slate-700 border border-slate-200 hover:bg-slate-50 rounded-full px-3 py-1.5"
+                className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5 h-auto"
               >
                 + Create New Customer
-              </button>
+              </Button>
             </CardHeader>
             <CustomerPicker
               customers={customers}
@@ -268,7 +275,7 @@ export default function NewEstimateForm() {
               }}
             />
             {selectedCustomer && (
-              <div className="text-xs text-slate-500 mt-2">
+              <div className="text-xs text-zinc-400 mt-2">
                 {selectedCustomer.formatted_address ||
                   selectedCustomer.address ||
                   "—"}
@@ -279,35 +286,36 @@ export default function NewEstimateForm() {
 
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 className="text-base font-extrabold text-white tracking-tight">
                 Details
               </h2>
             </CardHeader>
             <Field label="Title (optional)">
-              <input
+              <Input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="Spring window cleaning estimate"
-                className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white"
+                className="w-full border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12] h-auto"
               />
             </Field>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Valid Until">
-                <input
+                <Input
                   type="date"
                   value={validUntil}
                   onChange={(e) => setValidUntil(e.target.value)}
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white"
+                  className="w-full border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12] h-auto"
                 />
               </Field>
               <Field label="Sold By">
+                {/* Native <select> kept: Radix Select empty-value flag */}
                 <select
                   value={soldById}
                   onChange={(e) =>
                     setSoldById(e.target.value ? Number(e.target.value) : "")
                   }
-                  className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white"
+                  className="w-full border border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12]"
                 >
                   <option value="">Select salesperson…</option>
                   {staff.map((s) => (
@@ -320,19 +328,19 @@ export default function NewEstimateForm() {
               </Field>
             </div>
             <Field label="Notes (optional)">
-              <textarea
+              <Textarea
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 rows={3}
                 placeholder="Anything the customer should know…"
-                className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white"
+                className="w-full border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12]"
               />
             </Field>
           </Card>
 
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 className="text-base font-extrabold text-white tracking-tight">
                 Send Options
               </h2>
             </CardHeader>
@@ -357,19 +365,19 @@ export default function NewEstimateForm() {
               />
               {acceptMode === "accept" && (
                 <div className="space-y-2 pt-1">
-                  <div className="text-xs uppercase tracking-wide text-slate-400">
+                  <div className="text-xs uppercase tracking-wide text-zinc-500">
                     Customer signature
                   </div>
                   <SignaturePad
                     value={signatureData}
                     onChange={setSignatureData}
                   />
-                  <input
+                  <Input
                     type="text"
                     value={signatureName}
                     onChange={(e) => setSignatureName(e.target.value)}
                     placeholder="Printed name"
-                    className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white"
+                    className="w-full border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12] h-auto"
                   />
                 </div>
               )}
@@ -380,28 +388,30 @@ export default function NewEstimateForm() {
         <div className="space-y-4">
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-slate-900">
+              <h2 className="text-base font-extrabold text-white tracking-tight">
                 Line Items
               </h2>
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => addItem()}
-                className="text-sm font-medium text-slate-700 border border-slate-200 hover:bg-slate-50 rounded-full px-3 py-1.5"
+                className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5 h-auto"
               >
                 + Add item
-              </button>
+              </Button>
             </CardHeader>
 
             <div className="flex flex-wrap gap-2 mb-3">
               {SERVICE_PRESETS.map((p) => (
-                <button
+                <Button
                   key={p}
                   type="button"
+                  variant="ghost"
                   onClick={() => addItem(p)}
-                  className="text-xs bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full px-3 py-1"
+                  className="text-xs bg-black hover:bg-[#1f1f24] text-zinc-300 rounded-full px-3 py-1 h-auto"
                 >
                   + {p}
-                </button>
+                </Button>
               ))}
             </div>
 
@@ -409,44 +419,45 @@ export default function NewEstimateForm() {
               {items.map((it, idx) => (
                 <li
                   key={it.key}
-                  className="rounded-xl border border-slate-200 p-3 space-y-2 bg-white"
+                  className="rounded-xl border border-[#1f1f24] p-3 space-y-2 bg-[#0f0f12]"
                 >
                   <div className="flex items-start gap-2">
-                    <input
+                    <Input
                       type="text"
                       value={it.title}
                       onChange={(e) =>
                         updateItem(it.key, { title: e.target.value })
                       }
                       placeholder="Item title"
-                      className="flex-1 border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                      className="flex-1 border-[#1f1f24] rounded-lg px-3 py-2 text-sm h-auto"
                     />
                     {items.length > 1 && (
-                      <button
+                      <Button
                         type="button"
+                        variant="ghost"
                         onClick={() => removeItem(it.key)}
-                        className="text-slate-400 hover:text-rose-600 px-2"
+                        className="text-zinc-500 hover:text-rose-600 px-2 h-auto"
                         aria-label={`Remove item ${idx + 1}`}
                       >
                         ✕
-                      </button>
+                      </Button>
                     )}
                   </div>
-                  <input
+                  <Input
                     type="text"
                     value={it.description}
                     onChange={(e) =>
                       updateItem(it.key, { description: e.target.value })
                     }
                     placeholder="Description (optional)"
-                    className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                    className="w-full border-[#1f1f24] rounded-lg px-3 py-2 text-sm h-auto"
                   />
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">
+                      <Label className="block text-[10px] uppercase tracking-wide text-zinc-500 mb-1 font-normal">
                         Qty
-                      </label>
-                      <input
+                      </Label>
+                      <Input
                         type="number"
                         step="0.5"
                         min="0"
@@ -454,14 +465,14 @@ export default function NewEstimateForm() {
                         onChange={(e) =>
                           updateItem(it.key, { quantity: e.target.value })
                         }
-                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                        className="w-full border-[#1f1f24] rounded-lg px-3 py-2 text-sm h-auto"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">
+                      <Label className="block text-[10px] uppercase tracking-wide text-zinc-500 mb-1 font-normal">
                         Price (USD)
-                      </label>
-                      <input
+                      </Label>
+                      <Input
                         type="number"
                         step="0.01"
                         min="0"
@@ -469,29 +480,28 @@ export default function NewEstimateForm() {
                         onChange={(e) =>
                           updateItem(it.key, { price: e.target.value })
                         }
-                        className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm"
+                        className="w-full border-[#1f1f24] rounded-lg px-3 py-2 text-sm h-auto"
                         placeholder="0.00"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] uppercase tracking-wide text-slate-400 mb-1">
+                      <Label className="block text-[10px] uppercase tracking-wide text-zinc-500 mb-1 font-normal">
                         Line total
-                      </label>
-                      <div className="text-sm font-medium text-slate-900 px-3 py-2 bg-slate-50 rounded-lg">
+                      </Label>
+                      <div className="text-sm font-bold text-white tracking-tight px-3 py-2 bg-black rounded-lg">
                         {formatPrice(lineTotalCents(it))}
                       </div>
                     </div>
                   </div>
-                  <label className="inline-flex items-center gap-2 text-xs text-slate-700">
-                    <input
-                      type="checkbox"
+                  <Label className="inline-flex items-center gap-2 text-xs text-zinc-300 font-normal">
+                    <Checkbox
                       checked={it.taxable}
-                      onChange={(e) =>
-                        updateItem(it.key, { taxable: e.target.checked })
+                      onCheckedChange={(c) =>
+                        updateItem(it.key, { taxable: c === true })
                       }
                     />
                     Taxable
-                  </label>
+                  </Label>
                 </li>
               ))}
             </ul>
@@ -499,36 +509,36 @@ export default function NewEstimateForm() {
 
           <Card>
             <CardHeader>
-              <h2 className="text-base font-semibold text-slate-900">Total</h2>
+              <h2 className="text-base font-extrabold text-white tracking-tight">Total</h2>
             </CardHeader>
             <div className="space-y-2 text-sm">
               <Row label="Subtotal" value={formatPrice(subtotalCents)} />
               <div className="flex items-center justify-between gap-3">
-                <div className="text-slate-500">
+                <div className="text-zinc-400">
                   Tax rate
-                  <input
+                  <Input
                     type="number"
                     step="0.01"
                     min="0"
                     value={taxRate}
                     onChange={(e) => setTaxRate(e.target.value)}
-                    className="ml-2 w-20 border border-slate-200 rounded-lg px-2 py-1 text-sm"
+                    className="ml-2 w-20 border-[#1f1f24] rounded-lg px-2 py-1 text-sm h-auto"
                   />
-                  <span className="ml-1 text-slate-400">%</span>
+                  <span className="ml-1 text-zinc-500">%</span>
                 </div>
-                <div className="font-medium text-slate-900">
+                <div className="font-bold text-white tracking-tight">
                   {formatPrice(taxCents)}
                 </div>
               </div>
-              <div className="border-t border-slate-200 pt-2">
+              <div className="border-t border-[#1f1f24] pt-2">
                 <Row
                   label={
-                    <span className="text-base font-semibold text-slate-900">
+                    <span className="text-base font-extrabold text-white tracking-tight">
                       Total
                     </span>
                   }
                   value={
-                    <span className="text-base font-semibold text-slate-900">
+                    <span className="text-base font-extrabold text-white tracking-tight">
                       {formatPrice(totalCents)}
                     </span>
                   }
@@ -556,7 +566,7 @@ export default function NewEstimateForm() {
 
 function Card({ children }: { children: React.ReactNode }) {
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5 shadow-sm">
       {children}
     </div>
   );
@@ -579,9 +589,9 @@ function Field({
 }) {
   return (
     <div className="mb-3">
-      <label className="block text-xs font-medium text-slate-500 mb-1.5">
+      <Label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
         {label}
-      </label>
+      </Label>
       {children}
     </div>
   );
@@ -596,8 +606,8 @@ function Row({
 }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <div className="text-slate-500">{label}</div>
-      <div className="font-medium text-slate-900">{value}</div>
+      <div className="text-zinc-400">{label}</div>
+      <div className="font-bold text-white tracking-tight">{value}</div>
     </div>
   );
 }
@@ -614,21 +624,22 @@ function RadioOption({
   description: string;
 }) {
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
       onClick={onChange}
       className={
-        "w-full text-left rounded-xl border p-3 transition " +
+        "w-full text-left rounded-xl border p-3 h-auto block " +
         (checked
-          ? "border-slate-900 bg-slate-50"
-          : "border-slate-200 hover:border-slate-300")
+          ? "border-slate-900 bg-black"
+          : "border-[#1f1f24] hover:border-[#2a2a32]")
       }
     >
       <div className="flex items-start gap-3">
         <span
           className={
             "mt-0.5 inline-flex h-4 w-4 shrink-0 rounded-full border-2 " +
-            (checked ? "border-slate-900" : "border-slate-300")
+            (checked ? "border-slate-900" : "border-[#2a2a32]")
           }
         >
           {checked && (
@@ -636,11 +647,11 @@ function RadioOption({
           )}
         </span>
         <div>
-          <div className="text-sm font-medium text-slate-900">{title}</div>
-          <div className="text-xs text-slate-500 mt-0.5">{description}</div>
+          <div className="text-sm font-bold text-white tracking-tight">{title}</div>
+          <div className="text-xs text-zinc-400 mt-0.5">{description}</div>
         </div>
       </div>
-    </button>
+    </Button>
   );
 }
 
@@ -680,7 +691,7 @@ function CustomerPicker({
 
   return (
     <div ref={ref} className="relative">
-      <input
+      <Input
         type="search"
         value={query}
         onChange={(e) => {
@@ -690,30 +701,31 @@ function CustomerPicker({
         }}
         onFocus={() => setOpen(true)}
         placeholder="Search"
-        className="w-full border border-slate-200 rounded-xl px-4 py-2 text-sm bg-white pl-9"
+        className="w-full border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12] pl-9 h-auto"
       />
-      <span className="absolute left-3 top-2.5 text-slate-400" aria-hidden>
+      <span className="absolute left-3 top-2.5 text-zinc-500" aria-hidden>
         ⌕
       </span>
       {open && suggestions.length > 0 && !selectedId && (
-        <div className="absolute z-30 left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
+        <div className="absolute z-30 left-0 right-0 mt-1 bg-[#0f0f12] border border-[#1f1f24] rounded-xl shadow-lg overflow-hidden max-h-64 overflow-y-auto">
           {suggestions.map((c) => (
-            <button
+            <Button
               key={c.id}
               type="button"
+              variant="ghost"
               onClick={() => {
                 onPick(c);
                 setOpen(false);
               }}
-              className="w-full text-left px-4 py-2 hover:bg-slate-50 text-sm"
+              className="w-full text-left px-4 py-2 hover:bg-black text-sm h-auto block"
             >
-              <div className="font-medium text-slate-900">{c.name}</div>
+              <div className="font-bold text-white tracking-tight">{c.name}</div>
               {(c.formatted_address || c.address) && (
-                <div className="text-xs text-slate-500 truncate">
+                <div className="text-xs text-zinc-400 truncate">
                   {c.formatted_address || c.address}
                 </div>
               )}
-            </button>
+            </Button>
           ))}
         </div>
       )}
@@ -769,79 +781,82 @@ function NewCustomerModal({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
       <form
         onSubmit={save}
-        className="bg-white rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4"
+        className="bg-[#0f0f12] rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4"
       >
         <div className="flex items-start justify-between">
-          <h3 className="text-base font-semibold text-slate-900">
+          <h3 className="text-base font-extrabold text-white tracking-tight">
             New customer
           </h3>
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={onClose}
-            className="text-sm text-slate-400 hover:text-slate-700"
+            className="text-sm text-zinc-500 hover:text-zinc-300 h-auto p-0"
           >
             ✕
-          </button>
+          </Button>
         </div>
         <div className="grid grid-cols-2 gap-3">
           <Field label="First name">
-            <input
+            <Input
               type="text"
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+              className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm h-auto"
               autoFocus
             />
           </Field>
           <Field label="Last name">
-            <input
+            <Input
               type="text"
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
-              className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+              className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm h-auto"
             />
           </Field>
         </div>
         <Field label="Phone">
-          <input
+          <Input
             type="tel"
             value={phone}
             onChange={(e) => setPhone(e.target.value)}
-            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+            className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm h-auto"
           />
         </Field>
         <Field label="Email">
-          <input
+          <Input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+            className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm h-auto"
           />
         </Field>
         <Field label="Address">
-          <input
+          <Input
             type="text"
             value={address}
             onChange={(e) => setAddress(e.target.value)}
-            className="w-full border border-slate-200 rounded-xl px-3 py-2 text-sm"
+            className="w-full border-[#1f1f24] rounded-xl px-3 py-2 text-sm h-auto"
           />
         </Field>
         {err && <p className="text-sm text-rose-600">{err}</p>}
         <div className="flex items-center gap-3">
-          <button
+          <Button
             type="submit"
+            variant="ghost"
             disabled={saving}
-            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-medium"
+            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold h-auto"
           >
             {saving ? "Saving…" : "Save customer"}
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="ghost"
             onClick={onClose}
-            className="text-sm text-slate-600 hover:text-slate-900"
+            className="text-sm text-zinc-400 font-bold hover:text-white h-auto"
           >
             Cancel
-          </button>
+          </Button>
         </div>
       </form>
     </div>
@@ -928,7 +943,7 @@ function SignaturePad({
 
   return (
     <div className="space-y-2">
-      <div className="border border-slate-300 rounded-xl bg-white">
+      <div className="border border-[#2a2a32] rounded-xl bg-[#0f0f12]">
         <canvas
           ref={canvasRef}
           onPointerDown={start}
@@ -940,13 +955,14 @@ function SignaturePad({
         />
       </div>
       <div className="flex items-center justify-between">
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={clear}
-          className="text-xs text-slate-500 hover:text-slate-900"
+          className="text-xs text-zinc-400 hover:text-white h-auto"
         >
           Clear
-        </button>
+        </Button>
         {value && (
           <span className="text-xs text-emerald-600">Signature captured</span>
         )}

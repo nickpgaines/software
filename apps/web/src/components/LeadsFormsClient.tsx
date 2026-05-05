@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Plus, FileText } from "lucide-react";
 import type { LeadForm } from "@/lib/db";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function LeadsFormsClient({
   initialForms,
@@ -47,30 +49,31 @@ export default function LeadsFormsClient({
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-semibold text-slate-900">Forms</h2>
-        <p className="text-sm text-slate-500">
+        <h2 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Forms</h2>
+        <p className="text-sm text-zinc-400 font-bold">
           Create web forms that drop new leads into your pipeline
         </p>
       </div>
 
       <div className="flex justify-end">
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={() => setShowNew(true)}
-          className="inline-flex items-center gap-1.5 bg-sky-400 hover:bg-sky-500 text-white text-sm font-medium px-4 py-2 rounded-full"
+          className="h-auto gap-1.5 bg-sky-400 hover:bg-sky-500 text-white text-sm font-bold px-4 py-2 rounded-full"
         >
           <Plus className="w-4 h-4" />
           Add Form
-        </button>
+        </Button>
       </div>
 
       {forms.length === 0 ? (
-        <div className="border border-dashed border-slate-200 rounded-2xl p-12 text-center">
-          <div className="mx-auto w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+        <div className="border border-dashed border-[#1f1f24] rounded-2xl p-12 text-center">
+          <div className="mx-auto w-12 h-12 rounded-full bg-black flex items-center justify-center text-zinc-500">
             <FileText className="w-5 h-5" />
           </div>
-          <p className="mt-3 font-medium text-slate-900">No forms yet</p>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="mt-3 font-bold text-white tracking-tight">No forms yet</p>
+          <p className="text-sm text-zinc-400 mt-3 font-bold">
             Build a form, share its link, and new leads land in your pipeline.
           </p>
         </div>
@@ -81,14 +84,14 @@ export default function LeadsFormsClient({
             return (
               <div
                 key={f.id}
-                className="border border-slate-200 rounded-2xl p-4 flex items-center justify-between gap-4"
+                className="border border-[#1f1f24] rounded-2xl p-4 flex items-center justify-between gap-4"
               >
                 <div>
-                  <div className="font-semibold text-slate-900">{f.name}</div>
-                  <div className="text-xs text-slate-500 mt-0.5 break-all">
+                  <div className="font-extrabold text-white tracking-tight">{f.name}</div>
+                  <div className="text-xs text-zinc-400 mt-0.5 break-all">
                     /forms/{f.slug}
                   </div>
-                  <div className="text-xs text-slate-500 mt-0.5">
+                  <div className="text-xs text-zinc-400 mt-0.5">
                     {f.submit_count} submissions
                   </div>
                 </div>
@@ -98,28 +101,29 @@ export default function LeadsFormsClient({
                       "text-xs px-3 py-1 rounded-full " +
                       (enabled
                         ? "bg-emerald-50 text-emerald-700"
-                        : "bg-slate-100 text-slate-600")
+                        : "bg-black text-zinc-400")
                     }
                   >
                     {enabled ? "Live" : "Disabled"}
                   </span>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
                     role="switch"
                     aria-checked={enabled}
                     onClick={() => toggle(f.id, !enabled)}
                     className={
-                      "relative w-10 h-6 rounded-full transition-colors " +
-                      (enabled ? "bg-emerald-500" : "bg-slate-300")
+                      "relative w-10 h-6 p-0 rounded-full hover:bg-current " +
+                      (enabled ? "bg-emerald-500 hover:bg-emerald-500" : "bg-[#2a2a32] hover:bg-[#2a2a32]")
                     }
                   >
                     <span
                       className={
-                        "absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform " +
+                        "absolute top-0.5 left-0.5 w-5 h-5 bg-[#0f0f12] rounded-full shadow transition-transform " +
                         (enabled ? "translate-x-4" : "")
                       }
                     />
-                  </button>
+                  </Button>
                 </div>
               </div>
             );
@@ -133,38 +137,40 @@ export default function LeadsFormsClient({
           onClick={() => setShowNew(false)}
         >
           <div
-            className="bg-white rounded-2xl p-6 w-full max-w-md"
+            className="bg-[#0f0f12] rounded-2xl p-6 w-full max-w-md"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-semibold text-slate-900 mb-4">
+            <h3 className="text-lg font-extrabold text-white tracking-tight mb-4">
               New form
             </h3>
-            <input
+            <Input
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Form name"
-              className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
+              className="w-full h-auto border-[#1f1f24] rounded-lg px-3 py-2 text-sm focus-visible:ring-[#2a2a32]"
             />
-            <p className="text-xs text-slate-500 mt-2">
+            <p className="text-xs text-zinc-400 mt-2">
               Default fields: first name, last name, email, phone. You can
               customize them later.
             </p>
             <div className="flex justify-end gap-2 mt-4">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => setShowNew(false)}
-                className="px-4 py-2 text-sm text-slate-600 hover:text-slate-900"
+                className="h-auto px-4 py-2 text-sm text-zinc-400 font-bold hover:text-white hover:bg-transparent"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={createForm}
-                className="px-4 py-2 text-sm bg-sky-400 hover:bg-sky-500 text-white rounded-full"
+                className="h-auto px-4 py-2 text-sm bg-sky-400 hover:bg-sky-500 text-white rounded-full font-bold"
               >
                 Create
-              </button>
+              </Button>
             </div>
           </div>
         </div>

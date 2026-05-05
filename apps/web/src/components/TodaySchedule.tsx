@@ -90,25 +90,25 @@ export default function TodaySchedule({ initialJobs }: { initialJobs: Job[] }) {
   }, [offset]);
 
   return (
-    <div className="bg-white border border-slate-200 rounded-2xl p-6">
+    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setOffset(offset - 1)}
-            className="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center"
+            className="w-8 h-8 rounded-full hover:bg-black text-zinc-400 flex items-center justify-center"
             aria-label="Previous day"
           >
             ‹
           </button>
           <h3
-            className="font-semibold text-slate-900 text-lg"
+            className="font-extrabold text-white tracking-tight text-lg"
             suppressHydrationWarning
           >
             {mounted ? formatDay(currentDate) : ""}
           </h3>
           <button
             onClick={() => setOffset(offset + 1)}
-            className="w-8 h-8 rounded-full hover:bg-slate-100 text-slate-500 flex items-center justify-center"
+            className="w-8 h-8 rounded-full hover:bg-black text-zinc-400 flex items-center justify-center"
             aria-label="Next day"
           >
             ›
@@ -116,7 +116,7 @@ export default function TodaySchedule({ initialJobs }: { initialJobs: Job[] }) {
         </div>
         <button
           onClick={() => setOffset(0)}
-          className="w-8 h-8 rounded border border-slate-200 hover:bg-slate-50 text-slate-500 flex items-center justify-center"
+          className="w-8 h-8 rounded border border-[#1f1f24] hover:bg-black text-zinc-400 flex items-center justify-center"
           title="Today"
           aria-label="Jump to today"
         >
@@ -139,9 +139,9 @@ export default function TodaySchedule({ initialJobs }: { initialJobs: Job[] }) {
 
       <div className="mt-6">
         {loading ? (
-          <div className="py-8 text-center text-sm text-slate-400">Loading…</div>
+          <div className="py-8 text-center text-sm text-zinc-500">Loading…</div>
         ) : jobs.length === 0 ? (
-          <div className="py-8 text-center text-sm text-slate-400">
+          <div className="py-8 text-center text-sm text-zinc-500">
             No jobs scheduled.
           </div>
         ) : (
@@ -149,15 +149,15 @@ export default function TodaySchedule({ initialJobs }: { initialJobs: Job[] }) {
             {jobs.map((j) => (
               <li key={j.id}>
                 <div
-                  className="text-sm text-slate-500 border-b border-slate-100 pb-2 mb-2"
+                  className="text-sm text-zinc-400 font-bold border-b border-[#1f1f24] pb-2 mb-2"
                   suppressHydrationWarning
                 >
                   {mounted ? formatTime(j.scheduled_at) : ""}
                 </div>
-                <div className="border border-slate-200 rounded-xl px-4 py-3 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                <div className="border border-[#1f1f24] rounded-xl px-4 py-3 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-lg bg-black flex items-center justify-center shrink-0">
                     <svg
-                      className="w-4 h-4 text-slate-500"
+                      className="w-4 h-4 text-zinc-400"
                       viewBox="0 0 24 24"
                       fill="none"
                       stroke="currentColor"
@@ -172,23 +172,23 @@ export default function TodaySchedule({ initialJobs }: { initialJobs: Job[] }) {
                     </svg>
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="font-medium text-slate-900 truncate">
+                    <div className="font-bold text-white tracking-tight truncate">
                       Window Cleaning
                     </div>
-                    <div className="text-sm text-slate-500 truncate">
+                    <div className="text-sm text-zinc-400 font-bold truncate">
                       {j.customer_name}
                       {j.customer_address ? ` · ${j.customer_address}` : ""}
                     </div>
                   </div>
                   <span
                     className={
-                      "text-xs px-2 py-1 rounded-md font-medium " +
+                      "text-xs px-2 py-1 rounded-md font-bold " +
                       statusClasses(j.status)
                     }
                   >
                     {statusLabel(j.status)}
                   </span>
-                  <span className="font-semibold text-slate-900 tabular-nums">
+                  <span className="font-extrabold text-white tracking-tight tabular-nums">
                     {money(j.price_cents)}
                   </span>
                 </div>

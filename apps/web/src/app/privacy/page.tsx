@@ -1,31 +1,31 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Privacy Policy — Nick360",
+  title: "Privacy Policy — Forge CRM",
   description:
-    "How Nick360 (operated by NG Ventures LLC) collects, uses, and protects your information.",
+    "How Forge CRM (operated by NG Ventures LLC) collects, uses, and protects your information.",
 };
 
 const EFFECTIVE_DATE = "May 3, 2026";
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="min-h-screen bg-white px-6 py-12 md:py-16">
+    <div className="min-h-screen bg-black px-6 py-12 md:py-16">
       <div className="max-w-3xl mx-auto">
         <div className="mb-8">
-          <Link href="/" className="text-sm text-slate-500 hover:text-slate-700">
+          <Link href="/" className="text-sm text-zinc-500 hover:text-zinc-300 font-bold">
             ← Back
           </Link>
         </div>
 
-        <h1 className="text-3xl font-semibold text-slate-900">Privacy Policy</h1>
-        <p className="mt-2 text-sm text-slate-500">
+        <h1 className="text-3xl font-extrabold tracking-tight text-white">Privacy Policy</h1>
+        <p className="mt-2 text-sm text-zinc-500 font-bold">
           Effective {EFFECTIVE_DATE}
         </p>
 
-        <div className="mt-8 space-y-6 text-slate-700 leading-relaxed">
+        <div className="mt-8 space-y-6 text-zinc-300 leading-relaxed font-bold">
           <p>
-            This Privacy Policy describes how Nick360 (the &ldquo;Service,&rdquo;
+            This Privacy Policy describes how Forge CRM (the &ldquo;Service,&rdquo;
             &ldquo;we,&rdquo; or &ldquo;us&rdquo;), operated by NG Ventures LLC,
             collects, uses, and protects information about (a) businesses that
             sign up to use the Service (&ldquo;Customers&rdquo;) and (b) end
@@ -33,16 +33,16 @@ export default function PrivacyPolicyPage() {
             information is processed through the Service.
           </p>
 
-          <h2 className="text-xl font-semibold text-slate-900 pt-4">
+          <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
             1. Information we collect
           </h2>
           <p>
-            <strong>From Customers:</strong> business name, address, email,
+            <strong className="text-white">From Customers:</strong> business name, address, email,
             phone number, payment information processed via Stripe, and account
             usage data (logins, feature usage, audit events).
           </p>
           <p>
-            <strong>From End Users (collected on behalf of Customers):</strong>{" "}
+            <strong className="text-white">From End Users (collected on behalf of Customers):</strong>{" "}
             name, phone number, email address, service address, scheduling and
             job history, payment records, message content (SMS, email), and
             opt-in/opt-out records for messaging programs.
@@ -56,7 +56,7 @@ export default function PrivacyPolicyPage() {
             Customer.
           </p>
 
-          <h2 className="text-xl font-semibold text-slate-900 pt-4">
+          <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
             2. How we use information
           </h2>
           <ul className="list-disc pl-6 space-y-2">
@@ -76,11 +76,11 @@ export default function PrivacyPolicyPage() {
             </li>
           </ul>
 
-          <h2 className="text-xl font-semibold text-slate-900 pt-4">
+          <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
             3. SMS and consent
           </h2>
           <p>
-            <strong>
+            <strong className="text-white">
               We do not share, sell, or rent End-User phone numbers or SMS
               opt-in records with third parties or affiliates for marketing or
               promotional purposes.
@@ -89,15 +89,15 @@ export default function PrivacyPolicyPage() {
             from the Customer that collected them.
           </p>
           <p>
-            End Users may opt out at any time by replying <strong>STOP</strong>{" "}
+            End Users may opt out at any time by replying <strong className="text-white">STOP</strong>{" "}
             to any message; opt-out is honored immediately and is permanent
-            unless the End User re-subscribes by replying <strong>START</strong>.
-            End Users may request help by replying <strong>HELP</strong>.
+            unless the End User re-subscribes by replying <strong className="text-white">START</strong>.
+            End Users may request help by replying <strong className="text-white">HELP</strong>.
             Message and data rates may apply. Message frequency varies
             (typically 2&ndash;10 messages per month per End User).
           </p>
 
-          <h2 className="text-xl font-semibold text-slate-900 pt-4">
+          <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
             4. How we share information
           </h2>
           <p>
@@ -105,19 +105,19 @@ export default function PrivacyPolicyPage() {
           </p>
           <ul className="list-disc pl-6 space-y-2">
             <li>
-              <strong>Service providers:</strong> Twilio (SMS and voice
+              <strong className="text-white">Service providers:</strong> Twilio (SMS and voice
               delivery), Stripe (payment processing), Resend (email delivery),
               Anthropic (AI-assisted message drafting), and our hosting and
               database providers. These providers process information solely
               on our instructions and are bound by confidentiality.
             </li>
             <li>
-              <strong>With the Customer:</strong> End-User information
+              <strong className="text-white">With the Customer:</strong> End-User information
               collected through a Customer&rsquo;s account is accessible to
               that Customer&rsquo;s authorized staff.
             </li>
             <li>
-              <strong>Legal compliance:</strong> when required by law,
+              <strong className="text-white">Legal compliance:</strong> when required by law,
               subpoena, or to protect rights and safety.
             </li>
           </ul>
@@ -127,7 +127,7 @@ export default function PrivacyPolicyPage() {
             marketing.
           </p>
 
-          <h2 className="text-xl font-semibold text-slate-900 pt-4">
+          <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
             5. Data retention
           </h2>
           <p>
@@ -137,7 +137,7 @@ export default function PrivacyPolicyPage() {
             and End Users may request deletion as described below.
           </p>
 
-          <h2 className="text-xl font-semibold text-slate-900 pt-4">
+          <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
             6. Security
           </h2>
           <p>
@@ -147,7 +147,7 @@ export default function PrivacyPolicyPage() {
             is completely secure; we cannot guarantee absolute security.
           </p>
 
-          <h2 className="text-xl font-semibold text-slate-900 pt-4">
+          <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
             7. Your choices and rights
           </h2>
           <p>
@@ -158,7 +158,7 @@ export default function PrivacyPolicyPage() {
             contact us using the details below.
           </p>
 
-          <h2 className="text-xl font-semibold text-slate-900 pt-4">
+          <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
             8. Children
           </h2>
           <p>
@@ -166,7 +166,7 @@ export default function PrivacyPolicyPage() {
             knowingly collect information from children under 13.
           </p>
 
-          <h2 className="text-xl font-semibold text-slate-900 pt-4">
+          <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
             9. Changes to this policy
           </h2>
           <p>
@@ -175,7 +175,7 @@ export default function PrivacyPolicyPage() {
             date above and, where appropriate, by additional notice.
           </p>
 
-          <h2 className="text-xl font-semibold text-slate-900 pt-4">
+          <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
             10. Contact
           </h2>
           <p>
@@ -187,15 +187,15 @@ export default function PrivacyPolicyPage() {
             Email:{" "}
             <a
               href="mailto:nick@homeserviceascension.com"
-              className="text-amber-600 hover:text-amber-700"
+              className="text-violet-400 hover:text-violet-300 font-extrabold"
             >
               nick@homeserviceascension.com
             </a>
           </p>
         </div>
 
-        <div className="mt-12 pt-6 border-t border-slate-200 text-sm text-slate-500">
-          <Link href="/terms" className="hover:text-slate-700">
+        <div className="mt-12 pt-6 border-t border-[#1f1f24] text-sm text-zinc-500 font-bold">
+          <Link href="/terms" className="hover:text-zinc-300">
             Terms of Service
           </Link>
         </div>
