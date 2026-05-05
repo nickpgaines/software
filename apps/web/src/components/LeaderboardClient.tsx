@@ -4,6 +4,17 @@ import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import StaffScorecardModal from "./StaffScorecardModal";
 import NewSprintModal from "./NewSprintModal";
 import SprintWidget, { type Sprint } from "./SprintWidget";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 type View = "sales" | "tech";
 type Range = "today" | "week" | "month" | "year" | "custom";
@@ -212,39 +223,42 @@ export default function LeaderboardClient({
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">{title}</h1>
         <div className="flex items-center gap-1 bg-black rounded-full p-1 text-sm">
-          <button
+          <Button
+            variant="ghost"
             onClick={() => setView("sales")}
             className={
-              "px-4 py-1.5 rounded-full transition " +
+              "h-auto px-4 py-1.5 rounded-full font-bold hover:bg-transparent " +
               (view === "sales"
                 ? "bg-[#0f0f12] text-white shadow-sm"
                 : "text-zinc-400 hover:text-white")
             }
           >
             Sales
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             onClick={() => setView("tech")}
             className={
-              "px-4 py-1.5 rounded-full transition " +
+              "h-auto px-4 py-1.5 rounded-full font-bold hover:bg-transparent " +
               (view === "tech"
                 ? "bg-[#0f0f12] text-white shadow-sm"
                 : "text-zinc-400 hover:text-white")
             }
           >
             Technicians
-          </button>
+          </Button>
         </div>
       </div>
 
       {isAdmin && (
         <div className="flex justify-end">
-          <button
+          <Button
+            variant="ghost"
             onClick={() => setShowNewSprint(true)}
-            className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 flex items-center gap-2 text-zinc-300"
+            className="h-auto text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 gap-2 text-zinc-300 font-bold"
           >
             <span className="text-lg leading-none">+</span> Start a sprint
-          </button>
+          </Button>
         </div>
       )}
 
@@ -261,8 +275,9 @@ export default function LeaderboardClient({
         </div>
       )}
 
-      <button
+      <Button
         type="button"
+        variant="ghost"
         onClick={() => {
           if (me) setScorecardId(me.id);
           else {
@@ -270,7 +285,7 @@ export default function LeaderboardClient({
             if (el) el.scrollIntoView({ behavior: "smooth" });
           }
         }}
-        className="w-full text-left flex items-center gap-3 bg-[#0f0f12] border border-[#1f1f24] rounded-2xl px-5 py-4 hover:bg-black shadow-sm"
+        className="w-full h-auto text-left flex items-center gap-3 justify-start bg-[#0f0f12] border border-[#1f1f24] rounded-2xl px-5 py-4 hover:bg-black shadow-sm whitespace-normal"
       >
         <div
           className={
@@ -301,7 +316,7 @@ export default function LeaderboardClient({
           </div>
         </div>
         <span className="text-zinc-500 text-2xl leading-none">›</span>
-      </button>
+      </Button>
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <KpiCard label="Total Revenue" value={money(total)} />
@@ -336,30 +351,32 @@ export default function LeaderboardClient({
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1 bg-black border border-[#1f1f24] rounded-full p-1 text-sm">
               {PRESET_RANGES.map((r) => (
-                <button
+                <Button
                   key={r.key}
+                  variant="ghost"
                   onClick={() => {
                     setRange(r.key);
                     setCustomOpen(false);
                   }}
                   className={
-                    "px-3 py-1 rounded-full transition whitespace-nowrap " +
+                    "h-auto px-3 py-1 rounded-full whitespace-nowrap font-bold hover:bg-transparent " +
                     (range === r.key
                       ? "bg-[#0f0f12] text-white shadow-sm"
                       : "text-zinc-400 hover:text-white")
                   }
                 >
                   {r.label}
-                </button>
+                </Button>
               ))}
               <div ref={customRef} className="relative">
-                <button
+                <Button
+                  variant="ghost"
                   onClick={() => {
                     setRange("custom");
                     setCustomOpen((o) => !o);
                   }}
                   className={
-                    "px-3 py-1 rounded-full transition whitespace-nowrap inline-flex items-center gap-1 " +
+                    "h-auto px-3 py-1 rounded-full whitespace-nowrap gap-1 font-bold hover:bg-transparent " +
                     (range === "custom"
                       ? "bg-[#0f0f12] text-white shadow-sm"
                       : "text-zinc-400 hover:text-white")
@@ -380,48 +397,50 @@ export default function LeaderboardClient({
                   >
                     <polyline points="6 9 12 15 18 9" />
                   </svg>
-                </button>
+                </Button>
                 {customOpen && (
                   <div className="absolute right-0 mt-2 z-30 bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-lg p-4 w-64 space-y-3">
                     <div>
-                      <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1">
+                      <Label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1 font-normal">
                         From
-                      </label>
-                      <input
+                      </Label>
+                      <Input
                         type="date"
                         value={customFrom}
                         max={customTo || undefined}
                         onChange={(e) => setCustomFrom(e.target.value)}
-                        className="w-full border border-[#1f1f24] rounded-full px-3 py-1.5 text-sm"
+                        className="w-full h-auto border-[#1f1f24] rounded-full px-3 py-1.5 text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1">
+                      <Label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1 font-normal">
                         To
-                      </label>
-                      <input
+                      </Label>
+                      <Input
                         type="date"
                         value={customTo}
                         min={customFrom || undefined}
                         onChange={(e) => setCustomTo(e.target.value)}
-                        className="w-full border border-[#1f1f24] rounded-full px-3 py-1.5 text-sm"
+                        className="w-full h-auto border-[#1f1f24] rounded-full px-3 py-1.5 text-sm"
                       />
                     </div>
-                    <button
+                    <Button
+                      variant="ghost"
                       onClick={() => setCustomOpen(false)}
                       disabled={!customFrom || !customTo}
-                      className="w-full text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-3 py-1.5"
+                      className="w-full h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-3 py-1.5 font-bold"
                     >
                       Apply
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>
             </div>
-            <button
+            <Button
               type="button"
+              variant="ghost"
               title="Filter"
-              className="w-9 h-9 border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full flex items-center justify-center text-zinc-400"
+              className="w-9 h-9 p-0 border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full text-zinc-400"
               aria-label="Filter"
             >
               <svg
@@ -435,7 +454,7 @@ export default function LeaderboardClient({
               >
                 <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
               </svg>
-            </button>
+            </Button>
           </div>
         </div>
 
@@ -448,30 +467,30 @@ export default function LeaderboardClient({
           </div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
-                  <th className="text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Rank</th>
-                  <th className="text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">
+            <Table>
+              <TableHeader>
+                <TableRow className="border-0 hover:bg-transparent text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+                  <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Rank</TableHead>
+                  <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">
                     {personColumn}
-                  </th>
-                  <th className="text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Role</th>
-                  <th className="text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Revenue</th>
-                  <th className="text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Jobs</th>
-                  <th className="text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">{avgColumn}</th>
-                  <th className="text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">{lastColumn}</th>
-                </tr>
-              </thead>
-              <tbody>
+                  </TableHead>
+                  <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Role</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Revenue</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Jobs</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">{avgColumn}</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">{lastColumn}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {activeRows.map((r, i) => {
                   const isMe = me?.id === r.id;
                   const isTop = i === 0;
                   return (
-                    <tr
+                    <TableRow
                       key={r.id}
                       onClick={() => setScorecardId(r.id)}
                       className={
-                        "border-t border-[#1f1f24] cursor-pointer hover:bg-black " +
+                        "border-t border-b-0 border-[#1f1f24] cursor-pointer hover:bg-black " +
                         (isMe
                           ? "bg-amber-50/60 ring-1 ring-amber-200"
                           : isTop
@@ -479,7 +498,7 @@ export default function LeaderboardClient({
                           : "")
                       }
                     >
-                      <td className="px-5 py-3">
+                      <TableCell className="px-5 py-3">
                         <span
                           className={
                             "inline-flex items-center justify-center w-8 h-8 rounded-full font-semibold text-sm " +
@@ -488,8 +507,8 @@ export default function LeaderboardClient({
                         >
                           {i + 1}
                         </span>
-                      </td>
-                      <td className="px-5 py-3">
+                      </TableCell>
+                      <TableCell className="px-5 py-3">
                         <div className="flex items-center gap-3">
                           <div
                             className={
@@ -512,8 +531,8 @@ export default function LeaderboardClient({
                             {r.name}
                           </span>
                         </div>
-                      </td>
-                      <td className="px-5 py-3">
+                      </TableCell>
+                      <TableCell className="px-5 py-3">
                         <span
                           className={
                             "text-xs px-2.5 py-1 rounded-full font-bold " +
@@ -522,27 +541,27 @@ export default function LeaderboardClient({
                         >
                           {r.role || "Staff"}
                         </span>
-                      </td>
-                      <td className="px-5 py-3 text-right font-extrabold text-white tracking-tight tabular-nums">
+                      </TableCell>
+                      <TableCell className="px-5 py-3 text-right font-extrabold text-white tracking-tight tabular-nums">
                         {money(r.revenue_cents)}
-                      </td>
-                      <td className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
+                      </TableCell>
+                      <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
                         {r.job_count}
-                      </td>
-                      <td className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
+                      </TableCell>
+                      <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
                         {money(Math.round(r.revenue_cents / r.job_count))}
-                      </td>
-                      <td
+                      </TableCell>
+                      <TableCell
                         className="px-5 py-3 text-right text-white tabular-nums whitespace-nowrap"
                         suppressHydrationWarning
                       >
                         {formatDate(r.last_sale_at, mounted)}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
       </div>

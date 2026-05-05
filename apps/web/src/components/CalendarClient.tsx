@@ -3,6 +3,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import EmployeeSchedulingModal from "./EmployeeSchedulingModal";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type Job = {
   id: number;
@@ -190,30 +192,31 @@ export default function CalendarClient() {
         </div>
         <div className="flex items-center gap-1 bg-black rounded-full p-1 text-sm">
           {(["day", "week", "month"] as View[]).map((v) => (
-            <button
+            <Button
               key={v}
+              variant="ghost"
               onClick={() => setView(v)}
               className={
-                "px-4 py-1.5 rounded-full transition capitalize " +
+                "h-auto px-4 py-1.5 rounded-full capitalize font-bold hover:bg-transparent " +
                 (view === v
                   ? "bg-[#0f0f12] text-white shadow-sm"
                   : "text-zinc-400 hover:text-white")
               }
             >
               {v}
-            </button>
+            </Button>
           ))}
         </div>
       </div>
 
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="relative w-full sm:w-72">
-          <input
+          <Input
             type="search"
             placeholder="Search customers..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-[#0f0f12] border border-[#1f1f24] rounded-full pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-zinc-500"
+            className="w-full h-auto bg-[#0f0f12] border-[#1f1f24] rounded-full pl-10 pr-4 py-2.5 text-sm focus-visible:ring-zinc-500"
           />
           <svg
             className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500"
@@ -229,10 +232,11 @@ export default function CalendarClient() {
           </svg>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => setSchedulingOpen(true)}
-            className="inline-flex items-center gap-2 border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-sm text-zinc-300 font-bold"
+            className="h-auto gap-2 border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-sm text-zinc-300 font-bold"
           >
             <svg
               className="w-4 h-4"
@@ -249,10 +253,11 @@ export default function CalendarClient() {
               <line x1="23" y1="11" x2="17" y2="11" />
             </svg>
             Employee Scheduling
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="inline-flex items-center gap-2 border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-sm text-zinc-300 font-bold"
+            variant="ghost"
+            className="h-auto gap-2 border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-sm text-zinc-300 font-bold"
             title="Coming soon"
           >
             <svg
@@ -268,7 +273,7 @@ export default function CalendarClient() {
               <circle cx="12" cy="10" r="3" />
             </svg>
             Route Optimization
-          </button>
+          </Button>
           <Link
             href="/schedule/new"
             className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 text-sm font-bold shadow-sm"
@@ -303,27 +308,30 @@ export default function CalendarClient() {
 
       <div className="flex items-center justify-center">
         <div className="inline-flex items-center gap-2 bg-[#0f0f12] border border-[#1f1f24] rounded-full px-2 py-1 text-sm text-zinc-300 font-bold">
-          <button
+          <Button
+            variant="ghost"
             onClick={() => navigate(-1)}
-            className="w-8 h-8 rounded-full hover:bg-black flex items-center justify-center"
+            className="w-8 h-8 p-0 rounded-full hover:bg-black"
             aria-label="Previous"
           >
             ‹
-          </button>
+          </Button>
           <span className="px-3 font-bold">{navLabel}</span>
-          <button
+          <Button
+            variant="ghost"
             onClick={() => navigate(1)}
-            className="w-8 h-8 rounded-full hover:bg-black flex items-center justify-center"
+            className="w-8 h-8 p-0 rounded-full hover:bg-black"
             aria-label="Next"
           >
             ›
-          </button>
-          <button
+          </Button>
+          <Button
+            variant="ghost"
             onClick={() => setCursor(startOfDay(new Date()))}
-            className="ml-1 px-3 py-1 rounded-full text-xs text-zinc-400 hover:text-white hover:bg-black"
+            className="h-auto ml-1 px-3 py-1 rounded-full text-xs text-zinc-400 hover:text-white hover:bg-black font-bold"
           >
             Today
-          </button>
+          </Button>
         </div>
       </div>
 
