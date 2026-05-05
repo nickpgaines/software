@@ -120,10 +120,10 @@ export default function StaffScorecardModal({
       onClick={onClose}
     >
       <div
-        className="bg-[#0f0f12] rounded-2xl w-full max-w-3xl my-4 shadow-xl"
+        className="bg-card rounded-2xl w-full max-w-3xl my-4 shadow-xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="px-6 py-5 border-b border-[#1f1f24] flex items-start gap-4">
+        <div className="px-6 py-5 border-b border-line flex items-start gap-4">
           <div
             className={
               "w-14 h-14 rounded-full flex items-center justify-center font-semibold text-base overflow-hidden " +
@@ -145,7 +145,7 @@ export default function StaffScorecardModal({
             <div className="text-xs uppercase tracking-wider text-sky-500 font-semibold">
               Sales Stats
             </div>
-            <h2 className="text-[40px] font-extrabold tracking-tight leading-none text-white truncate">
+            <h2 className="text-page-title text-white truncate">
               {staff?.name || "—"}
               <span className="text-zinc-500 font-bold">
                 {" "}
@@ -169,7 +169,7 @@ export default function StaffScorecardModal({
                 className={
                   "h-auto px-3 py-1 rounded-full hover:bg-transparent font-bold " +
                   (view === "sales"
-                    ? "bg-[#0f0f12] text-white shadow-sm"
+                    ? "bg-card text-white shadow-sm"
                     : "text-zinc-400 hover:text-white")
                 }
               >
@@ -181,7 +181,7 @@ export default function StaffScorecardModal({
                 className={
                   "h-auto px-3 py-1 rounded-full hover:bg-transparent font-bold " +
                   (view === "tech"
-                    ? "bg-[#0f0f12] text-white shadow-sm"
+                    ? "bg-card text-white shadow-sm"
                     : "text-zinc-400 hover:text-white")
                 }
               >
@@ -210,8 +210,8 @@ export default function StaffScorecardModal({
           </div>
         </div>
 
-        <div className="px-6 py-4 border-b border-[#1f1f24] flex justify-end">
-          <div className="flex items-center gap-1 bg-black border border-[#1f1f24] rounded-full p-1 text-xs">
+        <div className="px-6 py-4 border-b border-line flex justify-end">
+          <div className="flex items-center gap-1 bg-black border border-line rounded-full p-1 text-xs">
             {PRESETS.map((p) => (
               <Button
                 key={p.key}
@@ -220,7 +220,7 @@ export default function StaffScorecardModal({
                 className={
                   "h-auto px-3 py-1 rounded-full whitespace-nowrap font-bold hover:bg-transparent " +
                   (range === p.key
-                    ? "bg-[#0f0f12] text-white shadow-sm"
+                    ? "bg-card text-white shadow-sm"
                     : "text-zinc-400 hover:text-white")
                 }
               >
@@ -306,15 +306,15 @@ export default function StaffScorecardModal({
                   return (
                     <div
                       key={p.key}
-                      className="border border-[#1f1f24] rounded-xl px-3 py-2"
+                      className="border border-line rounded-xl px-3 py-2"
                     >
-                      <div className="flex items-center justify-between text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+                      <div className="flex items-center justify-between text-eyebrow uppercase text-zinc-500">
                         <span
                           className={"w-2 h-2 rounded-full " + p.color}
                         />
                         <span>{pct.toFixed(0)}%</span>
                       </div>
-                      <div className="text-[40px] font-extrabold tracking-tight leading-none text-white tabular-nums leading-tight mt-1">
+                      <div className="text-page-title text-white tabular-nums leading-tight mt-1">
                         {count}
                       </div>
                       <div className="text-xs text-zinc-400">{p.label}</div>
@@ -346,9 +346,9 @@ function Stat({
   help?: string;
 }) {
   return (
-    <div className="border border-[#1f1f24] rounded-xl px-4 py-3">
-      <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">{label}</div>
-      <div className="text-[40px] font-extrabold tracking-tight leading-none text-white tabular-nums mt-0.5">
+    <div className="border border-line rounded-xl px-4 py-3">
+      <div className="text-eyebrow uppercase text-zinc-500">{label}</div>
+      <div className="text-page-title text-white tabular-nums mt-0.5">
         {value}
       </div>
       {help ? <div className="text-xs text-zinc-400 mt-0.5">{help}</div> : null}

@@ -70,7 +70,7 @@ function formatDate(iso: string | null, mounted: boolean) {
 
 function rankBadgeClass(i: number) {
   if (i === 0) return "bg-amber-400 text-white";
-  if (i === 1) return "bg-[#2a2a32] text-white";
+  if (i === 1) return "bg-line-strong text-white";
   if (i === 2) return "bg-orange-300 text-white";
   return "bg-black text-zinc-400";
 }
@@ -221,7 +221,7 @@ export default function LeaderboardClient({
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
-        <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">{title}</h1>
+        <h1 className="text-page-title text-white">{title}</h1>
         <div className="flex items-center gap-1 bg-black rounded-full p-1 text-sm">
           <Button
             variant="ghost"
@@ -229,7 +229,7 @@ export default function LeaderboardClient({
             className={
               "h-auto px-4 py-1.5 rounded-full font-bold hover:bg-transparent " +
               (view === "sales"
-                ? "bg-[#0f0f12] text-white shadow-sm"
+                ? "bg-card text-white shadow-sm"
                 : "text-zinc-400 hover:text-white")
             }
           >
@@ -241,7 +241,7 @@ export default function LeaderboardClient({
             className={
               "h-auto px-4 py-1.5 rounded-full font-bold hover:bg-transparent " +
               (view === "tech"
-                ? "bg-[#0f0f12] text-white shadow-sm"
+                ? "bg-card text-white shadow-sm"
                 : "text-zinc-400 hover:text-white")
             }
           >
@@ -255,7 +255,7 @@ export default function LeaderboardClient({
           <Button
             variant="ghost"
             onClick={() => setShowNewSprint(true)}
-            className="h-auto text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 gap-2 text-zinc-300 font-bold"
+            className="h-auto text-sm border border-line bg-card hover:bg-black rounded-full px-4 py-2 gap-2 text-zinc-300 font-bold"
           >
             <span className="text-lg leading-none">+</span> Start a sprint
           </Button>
@@ -285,7 +285,7 @@ export default function LeaderboardClient({
             if (el) el.scrollIntoView({ behavior: "smooth" });
           }
         }}
-        className="w-full h-auto text-left flex items-center gap-3 justify-start bg-[#0f0f12] border border-[#1f1f24] rounded-2xl px-5 py-4 hover:bg-black shadow-sm whitespace-normal"
+        className="w-full h-auto text-left flex items-center gap-3 justify-start bg-card border border-line rounded-2xl px-5 py-4 hover:bg-black shadow-sm whitespace-normal"
       >
         <div
           className={
@@ -324,8 +324,8 @@ export default function LeaderboardClient({
         <KpiCard label="Top Performer" value={top?.name || "—"} />
       </div>
 
-      <div id="rankings" className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm">
-        <div className="px-5 py-4 border-b border-[#1f1f24] flex items-center justify-between gap-3 flex-wrap">
+      <div id="rankings" className="bg-card border border-line rounded-2xl shadow-sm">
+        <div className="px-5 py-4 border-b border-line flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
             <h2 className="font-extrabold text-white tracking-tight">
               {view === "sales" ? "Sales Rankings" : "Technician Rankings"}
@@ -349,7 +349,7 @@ export default function LeaderboardClient({
             </span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1 bg-black border border-[#1f1f24] rounded-full p-1 text-sm">
+            <div className="flex items-center gap-1 bg-black border border-line rounded-full p-1 text-sm">
               {PRESET_RANGES.map((r) => (
                 <Button
                   key={r.key}
@@ -361,7 +361,7 @@ export default function LeaderboardClient({
                   className={
                     "h-auto px-3 py-1 rounded-full whitespace-nowrap font-bold hover:bg-transparent " +
                     (range === r.key
-                      ? "bg-[#0f0f12] text-white shadow-sm"
+                      ? "bg-card text-white shadow-sm"
                       : "text-zinc-400 hover:text-white")
                   }
                 >
@@ -378,7 +378,7 @@ export default function LeaderboardClient({
                   className={
                     "h-auto px-3 py-1 rounded-full whitespace-nowrap gap-1 font-bold hover:bg-transparent " +
                     (range === "custom"
-                      ? "bg-[#0f0f12] text-white shadow-sm"
+                      ? "bg-card text-white shadow-sm"
                       : "text-zinc-400 hover:text-white")
                   }
                 >
@@ -399,7 +399,7 @@ export default function LeaderboardClient({
                   </svg>
                 </Button>
                 {customOpen && (
-                  <div className="absolute right-0 mt-2 z-30 bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-lg p-4 w-64 space-y-3">
+                  <div className="absolute right-0 mt-2 z-30 bg-card border border-line rounded-2xl shadow-lg p-4 w-64 space-y-3">
                     <div>
                       <Label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1 font-normal">
                         From
@@ -409,7 +409,7 @@ export default function LeaderboardClient({
                         value={customFrom}
                         max={customTo || undefined}
                         onChange={(e) => setCustomFrom(e.target.value)}
-                        className="w-full h-auto border-[#1f1f24] rounded-full px-3 py-1.5 text-sm"
+                        className="w-full h-auto border-line rounded-full px-3 py-1.5 text-sm"
                       />
                     </div>
                     <div>
@@ -421,7 +421,7 @@ export default function LeaderboardClient({
                         value={customTo}
                         min={customFrom || undefined}
                         onChange={(e) => setCustomTo(e.target.value)}
-                        className="w-full h-auto border-[#1f1f24] rounded-full px-3 py-1.5 text-sm"
+                        className="w-full h-auto border-line rounded-full px-3 py-1.5 text-sm"
                       />
                     </div>
                     <Button
@@ -440,7 +440,7 @@ export default function LeaderboardClient({
               type="button"
               variant="ghost"
               title="Filter"
-              className="w-9 h-9 p-0 border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full text-zinc-400"
+              className="w-9 h-9 p-0 border border-line bg-card hover:bg-black rounded-full text-zinc-400"
               aria-label="Filter"
             >
               <svg
@@ -469,16 +469,16 @@ export default function LeaderboardClient({
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="border-0 hover:bg-transparent text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
-                  <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Rank</TableHead>
-                  <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">
+                <TableRow className="border-0 hover:bg-transparent text-eyebrow uppercase text-zinc-500">
+                  <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Rank</TableHead>
+                  <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">
                     {personColumn}
                   </TableHead>
-                  <TableHead className="h-auto text-left px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Role</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Revenue</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Jobs</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">{avgColumn}</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">{lastColumn}</TableHead>
+                  <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Role</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Revenue</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Jobs</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">{avgColumn}</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">{lastColumn}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -490,7 +490,7 @@ export default function LeaderboardClient({
                       key={r.id}
                       onClick={() => setScorecardId(r.id)}
                       className={
-                        "border-t border-b-0 border-[#1f1f24] cursor-pointer hover:bg-black " +
+                        "border-t border-b-0 border-line cursor-pointer hover:bg-black " +
                         (isMe
                           ? "bg-amber-50/60 ring-1 ring-amber-200"
                           : isTop
@@ -589,7 +589,7 @@ export default function LeaderboardClient({
 
 function KpiCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-6 min-h-[140px] flex flex-col justify-between shadow-sm">
+    <div className="bg-card border border-line rounded-2xl p-6 min-h-[140px] flex flex-col justify-between shadow-sm">
       <div className="text-sm text-zinc-500">{label}</div>
       <div className="text-4xl font-bold text-white tabular-nums">
         {value}

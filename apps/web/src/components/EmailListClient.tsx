@@ -89,7 +89,7 @@ function statusBadge(status: string) {
     return "bg-rose-50 text-rose-700 border-rose-200";
   if (status === "sending")
     return "bg-sky-50 text-sky-700 border-sky-200";
-  return "bg-black text-zinc-300 border-[#1f1f24]";
+  return "bg-black text-zinc-300 border-line";
 }
 
 export default function EmailListClient() {
@@ -175,7 +175,7 @@ export default function EmailListClient() {
     <div className="space-y-8">
       <div className="flex items-baseline justify-between">
         <div>
-          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Email</h1>
+          <h1 className="text-page-title text-white">Email</h1>
           <p className="text-sm text-zinc-400 mt-3 font-bold">
             Send one-off blasts or turn on automated emails that go out on their own.
           </p>
@@ -204,7 +204,7 @@ export default function EmailListClient() {
           <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
             Automated emails
           </h2>
-          <span className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+          <span className="text-eyebrow uppercase text-zinc-500">
             Toggle on to enable. Edit to customize the message.
           </span>
         </div>
@@ -214,13 +214,13 @@ export default function EmailListClient() {
             ? Array.from({ length: 4 }).map((_, i) => (
                 <div
                   key={i}
-                  className="h-32 bg-[#0f0f12] border border-[#1f1f24] rounded-2xl animate-pulse"
+                  className="h-32 bg-card border border-line rounded-2xl animate-pulse"
                 />
               ))
             : automations.map((a) => (
                 <div
                   key={a.id}
-                  className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm p-4 flex flex-col gap-3"
+                  className="bg-card border border-line rounded-2xl shadow-sm p-4 flex flex-col gap-3"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div>
@@ -249,12 +249,12 @@ export default function EmailListClient() {
                       onClick={() => toggleAutomation(a, a.enabled !== 1)}
                       className={
                         "relative h-6 w-11 p-0 shrink-0 cursor-pointer rounded-full justify-start hover:bg-current " +
-                        (a.enabled === 1 ? "bg-emerald-500 hover:bg-emerald-500" : "bg-[#1f1f24] hover:bg-[#1f1f24]")
+                        (a.enabled === 1 ? "bg-emerald-500 hover:bg-emerald-500" : "bg-line hover:bg-line")
                       }
                     >
                       <span
                         className={
-                          "inline-block h-5 w-5 transform rounded-full bg-[#0f0f12] shadow transition " +
+                          "inline-block h-5 w-5 transform rounded-full bg-card shadow transition " +
                           (a.enabled === 1 ? "translate-x-5" : "translate-x-0.5")
                         }
                       />
@@ -295,7 +295,7 @@ export default function EmailListClient() {
                   <div className="flex items-center gap-2 pt-1">
                     <Link
                       href={`/email/automations/${a.id}`}
-                      className="text-xs bg-[#0f0f12] border border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5 font-bold"
+                      className="text-xs bg-card border border-line hover:bg-black rounded-full px-3 py-1.5 font-bold"
                     >
                       Edit
                     </Link>
@@ -305,7 +305,7 @@ export default function EmailListClient() {
                         variant="ghost"
                         onClick={() => runAutomation(a)}
                         disabled={busyId === a.id || a.enabled !== 1}
-                        className="h-auto text-xs bg-[#0f0f12] border border-[#1f1f24] hover:bg-black rounded-full px-3 py-1.5 font-bold"
+                        className="h-auto text-xs bg-card border border-line hover:bg-black rounded-full px-3 py-1.5 font-bold"
                         title={
                           a.enabled !== 1
                             ? "Enable this automation to send"
@@ -325,7 +325,7 @@ export default function EmailListClient() {
         <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
           Blast history
         </h2>
-        <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
           {loading ? (
             <div className="p-10 text-center text-sm text-zinc-500">Loading…</div>
           ) : blasts.length === 0 ? (
@@ -334,17 +334,17 @@ export default function EmailListClient() {
             </div>
           ) : (
             <Table>
-              <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-[#1f1f24]">
+              <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-line">
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Sent</TableHead>
-                  <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Subject</TableHead>
-                  <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Audience</TableHead>
-                  <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Recipients</TableHead>
-                  <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Delivered</TableHead>
-                  <TableHead className="h-auto px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Status</TableHead>
+                  <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Sent</TableHead>
+                  <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Subject</TableHead>
+                  <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Audience</TableHead>
+                  <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Recipients</TableHead>
+                  <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Delivered</TableHead>
+                  <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Status</TableHead>
                 </TableRow>
               </TableHeader>
-              <TableBody className="divide-y divide-[#1f1f24]">
+              <TableBody className="divide-y divide-line">
                 {blasts.map((b) => (
                   <TableRow key={b.id} className="border-0 hover:bg-black">
                     <TableCell

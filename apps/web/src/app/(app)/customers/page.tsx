@@ -9,6 +9,7 @@ import AddressFields, {
 } from "@/components/customers/AddressFields";
 import { usePhone } from "@/components/PhoneClient";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -109,7 +110,7 @@ function CustomersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Customers</h1>
+          <h1 className="text-page-title text-white">Customers</h1>
           <p className="text-sm text-zinc-400 mt-3 font-bold">
             People you clean windows for.
           </p>
@@ -118,7 +119,7 @@ function CustomersPage() {
           <Button
             variant="ghost"
             onClick={() => setImporting(true)}
-            className="h-auto text-sm border border-[#2a2a32] bg-[#0f0f12] hover:bg-black text-zinc-300 rounded px-3 py-2 font-bold"
+            className="h-auto text-sm border border-line-strong bg-card hover:bg-black text-zinc-300 rounded px-3 py-2 font-bold"
           >
             Import
           </Button>
@@ -132,23 +133,23 @@ function CustomersPage() {
         </div>
       </div>
 
-      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-lg overflow-hidden">
+      <Card className="overflow-hidden">
         {customers.length === 0 ? (
           <div className="p-8 text-center text-sm text-zinc-400 font-bold">
             No customers yet.
           </div>
         ) : (
           <Table>
-            <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-[#1f1f24]">
+            <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-line">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="h-auto text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Name</TableHead>
-                <TableHead className="h-auto text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Address</TableHead>
-                <TableHead className="h-auto text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Phone</TableHead>
-                <TableHead className="h-auto text-left px-4 py-2 text-[11px] uppercase tracking-[0.16em] font-extrabold text-zinc-500">Email</TableHead>
+                <TableHead className="h-auto text-left px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Name</TableHead>
+                <TableHead className="h-auto text-left px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Address</TableHead>
+                <TableHead className="h-auto text-left px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Phone</TableHead>
+                <TableHead className="h-auto text-left px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Email</TableHead>
                 <TableHead className="h-auto px-4 py-2" />
               </TableRow>
             </TableHeader>
-            <TableBody className="divide-y divide-[#1f1f24]">
+            <TableBody className="divide-y divide-line">
               {customers.map((c) => (
                 <TableRow key={c.id} className="border-0 hover:bg-transparent">
                   <TableCell className="px-4 py-2 font-bold text-white tracking-tight">
@@ -194,7 +195,7 @@ function CustomersPage() {
             </TableBody>
           </Table>
         )}
-      </div>
+      </Card>
 
       {(creating || editing) && (
         <CustomerForm
@@ -288,8 +289,8 @@ function CustomerForm({
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-[#0f0f12] rounded-lg shadow-lg w-full max-w-md">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-[#1f1f24]">
+      <div className="bg-card rounded-lg shadow-lg w-full max-w-md">
+        <div className="flex items-center justify-between px-4 py-3 border-b border-line">
           <h3 className="font-bold">
             {customer ? "Edit customer" : "New customer"}
           </h3>
@@ -308,7 +309,7 @@ function CustomerForm({
                 type="text"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="w-full h-auto border-[#2a2a32] rounded px-3 py-2 text-sm"
+                className="w-full h-auto border-line-strong rounded px-3 py-2 text-sm"
                 autoFocus
                 required
               />
@@ -318,7 +319,7 @@ function CustomerForm({
                 type="text"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className="w-full h-auto border-[#2a2a32] rounded px-3 py-2 text-sm"
+                className="w-full h-auto border-line-strong rounded px-3 py-2 text-sm"
                 required
               />
             </Field>
@@ -329,7 +330,7 @@ function CustomerForm({
                 type="tel"
                 value={phone ?? ""}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full h-auto border-[#2a2a32] rounded px-3 py-2 text-sm"
+                className="w-full h-auto border-line-strong rounded px-3 py-2 text-sm"
               />
             </Field>
             <Field label="Email">
@@ -337,7 +338,7 @@ function CustomerForm({
                 type="email"
                 value={email ?? ""}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-auto border-[#2a2a32] rounded px-3 py-2 text-sm"
+                className="w-full h-auto border-line-strong rounded px-3 py-2 text-sm"
               />
             </Field>
           </div>
@@ -347,7 +348,7 @@ function CustomerForm({
               value={notes ?? ""}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              className="w-full border-[#2a2a32] rounded px-3 py-2 text-sm"
+              className="w-full border-line-strong rounded px-3 py-2 text-sm"
             />
           </Field>
           {error && <p className="text-sm text-red-600">{error}</p>}
@@ -356,7 +357,7 @@ function CustomerForm({
               type="button"
               variant="ghost"
               onClick={onClose}
-              className="h-auto text-sm border border-[#2a2a32] bg-[#0f0f12] hover:bg-black rounded px-3 py-2 font-bold"
+              className="h-auto text-sm border border-line-strong bg-card hover:bg-black rounded px-3 py-2 font-bold"
             >
               Cancel
             </Button>
@@ -386,7 +387,7 @@ function Field({
 }) {
   return (
     <div>
-      <Label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
+      <Label className="block text-eyebrow uppercase text-zinc-500 mb-2">
         {label}
         {required && <span className="text-red-500 ml-0.5">*</span>}
       </Label>

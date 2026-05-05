@@ -194,7 +194,7 @@ export default function PrivacyPolicyPage() {
           </p>
         </div>
 
-        <div className="mt-12 pt-6 border-t border-[#1f1f24] text-sm text-zinc-500 font-bold">
+        <div className="mt-12 pt-6 border-t border-line text-sm text-zinc-500 font-bold">
           <Link href="/terms" className="hover:text-zinc-300">
             Terms of Service
           </Link>

@@ -134,7 +134,7 @@ export default function EmailComposeClient() {
         >
           ← All blasts
         </Link>
-        <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white mt-2">
+        <h1 className="text-page-title text-white mt-2">
           New email blast
         </h1>
       </div>
@@ -153,7 +153,7 @@ export default function EmailComposeClient() {
         </div>
       )}
 
-      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm p-6 space-y-5">
+      <div className="bg-card border border-line rounded-2xl shadow-sm p-6 space-y-5">
         <div>
           <Label className="block text-xs font-normal uppercase tracking-wide text-zinc-500 mb-2">
             Audience
@@ -169,7 +169,7 @@ export default function EmailComposeClient() {
                   "h-auto text-left p-3 rounded-xl border transition flex-col items-stretch justify-start whitespace-normal hover:bg-transparent " +
                   (audience === a.audience
                     ? "border-slate-900 bg-black"
-                    : "border-[#1f1f24] hover:border-slate-400")
+                    : "border-line hover:border-slate-400")
                 }
               >
                 <div className="flex items-baseline justify-between w-full">
@@ -195,7 +195,7 @@ export default function EmailComposeClient() {
             value={subject}
             onChange={(e) => setSubject(e.target.value)}
             placeholder="Spring window cleaning special — 15% off this month"
-            className="w-full h-auto border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12]"
+            className="w-full h-auto border-line rounded-full px-4 py-2 text-sm bg-card"
           />
         </div>
 
@@ -208,7 +208,7 @@ export default function EmailComposeClient() {
             onChange={(e) => setBodyHtml(e.target.value)}
             rows={12}
             placeholder={"Hi there,\n\nWe're running a 15% off special on..."}
-            className="w-full border-[#1f1f24] rounded-2xl px-4 py-3 text-sm bg-[#0f0f12] font-mono"
+            className="w-full border-line rounded-2xl px-4 py-3 text-sm bg-card font-mono"
           />
           <p className="text-xs text-zinc-500 mt-2">
             An unsubscribe link and your business address are appended to every
@@ -219,20 +219,20 @@ export default function EmailComposeClient() {
         {error && <p className="text-sm text-rose-600">{error}</p>}
         {info && <p className="text-sm text-emerald-700">{info}</p>}
 
-        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-[#1f1f24]">
+        <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-line">
           <Input
             type="email"
             value={testEmail}
             onChange={(e) => setTestEmail(e.target.value)}
             placeholder="you@example.com"
-            className="h-auto border-[#1f1f24] rounded-full px-4 py-2 text-sm bg-[#0f0f12] w-64"
+            className="h-auto border-line rounded-full px-4 py-2 text-sm bg-card w-64"
           />
           <Button
             type="button"
             variant="ghost"
             onClick={handleTestSend}
             disabled={sending || !emailStatus?.configured}
-            className="h-auto text-sm bg-[#0f0f12] border border-[#1f1f24] hover:bg-black rounded-full px-4 py-2 font-bold"
+            className="h-auto text-sm bg-card border border-line hover:bg-black rounded-full px-4 py-2 font-bold"
           >
             Send test
           </Button>

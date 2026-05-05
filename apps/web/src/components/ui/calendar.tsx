@@ -39,7 +39,7 @@ export function Calendar({
         month_grid: "w-full border-collapse",
         weekdays: "flex",
         weekday:
-          "text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 w-9 text-center",
+          "text-eyebrow uppercase text-zinc-500 w-9 text-center",
         week: "flex w-full mt-1",
         day: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20",
         day_button:

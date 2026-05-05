@@ -239,7 +239,7 @@ export default function EmployeeForm({
           Employees
         </Link>
         <div className="mt-2 flex items-center justify-between">
-          <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
+          <h1 className="text-page-title text-white">
             {isEdit ? "Edit Employee" : "Add Employee"}
           </h1>
           <Button
@@ -260,8 +260,8 @@ export default function EmployeeForm({
       )}
 
       {/* Personal Info */}
-      <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm">
-        <div className="px-6 py-4 border-b border-[#1f1f24]">
+      <section className="bg-card border border-line rounded-2xl shadow-sm">
+        <div className="px-6 py-4 border-b border-line">
           <h2 className="text-base font-extrabold text-white tracking-tight">
             Personal Info
           </h2>
@@ -269,7 +269,7 @@ export default function EmployeeForm({
         <div className="px-6 py-6 grid grid-cols-1 md:grid-cols-[160px_1fr] gap-6">
           {/* Photo column */}
           <div className="flex flex-col gap-3">
-            <div className="w-[140px] h-[140px] rounded-lg bg-black border border-[#1f1f24] flex items-center justify-center overflow-hidden">
+            <div className="w-[140px] h-[140px] rounded-lg bg-black border border-line flex items-center justify-center overflow-hidden">
               {photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
@@ -296,7 +296,7 @@ export default function EmployeeForm({
               variant="ghost"
               onClick={() => fileInputRef.current?.click()}
               disabled={photoBusy}
-              className="w-[140px] h-auto text-sm border border-[#2a2a32] hover:border-slate-400 rounded-lg px-3 py-2 text-zinc-300 hover:bg-transparent font-bold"
+              className="w-[140px] h-auto text-sm border border-line-strong hover:border-slate-400 rounded-lg px-3 py-2 text-zinc-300 hover:bg-transparent font-bold"
             >
               {photoBusy
                 ? "Loading…"
@@ -326,7 +326,7 @@ export default function EmployeeForm({
                 type="text"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="w-full h-auto border-[#2a2a32] rounded-lg px-3 py-2 text-sm bg-[#0f0f12]"
+                className="w-full h-auto border-line-strong rounded-lg px-3 py-2 text-sm bg-card"
               />
             </Field>
             <Field label="Last Name" required>
@@ -334,7 +334,7 @@ export default function EmployeeForm({
                 type="text"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className="w-full h-auto border-[#2a2a32] rounded-lg px-3 py-2 text-sm bg-[#0f0f12]"
+                className="w-full h-auto border-line-strong rounded-lg px-3 py-2 text-sm bg-card"
               />
             </Field>
             <Field label="Phone">
@@ -342,7 +342,7 @@ export default function EmployeeForm({
                 type="tel"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full h-auto border-[#2a2a32] rounded-lg px-3 py-2 text-sm bg-[#0f0f12]"
+                className="w-full h-auto border-line-strong rounded-lg px-3 py-2 text-sm bg-card"
               />
             </Field>
             <Field label="Email" required>
@@ -350,7 +350,7 @@ export default function EmployeeForm({
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-auto border-[#2a2a32] rounded-lg px-3 py-2 text-sm bg-[#0f0f12]"
+                className="w-full h-auto border-line-strong rounded-lg px-3 py-2 text-sm bg-card"
               />
             </Field>
             <Field label="Password" required={!isEdit}>
@@ -360,7 +360,7 @@ export default function EmployeeForm({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={isEdit ? "Leave blank to keep current" : ""}
-                  className="w-full h-auto border-[#2a2a32] rounded-lg pl-3 pr-10 py-2 text-sm bg-[#0f0f12]"
+                  className="w-full h-auto border-line-strong rounded-lg pl-3 pr-10 py-2 text-sm bg-card"
                 />
                 <Button
                   type="button"
@@ -383,7 +383,7 @@ export default function EmployeeForm({
                   type="button"
                   variant="ghost"
                   onClick={() => setColorOpen((v) => !v)}
-                  className="w-full h-auto justify-start gap-2 border border-[#2a2a32] rounded-lg px-3 py-2 text-sm bg-[#0f0f12] hover:border-slate-400 hover:bg-transparent"
+                  className="w-full h-auto justify-start gap-2 border border-line-strong rounded-lg px-3 py-2 text-sm bg-card hover:border-slate-400 hover:bg-transparent"
                 >
                   <span
                     className={`w-4 h-4 rounded-full ${selectedColor.swatch}`}
@@ -391,7 +391,7 @@ export default function EmployeeForm({
                   <span className="text-zinc-300">{selectedColor.label}</span>
                 </Button>
                 {colorOpen && (
-                  <div className="absolute z-10 left-0 top-full mt-1 bg-[#0f0f12] border border-[#1f1f24] rounded-lg shadow-lg p-2 grid grid-cols-3 gap-1 w-48">
+                  <div className="absolute z-10 left-0 top-full mt-1 bg-card border border-line rounded-lg shadow-lg p-2 grid grid-cols-3 gap-1 w-48">
                     {COLORS.map((c) => (
                       <Button
                         key={c.key}
@@ -422,8 +422,8 @@ export default function EmployeeForm({
       </section>
 
       {/* Permissions */}
-      <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm">
-        <div className="px-6 py-4 border-b border-[#1f1f24]">
+      <section className="bg-card border border-line rounded-2xl shadow-sm">
+        <div className="px-6 py-4 border-b border-line">
           <h2 className="text-base font-extrabold text-white tracking-tight">Permissions</h2>
         </div>
         <div className="px-6 py-4 space-y-1">
@@ -458,7 +458,7 @@ export default function EmployeeForm({
           })}
 
           {permission === "custom" && (
-            <div className="mt-3 ml-7 px-4 py-3 border border-dashed border-[#2a2a32] rounded-lg text-sm text-zinc-400 font-bold bg-black">
+            <div className="mt-3 ml-7 px-4 py-3 border border-dashed border-line-strong rounded-lg text-sm text-zinc-400 font-bold bg-black">
               Custom permissions configuration coming soon.
             </div>
           )}
@@ -479,7 +479,7 @@ function Field({
 }) {
   return (
     <div>
-      <Label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
+      <Label className="block text-eyebrow uppercase text-zinc-500 mb-2">
         {label}
         {required && <span className="text-rose-500 ml-0.5">*</span>}
       </Label>

@@ -65,7 +65,7 @@ export default function MapPinDropModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-lg bg-[#0f0f12] p-6 shadow-xl max-h-[90vh] overflow-y-auto">
+      <div className="w-full max-w-md rounded-lg bg-card p-6 shadow-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-start justify-between gap-3">
           <div>
             <h2 className="text-lg font-extrabold text-white tracking-tight">Drop pin</h2>
@@ -104,10 +104,10 @@ export default function MapPinDropModal({
           onChange={(e) => setNote(e.target.value)}
           placeholder="Add a note..."
           rows={3}
-          className="mt-4 block w-full resize-none rounded-md border-[#1f1f24] px-3 py-2 text-sm text-white placeholder:text-zinc-500 bg-transparent focus-visible:border-slate-900"
+          className="mt-4 block w-full resize-none rounded-md border-line px-3 py-2 text-sm text-white placeholder:text-zinc-500 bg-transparent focus-visible:border-slate-900"
         />
 
-        <div className="mt-4 rounded-md border border-[#1f1f24]">
+        <div className="mt-4 rounded-md border border-line">
           <Button
             type="button"
             variant="ghost"
@@ -131,19 +131,19 @@ export default function MapPinDropModal({
             />
           </Button>
           {objectionsOpen && (
-            <ul className="border-t border-[#1f1f24]">
+            <ul className="border-t border-line">
               {DEFAULT_OBJECTIONS.map((o) => {
                 const checked = objections.includes(o);
                 return (
                   <li
                     key={o}
-                    className="border-b border-[#1f1f24] last:border-b-0"
+                    className="border-b border-line last:border-b-0"
                   >
                     <Label className="flex cursor-pointer items-center gap-3 px-3 py-2.5 text-sm text-white hover:bg-black font-normal">
                       <Checkbox
                         checked={checked}
                         onCheckedChange={() => toggleObjection(o)}
-                        className="border-[#2a2a32]"
+                        className="border-line-strong"
                       />
                       <span className="font-bold">{o}</span>
                     </Label>
@@ -159,7 +159,7 @@ export default function MapPinDropModal({
             type="button"
             variant="ghost"
             onClick={onCancel}
-            className="h-auto rounded-md border border-[#1f1f24] px-4 py-2 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:bg-black"
+            className="h-auto rounded-md border border-line px-4 py-2 text-eyebrow uppercase text-zinc-500 hover:bg-black"
           >
             Cancel
           </Button>

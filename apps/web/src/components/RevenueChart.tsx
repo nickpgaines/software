@@ -298,7 +298,7 @@ function Chart({ days }: { days: Day[] }) {
 
       {hovered && (
         <div
-          className="pointer-events-none absolute -translate-x-1/2 -translate-y-full bg-[#0f0f12] border border-[#1f1f24] rounded-lg shadow-md px-2.5 py-1.5 text-xs whitespace-nowrap"
+          className="pointer-events-none absolute -translate-x-1/2 -translate-y-full bg-card border border-line rounded-lg shadow-md px-2.5 py-1.5 text-xs whitespace-nowrap"
           style={{ left: `${tooltipLeftPct}%`, top: 8 }}
         >
           <div className="text-zinc-400">{tooltipDate(hovered.date)}</div>
@@ -345,7 +345,7 @@ export default function RevenueChart() {
   }, [data]);
 
   return (
-    <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-6 sm:p-8">
+    <div className="bg-card border border-line rounded-2xl p-6 sm:p-8">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-lg font-extrabold text-white tracking-tight">
@@ -363,7 +363,7 @@ export default function RevenueChart() {
               className={
                 "px-3 py-1.5 rounded-full transition " +
                 (range === r.key
-                  ? "bg-[#0f0f12] text-white shadow-sm"
+                  ? "bg-card text-white shadow-sm"
                   : "text-zinc-400 hover:text-white")
               }
             >

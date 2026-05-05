@@ -8,7 +8,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Settings</h1>
+        <h1 className="text-page-title text-white">Settings</h1>
         <p className="text-sm text-zinc-400 mt-3 font-bold">
           Manage your team, profile, company details, and billing.
         </p>

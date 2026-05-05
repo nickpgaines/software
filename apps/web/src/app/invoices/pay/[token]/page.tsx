@@ -31,7 +31,7 @@ export default async function InvoicePayPage({
   if (!invoice) {
     return (
       <Shell>
-        <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">Invoice not found</h1>
+        <h1 className="text-page-title text-white">Invoice not found</h1>
         <p className="text-sm text-zinc-400 mt-3 font-bold">
           The link you followed may be incorrect, or this invoice was deleted.
         </p>
@@ -43,7 +43,7 @@ export default async function InvoicePayPage({
     return (
       <Shell>
         <div className="text-emerald-600 mb-2">✓</div>
-        <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
+        <h1 className="text-page-title text-white">
           Payment received
         </h1>
         <p className="text-sm text-zinc-400 mt-3 font-bold">
@@ -56,7 +56,7 @@ export default async function InvoicePayPage({
   if (invoice.status === "void") {
     return (
       <Shell>
-        <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
+        <h1 className="text-page-title text-white">
           Invoice no longer valid
         </h1>
         <p className="text-sm text-zinc-400 mt-3 font-bold">
@@ -72,12 +72,12 @@ export default async function InvoicePayPage({
       <p className="text-xs uppercase tracking-wide text-zinc-500">
         Invoice from {companyName}
       </p>
-      <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white mt-1">
+      <h1 className="text-page-title text-white mt-1">
         {invoice.title?.trim() || `Invoice #${invoice.id}`}
       </h1>
-      <div className="mt-6 flex items-end justify-between gap-3 border-t border-[#1f1f24] pt-4">
+      <div className="mt-6 flex items-end justify-between gap-3 border-t border-line pt-4">
         <span className="text-sm text-zinc-400 font-bold">Amount due</span>
-        <span className="text-[40px] font-extrabold tracking-tight leading-none text-white tabular-nums">
+        <span className="text-page-title text-white tabular-nums">
           {money(invoice.total_cents - invoice.paid_cents)}
         </span>
       </div>
@@ -90,7 +90,7 @@ export default async function InvoicePayPage({
         token={params.token}
         cancelled={searchParams.status === "cancel"}
       />
-      <p className="mt-6 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 text-center">
+      <p className="mt-6 text-eyebrow uppercase text-zinc-500 text-center">
         Payments are processed securely by Stripe.
       </p>
     </Shell>
@@ -100,7 +100,7 @@ export default async function InvoicePayPage({
 function Shell({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-6">
-      <div className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl shadow-sm p-8 w-full max-w-md">
+      <div className="bg-card border border-line rounded-2xl shadow-sm p-8 w-full max-w-md">
         {children}
       </div>
     </div>

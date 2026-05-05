@@ -106,8 +106,8 @@ export default function MapDoorKnockSheet({
 
   return (
     <div className="fixed inset-0 z-40 flex items-end sm:items-center justify-center bg-black/40 p-0 sm:p-4">
-      <div className="w-full sm:max-w-lg bg-[#0f0f12] rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-[#0f0f12] px-5 pt-5 pb-3 border-b border-[#1f1f24] flex items-start justify-between gap-2">
+      <div className="w-full sm:max-w-lg bg-card rounded-t-3xl sm:rounded-3xl shadow-2xl max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-card px-5 pt-5 pb-3 border-b border-line flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <h3 className="font-extrabold text-white tracking-tight truncate">
               {pin.address || "Unknown address"}
@@ -133,7 +133,7 @@ export default function MapDoorKnockSheet({
                 type="text"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="w-full h-auto border-[#1f1f24] rounded-full px-4 py-2 text-sm"
+                className="w-full h-auto border-line rounded-full px-4 py-2 text-sm"
               />
             </Field>
             <Field label="Last Name">
@@ -141,7 +141,7 @@ export default function MapDoorKnockSheet({
                 type="text"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className="w-full h-auto border-[#1f1f24] rounded-full px-4 py-2 text-sm"
+                className="w-full h-auto border-line rounded-full px-4 py-2 text-sm"
               />
             </Field>
           </div>
@@ -151,7 +151,7 @@ export default function MapDoorKnockSheet({
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
               placeholder="(555) 555-5555"
-              className="w-full h-auto border-[#1f1f24] rounded-full px-4 py-2 text-sm"
+              className="w-full h-auto border-line rounded-full px-4 py-2 text-sm"
             />
           </Field>
 
@@ -171,8 +171,8 @@ export default function MapDoorKnockSheet({
                     className={
                       "shrink-0 h-auto flex-col items-center gap-1.5 rounded-2xl border px-3 py-2.5 w-24 hover:bg-transparent " +
                       (active
-                        ? "border-[#2a2a32] bg-black"
-                        : "border-[#1f1f24] bg-[#0f0f12] hover:bg-black")
+                        ? "border-line-strong bg-black"
+                        : "border-line bg-card hover:bg-black")
                     }
                   >
                     <span
@@ -192,12 +192,12 @@ export default function MapDoorKnockSheet({
             </div>
           </div>
 
-          <div className="border border-[#1f1f24] rounded-2xl">
+          <div className="border border-line rounded-2xl">
             <Button
               type="button"
               variant="ghost"
               onClick={() => setObjectionsOpen((o) => !o)}
-              className="w-full h-auto justify-between px-4 py-3 text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 rounded-b-none hover:bg-transparent"
+              className="w-full h-auto justify-between px-4 py-3 text-eyebrow uppercase text-zinc-500 rounded-b-none hover:bg-transparent"
             >
               <span>Objections{objections.length > 0 ? ` (${objections.length})` : ""}</span>
               <svg
@@ -216,7 +216,7 @@ export default function MapDoorKnockSheet({
               </svg>
             </Button>
             {objectionsOpen && (
-              <div className="border-t border-[#1f1f24] p-4 space-y-2">
+              <div className="border-t border-line p-4 space-y-2">
                 {OBJECTIONS.map((obj) => (
                   <Label
                     key={obj}
@@ -225,7 +225,7 @@ export default function MapDoorKnockSheet({
                     <Checkbox
                       checked={objections.includes(obj)}
                       onCheckedChange={() => toggleObj(obj)}
-                      className="border-[#2a2a32]"
+                      className="border-line-strong"
                     />
                     {obj}
                   </Label>
@@ -237,7 +237,7 @@ export default function MapDoorKnockSheet({
           {error && <p className="text-sm text-rose-600">{error}</p>}
         </div>
 
-        <div className="sticky bottom-0 bg-[#0f0f12] border-t border-[#1f1f24] px-5 py-3 flex items-center gap-2">
+        <div className="sticky bottom-0 bg-card border-t border-line px-5 py-3 flex items-center gap-2">
           {pin.id && onDelete && (
             <Button
               variant="ghost"
@@ -255,7 +255,7 @@ export default function MapDoorKnockSheet({
             variant="ghost"
             disabled={saving}
             title="Coming soon"
-            className="h-auto text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 font-bold"
+            className="h-auto text-sm border border-line bg-card hover:bg-black rounded-full px-4 py-2 font-bold"
           >
             Create Subscription
           </Button>

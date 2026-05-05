@@ -125,9 +125,9 @@ export default function NavBar() {
       </nav>
 
       {/* Footer */}
-      <div className="mt-auto shrink-0 px-3 pb-4 pt-3 border-t border-[#1f1f24]/60">
+      <div className="mt-auto shrink-0 px-3 pb-4 pt-3 border-t border-line/60">
         <div className="flex items-center gap-3 px-3 py-2">
-          <div className="w-8 h-8 rounded-full bg-[#1f1f24] flex items-center justify-center text-zinc-300 text-sm font-semibold shrink-0 overflow-hidden">
+          <div className="w-8 h-8 rounded-full bg-line flex items-center justify-center text-zinc-300 text-sm font-semibold shrink-0 overflow-hidden">
             {photo ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
@@ -147,7 +147,7 @@ export default function NavBar() {
           type="button"
           variant="ghost"
           onClick={logout}
-          className="h-auto justify-start gap-3 w-full px-3 py-2.5 rounded-lg text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:bg-black hover:text-white"
+          className="h-auto justify-start gap-3 w-full px-3 py-2.5 rounded-lg text-eyebrow uppercase text-zinc-500 hover:bg-black hover:text-white"
         >
           <LogOut className="w-5 h-5" strokeWidth={1.8} />
           Sign out

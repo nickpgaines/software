@@ -268,7 +268,7 @@ export default function JobDetailClient({
             ← Back to schedule
           </Link>
           <div className="flex items-center gap-3 flex-wrap mt-1">
-            <h1 className="text-[40px] font-extrabold tracking-tight leading-none text-white">
+            <h1 className="text-page-title text-white">
               {job.customer_name}
             </h1>
             <JobStatusBadge status={job.job_status} />
@@ -285,7 +285,7 @@ export default function JobDetailClient({
         <div className="flex items-center gap-2">
           <Link
             href={`/schedule/${job.id}/edit`}
-            className="text-sm border border-[#1f1f24] bg-[#0f0f12] hover:bg-black rounded-full px-4 py-2 text-zinc-300"
+            className="text-sm border border-line bg-card hover:bg-black rounded-full px-4 py-2 text-zinc-300"
           >
             Edit
           </Link>
@@ -333,7 +333,7 @@ export default function JobDetailClient({
         </section>
       )}
 
-      <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
+      <section className="bg-card border border-line rounded-2xl p-5">
         <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
           {STEPS.map((s, idx) => (
             <StepButton
@@ -351,7 +351,7 @@ export default function JobDetailClient({
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.4fr] gap-6">
         <div className="space-y-6">
-          <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
+          <section className="bg-card border border-line rounded-2xl p-5">
             <h2 className="font-extrabold text-white tracking-tight mb-4">
               Contact Information
             </h2>
@@ -439,7 +439,7 @@ export default function JobDetailClient({
               )}
             </div>
             {job.customer_address && (
-              <div className="mt-4 rounded-2xl overflow-hidden border border-[#1f1f24] aspect-[4/3] bg-black">
+              <div className="mt-4 rounded-2xl overflow-hidden border border-line aspect-[4/3] bg-black">
                 <iframe
                   title="Map"
                   src={`https://maps.google.com/maps?q=${mapsAddr}&z=15&output=embed`}
@@ -450,21 +450,21 @@ export default function JobDetailClient({
             )}
           </section>
 
-          <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
+          <section className="bg-card border border-line rounded-2xl p-5">
             <h2 className="font-extrabold text-white tracking-tight mb-4">Quick Actions</h2>
             <div className="space-y-2">
               <Button
                 variant="ghost"
                 type="button"
                 onClick={() => setPaymentModalOpen(true)}
-                className="w-full inline-flex items-center justify-between border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold h-auto"
+                className="w-full inline-flex items-center justify-between border-line hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold h-auto"
               >
                 <span>Record Payment</span>
                 <span className="text-zinc-500">›</span>
               </Button>
               <Link
                 href="/schedule"
-                className="w-full inline-flex items-center justify-between border border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold"
+                className="w-full inline-flex items-center justify-between border border-line hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold"
               >
                 <span>View in Schedule</span>
                 <span className="text-zinc-500">›</span>
@@ -473,7 +473,7 @@ export default function JobDetailClient({
                 variant="ghost"
                 type="button"
                 title="Coming soon"
-                className="w-full inline-flex items-center justify-between border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold h-auto"
+                className="w-full inline-flex items-center justify-between border-line hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold h-auto"
               >
                 <span>Create Invoice</span>
                 <span className="text-zinc-500">›</span>
@@ -482,7 +482,7 @@ export default function JobDetailClient({
                 variant="ghost"
                 type="button"
                 title="Coming soon"
-                className="w-full inline-flex items-center justify-between border-[#1f1f24] hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold h-auto"
+                className="w-full inline-flex items-center justify-between border-line hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold h-auto"
               >
                 <span>Send Review Request</span>
                 <span className="text-zinc-500">›</span>
@@ -492,7 +492,7 @@ export default function JobDetailClient({
         </div>
 
         <div className="space-y-6">
-          <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
+          <section className="bg-card border border-line rounded-2xl p-5">
             <div className="flex items-center justify-between mb-4">
               <h2 className="font-extrabold text-white tracking-tight">Job Details</h2>
               <Link
@@ -577,12 +577,12 @@ export default function JobDetailClient({
             )}
           </section>
 
-          <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
+          <section className="bg-card border border-line rounded-2xl p-5">
             <h2 className="font-extrabold text-white tracking-tight mb-4">Line Items</h2>
             {job.line_items.length === 0 ? (
               <p className="text-sm text-zinc-500">No line items.</p>
             ) : (
-              <ul className="divide-y divide-[#1f1f24]">
+              <ul className="divide-y divide-line">
                 {job.line_items.map((li) => (
                   <li
                     key={li.id}
@@ -595,7 +595,7 @@ export default function JobDetailClient({
                           {li.description}
                         </div>
                       )}
-                      <div className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mt-2 flex gap-2 flex-wrap">
+                      <div className="text-eyebrow uppercase text-zinc-500 mt-2 flex gap-2 flex-wrap">
                         <span>
                           Qty {li.quantity} · {money(li.price_cents)} ea
                         </span>
@@ -632,7 +632,7 @@ export default function JobDetailClient({
             onChanged={refreshJob}
           />
 
-          <section className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-5">
+          <section className="bg-card border border-line rounded-2xl p-5">
             <h2 className="font-extrabold text-white tracking-tight mb-4">Checklist</h2>
             {job.checklist_items.length === 0 ? (
               <p className="text-sm text-zinc-500">No tasks selected.</p>
@@ -682,7 +682,7 @@ function TotalsPanel({
   const totalPaidCents = paidTotalCents + tipTotalCents;
   const hasTips = tipTotalCents > 0;
   return (
-    <div className="border-t border-[#1f1f24] mt-4 pt-4">
+    <div className="border-t border-line mt-4 pt-4">
       <dl className="ml-auto max-w-xs space-y-1.5 text-sm">
         <Row label="Subtotal" value={money(subtotalCents)} />
         <Row label="Total" value={money(totalCents)} bold />
@@ -762,7 +762,7 @@ function Row({
 }
 
 function Divider() {
-  return <div className="border-t border-[#1f1f24] my-1.5" />;
+  return <div className="border-t border-line my-1.5" />;
 }
 
 // Step button reads its "logged" state directly from the timestamp
@@ -793,8 +793,8 @@ function StepButton({
       className={
         "relative text-left rounded-2xl border p-4 flex items-start gap-3 h-auto " +
         (done
-          ? "border-[#2a2a32] bg-black"
-          : "border-[#1f1f24] bg-[#0f0f12] hover:bg-black")
+          ? "border-line-strong bg-black"
+          : "border-line bg-card hover:bg-black")
       }
     >
       <div
@@ -832,7 +832,7 @@ const STATUS_VISUALS: Record<
   scheduled: {
     label: "Scheduled",
     outer:
-      "bg-black text-zinc-400 border border-[#1f1f24]",
+      "bg-black text-zinc-400 border border-line",
     dot: "bg-slate-400",
   },
   in_progress: {
@@ -910,7 +910,7 @@ function ChecklistView({
           <Checkbox
             checked={!!c.completed}
             onCheckedChange={() => toggle(i)}
-            className="rounded border-[#2a2a32] text-white focus:ring-zinc-500"
+            className="rounded border-line-strong text-white focus:ring-zinc-500"
           />
           <span
             className={
