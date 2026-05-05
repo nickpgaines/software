@@ -268,18 +268,25 @@ export async function POST(req: Request) {
   const subscriptionId = Number(result.lastInsertRowid);
 
   if (action === "accept") {
-    await ensureRollingVisits(db, {
-      subscriptionId,
-      customerId,
-      companyId,
-      startDateIso: startDateToIso(startDate),
-      serviceInterval,
-      pricePerVisitCents: price_cents,
-      visitName: name,
-      visitDescription: description,
-      soldById,
-      technicianId: null,
-    });
+    try {
+      await ensureRollingVisits(db, {
+        subscriptionId,
+        customerId,
+        companyId,
+        startDateIso: startDateToIso(startDate),
+        serviceInterval,
+        pricePerVisitCents: price_cents,
+        visitName: name,
+        visitDescription: description,
+        soldById,
+        technicianId: null,
+      });
+    } catch (e) {
+      // Seeding the rolling window is best-effort — log and continue so
+      // the subscription itself still saves. The /api/cron/subscription-visits
+      // top-up will catch up on the next run.
+      console.error("ensureRollingVisits failed", e);
+    }
   }
 
   if (action === "send") {

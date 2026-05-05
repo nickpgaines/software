@@ -147,6 +147,16 @@ const INTERVAL_PERIOD: Record<SubscriptionInterval, string> = {
   yearly: "year",
 };
 
+const INTERVAL_ADVERB: Record<SubscriptionInterval, string> = {
+  weekly: "weekly",
+  biweekly: "every 2 weeks",
+  monthly: "monthly",
+  quarterly: "quarterly",
+  triannually: "tri-annually",
+  semiannually: "bi-annually",
+  yearly: "annually",
+};
+
 type AcceptMode = "send" | "accept";
 type BillingMode = "with_service" | "monthly";
 
@@ -264,8 +274,19 @@ export default function NewSubscriptionForm() {
     });
     setSubmitting(false);
     if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      setError(j.error || "Could not create subscription");
+      const text = await res.text().catch(() => "");
+      let serverMsg = "";
+      try {
+        const j = JSON.parse(text) as { error?: string };
+        serverMsg = j.error || "";
+      } catch {
+        serverMsg = text.slice(0, 200);
+      }
+      setError(
+        serverMsg
+          ? `Could not create subscription: ${serverMsg}`
+          : `Could not create subscription (HTTP ${res.status})`
+      );
       return;
     }
     router.push("/settings?tab=subscriptions");
@@ -356,9 +377,6 @@ export default function NewSubscriptionForm() {
                     variant="ghost"
                     className="w-full justify-start text-left font-normal h-auto border border-[#1f1f24] rounded-xl px-4 py-2 text-sm bg-[#0f0f12] text-white hover:bg-black"
                   >
-                    <span aria-hidden className="mr-2 text-zinc-500">
-                      📅
-                    </span>
                     {formatDateLabel(startDate)}
                   </Button>
                 </PopoverTrigger>
@@ -515,7 +533,7 @@ export default function NewSubscriptionForm() {
                   <BillingChoice
                     checked={billingMode === "with_service"}
                     onChange={() => setBillingMode("with_service")}
-                    title={`Bill with service (${INTERVAL_LABELS[serviceInterval].toLowerCase()})`}
+                    title={`Bill ${INTERVAL_ADVERB[serviceInterval]} with service`}
                     description={
                       priceCents > 0
                         ? `One charge of ${formatPrice(priceCents)} per ${INTERVAL_PERIOD[serviceInterval]}, on each visit.`
@@ -696,7 +714,7 @@ function BillingChoice({
       variant="ghost"
       onClick={onChange}
       className={
-        "w-full text-left rounded-xl border p-3 h-auto block " +
+        "w-full text-left rounded-xl border p-3 h-auto block whitespace-normal " +
         (checked
           ? "border-slate-900 bg-black"
           : "border-[#1f1f24] hover:border-[#2a2a32]")
@@ -752,7 +770,7 @@ function RadioOption({
       variant="ghost"
       onClick={onChange}
       className={
-        "w-full text-left rounded-xl border p-3 h-auto block " +
+        "w-full text-left rounded-xl border p-3 h-auto block whitespace-normal " +
         (checked
           ? "border-slate-900 bg-black"
           : "border-[#1f1f24] hover:border-[#2a2a32]")

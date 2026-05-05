@@ -880,6 +880,7 @@ async function init(): Promise<void> {
       start_date   TEXT,
       sold_by_id   INTEGER REFERENCES staff(id) ON DELETE SET NULL,
       tax_rate_bps INTEGER NOT NULL DEFAULT 0,
+      accept_token TEXT,
       created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_customer_subscriptions_customer
