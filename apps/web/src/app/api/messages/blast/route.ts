@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { getDb, type Customer, type Message } from "@/lib/db";
 import {
-  getMessagingSettings,
-  isMessagingConfigured,
+  getCompanyMessagingStatus,
   normalizeUSPhone,
-  sendSms,
+  sendCompanySms,
 } from "@/lib/sms";
 import { requireCompanyId } from "@/lib/auth";
 
@@ -56,10 +55,13 @@ export async function POST(req: Request) {
     );
   }
 
-  const settings = await getMessagingSettings(companyId);
-  if (!isMessagingConfigured(settings)) {
+  const messaging = await getCompanyMessagingStatus(companyId);
+  if (!messaging.configured) {
     return NextResponse.json(
-      { error: "Messaging is not configured. Add Twilio credentials in Settings." },
+      {
+        error:
+          "Messaging is not configured. Your phone number is still being provisioned — try again in a moment, or contact support.",
+      },
       { status: 400 }
     );
   }
@@ -73,7 +75,7 @@ export async function POST(req: Request) {
   const byId = new Map<number, Customer>();
   for (const c of customers) byId.set(c.id, c);
 
-  const fromPhone = settings.from_number;
+  const fromPhone = messaging.fromPhone;
   const messages: Message[] = [];
   let sent = 0;
   let failed = 0;
@@ -96,7 +98,11 @@ export async function POST(req: Request) {
       errorMsg = "Customer has no valid phone number.";
       noPhone++;
     } else {
-      const result = await sendSms({ settings, to: toPhone, body: personalizedText });
+      const result = await sendCompanySms({
+        companyId,
+        to: toPhone,
+        body: personalizedText,
+      });
       if (result.ok) {
         status = result.status || "queued";
         providerSid = result.sid;
