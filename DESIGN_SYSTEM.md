@@ -115,6 +115,72 @@ than reserved — see §10 #13. When a future feature actually needs a
 warning / alert / highlight color, that commit introduces a properly-
 named role token tied to a real call site.
 
+### Categorical / signal palettes (intentional deviations)
+
+Three places in the app use categorical color palettes that don't fit
+the canonical accent table above. They are documented here so future
+work doesn't re-flag them as drift.
+
+#### Leaderboard rank medals
+
+| Rank      | Class             | Tailwind preset | Use                                  |
+| --------- | ----------------- | --------------- | ------------------------------------ |
+| 1st (gold)| `bg-amber-400`    | Tailwind preset | Rank-1 podium / badge                |
+| 2nd (silver) | `bg-line-strong` | Pulse token  | Rank-2 podium / badge                |
+| 3rd (bronze) | `bg-orange-300` / `bg-orange-400` | Tailwind preset | Rank-3 podium / badge |
+| 4th+      | `bg-elevated text-fg-muted` | Pulse token | Non-medal placement     |
+
+Used in `LeaderboardClient.tsx` (`rankBadgeClass`), `SprintWidget.tsx`
+(`placeColor` — gradient variants), and `NewSprintModal.tsx` (prize-place
+chips). Sales-role / avatar / "your rank" highlights use neutral Pulse
+tokens — only the gold/silver/bronze axis is colorized.
+
+#### Pipeline stage signal palette
+
+Lead-funnel stages map onto existing accent tokens. Carries visual
+rhythm only; the stage label is the canonical signal.
+
+| Stage          | Accent token     |
+| -------------- | ---------------- |
+| NEW            | `cyan`           |
+| CONTACTED      | `violet`         |
+| RESPONDED      | `violet-soft`    |
+| ESTIMATE SENT  | `green`          |
+
+Used in `LeadsPipelineClient.tsx` `STAGES`. New stages added in the
+future should pick from the same accent set or extend this table.
+
+#### Income-mix donut palette
+
+The Reports → Income Mix donut uses five categorical hues for revenue
+sources. Defined as a single `CHART_PALETTE` constant in
+`ReportsClient.tsx`; never reference the literal hex from a call site.
+
+| Role            | Hex       | Tailwind preset |
+| --------------- | --------- | --------------- |
+| `oneOff`        | `#3b82f6` | blue-500        |
+| `recurring`     | `#10b981` | emerald-500     |
+| `subscriptions` | `#f59e0b` | amber-500       |
+| `tips`          | `#a855f7` | purple-500      |
+| `other`         | `#64748b` | slate-500       |
+
+#### Map door-knock pin palette
+
+`StaffScorecardModal.tsx` `PIN_DEFS` defines pin-status colors
+(emerald/orange/rose/violet/slate/cyan/pink/blue) for the 8 door-knock
+outcomes. These are categorical; mapping each onto a single accent
+would lose differentiation. Treat as an intentional palette and route
+new pin types through the same set.
+
+#### Brand colors (do not rewrite)
+
+- Stripe surfaces: `bg-indigo-600` / `bg-amber-600` for "Create Stripe
+  account" / "Finish onboarding" CTAs (`SettingsTabs.tsx`). Per
+  CLAUDE.md §6, Stripe-touching code is visual-swap-only with explicit
+  approval.
+- Facebook integrations: `bg-blue-600` / `bg-blue-50` /  `text-blue-600`
+  in `LeadsIntegrationsClient.tsx`. Brand color for Facebook Lead Ads.
+
 ### Conventions for accents
 
 - **Tinted background, full-color text** for chips: `${color}1F` for bg
@@ -570,6 +636,9 @@ templates and adapted to Pulse tokens — live in `components/ui/`
 | `Checkbox`              | **`components/ui/checkbox.tsx`** (§8.15.12).                                                                                          |
 | `Tabs`                  | **`components/ui/tabs.tsx`** (§8.15.13). Reports inline tabs not yet migrated.                                                        |
 | `Table`                 | **`components/ui/table.tsx`** (§8.15.14). Inline `<table>` markup (§9.4) not yet migrated.                                            |
+| `Popover`               | **`components/ui/popover.tsx`** (§8.15.15).                                                                                           |
+| `Calendar`              | **`components/ui/calendar.tsx`** (§8.15.16).                                                                                          |
+| `SegmentedControl`      | **`components/ui/segmented-control.tsx`** (§8.15.17). Reports + PayrollSettings toggles.                                              |
 | `Stat card`             | **`CompactHeroKpi`** (§8.3). Pulse-specific.                                                                                          |
 | `PageHeader`            | **`PageHeader`** (§8.2). Pulse-specific.                                                                                              |
 
@@ -835,6 +904,29 @@ slots without losing the canonical defaults.
 so the library's structural CSS (grid layout, focus rings) is applied;
 all visual styling is overridden via the `classNames` prop.
 
+#### 8.15.17 `SegmentedControl`
+
+Defined: `components/ui/segmented-control.tsx`. Generic-typed pill
+toggle (`<T extends string>`) shared across Reports (NET/GROSS,
+COLLECTED/GENERATED), PayrollSettingsModal (commission mode, hourly
+time, etc.), and any future surface that needs a 2-N option toggle.
+
+**Canonical visual**: `bg-black` track wrapper at `rounded-full p-1`
+(matches the §3 darker-than-card tint); active pills are flat `bg-card`
+text-white; inactive labels `text-zinc-400`. Pure typography drives
+differentiation — no shadow per §7. Two sizes:
+- `size="default"` — 32px-tall pill row with `text-sm` and
+  `px-4 py-1.5`. The standard view-toggle / range-toggle size.
+- `size="sm"` — compact `text-[10px]` row with `px-2 py-0.5`,
+  for inline use beside an eyebrow label inside a card header.
+
+**Props**: `value: T`, `onChange: (v: T) => void`, `options: { value: T;
+label: string }[]`, optional `size`, optional `className`.
+
+**Replaces**: previously hand-rolled inline `<button>+bg-white text-black`
+toggles in ReportsClient and a near-duplicate local `SegmentedControl`
+in PayrollSettingsModal.
+
 ---
 
 ## 9. Layout patterns
@@ -937,6 +1029,7 @@ those pages move onto Pulse primitives.
 | 21  | shadcn/ui primitives generated under `components/ui/`: `Button`, `Input`, `Label`, `Textarea`, `Card`, `Separator`, `Badge`, `Dialog`, `DropdownMenu`, `Tooltip`, `Select`, `Checkbox`, `Tabs`, `Table`. Hand-authored from canonical shadcn templates (the registry was unreachable from the sandbox); adapted to Pulse tokens with the per-primitive overrides documented in §8.15. Global overrides vs. shadcn defaults: `font-medium`/`font-semibold` → `font-bold`/`font-extrabold` per role (§10 #1); form-control `rounded-md` → `rounded-xl` (§6); Card `rounded-xl` → `rounded-2xl` and shadow dropped (§6, §7); Tooltip `bg-primary` pill → `bg-card` border surface (§8.4). Added `tailwindcss-animate` plugin so shadcn data-state animation utilities resolve. `tailwind.config.ts` gains a "shadcn bridge color aliases" block exposing `primary` / `primary-foreground` / `secondary` / `secondary-foreground` / `muted` / `muted-foreground` / `accent` / `accent-foreground` / `destructive` / `destructive-foreground` / `popover` / `popover-foreground` / `input` / `ring` as Tailwind utility classes pointing at the bridge CSS variables defined in `globals.css` — values reference `var(--*)` directly, no `hsl()` wrapper, since our tokens are full color values, not HSL channels. Existing pages not migrated; that's a separate step. | §8.14, §8.15     | `365ee30`, `e5e87b3`, `a04c16e`, `a8dedae` |
 | 22  | `LeadsTabs.tsx` (the `/leads`-routed tab strip with Pipeline / Workflows / Forms / Integrations) intentionally does **not** use the shadcn `Tabs` primitive. The component is a router-link tab strip composed of `<Link>` elements driven by `usePathname()`, not a state-driven controlled tablist. Radix `Tabs` is built around an internal `value`/`onValueChange` model where `Trigger` elements update tab state inside a `Tabs.Root` wrapper. Adapting it to Next.js routing would require either (a) an `asChild` wrapper around each `<Link>` plus a sync layer to mirror `pathname` into Radix's value, or (b) abandoning the primitive's a11y plumbing entirely. Neither pays for the migration cost vs. the existing 30-line hand-rolled component. **Policy for future router-tab strips:** stay hand-rolled. The shadcn `Tabs` primitive is reserved for tab UIs whose state lives in React (panel switchers inside a single page), not URL-driven nav. | §8.14            | `de7f916`  |
 | 24  | `Popover` (§8.15.15) and `Calendar` (§8.15.16) primitives added for the subscription start-date picker. `Popover` is a canonical shadcn adaptation on `@radix-ui/react-popover` with Pulse tokens (`rounded-2xl`, `bg-card`, `shadow-lg`); `Calendar` is hand-authored on `react-day-picker` v9 because the v9 API diverges from v8 enough that the shadcn registry template no longer applies cleanly. New deps: `@radix-ui/react-popover`, `react-day-picker`, `date-fns`. First call site: the start-date field on `/subscriptions/new`, where the previous `<input type="date">` was replaced to satisfy the requirement that the date can only be picked from a calendar (no typing/clearing). | §8.15.15, §8.15.16 | `97403bd` |
+| 25  | Cross-cutting design-system pass for surfaces still living in pre-DS Flyra/HomeBase shapes. **Phase 1 (Leaderboard family):** role-color chips (admin/sales/tech) and avatar color hash stripped to neutral `bg-elevated text-fg-muted`; medal palette (gold/silver/bronze for ranks 1–3) preserved as an intentional categorical palette and documented in §3 "Leaderboard rank medals"; "Your Stats" / current-user row highlight switched from amber tints to `bg-violet/5 ring-violet/30`; all `shadow-sm` removed from leaderboard cards / sprint widgets / staff-scorecard modal; sprint "Current Standings" pill, time chips, and admin delete moved off sky/rose to neutral. **Phase 2 (Reports):** all 9 `shadow-sm` utilities stripped; donut-chart palette extracted to a `CHART_PALETTE` constant referenced by role (oneOff / recurring / subscriptions / tips / other), documented in §3 "Income-mix donut palette"; ARR-mode and Income-Mix toggles migrated from inline `<button>+bg-white text-black` pills to the new shared `SegmentedControl` primitive (§8.15.17); progress-bar `rounded-sm` → `rounded-md`, `bg-emerald-500` / `bg-rose-500` → `bg-green` / `bg-red`. **Phase 3 (CTAs):** decision to keep `bg-slate-900` as primary CTA (violet retained only on +New, dashboard lead widget, focus rings, glow effects); `shadow-sm` stripped from every slate-900 CTA; `font-semibold` → `font-bold` on NewMenu trigger; off-token `rounded` (square) on customers/employees/MapPinDrop CTAs → `rounded-full`. Stripe and Facebook brand-color CTAs intentionally preserved per CLAUDE.md §6. **Phase 4 (Pipeline):** `LeadsPipelineClient` stage colors mapped to existing accents (NEW=cyan, CONTACTED=violet, RESPONDED=violet-soft, ESTIMATE SENT=green); chips and font weights aligned. Documented in §3 "Pipeline stage signal palette". **Phase 5 (Modals):** 12 modal/sheet panels migrated from `rounded-3xl` + `shadow-xl/2xl` to canonical `rounded-2xl` + `border border-line` (§6 / §7 — modals are flat over the dimmed backdrop). PayrollSettings tier-editor labels moved onto eyebrow tokens. **Phase 6 (Typography mop-up):** all remaining `font-semibold` / `font-medium` / `font-normal` outside `components/ui/` migrated to the §4 weight scale; `tracking-wide` / `tracking-wider` labels swapped onto `text-eyebrow` / `text-eyebrow-tight`. **Phase 7 (Gap files):** Leads forms / workflows / integrations CTAs aligned (sky-400 → slate-900); status pills `bg-emerald-50/text-emerald-700` → `bg-green/10`+`text-green`+`border-green/30`; messages-failed bubble `bg-rose-100` → `bg-red/10`+`text-red`. Facebook brand blue and Stripe indigo retained as documented exceptions. **Phase 8 (Doc):** §3 gains "Categorical / signal palettes" sub-section consolidating leaderboard medals + pipeline + donut palettes + door-knock pin colors + brand-color exceptions; §8.15.17 entry added for the new `SegmentedControl` primitive; §8.14 coverage map gets `Popover`, `Calendar`, `SegmentedControl` rows. | §3, §4, §6, §7, §8.14, §8.15.17 | (this PR) |
 | 23  | Existing surfaces migrated onto the §8.14 / §8.15 shadcn primitives across 11 batches. **Files touched (alphabetical):** `app/(app)/customers/page.tsx`, `app/(app)/employees/page.tsx`, `app/invoices/pay/[token]/PayClient.tsx`, `app/login/page.tsx`, `app/signup/page.tsx`, `components/CalendarClient.tsx`, `components/CallsClient.tsx`, `components/customers/AddressFields.tsx`, `components/customers/ImportModal.tsx`, `components/EmailAutomationEditClient.tsx`, `components/EmailComposeClient.tsx`, `components/EmailDetailClient.tsx`, `components/EmailListClient.tsx`, `components/EmployeeForm.tsx`, `components/EmployeeSchedulingModal.tsx`, `components/JobDetailClient.tsx`, `components/JobForm.tsx`, `components/jobs/CustomerCard.tsx`, `components/jobs/PaymentsSection.tsx`, `components/jobs/RecordPaymentModal.tsx`, `components/LeaderboardClient.tsx`, `components/LeadsFormsClient.tsx`, `components/LeadsIntegrationsClient.tsx`, `components/LeadsPipelineClient.tsx`, `components/LeadsWorkflowsClient.tsx`, `components/MapDoorKnockSheet.tsx`, `components/MapFilterPanel.tsx`, `components/MapIconStrip.tsx`, `components/MapLassoPanel.tsx`, `components/MapPinDropModal.tsx`, `components/MapTerritoryListPanel.tsx`, `components/MapTerritoryModal.tsx`, `components/MessagesClient.tsx`, `components/NavBar.tsx`, `components/NewEstimateForm.tsx`, `components/NewInvoiceForm.tsx`, `components/NewMenu.tsx`, `components/NewSprintModal.tsx`, `components/NewSubscriptionForm.tsx`, `components/PayrollSettingsModal.tsx`, `components/PhoneClient.tsx`, `components/ReportsClient.tsx`, `components/SettingsTabs.tsx`, `components/StaffScorecardModal.tsx`. **Scope:** Native `<button>` → `Button`, `<input>` (text/email/tel/password/number/file/date/search) → `Input`, `<input type="checkbox">` → `Checkbox` (with `onChange` → `onCheckedChange` adaptation), `<textarea>` → `Textarea`, `<label>` → `Label`, `<table>`/`<thead>`/`<tbody>`/`<tr>`/`<th>`/`<td>` → `Table`/`TableHeader`/`TableBody`/`TableRow`/`TableHead`/`TableCell`. `NewMenu.tsx`'s hand-rolled `+ New` dropdown rewritten using `DropdownMenu` (the only `DropdownMenu` adoption in the migration). Status chips/pills migrated to `Badge` only on `CallsClient` and `EmailListClient`; other inline status spans left as-is. Toggle-switch buttons (the slider+thumb pattern used in 8+ places) migrated to `Button variant="ghost"` with `bg-X hover:bg-X` to lock active/inactive colors against ghost's default `hover:bg-elevated`. **Cross-cutting deferred items (kept native everywhere with inline comments):** (1) all `<select>` elements — Radix `Select` forbids empty-string item values, which would break the "All" / "Select…" sentinel patterns used for clearable filter state; (2) all `<input type="radio">` — no Radio primitive in `components/ui/` yet; (3) the `Tabs` primitive — underline-style tab nav (Reports/Settings) and router-link tabs (#22) don't fit its pill model, so each tab `<button>` is a `Button variant="ghost"` swap instead; (4) the `Dialog` primitive — every `fixed inset-0` modal wrapper kept hand-rolled, only the controls inside were migrated; (5) MapDoorKnockSheet's bottom-sheet wrapper kept hand-rolled (Dialog is centered-modal only); (6) calendar/scheduling grid cells (`CalendarClient` MonthView day cells, `EmployeeSchedulingModal` per-staff per-day shift cells) kept native with their custom grid styling; (7) Pulse-adjacent dashboard widgets (`TodaySchedule`, `SprintWidget`, `RevenueChart`) and the dashboard `(app)/page.tsx` button skipped — those are domain components or already on spec; (8) `MapClient.tsx` not modified — its only `<button` matches were inside Mapbox popup `innerHTML` strings, not React JSX; (9) `<a>` / `<Link>` elements left as anchors throughout. Auth (login, signup, NavBar) and Stripe-adjacent surfaces (Settings → Payments/Subscriptions/Messaging/Calling/AI, NewInvoiceForm, NewSubscriptionForm, PayClient, PaymentsSection, RecordPaymentModal) migrated as visual-only swaps with zero changes to logic, validation, API call sites, or copy. Per-batch commits: `4196239` (Messages/Calls/Phone), `8502ded` (Email), `3ae032a` (Reports/Leaderboard/Calendar), `de7f916` (Leads), `4b6eaa6` (Map), `fdcaca2` (Customers), `65442d7` (Employees/Payroll), `5f0b787` (Auth/Misc), `d43ab99` (Settings), `7516c4d` (big forms — JobForm/NewEstimate/NewInvoice/NewSubscription/NewSprint), `0587d3a` (Jobs subfolder + JobDetail + NewMenu). | §8.14, §8.15     | (see commits in description) |
 
 ### Ongoing drift policy
