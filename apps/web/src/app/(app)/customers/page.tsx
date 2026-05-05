@@ -119,14 +119,14 @@ function CustomersPage() {
           <Button
             variant="ghost"
             onClick={() => setImporting(true)}
-            className="h-auto text-sm border border-line-strong bg-card hover:bg-black text-zinc-300 rounded px-3 py-2 font-bold"
+            className="h-auto text-sm border border-line-strong bg-card hover:bg-black text-zinc-300 rounded-full px-4 py-2 font-bold"
           >
             Import
           </Button>
           <Button
             variant="ghost"
             onClick={() => setCreating(true)}
-            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 text-white rounded px-3 py-2 font-bold"
+            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 font-bold"
           >
             + Customer
           </Button>
@@ -365,7 +365,7 @@ function CustomerForm({
               type="submit"
               variant="ghost"
               disabled={saving}
-              className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded px-3 py-2 font-bold"
+              className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-4 py-2 font-bold"
             >
               {saving ? "Saving…" : "Save"}
             </Button>

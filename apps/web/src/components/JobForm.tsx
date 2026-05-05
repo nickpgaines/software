@@ -412,7 +412,7 @@ export default function JobForm({
             type="submit"
             disabled={saving}
             variant="ghost"
-            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold shadow-sm h-auto"
+            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold h-auto"
           >
             {saving
               ? "Saving…"
@@ -708,7 +708,7 @@ export default function JobForm({
           type="submit"
           disabled={saving}
           variant="ghost"
-          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold shadow-sm h-auto"
+          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold h-auto"
         >
           {saving
             ? "Saving…"

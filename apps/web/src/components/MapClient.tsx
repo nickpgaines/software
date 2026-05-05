@@ -1009,12 +1009,12 @@ export default function MapClient() {
         />
       )}
       {drawingTerritory && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-slate-900 text-white text-sm rounded-full px-4 py-2 shadow-md pointer-events-none">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-slate-900 text-white text-sm rounded-full px-4 py-2 shadow-menu pointer-events-none">
           Click points to outline a territory · double-click to finish
         </div>
       )}
       {drawingLasso && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-slate-900 text-white text-sm rounded-full px-4 py-2 shadow-md pointer-events-none">
+        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-slate-900 text-white text-sm rounded-full px-4 py-2 shadow-menu pointer-events-none">
           Click points to lasso customers · double-click to finish
         </div>
       )}

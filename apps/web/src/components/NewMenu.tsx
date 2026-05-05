@@ -29,8 +29,8 @@ export default function NewMenu({ fullWidth }: { fullWidth?: boolean }) {
       <DropdownMenuTrigger
         className={
           fullWidth
-            ? "inline-flex items-center justify-center w-full gap-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-full py-3 text-sm font-semibold shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas data-[state=open]:bg-slate-800"
-            : "inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-full px-3 py-1.5 text-sm font-bold shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas data-[state=open]:bg-slate-800 group"
+            ? "inline-flex items-center justify-center w-full gap-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-full py-3 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas data-[state=open]:bg-slate-800"
+            : "inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white rounded-full px-3 py-1.5 text-sm font-bold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-canvas data-[state=open]:bg-slate-800 group"
         }
       >
         New
@@ -46,7 +46,7 @@ export default function NewMenu({ fullWidth }: { fullWidth?: boolean }) {
 
       <DropdownMenuContent
         align={fullWidth ? "start" : "end"}
-        className="w-48 bg-card border-line rounded-2xl shadow-lg p-1"
+        className="w-48 bg-card border-line rounded-2xl shadow-menu p-1"
       >
         {ITEMS.map((it) => (
           <DropdownMenuItem

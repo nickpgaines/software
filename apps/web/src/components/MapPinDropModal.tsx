@@ -168,7 +168,7 @@ export default function MapPinDropModal({
             variant="ghost"
             disabled={!status}
             onClick={() => status && onSubmit(status, note, objections)}
-            className="h-auto rounded-md bg-slate-900 px-4 py-2 text-sm font-bold text-white tracking-tight hover:bg-slate-800"
+            className="h-auto rounded-full bg-slate-900 px-4 py-2 text-sm font-bold text-white tracking-tight hover:bg-slate-800"
           >
             Drop Pin
           </Button>

@@ -276,7 +276,7 @@ export default function CalendarClient() {
           </Button>
           <Link
             href="/schedule/new"
-            className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 text-sm font-bold shadow-sm"
+            className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 text-sm font-bold"
           >
             <span className="text-base leading-none">+</span> New Job
           </Link>
