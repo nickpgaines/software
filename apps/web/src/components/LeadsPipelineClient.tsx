@@ -3,6 +3,17 @@
 import { useMemo, useState } from "react";
 import { Search, Filter, LayoutGrid, List, Settings, Plus, Sparkles } from "lucide-react";
 import type { Lead, LeadStage } from "@/lib/db";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const STAGES: { key: LeadStage; label: string; accent: string; text: string }[] = [
   { key: "new", label: "NEW", accent: "bg-blue-500", text: "text-blue-600" },
@@ -107,30 +118,32 @@ export default function LeadsPipelineClient({
 
       <div className="flex items-center gap-2">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-          <input
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500 z-10" />
+          <Input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search by name, email, phone, or address..."
-            className="w-full bg-[#0f0f12] border border-[#1f1f24] rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#2a2a32]"
+            className="w-full h-auto bg-[#0f0f12] border-[#1f1f24] rounded-lg pl-10 pr-4 py-2.5 text-sm focus-visible:ring-[#2a2a32]"
           />
         </div>
-        <button
+        <Button
           type="button"
-          className="p-2.5 rounded-lg border border-[#1f1f24] text-zinc-400 hover:text-white hover:bg-black"
+          variant="ghost"
+          className="h-auto p-2.5 rounded-lg border border-[#1f1f24] text-zinc-400 hover:text-white hover:bg-black"
         >
           <Filter className="w-4 h-4" />
-        </button>
+        </Button>
       </div>
 
       <div className="flex items-center justify-between">
         <div className="inline-flex border border-[#1f1f24] rounded-lg overflow-hidden bg-[#0f0f12]">
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => setView("board")}
             className={
-              "px-3 py-2 " +
+              "h-auto rounded-none px-3 py-2 hover:bg-transparent " +
               (view === "board"
                 ? "text-sky-500"
                 : "text-zinc-500 hover:text-zinc-300")
@@ -138,12 +151,13 @@ export default function LeadsPipelineClient({
             aria-label="Board view"
           >
             <LayoutGrid className="w-4 h-4" />
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => setView("list")}
             className={
-              "px-3 py-2 border-l border-[#1f1f24] " +
+              "h-auto rounded-none px-3 py-2 border-l border-[#1f1f24] hover:bg-transparent " +
               (view === "list"
                 ? "text-sky-500"
                 : "text-zinc-500 hover:text-zinc-300")
@@ -151,23 +165,25 @@ export default function LeadsPipelineClient({
             aria-label="List view"
           >
             <List className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
         <div className="flex items-center gap-2">
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => setShowNew(true)}
-            className="inline-flex items-center gap-1.5 bg-sky-400 hover:bg-sky-500 text-white text-sm font-bold px-4 py-2 rounded-full"
+            className="h-auto gap-1.5 bg-sky-400 hover:bg-sky-500 text-white text-sm font-bold px-4 py-2 rounded-full"
           >
             <Plus className="w-4 h-4" />
             New Lead
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
-            className="p-2 rounded-full border border-[#1f1f24] text-zinc-400 hover:text-white hover:bg-black"
+            variant="ghost"
+            className="h-auto p-2 rounded-full border border-[#1f1f24] text-zinc-400 hover:text-white hover:bg-black"
           >
             <Settings className="w-4 h-4" />
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -335,36 +351,36 @@ function ListView({ leads }: { leads: Lead[] }) {
   }
   return (
     <div className="border border-[#1f1f24] rounded-2xl overflow-hidden">
-      <table className="w-full text-sm">
-        <thead className="bg-black text-xs uppercase text-zinc-400">
-          <tr>
-            <th className="text-left px-4 py-3">Name</th>
-            <th className="text-left px-4 py-3">Email</th>
-            <th className="text-left px-4 py-3">Phone</th>
-            <th className="text-left px-4 py-3">Stage</th>
-            <th className="text-left px-4 py-3">Source</th>
-            <th className="text-left px-4 py-3">Created</th>
-          </tr>
-        </thead>
-        <tbody>
+      <Table>
+        <TableHeader className="bg-black text-xs uppercase text-zinc-400">
+          <TableRow className="border-0 hover:bg-transparent">
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Name</TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Email</TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Phone</TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Stage</TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Source</TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Created</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {leads.map((l) => (
-            <tr key={l.id} className="border-t border-[#1f1f24]">
-              <td className="px-4 py-3 text-white font-bold">
+            <TableRow key={l.id} className="border-t border-b-0 border-[#1f1f24] hover:bg-transparent">
+              <TableCell className="px-4 py-3 text-white font-bold">
                 {leadName(l)}
-              </td>
-              <td className="px-4 py-3 text-zinc-400">{l.email ?? "—"}</td>
-              <td className="px-4 py-3 text-zinc-400">{l.phone ?? "—"}</td>
-              <td className="px-4 py-3 text-zinc-400">{l.stage}</td>
-              <td className="px-4 py-3 text-zinc-400">
+              </TableCell>
+              <TableCell className="px-4 py-3 text-zinc-400">{l.email ?? "—"}</TableCell>
+              <TableCell className="px-4 py-3 text-zinc-400">{l.phone ?? "—"}</TableCell>
+              <TableCell className="px-4 py-3 text-zinc-400">{l.stage}</TableCell>
+              <TableCell className="px-4 py-3 text-zinc-400">
                 {l.source_page_name || l.source}
-              </td>
-              <td className="px-4 py-3 text-zinc-400 text-xs">
+              </TableCell>
+              <TableCell className="px-4 py-3 text-zinc-400 text-xs">
                 {new Date(l.created_at).toLocaleDateString()}
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }
@@ -418,47 +434,43 @@ function NewLeadDialog({
         <form onSubmit={submit} className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <Field label="First name">
-              <input
+              <Input
                 value={first}
                 onChange={(e) => setFirst(e.target.value)}
-                className="input"
               />
             </Field>
             <Field label="Last name">
-              <input
+              <Input
                 value={last}
                 onChange={(e) => setLast(e.target.value)}
-                className="input"
               />
             </Field>
           </div>
           <Field label="Email">
-            <input
+            <Input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="input"
             />
           </Field>
           <Field label="Phone">
-            <input
+            <Input
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
-              className="input"
             />
           </Field>
           <Field label="Address">
-            <input
+            <Input
               value={address}
               onChange={(e) => setAddress(e.target.value)}
-              className="input"
             />
           </Field>
           <Field label="Stage">
+            {/* Native <select> kept: deferred Select migration (see Batch 5 flag). */}
             <select
               value={stage}
               onChange={(e) => setStage(e.target.value as LeadStage)}
-              className="input"
+              className="block w-full rounded-lg border border-line-strong bg-canvas px-3 py-2 text-sm"
             >
               {STAGES.map((s) => (
                 <option key={s.key} value={s.key}>
@@ -469,37 +481,24 @@ function NewLeadDialog({
           </Field>
           {error && <p className="text-sm text-red-600">{error}</p>}
           <div className="flex justify-end gap-2 pt-2">
-            <button
+            <Button
               type="button"
+              variant="ghost"
               onClick={onClose}
-              className="px-4 py-2 text-sm text-zinc-400 font-bold hover:text-white"
+              className="h-auto px-4 py-2 text-sm text-zinc-400 font-bold hover:text-white hover:bg-transparent"
             >
               Cancel
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
+              variant="ghost"
               disabled={submitting}
-              className="px-4 py-2 text-sm bg-sky-400 hover:bg-sky-500 text-white rounded-full disabled:opacity-50"
+              className="h-auto px-4 py-2 text-sm bg-sky-400 hover:bg-sky-500 text-white rounded-full font-bold"
             >
               {submitting ? "Saving…" : "Create"}
-            </button>
+            </Button>
           </div>
         </form>
-        <style jsx>{`
-          .input {
-            display: block;
-            width: 100%;
-            border: 1px solid rgb(226 232 240);
-            border-radius: 0.5rem;
-            padding: 0.5rem 0.75rem;
-            font-size: 0.875rem;
-          }
-          .input:focus {
-            outline: none;
-            border-color: rgb(148 163 184);
-            box-shadow: 0 0 0 2px rgb(203 213 225);
-          }
-        `}</style>
       </div>
     </div>
   );
@@ -513,11 +512,11 @@ function Field({
   children: React.ReactNode;
 }) {
   return (
-    <label className="block text-sm">
+    <Label className="block text-sm font-normal">
       <span className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2 block">
         {label}
       </span>
       {children}
-    </label>
+    </Label>
   );
 }

@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Plus, FileText } from "lucide-react";
 import type { LeadForm } from "@/lib/db";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 export default function LeadsFormsClient({
   initialForms,
@@ -54,14 +56,15 @@ export default function LeadsFormsClient({
       </div>
 
       <div className="flex justify-end">
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={() => setShowNew(true)}
-          className="inline-flex items-center gap-1.5 bg-sky-400 hover:bg-sky-500 text-white text-sm font-bold px-4 py-2 rounded-full"
+          className="h-auto gap-1.5 bg-sky-400 hover:bg-sky-500 text-white text-sm font-bold px-4 py-2 rounded-full"
         >
           <Plus className="w-4 h-4" />
           Add Form
-        </button>
+        </Button>
       </div>
 
       {forms.length === 0 ? (
@@ -103,14 +106,15 @@ export default function LeadsFormsClient({
                   >
                     {enabled ? "Live" : "Disabled"}
                   </span>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
                     role="switch"
                     aria-checked={enabled}
                     onClick={() => toggle(f.id, !enabled)}
                     className={
-                      "relative w-10 h-6 rounded-full transition-colors " +
-                      (enabled ? "bg-emerald-500" : "bg-[#2a2a32]")
+                      "relative w-10 h-6 p-0 rounded-full hover:bg-current " +
+                      (enabled ? "bg-emerald-500 hover:bg-emerald-500" : "bg-[#2a2a32] hover:bg-[#2a2a32]")
                     }
                   >
                     <span
@@ -119,7 +123,7 @@ export default function LeadsFormsClient({
                         (enabled ? "translate-x-4" : "")
                       }
                     />
-                  </button>
+                  </Button>
                 </div>
               </div>
             );
@@ -139,32 +143,34 @@ export default function LeadsFormsClient({
             <h3 className="text-lg font-extrabold text-white tracking-tight mb-4">
               New form
             </h3>
-            <input
+            <Input
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Form name"
-              className="w-full border border-[#1f1f24] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2a2a32]"
+              className="w-full h-auto border-[#1f1f24] rounded-lg px-3 py-2 text-sm focus-visible:ring-[#2a2a32]"
             />
             <p className="text-xs text-zinc-400 mt-2">
               Default fields: first name, last name, email, phone. You can
               customize them later.
             </p>
             <div className="flex justify-end gap-2 mt-4">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => setShowNew(false)}
-                className="px-4 py-2 text-sm text-zinc-400 font-bold hover:text-white"
+                className="h-auto px-4 py-2 text-sm text-zinc-400 font-bold hover:text-white hover:bg-transparent"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={createForm}
-                className="px-4 py-2 text-sm bg-sky-400 hover:bg-sky-500 text-white rounded-full"
+                className="h-auto px-4 py-2 text-sm bg-sky-400 hover:bg-sky-500 text-white rounded-full font-bold"
               >
                 Create
-              </button>
+              </Button>
             </div>
           </div>
         </div>

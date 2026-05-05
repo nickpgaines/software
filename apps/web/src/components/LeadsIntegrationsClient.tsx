@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { RefreshCw } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 type PageRow = {
   id: number;
@@ -155,22 +156,24 @@ export default function LeadsIntegrationsClient({
           </div>
           <div className="shrink-0">
             {connected ? (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={disconnect}
                 disabled={busy}
-                className="bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white text-sm font-bold px-5 py-2.5 rounded-lg"
+                className="h-auto bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold px-5 py-2.5 rounded-lg"
               >
                 Disconnect
-              </button>
+              </Button>
             ) : (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={connect}
-                className="bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg"
+                className="h-auto bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg"
               >
                 Connect Meta
-              </button>
+              </Button>
             )}
           </div>
         </div>
@@ -184,15 +187,16 @@ export default function LeadsIntegrationsClient({
               </p>
             </div>
             {connected && (
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={refreshPages}
                 disabled={busy}
-                className="inline-flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white border border-[#1f1f24] px-3 py-1.5 rounded-full disabled:opacity-50"
+                className="h-auto gap-1.5 text-xs text-zinc-400 hover:text-white hover:bg-transparent border border-[#1f1f24] px-3 py-1.5 rounded-full font-bold"
               >
                 <RefreshCw className="w-3.5 h-3.5" />
                 Refresh pages
-              </button>
+              </Button>
             )}
           </div>
 
@@ -224,14 +228,15 @@ export default function LeadsIntegrationsClient({
                       Page ID: {p.page_id}
                     </div>
                   </div>
-                  <button
+                  <Button
                     type="button"
+                    variant="ghost"
                     role="switch"
                     aria-checked={p.enabled}
                     onClick={() => togglePage(p.id, !p.enabled)}
                     className={
-                      "relative w-10 h-6 rounded-full shrink-0 transition-colors " +
-                      (p.enabled ? "bg-emerald-500" : "bg-[#2a2a32]")
+                      "relative w-10 h-6 p-0 rounded-full shrink-0 hover:bg-current " +
+                      (p.enabled ? "bg-emerald-500 hover:bg-emerald-500" : "bg-[#2a2a32] hover:bg-[#2a2a32]")
                     }
                   >
                     <span
@@ -240,7 +245,7 @@ export default function LeadsIntegrationsClient({
                         (p.enabled ? "translate-x-4" : "")
                       }
                     />
-                  </button>
+                  </Button>
                 </div>
               ))}
             </div>

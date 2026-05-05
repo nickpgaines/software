@@ -3,6 +3,16 @@
 import { useState } from "react";
 import { Plus, ChevronRight } from "lucide-react";
 import type { LeadWorkflow, LeadWorkflowRun } from "@/lib/db";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default function LeadsWorkflowsClient({
   initialWorkflows,
@@ -62,42 +72,45 @@ export default function LeadsWorkflowsClient({
       </div>
 
       <div className="flex justify-end">
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={() => setShowNew(true)}
-          className="inline-flex items-center gap-1.5 bg-sky-400 hover:bg-sky-500 text-white text-sm font-bold px-4 py-2 rounded-full"
+          className="h-auto gap-1.5 bg-sky-400 hover:bg-sky-500 text-white text-sm font-bold px-4 py-2 rounded-full"
         >
           <Plus className="w-4 h-4" />
           Add Workflow
-        </button>
+        </Button>
       </div>
 
       <div className="flex justify-center">
         <div className="bg-black rounded-full p-1 flex items-center text-sm">
-          <button
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => setTab("workflows")}
             className={
-              "px-4 py-1.5 rounded-full " +
+              "h-auto px-4 py-1.5 rounded-full hover:bg-transparent " +
               (tab === "workflows"
                 ? "bg-[#0f0f12] text-white shadow-sm font-bold"
-                : "text-zinc-400")
+                : "text-zinc-400 font-bold")
             }
           >
             Workflows
-          </button>
-          <button
+          </Button>
+          <Button
             type="button"
+            variant="ghost"
             onClick={() => setTab("logs")}
             className={
-              "px-4 py-1.5 rounded-full " +
+              "h-auto px-4 py-1.5 rounded-full hover:bg-transparent " +
               (tab === "logs"
                 ? "bg-[#0f0f12] text-white shadow-sm font-bold"
-                : "text-zinc-400")
+                : "text-zinc-400 font-bold")
             }
           >
             Workflow Logs
-          </button>
+          </Button>
         </div>
       </div>
 
@@ -135,28 +148,30 @@ export default function LeadsWorkflowsClient({
             <h3 className="text-lg font-extrabold text-white tracking-tight mb-4">
               New workflow
             </h3>
-            <input
+            <Input
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Workflow name"
-              className="w-full border border-[#1f1f24] rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#2a2a32]"
+              className="w-full h-auto border-[#1f1f24] rounded-lg px-3 py-2 text-sm focus-visible:ring-[#2a2a32]"
             />
             <div className="flex justify-end gap-2 mt-4">
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => setShowNew(false)}
-                className="px-4 py-2 text-sm text-zinc-400 font-bold hover:text-white"
+                className="h-auto px-4 py-2 text-sm text-zinc-400 font-bold hover:text-white hover:bg-transparent"
               >
                 Cancel
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={createWorkflow}
-                className="px-4 py-2 text-sm bg-sky-400 hover:bg-sky-500 text-white rounded-full"
+                className="h-auto px-4 py-2 text-sm bg-sky-400 hover:bg-sky-500 text-white rounded-full font-bold"
               >
                 Create
-              </button>
+              </Button>
             </div>
           </div>
         </div>
@@ -222,14 +237,15 @@ function WorkflowRow({
         >
           {enabled ? "Active" : "Paused"}
         </span>
-        <button
+        <Button
           type="button"
+          variant="ghost"
           role="switch"
           aria-checked={enabled}
           onClick={() => onToggle(!enabled)}
           className={
-            "relative w-10 h-6 rounded-full transition-colors " +
-            (enabled ? "bg-emerald-500" : "bg-[#2a2a32]")
+            "relative w-10 h-6 p-0 rounded-full hover:bg-current " +
+            (enabled ? "bg-emerald-500 hover:bg-emerald-500" : "bg-[#2a2a32] hover:bg-[#2a2a32]")
           }
         >
           <span
@@ -238,7 +254,7 @@ function WorkflowRow({
               (enabled ? "translate-x-4" : "")
             }
           />
-        </button>
+        </Button>
         <ChevronRight className="w-4 h-4 text-zinc-500" />
       </div>
     </div>
@@ -263,32 +279,32 @@ function LogsTable({
   const wfMap = new Map(workflows.map((w) => [w.id, w.name]));
   return (
     <div className="border border-[#1f1f24] rounded-2xl overflow-hidden">
-      <table className="w-full text-sm">
-        <thead className="bg-black text-xs uppercase text-zinc-400">
-          <tr>
-            <th className="text-left px-4 py-3">Workflow</th>
-            <th className="text-left px-4 py-3">Lead</th>
-            <th className="text-left px-4 py-3">Step</th>
-            <th className="text-left px-4 py-3">Status</th>
-            <th className="text-left px-4 py-3">Created</th>
-          </tr>
-        </thead>
-        <tbody>
+      <Table>
+        <TableHeader className="bg-black text-xs uppercase text-zinc-400">
+          <TableRow className="border-0 hover:bg-transparent">
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Workflow</TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Lead</TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Step</TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Status</TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Created</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
           {runs.map((r) => (
-            <tr key={r.id} className="border-t border-[#1f1f24]">
-              <td className="px-4 py-3 text-white">
+            <TableRow key={r.id} className="border-t border-b-0 border-[#1f1f24] hover:bg-transparent">
+              <TableCell className="px-4 py-3 text-white">
                 {wfMap.get(r.workflow_id) || `#${r.workflow_id}`}
-              </td>
-              <td className="px-4 py-3 text-zinc-400">#{r.lead_id}</td>
-              <td className="px-4 py-3 text-zinc-400">{r.step_index}</td>
-              <td className="px-4 py-3 text-zinc-400">{r.status}</td>
-              <td className="px-4 py-3 text-zinc-400 text-xs">
+              </TableCell>
+              <TableCell className="px-4 py-3 text-zinc-400">#{r.lead_id}</TableCell>
+              <TableCell className="px-4 py-3 text-zinc-400">{r.step_index}</TableCell>
+              <TableCell className="px-4 py-3 text-zinc-400">{r.status}</TableCell>
+              <TableCell className="px-4 py-3 text-zinc-400 text-xs">
                 {new Date(r.created_at).toLocaleString()}
-              </td>
-            </tr>
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }
