@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 type Job = {
   id: number;
@@ -93,30 +94,36 @@ export default function TodaySchedule({ initialJobs }: { initialJobs: Job[] }) {
     <div className="bg-card border border-line rounded-2xl p-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setOffset(offset - 1)}
-            className="w-8 h-8 rounded-full hover:bg-black text-zinc-400 flex items-center justify-center"
+            className="w-8 h-8 rounded-full text-zinc-400 hover:bg-black hover:text-zinc-400"
             aria-label="Previous day"
           >
             ‹
-          </button>
+          </Button>
           <h3
             className="font-extrabold text-white tracking-tight text-lg"
             suppressHydrationWarning
           >
             {mounted ? formatDay(currentDate) : ""}
           </h3>
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={() => setOffset(offset + 1)}
-            className="w-8 h-8 rounded-full hover:bg-black text-zinc-400 flex items-center justify-center"
+            className="w-8 h-8 rounded-full text-zinc-400 hover:bg-black hover:text-zinc-400"
             aria-label="Next day"
           >
             ›
-          </button>
+          </Button>
         </div>
-        <button
+        <Button
+          variant="outline"
+          size="icon"
           onClick={() => setOffset(0)}
-          className="w-8 h-8 rounded border border-line hover:bg-black text-zinc-400 flex items-center justify-center"
+          className="w-8 h-8 rounded bg-transparent border-line text-zinc-400 hover:bg-black hover:text-zinc-400"
           title="Today"
           aria-label="Jump to today"
         >
@@ -134,7 +141,7 @@ export default function TodaySchedule({ initialJobs }: { initialJobs: Job[] }) {
             <line x1="8" y1="2" x2="8" y2="6" />
             <line x1="3" y1="10" x2="21" y2="10" />
           </svg>
-        </button>
+        </Button>
       </div>
 
       <div className="mt-6">

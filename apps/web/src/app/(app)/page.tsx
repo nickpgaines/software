@@ -14,7 +14,7 @@ import {
 } from "@/components/pulse/widgets";
 import { PageHeader } from "@/components/pulse/PageHeader";
 import { PulseIcon } from "@/components/pulse/Icon";
-import { PULSE } from "@/components/pulse/theme";
+import { Button } from "@/components/ui/button";
 import { dateLabel, formatCentsShort, greeting } from "@/components/pulse/format";
 
 export const dynamic = "force-dynamic";
@@ -37,17 +37,13 @@ export default async function DashboardPage() {
         title={`${greeting(new Date().getHours())}, ${firstName}.`}
         subtitle={`${jobs.length} jobs today · ${completedCount} completed this month`}
         actions={
-          <button
-            className="h-11 rounded-2xl px-4 text-[13px] font-bold flex items-center gap-2 w-72"
-            style={{
-              background: PULSE.bgAlt,
-              color: PULSE.textSubtle,
-              border: `1px solid ${PULSE.cardBorder}`,
-            }}
+          <Button
+            variant="outline"
+            className="h-11 w-72 gap-2 rounded-2xl px-4 text-[13px] bg-elevated border-line text-fg-subtle hover:bg-elevated"
           >
             <PulseIcon name="search" className="w-3.5 h-3.5" />
             Search anything
-          </button>
+          </Button>
         }
       />
 
