@@ -288,20 +288,17 @@ function CallWidget() {
           type="button"
           onClick={toggleMute}
           disabled={state.kind !== "in_call"}
-          className={
-            "flex-1 text-xs rounded-full px-3 py-2 font-bold transition " +
-            (muted
-              ? "bg-amber-500 text-white hover:bg-amber-400"
-              : "bg-line-strong hover:bg-line-strong/80 disabled:opacity-50")
-          }
+          className="flex-1 text-xs rounded-full px-3 py-2 font-bold flex items-center justify-center gap-1.5 bg-line-strong hover:bg-line-strong/80 disabled:opacity-50 transition"
         >
+          <PulseIcon name={muted ? "mic-off" : "mic"} className="w-3.5 h-3.5" />
           {muted ? "Unmute" : "Mute"}
         </button>
         <button
           type="button"
           onClick={hangUp}
-          className="flex-1 text-xs rounded-full px-3 py-2 font-bold bg-red hover:bg-red/90 transition"
+          className="flex-1 text-xs rounded-full px-3 py-2 font-bold flex items-center justify-center gap-1.5 bg-red hover:bg-red/90 transition"
         >
+          <PulseIcon name="phone-off" className="w-3.5 h-3.5" />
           Hang up
         </button>
       </div>
