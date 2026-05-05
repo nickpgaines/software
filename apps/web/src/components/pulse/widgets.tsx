@@ -57,7 +57,7 @@ export function PulseHeader({
         <h1 className="text-[48px] font-extrabold tracking-tight leading-none">
           {greeting(new Date().getHours())}, {firstName}.
         </h1>
-        <p className="text-[14.5px] mt-3 font-bold" style={{ color: PULSE.textMuted }}>
+        <p className="text-sm mt-3 font-bold" style={{ color: PULSE.textMuted }}>
           {jobs.length} jobs today · {completedCount} completed this month
         </p>
       </div>
