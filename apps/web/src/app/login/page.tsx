@@ -3,6 +3,9 @@
 import { Suspense, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 const OAUTH_ERROR_MESSAGES: Record<string, string> = {
   google_not_configured: "Google sign-in isn't configured on this server.",
@@ -105,40 +108,41 @@ function LoginPageInner() {
           className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-6 space-y-5"
         >
           <div>
-            <label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
+            <Label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
               Email or username
-            </label>
-            <input
+            </Label>
+            <Input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="employee@example.com"
               autoComplete="username"
-              className="w-full bg-black border border-[#2a2a32] rounded-lg px-3 py-2.5 text-sm font-bold text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50"
+              className="w-full h-auto bg-black border-[#2a2a32] rounded-lg px-3 py-2.5 text-sm font-bold text-white placeholder-zinc-600 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50"
               autoFocus
             />
           </div>
           <div>
-            <label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
+            <Label className="block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2">
               Password
-            </label>
-            <input
+            </Label>
+            <Input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full bg-black border border-[#2a2a32] rounded-lg px-3 py-2.5 text-sm font-bold text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50"
+              className="w-full h-auto bg-black border-[#2a2a32] rounded-lg px-3 py-2.5 text-sm font-bold text-white placeholder-zinc-600 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50"
             />
           </div>
           {error && (
             <p className="text-sm font-bold text-red-400">{error}</p>
           )}
-          <button
+          <Button
             type="submit"
+            variant="ghost"
             disabled={loading}
-            className="w-full bg-white hover:bg-zinc-200 disabled:bg-zinc-600 disabled:text-zinc-400 text-black rounded-lg py-2.5 text-sm font-extrabold tracking-tight"
+            className="w-full h-auto bg-white hover:bg-zinc-200 disabled:bg-zinc-600 disabled:text-zinc-400 text-black rounded-lg py-2.5 text-sm font-extrabold tracking-tight"
           >
             {loading ? "Signing in…" : "Sign in"}
-          </button>
+          </Button>
           <p className="text-[11px] text-zinc-500 text-center font-bold">
             {process.env.NODE_ENV === "production" ? (
               <>Employees sign in with their email + password.</>

@@ -19,6 +19,7 @@ import {
   Inbox,
 } from "lucide-react";
 import NewMenu from "@/components/NewMenu";
+import { Button } from "@/components/ui/button";
 
 const links = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
@@ -142,14 +143,15 @@ export default function NavBar() {
             {displayName}
           </span>
         </div>
-        <button
+        <Button
           type="button"
+          variant="ghost"
           onClick={logout}
-          className="flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:bg-black hover:text-white transition-colors"
+          className="h-auto justify-start gap-3 w-full px-3 py-2.5 rounded-lg text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:bg-black hover:text-white"
         >
           <LogOut className="w-5 h-5" strokeWidth={1.8} />
           Sign out
-        </button>
+        </Button>
       </div>
     </aside>
   );

@@ -3,6 +3,9 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export default function SignupPage() {
   const router = useRouter();
@@ -34,7 +37,7 @@ export default function SignupPage() {
   }
 
   const inputCls =
-    "w-full bg-black border border-[#2a2a32] rounded-lg px-3 py-2.5 text-sm font-bold text-white placeholder-zinc-600 focus:outline-none focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500/50";
+    "w-full h-auto bg-black border-[#2a2a32] rounded-lg px-3 py-2.5 text-sm font-bold text-white placeholder-zinc-600 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50";
   const labelCls =
     "block text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 mb-2";
 
@@ -54,8 +57,8 @@ export default function SignupPage() {
           className="bg-[#0f0f12] border border-[#1f1f24] rounded-2xl p-6 space-y-5"
         >
           <div>
-            <label className={labelCls}>Company name</label>
-            <input
+            <Label className={labelCls}>Company name</Label>
+            <Input
               type="text"
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
@@ -65,8 +68,8 @@ export default function SignupPage() {
             />
           </div>
           <div>
-            <label className={labelCls}>Your name</label>
-            <input
+            <Label className={labelCls}>Your name</Label>
+            <Input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
@@ -76,8 +79,8 @@ export default function SignupPage() {
             />
           </div>
           <div>
-            <label className={labelCls}>Email address</label>
-            <input
+            <Label className={labelCls}>Email address</Label>
+            <Input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -87,9 +90,9 @@ export default function SignupPage() {
             />
           </div>
           <div>
-            <label className={labelCls}>Password</label>
+            <Label className={labelCls}>Password</Label>
             <div className="relative">
-              <input
+              <Input
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -97,26 +100,28 @@ export default function SignupPage() {
                 autoComplete="new-password"
                 className={inputCls + " pr-10"}
               />
-              <button
+              <Button
                 type="button"
+                variant="ghost"
                 onClick={() => setShowPassword((v) => !v)}
-                className="absolute inset-y-0 right-2 flex items-center text-zinc-500 hover:text-zinc-300"
+                className="absolute inset-y-0 right-2 h-auto w-auto p-0 text-zinc-500 hover:text-zinc-300 hover:bg-transparent"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOffIcon /> : <EyeIcon />}
-              </button>
+              </Button>
             </div>
           </div>
           {error && (
             <p className="text-sm font-bold text-red-400">{error}</p>
           )}
-          <button
+          <Button
             type="submit"
+            variant="ghost"
             disabled={loading}
-            className="w-full bg-white hover:bg-zinc-200 disabled:bg-zinc-600 disabled:text-zinc-400 text-black rounded-lg py-3 text-sm font-extrabold tracking-tight"
+            className="w-full h-auto bg-white hover:bg-zinc-200 disabled:bg-zinc-600 disabled:text-zinc-400 text-black rounded-lg py-3 text-sm font-extrabold tracking-tight"
           >
             {loading ? "Creating account…" : "Create account →"}
-          </button>
+          </Button>
           <p className="text-sm text-zinc-400 font-bold text-center pt-2 font-bold">
             Already have an account?{" "}
             <Link

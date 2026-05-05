@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Button } from "@/components/ui/button";
 
 export default function PayClient({
   token,
@@ -40,14 +41,15 @@ export default function PayClient({
           Payment was cancelled. Try again whenever you&apos;re ready.
         </div>
       )}
-      <button
+      <Button
         type="button"
+        variant="ghost"
         onClick={pay}
         disabled={working}
-        className="w-full bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-3 text-sm font-bold"
+        className="w-full h-auto bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-3 text-sm font-bold"
       >
         {working ? "Opening checkout…" : "Pay with card"}
-      </button>
+      </Button>
       {error && <p className="text-sm text-rose-600">{error}</p>}
     </div>
   );
