@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { resolveReportRange } from "@/lib/report-range";
+import { resolveReportRangeFromUrl } from "@/lib/report-range";
 import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -17,7 +17,7 @@ export async function GET(req: Request) {
   const companyId = await requireCompanyId();
   const db = await getDb();
   const url = new URL(req.url);
-  const { range, start, end } = resolveReportRange(url.searchParams.get("range"));
+  const { range, start, end } = resolveReportRangeFromUrl(url);
   const startIso = start.toISOString();
   const endIso = end.toISOString();
 
@@ -76,6 +76,10 @@ export async function GET(req: Request) {
     .filter((r) => r.doors_knocked > 0 || r.revenue_cents > 0)
     .sort((a, b) => b.revenue_cents - a.revenue_cents);
 
+  const totalRevenueCents = enriched.reduce((s, r) => s + r.revenue_cents, 0);
+  const revenuePerDoorCents =
+    doors.total > 0 ? Math.round(totalRevenueCents / doors.total) : 0;
+
   return NextResponse.json({
     range,
     start: startIso,
@@ -84,6 +88,8 @@ export async function GET(req: Request) {
       total: doors.total,
       sales: doors.sales,
       conversion_rate: conversionRate,
+      revenue_cents: totalRevenueCents,
+      revenue_per_door_cents: revenuePerDoorCents,
     },
     reps: enriched,
   });

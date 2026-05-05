@@ -528,6 +528,12 @@ async function init(): Promise<void> {
     );
     await alterAddColumn(
       "payments",
+      "source",
+      "TEXT NOT NULL DEFAULT 'job'",
+      paymentCols
+    );
+    await alterAddColumn(
+      "payments",
       "subscription_id",
       "INTEGER REFERENCES customer_subscriptions(id) ON DELETE SET NULL",
       paymentCols
@@ -2142,6 +2148,8 @@ export type StaffDefaultShift = {
   updated_at: string;
 };
 
+export type PaymentSource = "job" | "subscription" | "tip" | "other";
+
 export type Payment = {
   id: number;
   company_id: number;
@@ -2154,6 +2162,7 @@ export type Payment = {
   send_email: number;
   send_sms: number;
   stripe_payment_intent_id: string | null;
+  source: PaymentSource;
   subscription_id: number | null;
   created_at: string;
 };

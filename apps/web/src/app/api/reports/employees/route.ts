@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
+import { resolveReportRangeFromUrl } from "@/lib/report-range";
 
 export const dynamic = "force-dynamic";
 
@@ -45,10 +46,21 @@ function safeAvg(nums: number[]): number {
   return nums.reduce((s, n) => s + n, 0) / nums.length;
 }
 
-export async function GET() {
+export async function GET(req: Request) {
   const companyId = await requireCompanyId();
   const db = await getDb();
   const now = Date.now();
+  const url = new URL(req.url);
+  // Optional range — when omitted, fall back to all-time.
+  const rangeParam = url.searchParams.get("range");
+  const useRange = !!rangeParam;
+  const { start, end } = resolveReportRangeFromUrl(url);
+  const startIso = start.toISOString();
+  const endIso = end.toISOString();
+  const rangeFilter = useRange
+    ? `AND j.scheduled_at >= ? AND j.scheduled_at < ?`
+    : ``;
+  const rangeArgs = useRange ? [startIso, endIso] : [];
 
   const staff = (await db
     .prepare(
@@ -67,9 +79,10 @@ export async function GET() {
         WHERE ja.role = 'sales'
           AND j.company_id = ?
           AND j.status != 'cancelled'
+          ${rangeFilter}
         GROUP BY ja.staff_id`
     )
-    .all(companyId)) as RevenueRow[];
+    .all(companyId, ...rangeArgs)) as RevenueRow[];
 
   const techRevenue = (await db
     .prepare(
@@ -80,9 +93,10 @@ export async function GET() {
         WHERE ja.role = 'tech'
           AND j.company_id = ?
           AND j.status != 'cancelled'
+          ${rangeFilter}
         GROUP BY ja.staff_id`
     )
-    .all(companyId)) as RevenueRow[];
+    .all(companyId, ...rangeArgs)) as RevenueRow[];
 
   // Per-job rows for techs that have actual on-site time (both started_at
   // and completed_at). We compute $/hour from these rows only so revenue
@@ -99,9 +113,10 @@ export async function GET() {
           AND j.company_id = ?
           AND j.status != 'cancelled'
           AND j.started_at IS NOT NULL
-          AND j.completed_at IS NOT NULL`
+          AND j.completed_at IS NOT NULL
+          ${rangeFilter}`
     )
-    .all(companyId)) as TechHoursRow[];
+    .all(companyId, ...rangeArgs)) as TechHoursRow[];
 
   const techHoursById = new Map<
     number,
