@@ -40,6 +40,43 @@ export default {
         green: "var(--color-green)",
         red: "var(--color-red)",
         cyan: "var(--color-cyan)",
+
+        // ----------------------------------------------------------------
+        // shadcn bridge color aliases.
+        //
+        // shadcn/ui-generated primitives (under components/ui/) reference
+        // a fixed set of Tailwind class names — bg-primary, bg-secondary,
+        // bg-muted, bg-accent, bg-destructive, bg-popover, border-input,
+        // ring — that don't map to our Pulse token names. The CSS-side
+        // bridge in globals.css already aliases the matching CSS variables
+        // (--primary, --secondary, …) onto our Pulse tokens (--color-violet,
+        // --color-elevated, …); these Tailwind entries expose the same
+        // bridge names as utility classes so shadcn templates resolve.
+        //
+        // These are duplicate aliases on top of the canonical canvas/card/
+        // fg/line tokens above — change a Pulse token in globals.css and
+        // both sides update. Do not introduce new bridge entries unless a
+        // shadcn primitive in components/ui/ references the class name.
+        //
+        // shadcn's CLI auto-wraps these as hsl(var(--background)). Our
+        // tokens are full color values (hex/rgba), not HSL channels, so
+        // the wrapper is intentionally omitted — entries reference
+        // var(--*) directly. See globals.css §"shadcn/ui bridge variables".
+        // ----------------------------------------------------------------
+        primary: "var(--primary)",
+        "primary-foreground": "var(--primary-foreground)",
+        secondary: "var(--secondary)",
+        "secondary-foreground": "var(--secondary-foreground)",
+        muted: "var(--muted)",
+        "muted-foreground": "var(--muted-foreground)",
+        accent: "var(--accent)",
+        "accent-foreground": "var(--accent-foreground)",
+        destructive: "var(--destructive)",
+        "destructive-foreground": "var(--destructive-foreground)",
+        popover: "var(--popover)",
+        "popover-foreground": "var(--popover-foreground)",
+        input: "var(--input)",
+        ring: "var(--ring)",
       },
       fontFamily: {
         sans: ["var(--font-sans)"],
