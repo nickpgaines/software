@@ -120,14 +120,14 @@ export default function StaffScorecardModal({
       onClick={onClose}
     >
       <div
-        className="bg-card rounded-2xl w-full max-w-3xl my-4 shadow-xl"
+        className="bg-card border border-line rounded-2xl w-full max-w-3xl my-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-6 py-5 border-b border-line flex items-start gap-4">
           <div
             className={
-              "w-14 h-14 rounded-full flex items-center justify-center font-semibold text-base overflow-hidden " +
-              (staff?.photo_url ? "" : "bg-amber-100 text-amber-700")
+              "w-14 h-14 rounded-full flex items-center justify-center font-extrabold text-base overflow-hidden " +
+              (staff?.photo_url ? "" : "bg-elevated text-fg-muted")
             }
           >
             {staff?.photo_url ? (
@@ -142,7 +142,7 @@ export default function StaffScorecardModal({
             )}
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-xs uppercase tracking-wider text-sky-500 font-semibold">
+            <div className="text-eyebrow-tight uppercase text-fg-muted">
               Sales Stats
             </div>
             <h2 className="text-page-title text-white truncate">
@@ -155,7 +155,7 @@ export default function StaffScorecardModal({
             </h2>
             <div className="flex items-center gap-2 mt-1">
               {staff?.role && (
-                <span className="text-xs px-2.5 py-1 rounded-full font-bold bg-rose-100 text-rose-600 capitalize">
+                <span className="text-xs px-2.5 py-1 rounded-full font-bold bg-elevated border border-line text-fg-muted capitalize">
                   {staff.role}
                 </span>
               )}
@@ -169,7 +169,7 @@ export default function StaffScorecardModal({
                 className={
                   "h-auto px-3 py-1 rounded-full hover:bg-transparent font-bold " +
                   (view === "sales"
-                    ? "bg-card text-white shadow-sm"
+                    ? "bg-card text-white"
                     : "text-zinc-400 hover:text-white")
                 }
               >
@@ -181,7 +181,7 @@ export default function StaffScorecardModal({
                 className={
                   "h-auto px-3 py-1 rounded-full hover:bg-transparent font-bold " +
                   (view === "tech"
-                    ? "bg-card text-white shadow-sm"
+                    ? "bg-card text-white"
                     : "text-zinc-400 hover:text-white")
                 }
               >
@@ -220,7 +220,7 @@ export default function StaffScorecardModal({
                 className={
                   "h-auto px-3 py-1 rounded-full whitespace-nowrap font-bold hover:bg-transparent " +
                   (range === p.key
-                    ? "bg-card text-white shadow-sm"
+                    ? "bg-card text-white"
                     : "text-zinc-400 hover:text-white")
                 }
               >

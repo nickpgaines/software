@@ -69,31 +69,22 @@ function formatDate(iso: string | null, mounted: boolean) {
 }
 
 function rankBadgeClass(i: number) {
+  // Medals: gold/silver/bronze for ranks 1–3 (intentional signal palette;
+  // see DESIGN_SYSTEM.md §3 "Leaderboard rank medals").
   if (i === 0) return "bg-amber-400 text-white";
   if (i === 1) return "bg-line-strong text-white";
   if (i === 2) return "bg-orange-300 text-white";
-  return "bg-black text-zinc-400";
+  return "bg-elevated text-fg-muted";
 }
 
-function roleBadgeClass(role: string | null) {
-  const r = (role || "").toLowerCase();
-  if (r === "admin") return "bg-rose-100 text-rose-600";
-  if (r === "sales" || r === "salesperson") return "bg-sky-100 text-sky-700";
-  if (r === "tech" || r === "technician") return "bg-emerald-100 text-emerald-700";
-  return "bg-black text-zinc-400";
+function roleBadgeClass(_role: string | null) {
+  // Roles share a neutral chip; differentiation is by label text only.
+  return "bg-elevated text-fg-muted";
 }
 
-function avatarColor(name: string) {
-  const colors = [
-    "bg-amber-100 text-amber-700",
-    "bg-sky-100 text-sky-700",
-    "bg-emerald-100 text-emerald-700",
-    "bg-violet-100 text-violet-700",
-    "bg-rose-100 text-rose-700",
-  ];
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
-  return colors[Math.abs(h) % colors.length];
+function avatarFallbackClass() {
+  // Single neutral fallback for avatars without a photo.
+  return "bg-elevated text-fg-muted";
 }
 
 function todayDateInput() {
@@ -229,7 +220,7 @@ export default function LeaderboardClient({
             className={
               "h-auto px-4 py-1.5 rounded-full font-bold hover:bg-transparent " +
               (view === "sales"
-                ? "bg-card text-white shadow-sm"
+                ? "bg-card text-white"
                 : "text-zinc-400 hover:text-white")
             }
           >
@@ -241,7 +232,7 @@ export default function LeaderboardClient({
             className={
               "h-auto px-4 py-1.5 rounded-full font-bold hover:bg-transparent " +
               (view === "tech"
-                ? "bg-card text-white shadow-sm"
+                ? "bg-card text-white"
                 : "text-zinc-400 hover:text-white")
             }
           >
@@ -285,12 +276,12 @@ export default function LeaderboardClient({
             if (el) el.scrollIntoView({ behavior: "smooth" });
           }
         }}
-        className="w-full h-auto text-left flex items-center gap-3 justify-start bg-card border border-line rounded-2xl px-5 py-4 hover:bg-black shadow-sm whitespace-normal"
+        className="w-full h-auto text-left flex items-center gap-3 justify-start bg-card border border-line rounded-2xl px-5 py-4 hover:bg-black whitespace-normal"
       >
         <div
           className={
-            "w-12 h-12 rounded-full flex items-center justify-center font-semibold text-base overflow-hidden " +
-            (me?.photo_url ? "" : "bg-amber-100 text-amber-700")
+            "w-12 h-12 rounded-full flex items-center justify-center font-extrabold text-base overflow-hidden " +
+            (me?.photo_url ? "" : avatarFallbackClass())
           }
         >
           {me?.photo_url ? (
@@ -324,13 +315,13 @@ export default function LeaderboardClient({
         <KpiCard label="Top Performer" value={top?.name || "—"} />
       </div>
 
-      <div id="rankings" className="bg-card border border-line rounded-2xl shadow-sm">
+      <div id="rankings" className="bg-card border border-line rounded-2xl">
         <div className="px-5 py-4 border-b border-line flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3">
             <h2 className="font-extrabold text-white tracking-tight">
               {view === "sales" ? "Sales Rankings" : "Technician Rankings"}
             </h2>
-            <span className="inline-flex items-center gap-1.5 bg-sky-50 border border-sky-100 text-sky-700 text-xs px-2.5 py-1 rounded-full">
+            <span className="inline-flex items-center gap-1.5 bg-elevated border border-line text-fg-muted text-xs px-2.5 py-1 rounded-full font-bold">
               <svg
                 className="w-3.5 h-3.5"
                 viewBox="0 0 24 24"
@@ -361,7 +352,7 @@ export default function LeaderboardClient({
                   className={
                     "h-auto px-3 py-1 rounded-full whitespace-nowrap font-bold hover:bg-transparent " +
                     (range === r.key
-                      ? "bg-card text-white shadow-sm"
+                      ? "bg-card text-white"
                       : "text-zinc-400 hover:text-white")
                   }
                 >
@@ -378,7 +369,7 @@ export default function LeaderboardClient({
                   className={
                     "h-auto px-3 py-1 rounded-full whitespace-nowrap gap-1 font-bold hover:bg-transparent " +
                     (range === "custom"
-                      ? "bg-card text-white shadow-sm"
+                      ? "bg-card text-white"
                       : "text-zinc-400 hover:text-white")
                   }
                 >
@@ -399,9 +390,9 @@ export default function LeaderboardClient({
                   </svg>
                 </Button>
                 {customOpen && (
-                  <div className="absolute right-0 mt-2 z-30 bg-card border border-line rounded-2xl shadow-lg p-4 w-64 space-y-3">
+                  <div className="absolute right-0 mt-2 z-30 bg-card border border-line rounded-2xl shadow-menu p-4 w-64 space-y-3">
                     <div>
-                      <Label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1 font-normal">
+                      <Label className="block text-eyebrow-tight uppercase text-zinc-500 mb-1">
                         From
                       </Label>
                       <Input
@@ -413,7 +404,7 @@ export default function LeaderboardClient({
                       />
                     </div>
                     <div>
-                      <Label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1 font-normal">
+                      <Label className="block text-eyebrow-tight uppercase text-zinc-500 mb-1">
                         To
                       </Label>
                       <Input
@@ -484,24 +475,19 @@ export default function LeaderboardClient({
               <TableBody>
                 {activeRows.map((r, i) => {
                   const isMe = me?.id === r.id;
-                  const isTop = i === 0;
                   return (
                     <TableRow
                       key={r.id}
                       onClick={() => setScorecardId(r.id)}
                       className={
                         "border-t border-b-0 border-line cursor-pointer hover:bg-black " +
-                        (isMe
-                          ? "bg-amber-50/60 ring-1 ring-amber-200"
-                          : isTop
-                          ? "bg-amber-50/30"
-                          : "")
+                        (isMe ? "bg-violet/5 ring-1 ring-violet/30" : "")
                       }
                     >
                       <TableCell className="px-5 py-3">
                         <span
                           className={
-                            "inline-flex items-center justify-center w-8 h-8 rounded-full font-semibold text-sm " +
+                            "inline-flex items-center justify-center w-8 h-8 rounded-full font-extrabold text-sm " +
                             rankBadgeClass(i)
                           }
                         >
@@ -512,8 +498,8 @@ export default function LeaderboardClient({
                         <div className="flex items-center gap-3">
                           <div
                             className={
-                              "w-8 h-8 rounded-full flex items-center justify-center font-semibold text-xs overflow-hidden " +
-                              (r.photo_url ? "" : avatarColor(r.name))
+                              "w-8 h-8 rounded-full flex items-center justify-center font-extrabold text-xs overflow-hidden " +
+                              (r.photo_url ? "" : avatarFallbackClass())
                             }
                           >
                             {r.photo_url ? (
@@ -589,7 +575,7 @@ export default function LeaderboardClient({
 
 function KpiCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-card border border-line rounded-2xl p-6 min-h-[140px] flex flex-col justify-between shadow-sm">
+    <div className="bg-card border border-line rounded-2xl p-6 min-h-[140px] flex flex-col justify-between">
       <div className="text-sm text-zinc-500">{label}</div>
       <div className="text-4xl font-bold text-white tabular-nums">
         {value}

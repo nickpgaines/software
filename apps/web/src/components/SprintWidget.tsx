@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Button } from "@/components/ui/button";
 
 type View = "sales" | "tech";
 
@@ -58,10 +59,12 @@ function useCountdown(endIso: string) {
 }
 
 function placeColor(place: number) {
+  // Medal palette for ranks 1–3 (intentional; see DESIGN_SYSTEM.md §3
+  // "Leaderboard rank medals"). Ranks 4+ fall back to a neutral surface.
   if (place === 1) return "bg-gradient-to-br from-amber-300 to-amber-500 ring-amber-200";
-  if (place === 2) return "bg-gradient-to-br from-slate-300 to-slate-500 ring-line";
+  if (place === 2) return "bg-gradient-to-br from-line-strong to-line ring-line-strong";
   if (place === 3) return "bg-gradient-to-br from-orange-300 to-orange-500 ring-orange-200";
-  return "bg-gradient-to-br from-slate-200 to-slate-400 ring-slate-100";
+  return "bg-elevated ring-line";
 }
 
 export default function SprintWidget({
@@ -92,7 +95,7 @@ export default function SprintWidget({
   for (const p of sprint.prizes) prizesByPlace.set(p.place, p.title);
 
   return (
-    <div className="bg-card border border-line rounded-2xl shadow-sm p-5">
+    <div className="bg-card border border-line rounded-2xl p-5">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div>
           <h3 className="text-xl font-bold text-white">{sprint.name}</h3>
@@ -100,7 +103,7 @@ export default function SprintWidget({
             <p className="text-sm text-zinc-400 mt-2 font-bold">{sprint.description}</p>
           )}
           <div className="flex items-center gap-2 mt-2 text-sm">
-            <span className="inline-flex items-center gap-1 text-sky-600">
+            <span className="inline-flex items-center gap-1 text-fg-muted">
               <svg
                 className="w-4 h-4"
                 viewBox="0 0 24 24"
@@ -113,7 +116,7 @@ export default function SprintWidget({
                 <circle cx="12" cy="12" r="10" />
                 <polyline points="12 6 12 12 16 14" />
               </svg>
-              <span className="font-semibold">
+              <span className="font-bold">
                 {finished ? "Ended" : "Ends in:"}
               </span>
             </span>
@@ -128,10 +131,12 @@ export default function SprintWidget({
           </div>
         </div>
         {isAdmin && (
-          <button
+          <Button
+            variant="ghost"
+            size="icon"
             onClick={del}
             disabled={busy}
-            className="w-8 h-8 rounded-full border border-rose-200 text-rose-500 hover:bg-rose-50 flex items-center justify-center"
+            className="w-8 h-8 rounded-full border border-line text-fg-muted hover:bg-red/10 hover:text-red hover:border-red/40"
             aria-label="Delete sprint"
             title="Delete sprint"
           >
@@ -150,13 +155,13 @@ export default function SprintWidget({
               <path d="M14 11v6" />
               <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" />
             </svg>
-          </button>
+          </Button>
         )}
       </div>
 
       <div className="flex justify-center mb-4">
-        <span className="inline-flex items-center gap-2 bg-sky-50 border border-sky-100 text-sky-700 text-sm font-semibold px-3 py-1 rounded-full">
-          <span className="w-1.5 h-1.5 rounded-full bg-sky-500" />
+        <span className="inline-flex items-center gap-2 bg-elevated border border-line text-fg-muted text-sm font-bold px-3 py-1 rounded-full">
+          <span className="w-1.5 h-1.5 rounded-full bg-violet" />
           Current Standings
         </span>
       </div>
@@ -174,21 +179,21 @@ export default function SprintWidget({
               <div
                 key={s.staff_id}
                 className={
-                  "rounded-2xl text-white p-4 shadow-md ring-2 " + placeColor(place)
+                  "rounded-2xl text-white p-4 ring-2 " + placeColor(place)
                 }
               >
                 <div className="flex items-center justify-between mb-3">
-                  <span className="w-8 h-8 rounded-full bg-card/30 flex items-center justify-center font-bold">
+                  <span className="w-8 h-8 rounded-full bg-card/30 flex items-center justify-center font-extrabold">
                     {place}
                   </span>
                   {prize && (
-                    <span className="text-xs bg-card/30 rounded-full px-2 py-0.5 font-semibold">
+                    <span className="text-xs bg-card/30 rounded-full px-2 py-0.5 font-bold">
                       {prize}
                     </span>
                   )}
                 </div>
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-card/30 flex items-center justify-center font-semibold overflow-hidden">
+                  <div className="w-10 h-10 rounded-full bg-card/30 flex items-center justify-center font-extrabold overflow-hidden">
                     {s.photo_url ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -201,11 +206,11 @@ export default function SprintWidget({
                     )}
                   </div>
                   <div className="min-w-0">
-                    <div className="font-semibold truncate">{s.name}</div>
-                    <div className="text-sm text-white/90 tabular-nums">
+                    <div className="font-bold truncate">{s.name}</div>
+                    <div className="text-sm text-white/90 tabular-nums font-bold">
                       {money(s.revenue_cents)}
                     </div>
-                    <div className="text-xs text-white/80">
+                    <div className="text-xs text-white/80 font-bold">
                       {s.job_count} {s.job_count === 1 ? "job" : "jobs"}
                     </div>
                   </div>
@@ -221,7 +226,7 @@ export default function SprintWidget({
 
 function TimeChip({ value, unit }: { value: number; unit: string }) {
   return (
-    <span className="bg-sky-50 border border-sky-100 text-sky-700 text-xs font-semibold px-2 py-0.5 rounded-md tabular-nums">
+    <span className="bg-elevated border border-line text-fg-muted text-xs font-bold px-2 py-0.5 rounded-md tabular-nums">
       {String(value).padStart(2, "0")}
       {unit}
     </span>

@@ -144,7 +144,7 @@ export default function NewSprintModal({
       onClick={onClose}
     >
       <div
-        className="bg-card rounded-2xl w-full max-w-lg my-4 shadow-xl"
+        className="bg-card border border-line rounded-2xl w-full max-w-lg my-4"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="px-6 py-4 border-b border-line flex items-center justify-between">
@@ -172,14 +172,14 @@ export default function NewSprintModal({
         <div className="px-6 py-5 space-y-5">
           <div>
             <Label className="block text-sm font-extrabold text-white tracking-tight mb-1">
-              Sprint Name <span className="text-rose-500">*</span>
+              Sprint Name <span className="text-red">*</span>
             </Label>
             <Input
               autoFocus
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g., Q1 Sales Competition"
-              className="w-full border-line rounded-full px-4 py-2 h-auto text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200"
+              className="w-full border-line rounded-full px-4 py-2 h-auto text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet/40"
             />
           </div>
           <div>
@@ -191,12 +191,12 @@ export default function NewSprintModal({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional description of the sprint…"
               rows={3}
-              className="w-full border-line rounded-2xl px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200"
+              className="w-full border-line rounded-2xl px-4 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet/40"
             />
           </div>
           <div>
             <Label className="block text-sm font-extrabold text-white tracking-tight mb-2">
-              Sprint Duration <span className="text-rose-500">*</span>
+              Sprint Duration <span className="text-red">*</span>
             </Label>
             <div className="flex flex-wrap items-center gap-1 bg-black border border-line rounded-full p-1 text-sm w-fit">
               {DURATIONS.map((d) => (
@@ -207,7 +207,7 @@ export default function NewSprintModal({
                   className={
                     "px-3 py-1 h-auto rounded-full whitespace-nowrap " +
                     (duration === d.key
-                      ? "bg-card text-white shadow-sm"
+                      ? "bg-card text-white"
                       : "text-zinc-400 hover:text-white")
                   }
                 >
@@ -218,7 +218,7 @@ export default function NewSprintModal({
             {duration === "custom" && (
               <div className="grid grid-cols-2 gap-3 mt-3">
                 <div>
-                  <Label className="block text-xs font-normal uppercase tracking-wide text-zinc-500 mb-1">
+                  <Label className="block text-eyebrow-tight uppercase text-zinc-500 mb-1">
                     Start
                   </Label>
                   <Input
@@ -230,7 +230,7 @@ export default function NewSprintModal({
                   />
                 </div>
                 <div>
-                  <Label className="block text-xs font-normal uppercase tracking-wide text-zinc-500 mb-1">
+                  <Label className="block text-eyebrow-tight uppercase text-zinc-500 mb-1">
                     End
                   </Label>
                   <Input
@@ -258,7 +258,7 @@ export default function NewSprintModal({
                 variant="ghost"
                 type="button"
                 onClick={addPrize}
-                className="text-sm bg-sky-100 hover:bg-sky-200 text-sky-700 rounded-full px-3 py-1 h-auto inline-flex items-center gap-1"
+                className="text-sm bg-elevated hover:bg-line text-fg-muted font-bold rounded-full px-3 py-1 h-auto inline-flex items-center gap-1"
               >
                 <span className="text-base leading-none">+</span> Add Prize
               </Button>
@@ -269,13 +269,14 @@ export default function NewSprintModal({
                   <span
                     className={
                       "w-7 h-7 rounded-full text-white text-xs font-bold flex items-center justify-center shrink-0 " +
+                      // Medal palette (see DESIGN_SYSTEM.md §3 "Leaderboard rank medals")
                       (p.place === 1
                         ? "bg-amber-400"
                         : p.place === 2
-                        ? "bg-slate-400"
+                        ? "bg-line-strong"
                         : p.place === 3
                         ? "bg-orange-400"
-                        : "bg-line-strong")
+                        : "bg-elevated text-fg-muted")
                     }
                   >
                     {p.place}
@@ -298,14 +299,14 @@ export default function NewSprintModal({
                     value={p.title}
                     onChange={(e) => updatePrize(i, { title: e.target.value })}
                     placeholder="Prize title (e.g., $500 Bonus)"
-                    className="flex-1 border-line rounded-full px-3 py-1.5 h-auto text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-200"
+                    className="flex-1 border-line rounded-full px-3 py-1.5 h-auto text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet/40"
                   />
                   {prizes.length > 1 && (
                     <Button
                       variant="ghost"
                       type="button"
                       onClick={() => removePrize(i)}
-                      className="text-zinc-500 hover:text-rose-500 px-1 h-auto p-0"
+                      className="text-zinc-500 hover:text-red px-1 h-auto p-0"
                       aria-label="Remove prize"
                     >
                       ×
@@ -317,7 +318,7 @@ export default function NewSprintModal({
           </div>
 
           {error && (
-            <div className="text-sm text-rose-600 bg-rose-50 border border-rose-100 rounded-xl px-3 py-2">
+            <div className="text-sm text-red bg-red/10 border border-red/30 rounded-xl px-3 py-2">
               {error}
             </div>
           )}
@@ -336,7 +337,7 @@ export default function NewSprintModal({
             variant="ghost"
             onClick={submit}
             disabled={submitting || !name.trim()}
-            className="text-sm bg-sky-500 hover:bg-sky-600 disabled:bg-sky-200 text-white rounded-full px-4 py-2 h-auto"
+            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white font-bold rounded-full px-4 py-2 h-auto"
           >
             {submitting ? "Creating…" : "Create Sprint"}
           </Button>
