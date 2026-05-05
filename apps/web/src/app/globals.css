@@ -53,6 +53,56 @@
   --shadow-tooltip: 0 8px 24px -8px rgba(0, 0, 0, 0.6);
 }
 
+/* =============================================================================
+   shadcn/ui bridge variables.
+   shadcn/ui's CLI generates components that reference a fixed set of CSS
+   variable names (--background, --foreground, --card, etc.). Those names
+   differ from our Pulse token names (--color-canvas, --color-fg, --color-card),
+   so without this bridge, generated components would fall back to `unset`
+   and render broken.
+
+   This block re-exports our Pulse tokens under the names shadcn expects,
+   keeping the --color-* tokens above as the single source of truth — change
+   a Pulse token and every shadcn component automatically picks it up.
+
+   Note on HSL: shadcn's CLI by default generates Tailwind colors wrapped
+   as `hsl(var(--background))`. Our tokens are full color values, not HSL
+   channels, so the first time we generate a shadcn component we'll also
+   need to update the auto-added Tailwind entries from
+   `hsl(var(--background))` → `var(--background)` (drop the hsl wrapper).
+   ============================================================================= */
+:root {
+  --background: var(--color-canvas);
+  --foreground: var(--color-fg);
+
+  --card: var(--color-card);
+  --card-foreground: var(--color-fg);
+
+  --popover: var(--color-card);
+  --popover-foreground: var(--color-fg);
+
+  --primary: var(--color-violet);
+  --primary-foreground: var(--color-fg);
+
+  --secondary: var(--color-elevated);
+  --secondary-foreground: var(--color-fg);
+
+  --muted: var(--color-line);
+  --muted-foreground: var(--color-fg-muted);
+
+  --accent: var(--color-line-strong);
+  --accent-foreground: var(--color-fg);
+
+  --destructive: var(--color-red);
+  --destructive-foreground: var(--color-fg);
+
+  --border: var(--color-line);
+  --input: var(--color-line-strong);
+  --ring: var(--color-violet);
+
+  --radius: 1rem;
+}
+
 html, body {
   height: 100%;
 }
