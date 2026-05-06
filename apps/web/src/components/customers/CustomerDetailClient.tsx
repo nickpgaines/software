@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { APIProvider, Map, Marker } from "@vis.gl/react-google-maps";
 import CustomerForm, {
   type CustomerFormCustomer,
 } from "@/components/customers/CustomerForm";
@@ -404,20 +405,11 @@ export default function CustomerDetailClient({
           </Section>
 
           <div className="rounded-xl border border-line overflow-hidden bg-black h-56">
-            {address ? (
-              <iframe
-                title="Map"
-                src={`https://maps.google.com/maps?q=${encodeURIComponent(
-                  address
-                )}&z=15&output=embed`}
-                className="w-full h-full"
-                loading="lazy"
-              />
-            ) : (
-              <div className="h-full flex items-center justify-center text-sm text-zinc-500 font-bold px-4 text-center">
-                No location on file
-              </div>
-            )}
+            <LocationMap
+              address={address}
+              latitude={customer.latitude}
+              longitude={customer.longitude}
+            />
           </div>
 
           <Section title="Notes">
@@ -783,6 +775,105 @@ function Empty({ label }: { label: string }) {
   return (
     <div className="p-8 text-center text-sm text-zinc-400 font-bold">
       {label}
+    </div>
+  );
+}
+
+const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+
+type GeoState =
+  | { status: "idle" }
+  | { status: "loading" }
+  | { status: "ok"; lat: number; lng: number }
+  | { status: "error"; message: string };
+
+async function geocodeAddress(
+  address: string
+): Promise<{ lat: number; lng: number } | null> {
+  if (!MAPS_KEY) return null;
+  const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(
+    address
+  )}&key=${MAPS_KEY}`;
+  const res = await fetch(url);
+  if (!res.ok) return null;
+  const data = (await res.json()) as {
+    status: string;
+    results: Array<{ geometry: { location: { lat: number; lng: number } } }>;
+  };
+  if (data.status !== "OK" || !data.results.length) return null;
+  return data.results[0].geometry.location;
+}
+
+function LocationMap({
+  address,
+  latitude,
+  longitude,
+}: {
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
+}) {
+  const [geo, setGeo] = useState<GeoState>(() =>
+    typeof latitude === "number" && typeof longitude === "number"
+      ? { status: "ok", lat: latitude, lng: longitude }
+      : { status: "idle" }
+  );
+
+  useEffect(() => {
+    if (typeof latitude === "number" && typeof longitude === "number") {
+      setGeo({ status: "ok", lat: latitude, lng: longitude });
+      return;
+    }
+    if (!address) {
+      setGeo({ status: "error", message: "No address on file" });
+      return;
+    }
+    if (!MAPS_KEY) {
+      setGeo({ status: "error", message: "Map not configured" });
+      return;
+    }
+    let cancelled = false;
+    setGeo({ status: "loading" });
+    geocodeAddress(address)
+      .then((loc) => {
+        if (cancelled) return;
+        if (!loc) {
+          setGeo({ status: "error", message: "Address not found" });
+          return;
+        }
+        setGeo({ status: "ok", lat: loc.lat, lng: loc.lng });
+      })
+      .catch(() => {
+        if (!cancelled)
+          setGeo({ status: "error", message: "Address not found" });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [address, latitude, longitude]);
+
+  if (geo.status === "ok") {
+    return (
+      <APIProvider apiKey={MAPS_KEY}>
+        <Map
+          defaultCenter={{ lat: geo.lat, lng: geo.lng }}
+          defaultZoom={19}
+          mapTypeId="satellite"
+          gestureHandling="greedy"
+          mapTypeControl
+          streetViewControl
+          fullscreenControl
+          zoomControl
+          style={{ width: "100%", height: "100%" }}
+        >
+          <Marker position={{ lat: geo.lat, lng: geo.lng }} />
+        </Map>
+      </APIProvider>
+    );
+  }
+  return (
+    <div className="h-full flex items-center justify-center text-sm text-zinc-500 font-bold px-4 text-center">
+      {geo.status === "loading" ? "Looking up address…" : geo.status === "error" ? geo.message : "—"}
     </div>
   );
 }
