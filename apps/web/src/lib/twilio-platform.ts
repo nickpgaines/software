@@ -44,6 +44,13 @@ export function isPlatformSmsEnabled(): boolean {
   return process.env.PLATFORM_SMS_ENABLED === "1";
 }
 
+// Public URL of /api/twilio/status-callback. When set, every outbound send
+// (platform and BYO) asks Twilio to POST delivery updates here so we can
+// persist sent / delivered / undelivered / failed back onto the message row.
+export function getStatusCallbackUrl(): string | null {
+  return process.env.TWILIO_STATUS_CALLBACK_URL || null;
+}
+
 export type ProvisionResult =
   | { ok: true; phoneNumber: string; phoneSid: string }
   | { ok: false; error: string };
@@ -173,6 +180,8 @@ export async function sendPlatformSms(args: {
   form.set("From", company.platform_phone_number);
   form.set("MessagingServiceSid", cfg.messagingServiceSid);
   form.set("Body", body);
+  const statusCallback = getStatusCallbackUrl();
+  if (statusCallback) form.set("StatusCallback", statusCallback);
 
   const auth = Buffer.from(
     `${cfg.masterAccountSid}:${cfg.masterAuthToken}`

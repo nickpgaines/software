@@ -1717,8 +1717,11 @@ export type Company = {
 
 export type MessageStatus =
   | "queued"
+  | "accepted"
+  | "sending"
   | "sent"
   | "delivered"
+  | "undelivered"
   | "failed"
   | "received"
   | "not_configured";

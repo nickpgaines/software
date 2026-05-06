@@ -1,6 +1,10 @@
 import crypto from "node:crypto";
 import { getDb, type Company, type MessagingSettings } from "@/lib/db";
-import { hasPlatformSms, sendPlatformSms } from "@/lib/twilio-platform";
+import {
+  getStatusCallbackUrl,
+  hasPlatformSms,
+  sendPlatformSms,
+} from "@/lib/twilio-platform";
 
 export type SmsSendResult =
   | { ok: true; sid: string; status: string }
@@ -122,6 +126,8 @@ export async function sendSms(args: {
   form.set("To", to);
   form.set("From", settings.from_number!);
   form.set("Body", body);
+  const statusCallback = getStatusCallbackUrl();
+  if (statusCallback) form.set("StatusCallback", statusCallback);
 
   const auth = Buffer.from(
     `${settings.account_sid}:${settings.auth_token}`
