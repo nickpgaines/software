@@ -58,9 +58,9 @@
    ============================================================================= */
 html[data-theme="light"] {
   /* Surfaces */
-  --color-canvas: #ffffff;
+  --color-canvas: #fafafa;         /* zinc-50 — page bg, slightly off-white */
   --color-elevated: #f4f4f5;       /* zinc-100 */
-  --color-card: #ffffff;
+  --color-card: #ffffff;           /* pure white card on a zinc-50 page */
   --color-divider: #e4e4e7;        /* zinc-200 */
   --color-line: #e4e4e7;           /* zinc-200 */
   --color-line-strong: #d4d4d8;    /* zinc-300 */

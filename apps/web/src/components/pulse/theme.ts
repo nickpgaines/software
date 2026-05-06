@@ -1,18 +1,12 @@
 /**
  * Pulse design tokens — TypeScript bindings.
  *
- * Values mirror the CSS variables in src/app/globals.css. They are kept as
- * hex literals here (rather than `var(--…)` strings) because existing inline
- * style code does opacity concatenation like `${PULSE.green}1F`, which only
- * works on hex.
- *
- * If you change a value here, ALSO change it in globals.css and the
- * Tailwind theme extension in tailwind.config.ts. This duplication is a
- * known cost of supporting both inline-style hex concatenation AND CSS
- * variables; the migration plan in /DESIGN_SYSTEM.md describes how
- * inline-style usage will be moved to Tailwind classes (`bg-green/10`,
- * etc.) so that this file can eventually become a thin re-export of the
- * CSS variables.
+ * Surface and text tokens are CSS-variable references (`var(--color-*)`) so
+ * inline styles using them automatically respond to the active theme
+ * (dark by default; `html[data-theme="light"]` flips them — see
+ * src/app/globals.css). Accent tokens stay as hex literals because some
+ * call sites concatenate opacity onto them (`${PULSE.green}1F`), which
+ * only works on hex.
  *
  * Token names mirror CSS variable names so grepping for either side maps
  * cleanly:
@@ -23,21 +17,21 @@
  */
 
 export const PULSE = {
-  // Surfaces
-  bg: "#000000",
-  bgAlt: "#0a0a0a",
-  card: "#0f0f12",
-  divider: "#18181b",
-  cardBorder: "#1f1f24",
-  cardBorderHi: "#2a2a32",
+  // Surfaces — CSS-var refs so they flip with the active theme.
+  bg: "var(--color-canvas)",
+  bgAlt: "var(--color-elevated)",
+  card: "var(--color-card)",
+  divider: "var(--color-divider)",
+  cardBorder: "var(--color-line)",
+  cardBorderHi: "var(--color-line-strong)",
 
-  // Foreground (text)
-  text: "#ffffff",
-  textMuted: "#a1a1aa",
-  textSubtle: "#71717a",
-  textDim: "#52525b",
+  // Foreground (text) — same.
+  text: "var(--color-fg)",
+  textMuted: "var(--color-fg-muted)",
+  textSubtle: "var(--color-fg-subtle)",
+  textDim: "var(--color-fg-dim)",
 
-  // Accents
+  // Accents — hex literals because opacity concatenation (`${…}1F`) is used.
   violet: "#8b5cf6",
   violetSoft: "#a78bfa",
   violetGlow: "rgba(139, 92, 246, 0.35)",
