@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { APIProvider, Map, Marker } from "@vis.gl/react-google-maps";
 import CustomerForm, {
   type CustomerFormCustomer,
 } from "@/components/customers/CustomerForm";
@@ -34,8 +33,6 @@ import type {
   Message,
 } from "@/lib/db";
 import type { JobStatus } from "@/lib/jobs";
-
-const MAPS_KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 
 type CustomerJobRow = {
   id: number;
@@ -407,29 +404,15 @@ export default function CustomerDetailClient({
           </Section>
 
           <div className="rounded-xl border border-line overflow-hidden bg-black h-56">
-            {customer.latitude != null && customer.longitude != null ? (
-              <APIProvider apiKey={MAPS_KEY}>
-                <Map
-                  defaultCenter={{
-                    lat: customer.latitude,
-                    lng: customer.longitude,
-                  }}
-                  defaultZoom={18}
-                  mapTypeId="satellite"
-                  gestureHandling="greedy"
-                  disableDefaultUI={false}
-                  mapTypeControl
-                  zoomControl
-                  style={{ width: "100%", height: "100%" }}
-                >
-                  <Marker
-                    position={{
-                      lat: customer.latitude,
-                      lng: customer.longitude,
-                    }}
-                  />
-                </Map>
-              </APIProvider>
+            {address ? (
+              <iframe
+                title="Map"
+                src={`https://maps.google.com/maps?q=${encodeURIComponent(
+                  address
+                )}&z=15&output=embed`}
+                className="w-full h-full"
+                loading="lazy"
+              />
             ) : (
               <div className="h-full flex items-center justify-center text-sm text-zinc-500 font-bold px-4 text-center">
                 No location on file
