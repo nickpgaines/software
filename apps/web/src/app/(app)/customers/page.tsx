@@ -1,18 +1,14 @@
 "use client";
 
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import ImportModal from "@/components/customers/ImportModal";
-import AddressFields, {
-  EMPTY_ADDRESS,
-  type AddressValue,
-} from "@/components/customers/AddressFields";
+import CustomerForm from "@/components/customers/CustomerForm";
 import { usePhone } from "@/components/PhoneClient";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Table,
   TableBody,
@@ -41,28 +37,6 @@ type Customer = {
   notes: string | null;
 };
 
-function customerToAddress(c: Customer | null): AddressValue {
-  if (!c) return { ...EMPTY_ADDRESS };
-  // If structured fields are blank but the legacy address has a value,
-  // surface it in line1 so legacy customers don't appear "empty" in the
-  // form (the user can still pick a Places suggestion to fill the rest).
-  const line1 =
-    c.address_line1?.trim() ||
-    (c.address_line1 == null && c.formatted_address == null
-      ? c.address?.trim() || ""
-      : c.address_line1?.trim() || "");
-  return {
-    address_line1: line1,
-    unit: c.unit ?? "",
-    city: c.city ?? "",
-    state: c.state ?? "",
-    zip: c.zip ?? "",
-    latitude: c.latitude ?? null,
-    longitude: c.longitude ?? null,
-    formatted_address: c.formatted_address ?? "",
-  };
-}
-
 function fullName(c: { first_name: string | null; last_name: string | null }) {
   return `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim();
 }
@@ -80,9 +54,45 @@ function CustomersPage() {
   const [editing, setEditing] = useState<Customer | null>(null);
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [query, setQuery] = useState("");
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
   const searchParams = useSearchParams();
   const router = useRouter();
   const phone = usePhone();
+
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      const isMod = e.metaKey || e.ctrlKey;
+      if (isMod && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+        searchInputRef.current?.select();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return customers;
+    return customers.filter((c) => {
+      const haystack = [
+        fullName(c),
+        c.name,
+        c.phone || "",
+        c.email || "",
+        c.address || "",
+        c.formatted_address || "",
+        c.city || "",
+        c.state || "",
+        c.zip || "",
+      ]
+        .join(" ")
+        .toLowerCase();
+      return haystack.includes(q);
+    });
+  }, [customers, query]);
 
   async function load() {
     const res = await fetch("/api/customers");
@@ -116,6 +126,14 @@ function CustomersPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <Input
+            ref={searchInputRef}
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search customers (⌘K)"
+            className="h-auto w-64 border-line-strong rounded px-3 py-2 text-sm"
+          />
           <Button
             variant="ghost"
             onClick={() => setImporting(true)}
@@ -138,6 +156,10 @@ function CustomersPage() {
           <div className="p-8 text-center text-sm text-zinc-400 font-bold">
             No customers yet.
           </div>
+        ) : filtered.length === 0 ? (
+          <div className="p-8 text-center text-sm text-zinc-400 font-bold">
+            No customers match &ldquo;{query}&rdquo;.
+          </div>
         ) : (
           <Table>
             <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-line">
@@ -150,15 +172,28 @@ function CustomersPage() {
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-line">
-              {customers.map((c) => (
-                <TableRow key={c.id} className="border-0 hover:bg-transparent">
+              {filtered.map((c) => (
+                <TableRow
+                  key={c.id}
+                  className="border-0 hover:bg-black/40 cursor-pointer"
+                  onClick={() => router.push(`/customers/${c.id}`)}
+                >
                   <TableCell className="px-4 py-2 font-bold text-white tracking-tight">
-                    {fullName(c) || "—"}
+                    <Link
+                      href={`/customers/${c.id}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="hover:underline"
+                    >
+                      {fullName(c) || "—"}
+                    </Link>
                   </TableCell>
                   <TableCell className="px-4 py-2 text-zinc-300 font-bold">{c.address || "—"}</TableCell>
                   <TableCell className="px-4 py-2 text-zinc-300 font-bold">{c.phone || "—"}</TableCell>
                   <TableCell className="px-4 py-2 text-zinc-300 font-bold">{c.email || "—"}</TableCell>
-                  <TableCell className="px-4 py-2 text-right">
+                  <TableCell
+                    className="px-4 py-2 text-right"
+                    onClick={(e) => e.stopPropagation()}
+                  >
                     {phone.configured && c.phone && (
                       <Button
                         variant="ghost"
@@ -220,178 +255,6 @@ function CustomersPage() {
           }}
         />
       )}
-    </div>
-  );
-}
-
-function CustomerForm({
-  customer,
-  onClose,
-  onSaved,
-}: {
-  customer: Customer | null;
-  onClose: () => void;
-  onSaved: () => void;
-}) {
-  const [firstName, setFirstName] = useState(customer?.first_name ?? "");
-  const [lastName, setLastName] = useState(customer?.last_name ?? "");
-  const [phone, setPhone] = useState(customer?.phone ?? "");
-  const [email, setEmail] = useState(customer?.email ?? "");
-  const [address, setAddress] = useState<AddressValue>(() =>
-    customerToAddress(customer)
-  );
-  const [notes, setNotes] = useState(customer?.notes ?? "");
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    if (!firstName.trim() || !lastName.trim()) {
-      setError("First name and last name are required");
-      return;
-    }
-    setSaving(true);
-    const res = await fetch(
-      customer ? `/api/customers/${customer.id}` : "/api/customers",
-      {
-        method: customer ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          first_name: firstName,
-          last_name: lastName,
-          phone,
-          email,
-          address_line1: address.address_line1,
-          unit: address.unit,
-          city: address.city,
-          state: address.state,
-          zip: address.zip,
-          latitude: address.latitude,
-          longitude: address.longitude,
-          formatted_address: address.formatted_address,
-          notes,
-        }),
-      }
-    );
-    setSaving(false);
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(
-        (data && typeof data === "object" && "error" in data && data.error
-          ? String(data.error)
-          : "") || `Could not save customer (HTTP ${res.status})`
-      );
-      return;
-    }
-    onSaved();
-  }
-
-  return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-card rounded-lg shadow-lg w-full max-w-md">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-line">
-          <h3 className="font-bold">
-            {customer ? "Edit customer" : "New customer"}
-          </h3>
-          <Button
-            variant="ghost"
-            onClick={onClose}
-            className="h-auto w-auto p-0 text-zinc-500 hover:text-zinc-300 hover:bg-transparent text-xl leading-none"
-          >
-            ×
-          </Button>
-        </div>
-        <form onSubmit={onSubmit} className="p-4 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="First name" required>
-              <Input
-                type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                className="w-full h-auto border-line-strong rounded px-3 py-2 text-sm"
-                autoFocus
-                required
-              />
-            </Field>
-            <Field label="Last name" required>
-              <Input
-                type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                className="w-full h-auto border-line-strong rounded px-3 py-2 text-sm"
-                required
-              />
-            </Field>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Phone">
-              <Input
-                type="tel"
-                value={phone ?? ""}
-                onChange={(e) => setPhone(e.target.value)}
-                className="w-full h-auto border-line-strong rounded px-3 py-2 text-sm"
-              />
-            </Field>
-            <Field label="Email">
-              <Input
-                type="email"
-                value={email ?? ""}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-auto border-line-strong rounded px-3 py-2 text-sm"
-              />
-            </Field>
-          </div>
-          <AddressFields value={address} onChange={setAddress} />
-          <Field label="Notes">
-            <Textarea
-              value={notes ?? ""}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-              className="w-full border-line-strong rounded px-3 py-2 text-sm"
-            />
-          </Field>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={onClose}
-              className="h-auto text-sm border border-line-strong bg-card hover:bg-black rounded px-3 py-2 font-bold"
-            >
-              Cancel
-            </Button>
-            <Button
-              type="submit"
-              variant="ghost"
-              disabled={saving}
-              className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded px-3 py-2 font-bold"
-            >
-              {saving ? "Saving…" : "Save"}
-            </Button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function Field({
-  label,
-  required,
-  children,
-}: {
-  label: string;
-  required?: boolean;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <Label className="block text-eyebrow uppercase text-zinc-500 mb-2">
-        {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
-      </Label>
-      {children}
     </div>
   );
 }
