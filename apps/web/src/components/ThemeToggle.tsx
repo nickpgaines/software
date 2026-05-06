@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Moon, Sun } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { PULSE } from "@/components/pulse/theme";
 
 type Theme = "dark" | "light";
 
@@ -41,20 +41,23 @@ export default function ThemeToggle() {
   }
 
   const isLight = mounted && theme === "light";
-  const Icon = isLight ? Sun : Moon;
   const label = isLight ? "Light mode" : "Dark mode";
 
   return (
-    <Button
+    <button
       type="button"
-      variant="ghost"
       onClick={toggle}
       aria-label="Toggle theme"
       aria-pressed={isLight}
-      className="h-auto justify-start gap-3 w-full px-3 py-2.5 rounded-lg text-eyebrow uppercase text-zinc-500 hover:bg-black hover:text-white"
+      className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-[12.5px] font-bold transition-colors"
+      style={{ color: PULSE.textMuted }}
     >
-      <Icon className="w-5 h-5" strokeWidth={1.8} />
+      {isLight ? (
+        <Sun className="w-[18px] h-[18px]" strokeWidth={1.8} />
+      ) : (
+        <Moon className="w-[18px] h-[18px]" strokeWidth={1.8} />
+      )}
       {label}
-    </Button>
+    </button>
   );
 }
