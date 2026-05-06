@@ -346,7 +346,10 @@ function Thread({
             {messages.map((m) => {
               const out = m.direction === "outbound";
               const failed =
-                out && (m.status === "failed" || m.status === "not_configured");
+                out &&
+                (m.status === "failed" ||
+                  m.status === "not_configured" ||
+                  m.status === "undelivered");
               return (
                 <li
                   key={m.id}
