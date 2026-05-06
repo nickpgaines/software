@@ -50,6 +50,33 @@
 }
 
 /* =============================================================================
+   Light theme overrides.
+   Activated by `data-theme="light"` on the <html> element. The toggle in
+   NavBar persists the choice in localStorage; an inline script in
+   `app/layout.tsx` reads it and applies the attribute before paint to
+   avoid a flash. Default (no attribute) = dark, the original Pulse look.
+   ============================================================================= */
+html[data-theme="light"] {
+  /* Surfaces */
+  --color-canvas: #fafafa;         /* zinc-50 — page bg, slightly off-white */
+  --color-elevated: #f4f4f5;       /* zinc-100 */
+  --color-card: #ffffff;           /* pure white card on a zinc-50 page */
+  --color-divider: #e4e4e7;        /* zinc-200 */
+  --color-line: #e4e4e7;           /* zinc-200 */
+  --color-line-strong: #d4d4d8;    /* zinc-300 */
+
+  /* Foreground */
+  --color-fg: #0a0a0a;
+  --color-fg-muted: #52525b;       /* zinc-600 */
+  --color-fg-subtle: #71717a;      /* zinc-500 */
+  --color-fg-dim: #a1a1aa;         /* zinc-400 */
+
+  /* Shadows tuned for light surfaces */
+  --shadow-menu: 0 12px 28px -8px rgba(0, 0, 0, 0.18);
+  --shadow-tooltip: 0 8px 24px -8px rgba(0, 0, 0, 0.22);
+}
+
+/* =============================================================================
    shadcn/ui bridge variables.
    shadcn/ui's CLI generates components that reference a fixed set of CSS
    variable names (--background, --foreground, --card, etc.). Those names
@@ -139,6 +166,15 @@ select:not([class*="text-"]) {
   color-scheme: dark;
 }
 
+html[data-theme="light"] input:not([class*="bg-"]):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="reset"]):not([type="button"]):not([type="file"]),
+html[data-theme="light"] textarea:not([class*="bg-"]),
+html[data-theme="light"] select:not([class*="bg-"]),
+html[data-theme="light"] input:not([class*="text-"]):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="reset"]):not([type="button"]):not([type="file"]),
+html[data-theme="light"] textarea:not([class*="text-"]),
+html[data-theme="light"] select:not([class*="text-"]) {
+  color-scheme: light;
+}
+
 input:not([class*="font-"]):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="reset"]):not([type="button"]):not([type="file"]),
 textarea:not([class*="font-"]),
 select:not([class*="font-"]) {
@@ -167,4 +203,170 @@ textarea:-webkit-autofill:active {
 input[type="checkbox"],
 input[type="radio"] {
   accent-color: var(--color-violet);
+}
+
+/* =============================================================================
+   Light theme: remap of hardcoded dark-tone Tailwind utility classes.
+   The codebase predates the design tokens in many places and uses raw
+   classes like `bg-black`, `text-white`, `text-zinc-400`. The token-driven
+   classes (`bg-canvas`, `text-fg`, etc.) flip automatically via the CSS
+   variables above; this block flips the remaining hardcoded ones so the
+   light theme actually looks light without rewriting every component.
+
+   We deliberately use `html[data-theme="light"]` for higher specificity
+   than the bare Tailwind utility, with `!important` as belt-and-braces
+   for cases where Tailwind's own utility uses `!important` (it doesn't by
+   default, but several long arbitrary-class selectors can win otherwise).
+   ============================================================================= */
+
+/* Backgrounds — dark surfaces become light surfaces.
+   We flip bg-black/bg-zinc-9XX to zinc-100 (a tinted gray), NOT pure
+   white, so that elements which use `bg-card` (white) on top of these
+   surfaces — e.g. the active tab in the Day/Week/Month pill that sits
+   inside a `bg-black` wrapper — remain visually distinct in light
+   mode. The three tiers in light mode are:
+     canvas (page bg)          #fafafa  zinc-50
+     bg-black / bg-zinc-9XX    #f4f4f5  zinc-100  (recessed surface)
+     bg-card                   #ffffff  white     (popped surface) */
+html[data-theme="light"] .bg-black { background-color: #f4f4f5 !important; }
+html[data-theme="light"] .bg-zinc-950 { background-color: #fafafa !important; }
+html[data-theme="light"] .bg-zinc-900 { background-color: #f4f4f5 !important; }
+html[data-theme="light"] .bg-zinc-800 { background-color: #e4e4e7 !important; }
+html[data-theme="light"] .bg-zinc-700 { background-color: #d4d4d8 !important; }
+html[data-theme="light"] .bg-zinc-600 { background-color: #a1a1aa !important; }
+html[data-theme="light"] .bg-neutral-950 { background-color: #fafafa !important; }
+html[data-theme="light"] .bg-neutral-900 { background-color: #f4f4f5 !important; }
+html[data-theme="light"] .bg-neutral-800 { background-color: #e4e4e7 !important; }
+
+/* `bg-white`/`bg-zinc-50` were the high-contrast inverse on dark — flip
+   them so they remain high-contrast on light (i.e. become dark-on-light). */
+html[data-theme="light"] .bg-white { background-color: #0a0a0a !important; }
+html[data-theme="light"] .bg-zinc-50 { background-color: #18181b !important; }
+html[data-theme="light"] .bg-zinc-100 { background-color: #f4f4f5 !important; }
+html[data-theme="light"] .bg-zinc-200 { background-color: #e4e4e7 !important; }
+html[data-theme="light"] .bg-zinc-300 { background-color: #d4d4d8 !important; }
+html[data-theme="light"] .bg-zinc-400 { background-color: #a1a1aa !important; }
+html[data-theme="light"] .bg-neutral-100 { background-color: #f4f4f5 !important; }
+html[data-theme="light"] .bg-neutral-200 { background-color: #e4e4e7 !important; }
+
+/* Foreground / text */
+html[data-theme="light"] .text-white { color: #0a0a0a !important; }
+html[data-theme="light"] .text-zinc-100 { color: #18181b !important; }
+html[data-theme="light"] .text-zinc-200 { color: #27272a !important; }
+html[data-theme="light"] .text-zinc-300 { color: #3f3f46 !important; }
+html[data-theme="light"] .text-zinc-400 { color: #52525b !important; }
+html[data-theme="light"] .text-zinc-500 { color: #71717a !important; }
+html[data-theme="light"] .text-zinc-600 { color: #a1a1aa !important; }
+html[data-theme="light"] .text-zinc-700 { color: #d4d4d8 !important; }
+html[data-theme="light"] .text-neutral-400 { color: #52525b !important; }
+html[data-theme="light"] .text-neutral-500 { color: #71717a !important; }
+html[data-theme="light"] .text-neutral-600 { color: #a1a1aa !important; }
+html[data-theme="light"] .text-neutral-700 { color: #d4d4d8 !important; }
+
+/* `text-black`, `text-zinc-9XX` etc. were the high-contrast dark-on-light
+   inverse — flip them so they read on light surfaces (white-on-light
+   doesn't read, so we keep them dark / lighten only the deepest tones). */
+html[data-theme="light"] .text-black { color: #ffffff !important; }
+html[data-theme="light"] .text-zinc-900 { color: #ffffff !important; }
+html[data-theme="light"] .text-zinc-950 { color: #ffffff !important; }
+html[data-theme="light"] .text-neutral-900 { color: #ffffff !important; }
+html[data-theme="light"] .text-neutral-950 { color: #ffffff !important; }
+
+/* Borders */
+html[data-theme="light"] .border-zinc-900 { border-color: #e4e4e7 !important; }
+html[data-theme="light"] .border-zinc-800 { border-color: #e4e4e7 !important; }
+html[data-theme="light"] .border-zinc-700 { border-color: #d4d4d8 !important; }
+html[data-theme="light"] .border-zinc-600 { border-color: #a1a1aa !important; }
+html[data-theme="light"] .border-zinc-300 { border-color: #d4d4d8 !important; }
+html[data-theme="light"] .border-zinc-200 { border-color: #e4e4e7 !important; }
+html[data-theme="light"] .border-neutral-200 { border-color: #e4e4e7 !important; }
+html[data-theme="light"] .border-white { border-color: #0a0a0a !important; }
+
+/* Hover variants */
+html[data-theme="light"] .hover\:bg-black:hover { background-color: #e4e4e7 !important; }
+html[data-theme="light"] .hover\:bg-zinc-900:hover { background-color: #e4e4e7 !important; }
+html[data-theme="light"] .hover\:bg-zinc-800:hover { background-color: #d4d4d8 !important; }
+html[data-theme="light"] .hover\:bg-neutral-800:hover { background-color: #d4d4d8 !important; }
+html[data-theme="light"] .hover\:bg-white:hover { background-color: #18181b !important; }
+html[data-theme="light"] .hover\:bg-zinc-50:hover { background-color: #18181b !important; }
+html[data-theme="light"] .hover\:bg-zinc-100:hover { background-color: #e4e4e7 !important; }
+html[data-theme="light"] .hover\:bg-zinc-200:hover { background-color: #d4d4d8 !important; }
+html[data-theme="light"] .hover\:bg-neutral-100:hover { background-color: #e4e4e7 !important; }
+
+html[data-theme="light"] .hover\:text-white:hover { color: #0a0a0a !important; }
+html[data-theme="light"] .hover\:text-zinc-100:hover { color: #18181b !important; }
+html[data-theme="light"] .hover\:text-zinc-200:hover { color: #27272a !important; }
+html[data-theme="light"] .hover\:text-zinc-300:hover { color: #3f3f46 !important; }
+html[data-theme="light"] .hover\:text-zinc-400:hover { color: #52525b !important; }
+html[data-theme="light"] .hover\:text-zinc-900:hover { color: #ffffff !important; }
+html[data-theme="light"] .hover\:text-zinc-950:hover { color: #ffffff !important; }
+html[data-theme="light"] .hover\:text-neutral-900:hover { color: #ffffff !important; }
+html[data-theme="light"] .hover\:text-neutral-950:hover { color: #ffffff !important; }
+
+html[data-theme="light"] .hover\:border-zinc-600:hover { border-color: #a1a1aa !important; }
+html[data-theme="light"] .hover\:border-zinc-400:hover { border-color: #a1a1aa !important; }
+
+/* Slate / stone families — same pattern as zinc/neutral. Note: the
+   codebase uses `bg-slate-900` paired with `text-white` for primary CTA
+   buttons (e.g. "+ New Job"). Since the global rule flips `text-white`
+   to dark, we flip `bg-slate-900` to a LIGHT surface here so the dark
+   text reads. The CTA loses its dark-button emphasis but stays
+   readable; the violet primary buttons (which use `bg-violet`, an
+   accent that doesn't flip) remain the visually dominant CTAs. */
+html[data-theme="light"] .bg-slate-900 { background-color: #f4f4f5 !important; }
+html[data-theme="light"] .bg-slate-800 { background-color: #e4e4e7 !important; }
+html[data-theme="light"] .bg-slate-700 { background-color: #d4d4d8 !important; }
+html[data-theme="light"] .bg-slate-600 { background-color: #a1a1aa !important; }
+html[data-theme="light"] .bg-slate-500 { background-color: #71717a !important; }
+html[data-theme="light"] .bg-slate-400 { background-color: #d4d4d8 !important; }
+html[data-theme="light"] .bg-slate-200 { background-color: #e4e4e7 !important; }
+html[data-theme="light"] .bg-stone-900 { background-color: #f4f4f5 !important; }
+html[data-theme="light"] .bg-stone-200 { background-color: #e4e4e7 !important; }
+html[data-theme="light"] .bg-stone-100 { background-color: #f4f4f5 !important; }
+
+html[data-theme="light"] .text-slate-100 { color: #18181b !important; }
+html[data-theme="light"] .text-slate-200 { color: #27272a !important; }
+html[data-theme="light"] .text-slate-300 { color: #3f3f46 !important; }
+html[data-theme="light"] .text-slate-400 { color: #52525b !important; }
+html[data-theme="light"] .text-slate-500 { color: #71717a !important; }
+html[data-theme="light"] .text-slate-600 { color: #a1a1aa !important; }
+html[data-theme="light"] .text-stone-400 { color: #52525b !important; }
+html[data-theme="light"] .text-stone-500 { color: #71717a !important; }
+html[data-theme="light"] .text-stone-600 { color: #a1a1aa !important; }
+html[data-theme="light"] .text-stone-700 { color: #d4d4d8 !important; }
+html[data-theme="light"] .text-stone-900 { color: #ffffff !important; }
+
+html[data-theme="light"] .border-slate-900 { border-color: #e4e4e7 !important; }
+html[data-theme="light"] .border-slate-800 { border-color: #e4e4e7 !important; }
+html[data-theme="light"] .border-slate-700 { border-color: #d4d4d8 !important; }
+html[data-theme="light"] .border-slate-600 { border-color: #a1a1aa !important; }
+html[data-theme="light"] .border-slate-400 { border-color: #a1a1aa !important; }
+html[data-theme="light"] .border-slate-200 { border-color: #e4e4e7 !important; }
+html[data-theme="light"] .border-slate-50 { border-color: #f4f4f5 !important; }
+html[data-theme="light"] .border-stone-400 { border-color: #a1a1aa !important; }
+html[data-theme="light"] .border-stone-300 { border-color: #d4d4d8 !important; }
+html[data-theme="light"] .border-stone-200 { border-color: #e4e4e7 !important; }
+html[data-theme="light"] .border-stone-100 { border-color: #f4f4f5 !important; }
+
+/* Dark CTA hover states flip to slightly-darker light shades to keep a
+   visible hover delta against the light surface. */
+html[data-theme="light"] .hover\:bg-slate-900:hover { background-color: #e4e4e7 !important; }
+html[data-theme="light"] .hover\:bg-slate-800:hover { background-color: #e4e4e7 !important; }
+html[data-theme="light"] .hover\:bg-stone-800:hover { background-color: #e4e4e7 !important; }
+html[data-theme="light"] .hover\:bg-stone-100:hover { background-color: #e4e4e7 !important; }
+html[data-theme="light"] .hover\:bg-stone-50:hover { background-color: #f4f4f5 !important; }
+html[data-theme="light"] .hover\:text-stone-900:hover { color: #ffffff !important; }
+
+/* Light-mode autofill — keep the inset shadow visible and use light bg. */
+html[data-theme="light"] input:-webkit-autofill,
+html[data-theme="light"] input:-webkit-autofill:hover,
+html[data-theme="light"] input:-webkit-autofill:focus,
+html[data-theme="light"] input:-webkit-autofill:active,
+html[data-theme="light"] textarea:-webkit-autofill,
+html[data-theme="light"] textarea:-webkit-autofill:hover,
+html[data-theme="light"] textarea:-webkit-autofill:focus,
+html[data-theme="light"] textarea:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px var(--color-canvas) inset !important;
+  -webkit-text-fill-color: var(--color-fg) !important;
+  caret-color: var(--color-fg) !important;
 }
