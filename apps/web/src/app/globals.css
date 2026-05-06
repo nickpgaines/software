@@ -219,14 +219,22 @@ input[type="radio"] {
    default, but several long arbitrary-class selectors can win otherwise).
    ============================================================================= */
 
-/* Backgrounds — dark surfaces become light surfaces */
-html[data-theme="light"] .bg-black { background-color: #ffffff !important; }
-html[data-theme="light"] .bg-zinc-950 { background-color: #ffffff !important; }
+/* Backgrounds — dark surfaces become light surfaces.
+   We flip bg-black/bg-zinc-9XX to zinc-100 (a tinted gray), NOT pure
+   white, so that elements which use `bg-card` (white) on top of these
+   surfaces — e.g. the active tab in the Day/Week/Month pill that sits
+   inside a `bg-black` wrapper — remain visually distinct in light
+   mode. The three tiers in light mode are:
+     canvas (page bg)          #fafafa  zinc-50
+     bg-black / bg-zinc-9XX    #f4f4f5  zinc-100  (recessed surface)
+     bg-card                   #ffffff  white     (popped surface) */
+html[data-theme="light"] .bg-black { background-color: #f4f4f5 !important; }
+html[data-theme="light"] .bg-zinc-950 { background-color: #fafafa !important; }
 html[data-theme="light"] .bg-zinc-900 { background-color: #f4f4f5 !important; }
 html[data-theme="light"] .bg-zinc-800 { background-color: #e4e4e7 !important; }
 html[data-theme="light"] .bg-zinc-700 { background-color: #d4d4d8 !important; }
 html[data-theme="light"] .bg-zinc-600 { background-color: #a1a1aa !important; }
-html[data-theme="light"] .bg-neutral-950 { background-color: #ffffff !important; }
+html[data-theme="light"] .bg-neutral-950 { background-color: #fafafa !important; }
 html[data-theme="light"] .bg-neutral-900 { background-color: #f4f4f5 !important; }
 html[data-theme="light"] .bg-neutral-800 { background-color: #e4e4e7 !important; }
 
@@ -275,7 +283,7 @@ html[data-theme="light"] .border-neutral-200 { border-color: #e4e4e7 !important;
 html[data-theme="light"] .border-white { border-color: #0a0a0a !important; }
 
 /* Hover variants */
-html[data-theme="light"] .hover\:bg-black:hover { background-color: #f4f4f5 !important; }
+html[data-theme="light"] .hover\:bg-black:hover { background-color: #e4e4e7 !important; }
 html[data-theme="light"] .hover\:bg-zinc-900:hover { background-color: #e4e4e7 !important; }
 html[data-theme="light"] .hover\:bg-zinc-800:hover { background-color: #d4d4d8 !important; }
 html[data-theme="light"] .hover\:bg-neutral-800:hover { background-color: #d4d4d8 !important; }
@@ -297,6 +305,57 @@ html[data-theme="light"] .hover\:text-neutral-950:hover { color: #ffffff !import
 
 html[data-theme="light"] .hover\:border-zinc-600:hover { border-color: #a1a1aa !important; }
 html[data-theme="light"] .hover\:border-zinc-400:hover { border-color: #a1a1aa !important; }
+
+/* Slate / stone families — same pattern as zinc/neutral. Note: the
+   codebase uses `bg-slate-900` paired with `text-white` for primary CTA
+   buttons (e.g. "+ New Job"). Since the global rule flips `text-white`
+   to dark, we flip `bg-slate-900` to a LIGHT surface here so the dark
+   text reads. The CTA loses its dark-button emphasis but stays
+   readable; the violet primary buttons (which use `bg-violet`, an
+   accent that doesn't flip) remain the visually dominant CTAs. */
+html[data-theme="light"] .bg-slate-900 { background-color: #f4f4f5 !important; }
+html[data-theme="light"] .bg-slate-800 { background-color: #e4e4e7 !important; }
+html[data-theme="light"] .bg-slate-700 { background-color: #d4d4d8 !important; }
+html[data-theme="light"] .bg-slate-600 { background-color: #a1a1aa !important; }
+html[data-theme="light"] .bg-slate-500 { background-color: #71717a !important; }
+html[data-theme="light"] .bg-slate-400 { background-color: #d4d4d8 !important; }
+html[data-theme="light"] .bg-slate-200 { background-color: #e4e4e7 !important; }
+html[data-theme="light"] .bg-stone-900 { background-color: #f4f4f5 !important; }
+html[data-theme="light"] .bg-stone-200 { background-color: #e4e4e7 !important; }
+html[data-theme="light"] .bg-stone-100 { background-color: #f4f4f5 !important; }
+
+html[data-theme="light"] .text-slate-100 { color: #18181b !important; }
+html[data-theme="light"] .text-slate-200 { color: #27272a !important; }
+html[data-theme="light"] .text-slate-300 { color: #3f3f46 !important; }
+html[data-theme="light"] .text-slate-400 { color: #52525b !important; }
+html[data-theme="light"] .text-slate-500 { color: #71717a !important; }
+html[data-theme="light"] .text-slate-600 { color: #a1a1aa !important; }
+html[data-theme="light"] .text-stone-400 { color: #52525b !important; }
+html[data-theme="light"] .text-stone-500 { color: #71717a !important; }
+html[data-theme="light"] .text-stone-600 { color: #a1a1aa !important; }
+html[data-theme="light"] .text-stone-700 { color: #d4d4d8 !important; }
+html[data-theme="light"] .text-stone-900 { color: #ffffff !important; }
+
+html[data-theme="light"] .border-slate-900 { border-color: #e4e4e7 !important; }
+html[data-theme="light"] .border-slate-800 { border-color: #e4e4e7 !important; }
+html[data-theme="light"] .border-slate-700 { border-color: #d4d4d8 !important; }
+html[data-theme="light"] .border-slate-600 { border-color: #a1a1aa !important; }
+html[data-theme="light"] .border-slate-400 { border-color: #a1a1aa !important; }
+html[data-theme="light"] .border-slate-200 { border-color: #e4e4e7 !important; }
+html[data-theme="light"] .border-slate-50 { border-color: #f4f4f5 !important; }
+html[data-theme="light"] .border-stone-400 { border-color: #a1a1aa !important; }
+html[data-theme="light"] .border-stone-300 { border-color: #d4d4d8 !important; }
+html[data-theme="light"] .border-stone-200 { border-color: #e4e4e7 !important; }
+html[data-theme="light"] .border-stone-100 { border-color: #f4f4f5 !important; }
+
+/* Dark CTA hover states flip to slightly-darker light shades to keep a
+   visible hover delta against the light surface. */
+html[data-theme="light"] .hover\:bg-slate-900:hover { background-color: #e4e4e7 !important; }
+html[data-theme="light"] .hover\:bg-slate-800:hover { background-color: #e4e4e7 !important; }
+html[data-theme="light"] .hover\:bg-stone-800:hover { background-color: #e4e4e7 !important; }
+html[data-theme="light"] .hover\:bg-stone-100:hover { background-color: #e4e4e7 !important; }
+html[data-theme="light"] .hover\:bg-stone-50:hover { background-color: #f4f4f5 !important; }
+html[data-theme="light"] .hover\:text-stone-900:hover { color: #ffffff !important; }
 
 /* Light-mode autofill — keep the inset shadow visible and use light bg. */
 html[data-theme="light"] input:-webkit-autofill,
