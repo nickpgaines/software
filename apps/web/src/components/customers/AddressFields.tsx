@@ -10,6 +10,10 @@ const KEY = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
 const BIAS_CENTER = { lat: 32.7765, lng: -79.9311 };
 const BIAS_RADIUS_M = 50_000;
 
+let warnedNoKey = false;
+let warnedNoNewApi = false;
+let warnedFetchError = false;
+
 export type AddressValue = {
   address_line1: string;
   unit: string;
@@ -44,6 +48,12 @@ export default function AddressFields({
   label?: boolean;
 }) {
   if (!KEY) {
+    if (typeof window !== "undefined" && !warnedNoKey) {
+      warnedNoKey = true;
+      console.warn(
+        "[AddressFields] NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set — address autocomplete disabled. Set it in the deployment env and rebuild."
+      );
+    }
     return (
       <ManualFields
         value={value}
@@ -51,6 +61,7 @@ export default function AddressFields({
         inputClassName={inputClassName}
         label={label}
         autocompleteAvailable={false}
+        diagnosticMessage="Address autocomplete unavailable — NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set."
       />
     );
   }
@@ -230,6 +241,7 @@ function ManualFields({
   label,
   skipLine1,
   autocompleteAvailable,
+  diagnosticMessage,
 }: {
   value: AddressValue;
   onChange: (next: AddressValue) => void;
@@ -237,6 +249,7 @@ function ManualFields({
   label: boolean;
   skipLine1?: boolean;
   autocompleteAvailable?: boolean;
+  diagnosticMessage?: string;
 }) {
   const cls =
     inputClassName ||
@@ -265,6 +278,9 @@ function ManualFields({
             className={cls}
             autoComplete="off"
           />
+          {diagnosticMessage && (
+            <p className="mt-1 text-xs text-amber-500">{diagnosticMessage}</p>
+          )}
         </Field>
       )}
       <div className="grid grid-cols-2 gap-3">
@@ -401,6 +417,12 @@ async function fetchSuggestions(
   try {
     const ns = places as PlacesNamespace;
     if (!ns?.AutocompleteSuggestion?.fetchAutocompleteSuggestions) {
+      if (!warnedNoNewApi) {
+        warnedNoNewApi = true;
+        console.warn(
+          "[AddressFields] google.maps.places.AutocompleteSuggestion is unavailable. Enable 'Places API (New)' in the Google Cloud project for this API key."
+        );
+      }
       return [];
     }
     if (!sessionTokenRef.current) {
@@ -428,7 +450,14 @@ async function fetchSuggestions(
         };
       })
       .filter((p) => p.mainText);
-  } catch {
+  } catch (e) {
+    if (!warnedFetchError) {
+      warnedFetchError = true;
+      console.warn(
+        "[AddressFields] fetchAutocompleteSuggestions threw — likely an API-key referrer restriction, billing issue, or 'Places API (New)' not enabled. Original error:",
+        e
+      );
+    }
     return [];
   }
 }
