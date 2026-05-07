@@ -95,9 +95,11 @@ export function PulseSidebar() {
     router.refresh();
   }
 
+  const cleanFirst = me?.staff?.first_name?.trim();
+  const cleanName = me?.staff?.name?.trim();
   const displayName =
-    me?.staff?.first_name?.trim() ||
-    me?.staff?.name?.trim() ||
+    (cleanFirst && !cleanFirst.includes("@") ? cleanFirst : "") ||
+    (cleanName && !cleanName.includes("@") ? cleanName : "") ||
     (me?.is_admin_account ? "Admin" : me?.identity) ||
     "You";
   const photo = me?.staff?.photo_url ?? null;
