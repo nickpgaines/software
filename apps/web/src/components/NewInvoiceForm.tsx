@@ -7,6 +7,10 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import AddressFields, {
+  EMPTY_ADDRESS,
+  type AddressValue,
+} from "@/components/customers/AddressFields";
 
 type Customer = {
   id: number;
@@ -712,7 +716,7 @@ function NewCustomerModal({
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [address, setAddress] = useState("");
+  const [address, setAddress] = useState<AddressValue>({ ...EMPTY_ADDRESS });
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -732,7 +736,14 @@ function NewCustomerModal({
         last_name: lastName.trim(),
         phone: phone.trim() || null,
         email: email.trim() || null,
-        address: address.trim() || null,
+        address_line1: address.address_line1,
+        unit: address.unit,
+        city: address.city,
+        state: address.state,
+        zip: address.zip,
+        latitude: address.latitude,
+        longitude: address.longitude,
+        formatted_address: address.formatted_address,
       }),
     });
     setSaving(false);
@@ -799,14 +810,11 @@ function NewCustomerModal({
             className="h-auto w-full border-line rounded-xl px-3 py-2 text-sm"
           />
         </Field>
-        <Field label="Address">
-          <Input
-            type="text"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            className="h-auto w-full border-line rounded-xl px-3 py-2 text-sm"
-          />
-        </Field>
+        <AddressFields
+          value={address}
+          onChange={setAddress}
+          inputClassName="h-auto w-full border-line rounded-xl px-3 py-2 text-sm"
+        />
         {err && <p className="text-sm text-rose-600">{err}</p>}
         <div className="flex items-center gap-3">
           <Button
