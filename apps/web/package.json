@@ -9,6 +9,7 @@
     "lint": "next lint",
     "seed:customers": "node scripts/seed-customers.mjs",
     "db:doctor": "node scripts/db-doctor.mjs",
+    "staff:inspect": "node scripts/inspect-staff.mjs",
     "tenants:migrate": "node scripts/migrate-tenant-data.mjs"
   },
   "dependencies": {
