@@ -258,7 +258,6 @@ export default function JobForm({
 
   const [notes, setNotes] = useState(job?.notes ?? "");
   const [recurring, setRecurring] = useState(!!job?.recurring);
-  const [paid, setPaid] = useState(0);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -269,7 +268,6 @@ export default function JobForm({
     [items]
   );
   const total = subtotal;
-  const balance = Math.max(0, total - Math.round(paid * 100));
 
   const customerSuggestions = useMemo(() => {
     const q = customerQuery.trim().toLowerCase();
@@ -602,25 +600,9 @@ export default function JobForm({
             />
           ))}
         </div>
-        <div className="border-t border-line mt-4 pt-4 grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
+        <div className="border-t border-line mt-4 pt-4 grid grid-cols-2 gap-3 text-sm">
           <Total label="Subtotal" value={money(subtotal)} />
           <Total label="Total" value={money(total)} bold />
-          <Total label="Total Paid" value={money(Math.round(paid * 100))} className="text-emerald-600">
-            <Input
-              type="number"
-              min={0}
-              step="0.01"
-              value={paid}
-              onChange={(e) => setPaid(Number(e.target.value))}
-              className="mt-1 border-line rounded-full px-3 py-1 text-sm w-full h-auto"
-            />
-          </Total>
-          <Total
-            label="Balance Due"
-            value={money(balance)}
-            className={balance > 0 ? "text-rose-600" : "text-zinc-400"}
-            bold
-          />
         </div>
       </Section>
 

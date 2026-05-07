@@ -607,11 +607,11 @@ function RadioOption({
         <span
           className={
             "mt-0.5 inline-flex h-4 w-4 shrink-0 rounded-full border-2 " +
-            (checked ? "border-slate-900" : "border-line-strong")
+            (checked ? "border-fg" : "border-line-strong")
           }
         >
           {checked && (
-            <span className="m-auto h-2 w-2 rounded-full bg-slate-900" />
+            <span className="m-auto h-2 w-2 rounded-full bg-fg" />
           )}
         </span>
         <div>

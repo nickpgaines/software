@@ -429,6 +429,8 @@ async function init(): Promise<void> {
           ELSE ''
         END
     WHERE name IS NOT NULL
+      AND TRIM(name) != ''
+      AND INSTR(name, '@') = 0
       AND (first_name IS NULL OR first_name = '')
   `);
   await _db.exec(

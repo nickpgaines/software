@@ -28,8 +28,13 @@ export async function getDashboardIdentity(): Promise<{
     .get(ctx.staffId, ctx.companyId)) as
     | { first_name: string | null; name: string | null }
     | undefined;
-  const full = (row?.name ?? ctx.identity ?? "").trim();
-  const first = (row?.first_name ?? full.split(/\s+/)[0] ?? "").trim() || "there";
+  const rawName = (row?.name ?? "").trim();
+  const full = rawName.includes("@") ? "" : rawName;
+  const rawFirst = (row?.first_name ?? "").trim();
+  const candidate = rawFirst && !rawFirst.includes("@")
+    ? rawFirst
+    : full.split(/\s+/)[0] ?? "";
+  const first = candidate.trim() || "there";
   const parts = full.split(/\s+/).filter(Boolean);
   const initials =
     parts.length === 0
