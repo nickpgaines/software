@@ -457,21 +457,29 @@ function CompanyPanel() {
     e.preventDefault();
     setError(null);
     setSaving(true);
-    const res = await fetch("/api/settings/company", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name,
-        address,
-        phone,
-        email,
-        website,
-        logo_url: logoUrl,
-      }),
-    });
+    let res: Response;
+    try {
+      res = await fetch("/api/settings/company", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name,
+          address,
+          phone,
+          email,
+          website,
+          logo_url: logoUrl,
+        }),
+      });
+    } catch (err) {
+      setSaving(false);
+      setError(err instanceof Error ? err.message : "Network error");
+      return;
+    }
     setSaving(false);
     if (!res.ok) {
-      setError("Could not save");
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(data.error || `Could not save (${res.status})`);
       return;
     }
     setSavedAt(Date.now());
