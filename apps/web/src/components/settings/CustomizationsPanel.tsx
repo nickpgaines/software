@@ -37,6 +37,24 @@ const SECTIONS: { key: Section; label: string }[] = [
   { key: "checklist", label: "Checklist" },
 ];
 
+type CompanyInfo = {
+  name: string;
+  email: string | null;
+  phone: string | null;
+  address: string | null;
+  website: string | null;
+  logo_url: string | null;
+};
+
+const DEFAULT_COMPANY: CompanyInfo = {
+  name: "Your Company",
+  email: null,
+  phone: null,
+  address: null,
+  website: null,
+  logo_url: null,
+};
+
 export default function CustomizationsPanel() {
   const [config, setConfig] = useState<CustomizationConfig | null>(null);
   const [section, setSection] = useState<Section>("messages");
@@ -45,7 +63,7 @@ export default function CustomizationsPanel() {
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
-  const [companyName, setCompanyName] = useState<string>("Your Company");
+  const [company, setCompany] = useState<CompanyInfo>(DEFAULT_COMPANY);
 
   useEffect(() => {
     fetch("/api/settings/customizations")
@@ -56,8 +74,16 @@ export default function CustomizationsPanel() {
       .finally(() => setLoading(false));
     fetch("/api/settings/company")
       .then((r) => (r.ok ? r.json() : null))
-      .then((c: { name?: string | null } | null) => {
-        if (c?.name) setCompanyName(c.name);
+      .then((c: Partial<CompanyInfo> | null) => {
+        if (!c) return;
+        setCompany({
+          name: c.name && c.name.trim() ? c.name : DEFAULT_COMPANY.name,
+          email: c.email ?? null,
+          phone: c.phone ?? null,
+          address: c.address ?? null,
+          website: c.website ?? null,
+          logo_url: c.logo_url ?? null,
+        });
       })
       .catch(() => {});
   }, []);
@@ -164,14 +190,14 @@ export default function CustomizationsPanel() {
                 <EstimatesSection
                   config={config.estimates}
                   onChange={(v) => update("estimates", v)}
-                  companyName={companyName}
+                  company={company}
                 />
               )}
               {section === "invoices" && (
                 <InvoicesSection
                   config={config.invoices}
                   onChange={(v) => update("invoices", v)}
-                  companyName={companyName}
+                  company={company}
                 />
               )}
               {section === "terms" && (
@@ -689,11 +715,11 @@ function DocumentSectionsEditor<
 function EstimatesSection({
   config,
   onChange,
-  companyName,
+  company,
 }: {
   config: CustomizationConfig["estimates"];
   onChange: (v: CustomizationConfig["estimates"]) => void;
-  companyName: string;
+  company: CompanyInfo;
 }) {
   function set<K extends keyof CustomizationConfig["estimates"]>(
     key: K,
@@ -713,7 +739,7 @@ function EstimatesSection({
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <DocumentPreview
           kind="estimate"
-          companyName={companyName}
+          company={company}
           sections={config}
         />
         <div className="rounded-xl border border-line bg-card p-4 space-y-4">
@@ -829,11 +855,11 @@ function EstimatesSection({
 function InvoicesSection({
   config,
   onChange,
-  companyName,
+  company,
 }: {
   config: CustomizationConfig["invoices"];
   onChange: (v: CustomizationConfig["invoices"]) => void;
-  companyName: string;
+  company: CompanyInfo;
 }) {
   function set<K extends keyof CustomizationConfig["invoices"]>(
     key: K,
@@ -853,7 +879,7 @@ function InvoicesSection({
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
         <DocumentPreview
           kind="invoice"
-          companyName={companyName}
+          company={company}
           sections={config}
         />
         <div className="rounded-xl border border-line bg-card p-4 space-y-4">
@@ -1298,11 +1324,11 @@ type PreviewSections = {
 
 function DocumentPreview({
   kind,
-  companyName,
+  company,
   sections,
 }: {
   kind: "estimate" | "invoice";
-  companyName: string;
+  company: CompanyInfo;
   sections: PreviewSections;
 }) {
   const isInvoice = kind === "invoice";
@@ -1323,6 +1349,11 @@ function DocumentPreview({
   const fmt = (n: number) =>
     `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+  const businessEmail = company.email?.trim() || null;
+  const businessPhone = company.phone?.trim() || null;
+  const businessAddress = company.address?.trim() || null;
+  const businessWebsite = company.website?.trim() || null;
+
   return (
     <div className="rounded-xl border border-line bg-card p-3">
       <div className="text-xs uppercase tracking-wide text-zinc-500 mb-2 px-1">
@@ -1331,10 +1362,19 @@ function DocumentPreview({
       <div className="rounded-lg bg-white text-zinc-900 p-5 sm:p-6 shadow-sm overflow-hidden">
         <div className="flex items-start justify-between gap-4 pb-4 border-b border-zinc-200">
           {sections.show_logo ? (
-            <div className="flex items-center gap-2">
-              <div className="h-8 w-8 rounded-md bg-sky-500" />
-              <div className="text-sm font-bold text-zinc-900">
-                {companyName}
+            <div className="flex items-center gap-2 min-w-0">
+              {company.logo_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={company.logo_url}
+                  alt={`${company.name} logo`}
+                  className="h-10 w-10 rounded-md object-contain bg-white"
+                />
+              ) : (
+                <div className="h-10 w-10 rounded-md bg-sky-500" />
+              )}
+              <div className="text-sm font-bold text-zinc-900 truncate">
+                {company.name}
               </div>
             </div>
           ) : (
@@ -1382,12 +1422,28 @@ function DocumentPreview({
             {sections.show_business_details ? (
               <div className="text-right">
                 <div className="text-sm font-bold text-zinc-900">
-                  {companyName}
+                  {company.name}
                 </div>
-                <div className="text-xs text-zinc-600">
-                  hello@yourcompany.com
-                </div>
-                <div className="text-xs text-zinc-600">(555) 555-1234</div>
+                {businessAddress && (
+                  <div className="text-xs text-zinc-600">{businessAddress}</div>
+                )}
+                {businessEmail && (
+                  <div className="text-xs text-zinc-600">{businessEmail}</div>
+                )}
+                {businessPhone && (
+                  <div className="text-xs text-zinc-600">{businessPhone}</div>
+                )}
+                {businessWebsite && (
+                  <div className="text-xs text-zinc-600">{businessWebsite}</div>
+                )}
+                {!businessAddress &&
+                  !businessEmail &&
+                  !businessPhone &&
+                  !businessWebsite && (
+                    <div className="text-xs text-zinc-400 italic">
+                      Add company contact info in Settings → Company
+                    </div>
+                  )}
               </div>
             ) : (
               <div />
@@ -1457,7 +1513,7 @@ function DocumentPreview({
 
         {sections.show_footer && (
           <div className="pt-4 mt-4 border-t border-zinc-200 text-xs text-zinc-500">
-            {sections.footer_text || companyName}
+            {sections.footer_text || company.name}
           </div>
         )}
       </div>

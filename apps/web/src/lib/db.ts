@@ -576,6 +576,9 @@ async function init(): Promise<void> {
     ["platform_phone_number", "TEXT"],
     ["platform_phone_sid", "TEXT"],
     ["a2p_campaign_status", "TEXT"],
+    ["email", "TEXT"],
+    ["website", "TEXT"],
+    ["logo_url", "TEXT"],
   ];
   for (const [col, def] of companyAdds) {
     await alterAddColumn("company", col, def, companyCols);
@@ -1733,6 +1736,9 @@ export type Company = {
   name: string | null;
   address: string | null;
   phone: string | null;
+  email: string | null;
+  website: string | null;
+  logo_url: string | null;
   updated_at: string;
   stripe_account_id: string | null;
   stripe_charges_enabled: number;

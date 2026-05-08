@@ -365,16 +365,53 @@ type Company = {
   name: string | null;
   address: string | null;
   phone: string | null;
+  email: string | null;
+  website: string | null;
+  logo_url: string | null;
 };
+
+async function processLogoImage(file: File): Promise<string> {
+  const objectUrl = URL.createObjectURL(file);
+  try {
+    const img = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const el = new Image();
+      el.onload = () => resolve(el);
+      el.onerror = () => reject(new Error("Could not read image"));
+      el.src = objectUrl;
+    });
+    const MAX = 512;
+    const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+    const w = Math.max(1, Math.round(img.width * scale));
+    const h = Math.max(1, Math.round(img.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = w;
+    canvas.height = h;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("Canvas not supported");
+    ctx.drawImage(img, 0, 0, w, h);
+    const isPng = file.type === "image/png";
+    return isPng
+      ? canvas.toDataURL("image/png")
+      : canvas.toDataURL("image/jpeg", 0.9);
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+  }
+}
 
 function CompanyPanel() {
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [website, setWebsite] = useState("");
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoBusy, setLogoBusy] = useState(false);
+  const [logoError, setLogoError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     fetch("/api/settings/company")
@@ -384,10 +421,37 @@ function CompanyPanel() {
           setName(c.name ?? "");
           setAddress(c.address ?? "");
           setPhone(c.phone ?? "");
+          setEmail(c.email ?? "");
+          setWebsite(c.website ?? "");
+          setLogoUrl(c.logo_url ?? null);
         }
       })
       .finally(() => setLoading(false));
   }, []);
+
+  async function onPickLogo(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setLogoError(null);
+    if (!file.type.startsWith("image/")) {
+      setLogoError("Please choose an image file");
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setLogoError("Image is too large (max 8 MB)");
+      return;
+    }
+    setLogoBusy(true);
+    try {
+      const dataUrl = await processLogoImage(file);
+      setLogoUrl(dataUrl);
+    } catch (err) {
+      setLogoError(err instanceof Error ? err.message : "Could not load image");
+    } finally {
+      setLogoBusy(false);
+    }
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -396,7 +460,14 @@ function CompanyPanel() {
     const res = await fetch("/api/settings/company", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name, address, phone }),
+      body: JSON.stringify({
+        name,
+        address,
+        phone,
+        email,
+        website,
+        logo_url: logoUrl,
+      }),
     });
     setSaving(false);
     if (!res.ok) {
@@ -411,9 +482,60 @@ function CompanyPanel() {
       <div>
         <h2 className="text-lg font-extrabold text-white tracking-tight">Company</h2>
         <p className="text-sm text-zinc-400 mt-3 font-bold">
-          Information that appears on invoices and customer-facing materials.
+          Information that appears on invoices, estimates, subscriptions, and
+          other customer-facing materials.
         </p>
       </div>
+
+      <Field label="Logo">
+        <div className="flex items-center gap-4">
+          <div className="h-20 w-20 rounded-xl border border-line bg-card flex items-center justify-center overflow-hidden">
+            {logoUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={logoUrl}
+                alt="Company logo"
+                className="h-full w-full object-contain"
+              />
+            ) : (
+              <span className="text-xs text-zinc-500">No logo</span>
+            )}
+          </div>
+          <div className="flex flex-col gap-2">
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/*"
+              onChange={onPickLogo}
+              className="hidden"
+            />
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={() => logoInputRef.current?.click()}
+              disabled={loading || logoBusy}
+              className="h-auto text-sm bg-card border border-line hover:bg-black rounded-full px-4 py-2 font-bold w-fit"
+            >
+              {logoBusy ? "Processing…" : logoUrl ? "Replace logo" : "Upload logo"}
+            </Button>
+            {logoUrl && (
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={() => setLogoUrl(null)}
+                disabled={loading || logoBusy}
+                className="h-auto text-xs text-rose-400 hover:text-rose-300 hover:bg-transparent font-bold w-fit px-0"
+              >
+                Remove logo
+              </Button>
+            )}
+            {logoError && (
+              <p className="text-xs text-rose-500">{logoError}</p>
+            )}
+          </div>
+        </div>
+      </Field>
+
       <Field label="Company name">
         <Input
           type="text"
@@ -442,6 +564,26 @@ function CompanyPanel() {
           onChange={(e) => setPhone(e.target.value)}
           className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card"
           placeholder="(555) 555-5555"
+        />
+      </Field>
+      <Field label="Email">
+        <Input
+          type="email"
+          value={email}
+          disabled={loading}
+          onChange={(e) => setEmail(e.target.value)}
+          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card"
+          placeholder="hello@acme.com"
+        />
+      </Field>
+      <Field label="Website">
+        <Input
+          type="url"
+          value={website}
+          disabled={loading}
+          onChange={(e) => setWebsite(e.target.value)}
+          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card"
+          placeholder="https://acme.com"
         />
       </Field>
       {error && <p className="text-sm text-rose-600">{error}</p>}
