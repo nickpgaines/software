@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
-import StaffScorecardModal from "./StaffScorecardModal";
+import { useRouter } from "next/navigation";
 import NewSprintModal from "./NewSprintModal";
 import SprintWidget, { type Sprint } from "./SprintWidget";
 import { Button } from "@/components/ui/button";
@@ -119,9 +119,15 @@ export default function LeaderboardClient({
   const [data, setData] = useState<Resp | null>(null);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
-  const [scorecardId, setScorecardId] = useState<number | null>(null);
   const [showNewSprint, setShowNewSprint] = useState(false);
   const [sprints, setSprints] = useState<Sprint[]>([]);
+  const router = useRouter();
+  const goToStats = useCallback(
+    (id: number) => {
+      router.push(`/sales-stats/${id}?view=${view}`);
+    },
+    [router, view]
+  );
 
   const loadSprints = useCallback(async () => {
     try {
@@ -279,7 +285,7 @@ export default function LeaderboardClient({
         type="button"
         variant="ghost"
         onClick={() => {
-          if (me) setScorecardId(me.id);
+          if (me) goToStats(me.id);
           else {
             const el = document.getElementById("rankings");
             if (el) el.scrollIntoView({ behavior: "smooth" });
@@ -488,7 +494,7 @@ export default function LeaderboardClient({
                   return (
                     <TableRow
                       key={r.id}
-                      onClick={() => setScorecardId(r.id)}
+                      onClick={() => goToStats(r.id)}
                       className={
                         "border-t border-b-0 border-line cursor-pointer hover:bg-black " +
                         (isMe
@@ -566,13 +572,6 @@ export default function LeaderboardClient({
         )}
       </div>
 
-      {scorecardId !== null && (
-        <StaffScorecardModal
-          staffId={scorecardId}
-          defaultView={view}
-          onClose={() => setScorecardId(null)}
-        />
-      )}
       {showNewSprint && (
         <NewSprintModal
           view={view}

@@ -136,6 +136,65 @@ export async function GET(
   const oneTimeAvg =
     oneTime.n > 0 ? Math.round(oneTime.revenue / oneTime.n) : 0;
 
+  // Per-day breakdowns for the two charts. Bucket by local-calendar day so
+  // adjacent jobs/subs land on the right tick regardless of timezone.
+  const startDate = new Date(start);
+  const endDate = new Date(end);
+  const dayStart = new Date(
+    startDate.getFullYear(),
+    startDate.getMonth(),
+    startDate.getDate()
+  );
+  const dayCount = Math.max(
+    1,
+    Math.ceil((endDate.getTime() - dayStart.getTime()) / 86_400_000)
+  );
+  function isoDay(d: Date) {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  }
+  const days: { date: string }[] = [];
+  for (let i = 0; i < dayCount; i++) {
+    const d = new Date(dayStart);
+    d.setDate(d.getDate() + i);
+    days.push({ date: isoDay(d) });
+  }
+  const subsByDay = new Map<string, number>();
+  for (const s of subs) {
+    const key = isoDay(new Date(s.created_at));
+    subsByDay.set(
+      key,
+      (subsByDay.get(key) || 0) + s.price_cents * intervalMultiplier(s.interval)
+    );
+  }
+  const subscriptions_series = days.map((d) => ({
+    date: d.date,
+    cents: subsByDay.get(d.date) || 0,
+  }));
+
+  const oneTimeRows = (await db
+    .prepare(
+      `SELECT j.scheduled_at AS at, j.price_cents AS cents
+       FROM jobs j
+       JOIN job_assignments ja ON ja.job_id = j.id AND ja.role = ?
+       WHERE ja.staff_id = ?
+         AND j.company_id = ?
+         AND j.scheduled_at >= ? AND j.scheduled_at < ?
+         AND COALESCE(j.recurring, 0) = 0`
+    )
+    .all(role, id, companyId, start, end)) as { at: string; cents: number }[];
+  const otByDay = new Map<string, number>();
+  for (const r of oneTimeRows) {
+    const key = isoDay(new Date(r.at));
+    otByDay.set(key, (otByDay.get(key) || 0) + r.cents);
+  }
+  const one_time_series = days.map((d) => ({
+    date: d.date,
+    cents: otByDay.get(d.date) || 0,
+  }));
+
   // Pins dropped by this staff (matched by created_by name, like reports/sales).
   const pinRows = (await db
     .prepare(
@@ -186,11 +245,13 @@ export async function GET(
       arr_cents,
       count: subs_count,
       avg_value_cents: sub_avg_cents,
+      series: subscriptions_series,
     },
     one_time: {
       revenue_cents: oneTime.revenue,
       count: oneTime.n,
       avg_value_cents: oneTimeAvg,
+      series: one_time_series,
     },
     pins: {
       total: pin_total,
