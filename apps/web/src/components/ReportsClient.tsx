@@ -1089,6 +1089,10 @@ function SubscriptionsPanel({ qs: rangeQs }: { qs: string }) {
         <ArrAddedChart points={data.arr_added} includeTax={includeTax} />
       </Section>
 
+      <Section title="Subscriptions by template">
+        <SubscriptionsByTemplateDonut rows={data.breakdowns.by_template} />
+      </Section>
+
       <Section title="By template">
         <BreakdownTable
           header="Template"
@@ -1252,6 +1256,61 @@ function BreakdownTable({
             ))}
           </TableBody>
         </Table>
+      )}
+    </div>
+  );
+}
+
+function SubscriptionsByTemplateDonut({
+  rows,
+}: {
+  rows: SubscriptionsReport["breakdowns"]["by_template"];
+}) {
+  const total = rows.reduce((s, r) => s + r.count, 0);
+  const segments = rows
+    .filter((r) => r.count > 0)
+    .map((r, i) => ({
+      name: r.name,
+      value: r.count,
+      color: SOURCE_COLORS[i % SOURCE_COLORS.length],
+    }));
+  return (
+    <div className="bg-card border border-line rounded-2xl px-5 py-5">
+      {total === 0 ? (
+        <p className="py-10 text-sm text-zinc-500 text-center">
+          No subscriptions yet.
+        </p>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 items-center">
+          <CountDonut segments={segments} total={total} />
+          <div className="space-y-2">
+            {segments.map((s) => {
+              const p = total > 0 ? (s.value / total) * 100 : 0;
+              return (
+                <div
+                  key={s.name}
+                  className="flex items-center justify-between gap-3 text-sm"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
+                      style={{ background: s.color }}
+                    />
+                    <span className="font-bold text-white truncate">
+                      {s.name}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-2 shrink-0 tabular-nums">
+                    <span className="text-zinc-300 font-bold">{s.value}</span>
+                    <span className="text-eyebrow-tight uppercase text-zinc-500">
+                      {p.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
     </div>
   );
