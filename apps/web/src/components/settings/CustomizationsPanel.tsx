@@ -45,6 +45,7 @@ export default function CustomizationsPanel() {
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [companyName, setCompanyName] = useState<string>("Your Company");
 
   useEffect(() => {
     fetch("/api/settings/customizations")
@@ -53,6 +54,12 @@ export default function CustomizationsPanel() {
         setConfig(c ?? DEFAULT_CUSTOMIZATIONS);
       })
       .finally(() => setLoading(false));
+    fetch("/api/settings/company")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((c: { name?: string | null } | null) => {
+        if (c?.name) setCompanyName(c.name);
+      })
+      .catch(() => {});
   }, []);
 
   function update<K extends keyof CustomizationConfig>(
@@ -157,12 +164,14 @@ export default function CustomizationsPanel() {
                 <EstimatesSection
                   config={config.estimates}
                   onChange={(v) => update("estimates", v)}
+                  companyName={companyName}
                 />
               )}
               {section === "invoices" && (
                 <InvoicesSection
                   config={config.invoices}
                   onChange={(v) => update("invoices", v)}
+                  companyName={companyName}
                 />
               )}
               {section === "terms" && (
@@ -680,9 +689,11 @@ function DocumentSectionsEditor<
 function EstimatesSection({
   config,
   onChange,
+  companyName,
 }: {
   config: CustomizationConfig["estimates"];
   onChange: (v: CustomizationConfig["estimates"]) => void;
+  companyName: string;
 }) {
   function set<K extends keyof CustomizationConfig["estimates"]>(
     key: K,
@@ -699,9 +710,16 @@ function EstimatesSection({
         description="Choose what appears on estimates and configure follow-up reminders."
       />
 
-      <div className="rounded-xl border border-line bg-card p-4 space-y-4">
-        <div className="text-sm font-bold text-white">Sections</div>
-        <DocumentSectionsEditor config={config} onChange={onChange} />
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <DocumentPreview
+          kind="estimate"
+          companyName={companyName}
+          sections={config}
+        />
+        <div className="rounded-xl border border-line bg-card p-4 space-y-4">
+          <div className="text-sm font-bold text-white">Sections</div>
+          <DocumentSectionsEditor config={config} onChange={onChange} />
+        </div>
       </div>
 
       <div className="space-y-1.5">
@@ -811,9 +829,11 @@ function EstimatesSection({
 function InvoicesSection({
   config,
   onChange,
+  companyName,
 }: {
   config: CustomizationConfig["invoices"];
   onChange: (v: CustomizationConfig["invoices"]) => void;
+  companyName: string;
 }) {
   function set<K extends keyof CustomizationConfig["invoices"]>(
     key: K,
@@ -830,14 +850,21 @@ function InvoicesSection({
         description="Choose what appears on invoices and configure the customer payment page."
       />
 
-      <div className="rounded-xl border border-line bg-card p-4 space-y-4">
-        <div className="text-sm font-bold text-white">Sections</div>
-        <DocumentSectionsEditor config={config} onChange={onChange} />
-        <ToggleRow
-          label="Show payment section"
-          checked={config.show_payment_section}
-          onChange={(v) => set("show_payment_section", v)}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+        <DocumentPreview
+          kind="invoice"
+          companyName={companyName}
+          sections={config}
         />
+        <div className="rounded-xl border border-line bg-card p-4 space-y-4">
+          <div className="text-sm font-bold text-white">Sections</div>
+          <DocumentSectionsEditor config={config} onChange={onChange} />
+          <ToggleRow
+            label="Show payment section"
+            checked={config.show_payment_section}
+            onChange={(v) => set("show_payment_section", v)}
+          />
+        </div>
       </div>
 
       <div className="space-y-1.5">
@@ -1252,6 +1279,187 @@ function ChecklistTemplateEditor({
             Add
           </Button>
         </div>
+      </div>
+    </div>
+  );
+}
+
+type PreviewSections = {
+  show_logo: boolean;
+  show_details: boolean;
+  show_customer_details: boolean;
+  show_business_details: boolean;
+  show_line_items: boolean;
+  show_total: boolean;
+  show_footer: boolean;
+  footer_text: string;
+  note: string;
+};
+
+function DocumentPreview({
+  kind,
+  companyName,
+  sections,
+}: {
+  kind: "estimate" | "invoice";
+  companyName: string;
+  sections: PreviewSections;
+}) {
+  const isInvoice = kind === "invoice";
+  const title = isInvoice ? "Invoice" : "Estimate";
+  const sampleNumber = isInvoice ? "54d4a3b8" : "1234";
+  const today = new Date();
+  const dateStr = today.toLocaleDateString("en-US", {
+    month: "numeric",
+    day: "numeric",
+    year: "numeric",
+  });
+
+  const subtotal = 899;
+  const tip = 0;
+  const tax = 89.9;
+  const total = subtotal + tax + tip;
+
+  const fmt = (n: number) =>
+    `$${n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+  return (
+    <div className="rounded-xl border border-line bg-card p-3">
+      <div className="text-xs uppercase tracking-wide text-zinc-500 mb-2 px-1">
+        Preview
+      </div>
+      <div className="rounded-lg bg-white text-zinc-900 p-5 sm:p-6 shadow-sm overflow-hidden">
+        <div className="flex items-start justify-between gap-4 pb-4 border-b border-zinc-200">
+          {sections.show_logo ? (
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-md bg-sky-500" />
+              <div className="text-sm font-bold text-zinc-900">
+                {companyName}
+              </div>
+            </div>
+          ) : (
+            <div />
+          )}
+          {sections.show_details && (
+            <div className="text-right">
+              <div className="text-xs uppercase tracking-wide text-zinc-500">
+                {title}
+              </div>
+              <div className="text-base font-extrabold text-zinc-900 tabular-nums">
+                {sampleNumber}
+              </div>
+              <div className="text-xs text-zinc-500 mt-1">Date: {dateStr}</div>
+              {isInvoice && (
+                <div className="text-xs text-zinc-500">
+                  Due: Upon Receipt
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {(sections.show_customer_details || sections.show_business_details) && (
+          <div className="grid grid-cols-2 gap-4 py-4 border-b border-zinc-200">
+            {sections.show_customer_details ? (
+              <div>
+                <div className="text-xs uppercase tracking-wide text-zinc-500 mb-1">
+                  Bill to
+                </div>
+                <div className="text-sm font-bold text-zinc-900">
+                  Sample Customer
+                </div>
+                <div className="text-xs text-zinc-600">
+                  123 Main St, Springfield, IL
+                </div>
+                <div className="text-xs text-zinc-600">
+                  customer@example.com
+                </div>
+                <div className="text-xs text-zinc-600">(555) 555-5555</div>
+              </div>
+            ) : (
+              <div />
+            )}
+            {sections.show_business_details ? (
+              <div className="text-right">
+                <div className="text-sm font-bold text-zinc-900">
+                  {companyName}
+                </div>
+                <div className="text-xs text-zinc-600">
+                  hello@yourcompany.com
+                </div>
+                <div className="text-xs text-zinc-600">(555) 555-1234</div>
+              </div>
+            ) : (
+              <div />
+            )}
+          </div>
+        )}
+
+        {sections.show_line_items && (
+          <div className="py-4">
+            <div className="grid grid-cols-[1fr_50px_90px_90px] text-xs uppercase tracking-wide text-zinc-500 pb-2 border-b border-zinc-200">
+              <div>Description</div>
+              <div className="text-right">Qty</div>
+              <div className="text-right">Unit Price</div>
+              <div className="text-right">Amount</div>
+            </div>
+            <div className="grid grid-cols-[1fr_50px_90px_90px] text-sm py-2 border-b border-zinc-100">
+              <div>
+                <div className="font-bold text-zinc-900">
+                  Cleaning Exterior Gutters
+                </div>
+                <div className="text-xs text-zinc-500">
+                  Cleaning the outside gutter wall to add shine.
+                </div>
+              </div>
+              <div className="text-right tabular-nums">1</div>
+              <div className="text-right tabular-nums">$100.00</div>
+              <div className="text-right tabular-nums">$100.00</div>
+            </div>
+            <div className="grid grid-cols-[1fr_50px_90px_90px] text-sm py-2">
+              <div>
+                <div className="font-bold text-zinc-900">Softwash</div>
+                <div className="text-xs text-zinc-500">
+                  Softwashing the entire house.
+                </div>
+              </div>
+              <div className="text-right tabular-nums">1</div>
+              <div className="text-right tabular-nums">$799.00</div>
+              <div className="text-right tabular-nums">$799.00</div>
+            </div>
+          </div>
+        )}
+
+        {sections.show_total && (
+          <div className="py-3 border-t border-zinc-200">
+            <div className="ml-auto w-full max-w-[220px] space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-zinc-500">Subtotal</span>
+                <span className="tabular-nums">{fmt(subtotal)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-zinc-500">Tax</span>
+                <span className="tabular-nums">{fmt(tax)}</span>
+              </div>
+              <div className="flex justify-between font-extrabold pt-1 border-t border-zinc-200">
+                <span>{isInvoice ? "Amount Due" : "Total"}</span>
+                <span className="tabular-nums">{fmt(total)}</span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {sections.note && (
+          <div className="pt-3 text-xs text-zinc-600 whitespace-pre-wrap">
+            {sections.note}
+          </div>
+        )}
+
+        {sections.show_footer && (
+          <div className="pt-4 mt-4 border-t border-zinc-200 text-xs text-zinc-500">
+            {sections.footer_text || companyName}
+          </div>
+        )}
       </div>
     </div>
   );
