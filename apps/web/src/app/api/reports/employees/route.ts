@@ -236,9 +236,15 @@ export async function GET(req: Request) {
     ),
   };
 
+  const rangeMs = end.getTime() - start.getTime();
+  const rangeDays = useRange
+    ? Math.max(1, rangeMs / MS_PER_DAY)
+    : null;
+
   return NextResponse.json({
     sales,
     tech,
     aggregates,
+    range_days: rangeDays,
   });
 }

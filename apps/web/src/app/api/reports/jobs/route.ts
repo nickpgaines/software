@@ -47,16 +47,27 @@ export async function GET(req: Request) {
 
   const rows = (await db
     .prepare(
-      `SELECT recurring, status, price_cents
+      `SELECT recurring, status, price_cents, lead_source
          FROM jobs
         WHERE company_id = ?
           AND scheduled_at >= ? AND scheduled_at < ?`
     )
-    .all(companyId, startIso, endIso)) as Row[];
+    .all(companyId, startIso, endIso)) as (Row & { lead_source: string | null })[];
 
   const servicePlan = bucket(rows.filter((r) => r.recurring === 1));
   const oneOff = bucket(rows.filter((r) => r.recurring !== 1));
   const all = bucket(rows);
+
+  // Jobs by lead source (counts non-cancelled jobs in range).
+  const sourceCounts = new Map<string, number>();
+  for (const r of rows) {
+    if (r.status === "cancelled") continue;
+    const key = (r.lead_source || "").trim() || "Unknown";
+    sourceCounts.set(key, (sourceCounts.get(key) || 0) + 1);
+  }
+  const bySource = Array.from(sourceCounts.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
 
   // True cash collected from payments table.
   const cashRow = (await db
@@ -148,5 +159,6 @@ export async function GET(req: Request) {
       first_time_cents: firstTimeRevenue,
       repeat_cents: repeatRevenue,
     },
+    by_source: bySource,
   });
 }

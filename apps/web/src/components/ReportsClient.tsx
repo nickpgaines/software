@@ -3,11 +3,17 @@
 import { useEffect, useState } from "react";
 import { Settings } from "lucide-react";
 import {
+  Bar,
+  BarChart,
+  CartesianGrid,
   Cell,
   Pie,
   PieChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip as RTooltip,
+  XAxis,
+  YAxis,
 } from "recharts";
 import PayrollSettingsModal, {
   type PayrollSettingsValue,
@@ -79,6 +85,145 @@ function DonutChart({
     </div>
   );
 }
+
+function RevenueBarChart({
+  data,
+  color,
+  averageDollars,
+  tooltipLabel = "Revenue",
+}: {
+  data: { name: string; revenue_cents: number }[];
+  color: string;
+  averageDollars?: number;
+  tooltipLabel?: string;
+}) {
+  const chartData = data.map((d) => ({
+    name: d.name,
+    revenue: d.revenue_cents / 100,
+  }));
+  return (
+    <div className="w-full h-56">
+      <ResponsiveContainer width="100%" height="100%">
+        <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+          <CartesianGrid stroke="#1f1f24" strokeDasharray="3 3" vertical={false} />
+          <XAxis
+            dataKey="name"
+            tick={{ fill: "#a1a1aa", fontSize: 11, fontWeight: 700 }}
+            tickLine={false}
+            axisLine={{ stroke: "#1f1f24" }}
+            interval={0}
+          />
+          <YAxis
+            tick={{ fill: "#a1a1aa", fontSize: 11, fontWeight: 700 }}
+            tickLine={false}
+            axisLine={{ stroke: "#1f1f24" }}
+            tickFormatter={(v: number) =>
+              v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v.toFixed(0)}`
+            }
+            width={48}
+          />
+          <RTooltip
+            cursor={{ fill: "rgba(255,255,255,0.04)" }}
+            contentStyle={{
+              background: "#0f0f12",
+              border: "1px solid #1f1f24",
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 700,
+            }}
+            formatter={(v) => {
+              const n = typeof v === "number" ? v : Number(v) || 0;
+              return [
+                `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+                tooltipLabel,
+              ];
+            }}
+          />
+          <Bar dataKey="revenue" fill={color} radius={[6, 6, 0, 0]} />
+          {typeof averageDollars === "number" && averageDollars > 0 && (
+            <ReferenceLine
+              y={averageDollars}
+              stroke="#f59e0b"
+              strokeDasharray="4 4"
+              strokeWidth={2}
+              label={{
+                value: `Team avg $${averageDollars.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+                position: "insideTopRight",
+                fill: "#f59e0b",
+                fontSize: 11,
+                fontWeight: 800,
+              }}
+            />
+          )}
+        </BarChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function CountDonut({
+  segments,
+  total,
+}: {
+  segments: { name: string; value: number; color: string }[];
+  total: number;
+}) {
+  return (
+    <div className="relative w-full h-64">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={segments}
+            dataKey="value"
+            nameKey="name"
+            innerRadius="60%"
+            outerRadius="90%"
+            paddingAngle={2}
+            stroke="#0f0f12"
+            strokeWidth={2}
+          >
+            {segments.map((s) => (
+              <Cell key={s.name} fill={s.color} />
+            ))}
+          </Pie>
+          <RTooltip
+            contentStyle={{
+              background: "#0f0f12",
+              border: "1px solid #1f1f24",
+              borderRadius: 8,
+              fontSize: 12,
+              fontWeight: 700,
+            }}
+            formatter={(v, name) => {
+              const n = typeof v === "number" ? v : Number(v) || 0;
+              const pctStr =
+                total > 0 ? ` (${((n / total) * 100).toFixed(1)}%)` : "";
+              return [`${n}${pctStr}`, String(name)];
+            }}
+          />
+        </PieChart>
+      </ResponsiveContainer>
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+        <div className="text-[10px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+          Jobs
+        </div>
+        <div className="text-lg font-black text-white tabular-nums tracking-tight">
+          {total}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const SOURCE_COLORS = [
+  "#3b82f6",
+  "#10b981",
+  "#f59e0b",
+  "#a855f7",
+  "#ef4444",
+  "#06b6d4",
+  "#64748b",
+];
 
 type Tab = "overview" | "sales" | "jobs" | "subscriptions" | "map" | "employees" | "payroll";
 type Range = "7d" | "30d" | "90d" | "ytd" | "1y" | "custom";
@@ -311,6 +456,8 @@ type Overview = {
     arr_added_net_cents: number;
     arr_churned_cents: number;
   };
+  top_sales?: { id: number; name: string; revenue_cents: number }[];
+  top_techs?: { id: number; name: string; revenue_cents: number }[];
 };
 
 function OverviewPanel({ qs }: { qs: string }) {
@@ -519,6 +666,39 @@ function OverviewPanel({ qs }: { qs: string }) {
           ]}
         />
       </Section>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="bg-card border border-line rounded-2xl px-5 py-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm font-bold text-white tracking-tight">
+              Top Salespeople
+            </div>
+            <div className="text-eyebrow uppercase text-zinc-500">Revenue</div>
+          </div>
+          {(data.top_sales || []).length === 0 ? (
+            <p className="py-10 text-sm text-zinc-500 text-center">
+              No sales activity in this window.
+            </p>
+          ) : (
+            <RevenueBarChart data={data.top_sales || []} color="#3b82f6" />
+          )}
+        </div>
+        <div className="bg-card border border-line rounded-2xl px-5 py-5">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm font-bold text-white tracking-tight">
+              Top Technicians
+            </div>
+            <div className="text-eyebrow uppercase text-zinc-500">Revenue</div>
+          </div>
+          {(data.top_techs || []).length === 0 ? (
+            <p className="py-10 text-sm text-zinc-500 text-center">
+              No technician activity in this window.
+            </p>
+          ) : (
+            <RevenueBarChart data={data.top_techs || []} color="#10b981" />
+          )}
+        </div>
+      </div>
     </div>
   );
 }
@@ -929,6 +1109,10 @@ function SubscriptionsPanel({ qs: rangeQs }: { qs: string }) {
         <ArrAddedChart points={data.arr_added} includeTax={includeTax} />
       </Section>
 
+      <Section title="Subscriptions by template">
+        <SubscriptionsByTemplateDonut rows={data.breakdowns.by_template} />
+      </Section>
+
       <Section title="By template">
         <BreakdownTable
           header="Template"
@@ -1092,6 +1276,61 @@ function BreakdownTable({
             ))}
           </TableBody>
         </Table>
+      )}
+    </div>
+  );
+}
+
+function SubscriptionsByTemplateDonut({
+  rows,
+}: {
+  rows: SubscriptionsReport["breakdowns"]["by_template"];
+}) {
+  const total = rows.reduce((s, r) => s + r.count, 0);
+  const segments = rows
+    .filter((r) => r.count > 0)
+    .map((r, i) => ({
+      name: r.name,
+      value: r.count,
+      color: SOURCE_COLORS[i % SOURCE_COLORS.length],
+    }));
+  return (
+    <div className="bg-card border border-line rounded-2xl px-5 py-5">
+      {total === 0 ? (
+        <p className="py-10 text-sm text-zinc-500 text-center">
+          No subscriptions yet.
+        </p>
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2 items-center">
+          <CountDonut segments={segments} total={total} />
+          <div className="space-y-2">
+            {segments.map((s) => {
+              const p = total > 0 ? (s.value / total) * 100 : 0;
+              return (
+                <div
+                  key={s.name}
+                  className="flex items-center justify-between gap-3 text-sm"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
+                      style={{ background: s.color }}
+                    />
+                    <span className="font-bold text-white truncate">
+                      {s.name}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-2 shrink-0 tabular-nums">
+                    <span className="text-zinc-300 font-bold">{s.value}</span>
+                    <span className="text-eyebrow-tight uppercase text-zinc-500">
+                      {p.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
       )}
     </div>
   );
@@ -1278,6 +1517,7 @@ type EmployeesReport = {
     tech_avg_daily_cents: number;
     tech_avg_per_hour_cents: number;
   };
+  range_days?: number | null;
 };
 
 function EmployeesPanel({ qs }: { qs: string }) {
@@ -1306,9 +1546,83 @@ function EmployeesPanel({ qs }: { qs: string }) {
     );
   if (!data) return null;
 
+  const rangeDays = data.range_days && data.range_days > 0 ? data.range_days : null;
+
+  function buildSeries(
+    rows: { id: number; name: string; lifetime_revenue_cents: number }[],
+    limit = 8,
+  ) {
+    const sorted = rows
+      .filter((r) => r.lifetime_revenue_cents > 0)
+      .sort((a, b) => b.lifetime_revenue_cents - a.lifetime_revenue_cents)
+      .slice(0, limit);
+    const total = sorted.map((r) => ({
+      name: r.name,
+      revenue_cents: r.lifetime_revenue_cents,
+    }));
+    const daily = rangeDays
+      ? sorted.map((r) => ({
+          name: r.name,
+          revenue_cents: Math.round(r.lifetime_revenue_cents / rangeDays),
+        }))
+      : [];
+    const teamTotalAvg =
+      sorted.length > 0
+        ? sorted.reduce((s, r) => s + r.lifetime_revenue_cents, 0) /
+          sorted.length /
+          100
+        : 0;
+    const teamDailyAvg = rangeDays && sorted.length > 0
+      ? sorted.reduce((s, r) => s + r.lifetime_revenue_cents, 0) /
+        sorted.length /
+        rangeDays /
+        100
+      : 0;
+    return { total, daily, teamTotalAvg, teamDailyAvg };
+  }
+
+  const salesSeries = buildSeries(data.sales);
+  const techSeries = buildSeries(data.tech);
+
   return (
     <div className="space-y-6">
-      <Section title="Sales reps · averages across team">
+      <Section title="Sales reps">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ChartCard
+            title="Total revenue"
+            sublabel="In selected range"
+            empty={salesSeries.total.length === 0}
+            emptyText="No sales revenue in this window."
+          >
+            <RevenueBarChart
+              data={salesSeries.total}
+              color="#3b82f6"
+              averageDollars={salesSeries.teamTotalAvg}
+              tooltipLabel="Total"
+            />
+          </ChartCard>
+          <ChartCard
+            title="Average revenue / day"
+            sublabel={
+              rangeDays
+                ? `Total ÷ ${rangeDays.toFixed(0)} days in range`
+                : "Pick a date range to see daily avg"
+            }
+            empty={!rangeDays || salesSeries.daily.length === 0}
+            emptyText={
+              rangeDays
+                ? "No sales revenue in this window."
+                : "Daily averages need a date range."
+            }
+          >
+            <RevenueBarChart
+              data={salesSeries.daily}
+              color="#3b82f6"
+              averageDollars={salesSeries.teamDailyAvg}
+              tooltipLabel="Avg / day"
+            />
+          </ChartCard>
+        </div>
         <Stats
           items={[
             {
@@ -1332,7 +1646,43 @@ function EmployeesPanel({ qs }: { qs: string }) {
         />
       </Section>
 
-      <Section title="Technicians · averages across team">
+      <Section title="Technicians">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ChartCard
+            title="Total revenue"
+            sublabel="In selected range"
+            empty={techSeries.total.length === 0}
+            emptyText="No technician revenue in this window."
+          >
+            <RevenueBarChart
+              data={techSeries.total}
+              color="#10b981"
+              averageDollars={techSeries.teamTotalAvg}
+              tooltipLabel="Total"
+            />
+          </ChartCard>
+          <ChartCard
+            title="Average revenue / day"
+            sublabel={
+              rangeDays
+                ? `Total ÷ ${rangeDays.toFixed(0)} days in range`
+                : "Pick a date range to see daily avg"
+            }
+            empty={!rangeDays || techSeries.daily.length === 0}
+            emptyText={
+              rangeDays
+                ? "No technician revenue in this window."
+                : "Daily averages need a date range."
+            }
+          >
+            <RevenueBarChart
+              data={techSeries.daily}
+              color="#10b981"
+              averageDollars={techSeries.teamDailyAvg}
+              tooltipLabel="Avg / day"
+            />
+          </ChartCard>
+        </div>
         <Stats
           items={[
             {
@@ -1355,6 +1705,40 @@ function EmployeesPanel({ qs }: { qs: string }) {
           emptyText="No technicians with attributed revenue yet."
         />
       </Section>
+    </div>
+  );
+}
+
+function ChartCard({
+  title,
+  sublabel,
+  empty,
+  emptyText,
+  children,
+}: {
+  title: string;
+  sublabel?: string;
+  empty?: boolean;
+  emptyText?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-card border border-line rounded-2xl px-5 py-5">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-sm font-bold text-white tracking-tight">
+          {title}
+        </div>
+        {sublabel && (
+          <div className="text-eyebrow uppercase text-zinc-500">{sublabel}</div>
+        )}
+      </div>
+      {empty ? (
+        <p className="py-10 text-sm text-zinc-500 text-center">
+          {emptyText || "No data."}
+        </p>
+      ) : (
+        children
+      )}
     </div>
   );
 }
@@ -1816,6 +2200,7 @@ type JobsReport = {
     first_time_cents: number;
     repeat_cents: number;
   };
+  by_source?: { name: string; count: number }[];
 };
 
 function JobsPanel({ qs }: { qs: string }) {
@@ -1847,6 +2232,14 @@ function JobsPanel({ qs }: { qs: string }) {
   const split = data.customer_split;
   const splitTotal = split.first_time_cents + split.repeat_cents;
   const firstTimePct = splitTotal > 0 ? split.first_time_cents / splitTotal : 0;
+
+  const sourceList = data.by_source || [];
+  const sourceTotal = sourceList.reduce((s, r) => s + r.count, 0);
+  const sourceSegments = sourceList.map((r, i) => ({
+    name: r.name,
+    value: r.count,
+    color: SOURCE_COLORS[i % SOURCE_COLORS.length],
+  }));
 
   return (
     <div className="space-y-6">
@@ -1887,6 +2280,49 @@ function JobsPanel({ qs }: { qs: string }) {
             value={pct(firstTimePct)}
             sub={`${money(split.first_time_cents)} new · ${money(split.repeat_cents)} repeat`}
           />
+        </div>
+      </Section>
+
+      <Section title="Jobs by Lead Source">
+        <div className="bg-card border border-line rounded-2xl px-5 py-5">
+          {sourceTotal === 0 ? (
+            <p className="py-10 text-sm text-zinc-500 text-center">
+              No jobs in this window.
+            </p>
+          ) : (
+            <div className="grid gap-6 md:grid-cols-2 items-center">
+              <CountDonut segments={sourceSegments} total={sourceTotal} />
+              <div className="space-y-2">
+                {sourceSegments.map((s) => {
+                  const p = sourceTotal > 0 ? (s.value / sourceTotal) * 100 : 0;
+                  return (
+                    <div
+                      key={s.name}
+                      className="flex items-center justify-between gap-3 text-sm"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
+                          style={{ background: s.color }}
+                        />
+                        <span className="font-bold text-white truncate">
+                          {s.name}
+                        </span>
+                      </div>
+                      <div className="flex items-baseline gap-2 shrink-0 tabular-nums">
+                        <span className="text-zinc-300 font-bold">
+                          {s.value}
+                        </span>
+                        <span className="text-eyebrow-tight uppercase text-zinc-500">
+                          {p.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       </Section>
     </div>
