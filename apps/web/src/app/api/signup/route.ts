@@ -15,14 +15,16 @@ const AREA_CODE_RE = /^\d{3}$/;
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as Partial<{
     companyName: string;
-    name: string;
+    firstName: string;
+    lastName: string;
     email: string;
     password: string;
     areaCode: string;
   }>;
 
   const companyName = (body.companyName || "").trim();
-  const fullName = (body.name || "").trim();
+  const firstName = (body.firstName || "").trim();
+  const lastName = (body.lastName || "").trim();
   const email = (body.email || "").trim().toLowerCase();
   const password = body.password || "";
   const areaCode = (body.areaCode || "").trim();
@@ -33,9 +35,15 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
-  if (!fullName) {
+  if (!firstName) {
     return NextResponse.json(
-      { error: "Your name is required." },
+      { error: "First name is required." },
+      { status: 400 }
+    );
+  }
+  if (!lastName) {
+    return NextResponse.json(
+      { error: "Last name is required." },
       { status: 400 }
     );
   }
@@ -70,9 +78,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const [first, ...rest] = fullName.split(/\s+/);
-  const firstName = first || fullName;
-  const lastName = rest.join(" ");
+  const fullName = `${firstName} ${lastName}`.trim();
   const passwordHash = hashPassword(password);
 
   const { companyId, staffId } = await db.transaction(async (tx) => {
@@ -91,7 +97,7 @@ export async function POST(req: Request) {
         newCompanyId,
         fullName,
         firstName,
-        lastName || null,
+        lastName,
         email,
         passwordHash
       );
