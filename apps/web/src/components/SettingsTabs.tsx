@@ -7,12 +7,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import CustomizationsPanel from "@/components/settings/CustomizationsPanel";
 
 type Tab =
   | "profile"
   | "company"
   | "payments"
   | "subscriptions"
+  | "customizations"
   | "messaging"
   | "calling"
   | "email"
@@ -24,6 +26,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "company", label: "Company" },
   { key: "payments", label: "Payments" },
   { key: "subscriptions", label: "Subscriptions" },
+  { key: "customizations", label: "Customizations" },
   { key: "messaging", label: "Messaging" },
   { key: "calling", label: "Calling" },
   { key: "email", label: "Email" },
@@ -93,6 +96,7 @@ function SettingsTabsInner({ username }: { username: string }) {
         {tab === "company" && <CompanyPanel />}
         {tab === "payments" && <PaymentsPanel />}
         {tab === "subscriptions" && <SubscriptionsPanel />}
+        {tab === "customizations" && <CustomizationsPanel />}
         {tab === "messaging" && <MessagingPanel />}
         {tab === "calling" && <CallingPanel />}
         {tab === "email" && <EmailPanel />}
