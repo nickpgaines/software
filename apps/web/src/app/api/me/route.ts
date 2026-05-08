@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, type Staff } from "@/lib/db";
+import { getDb, syncReplica, type Staff } from "@/lib/db";
 import { getSessionContext, type SessionContext } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -10,27 +10,39 @@ export type Me = {
   staff: Staff | null;
 };
 
+async function lookupStaff(
+  ctx: SessionContext
+): Promise<Staff | undefined> {
+  const db = await getDb();
+  if (ctx.staffId != null) {
+    const byId = (await db
+      .prepare("SELECT * FROM staff WHERE id = ? AND company_id = ? LIMIT 1")
+      .get(ctx.staffId, ctx.companyId)) as Staff | undefined;
+    if (byId) return byId;
+  }
+  return (await db
+    .prepare(
+      "SELECT * FROM staff WHERE LOWER(email) = ? AND company_id = ? ORDER BY id ASC LIMIT 1"
+    )
+    .get(ctx.identity.toLowerCase(), ctx.companyId)) as Staff | undefined;
+}
+
 async function buildMe(ctx: SessionContext): Promise<Me> {
   if (ctx.isPlatformAdmin) {
     return { identity: ctx.identity, is_admin_account: true, staff: null };
   }
-  const db = await getDb();
   // Look up by staffId from the session — the dashboard's greeting uses the
   // same primary-key lookup, so both surfaces stay consistent. Falling back
   // to a LOWER(email) match could return a different row when stale rows
   // share the email, which produced a flip-flop between greeting and sidebar.
-  let staff: Staff | undefined;
-  if (ctx.staffId != null) {
-    staff = (await db
-      .prepare("SELECT * FROM staff WHERE id = ? AND company_id = ? LIMIT 1")
-      .get(ctx.staffId, ctx.companyId)) as Staff | undefined;
-  }
-  if (!staff) {
-    staff = (await db
-      .prepare(
-        "SELECT * FROM staff WHERE LOWER(email) = ? AND company_id = ? ORDER BY id ASC LIMIT 1"
-      )
-      .get(ctx.identity.toLowerCase(), ctx.companyId)) as Staff | undefined;
+  let staff = await lookupStaff(ctx);
+  // If the row isn't visible yet, this instance's embedded replica is
+  // probably stale (signup just happened on another instance, or this one
+  // hasn't ticked its sync yet). Force a sync and try once more before
+  // giving up — much better UX than rendering the email fallback.
+  if (!staff && ctx.staffId != null) {
+    await syncReplica();
+    staff = await lookupStaff(ctx);
   }
   return {
     identity: ctx.identity,
