@@ -8,11 +8,10 @@ import { PULSE } from "@/components/pulse/theme";
 import { formatCents, formatCentsShort } from "@/components/pulse/format";
 
 type Range = "today" | "week" | "month" | "year" | "custom";
-type View = "sales" | "tech";
 
 type Series = { date: string; cents: number };
 
-type Scorecard = {
+type TechStats = {
   staff: {
     id: number;
     name: string;
@@ -20,26 +19,28 @@ type Scorecard = {
     photo_url: string | null;
   };
   range: Range;
-  view: View;
   start: string;
   end: string;
-  subscriptions: {
-    arr_cents: number;
-    count: number;
-    avg_value_cents: number;
-    series: Series[];
-  };
-  one_time: {
+  cleans: {
     revenue_cents: number;
-    count: number;
-    avg_value_cents: number;
+    jobs_count: number;
+    avg_revenue_cents: number;
     series: Series[];
   };
-  pins: {
-    total: number;
-    qualified: number;
-    counts: Record<string, number>;
-    conversion_rate: number;
+  upsells: {
+    revenue_cents: number;
+    avg_cents: number;
+    plans_signed: number;
+    visits_upsold: number;
+    line_count: number;
+    series: Series[];
+  };
+  reviews: {
+    count: number;
+    avg_rating: number;
+    distribution: Record<"1" | "2" | "3" | "4" | "5", number>;
+    avg_series: Series[];
+    count_series: Series[];
   };
 };
 
@@ -50,24 +51,13 @@ const PRESETS: { key: Exclude<Range, "custom">; label: string }[] = [
   { key: "year", label: "This Year" },
 ];
 
-const PIN_DEFS: { key: string; label: string; color: string }[] = [
-  { key: "sale", label: "Sale", color: PULSE.green },
-  { key: "not_home", label: "Not Home", color: "#f59e0b" },
-  { key: "not_interested", label: "Not Interested", color: PULSE.red },
-  { key: "not_qualified", label: "Not Qualified", color: PULSE.violet },
-  { key: "do_not_contact", label: "Do Not Contact", color: PULSE.textDim },
-  { key: "revisit", label: "Revisit", color: PULSE.cyan },
-  { key: "referral", label: "Referral", color: "#ec4899" },
-  { key: "quote", label: "Quote", color: "#3b82f6" },
-];
-
 function initials(name: string) {
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function avg(series: Series[]) {
+function avgCents(series: Series[]) {
   if (series.length === 0) return 0;
   const total = series.reduce((s, p) => s + p.cents, 0);
   return Math.round(total / series.length);
@@ -82,26 +72,19 @@ function formatRange(start: string, end: string) {
   return `${fmt(s)} – ${fmt(e)}`;
 }
 
-export default function SalesStatsClient({
-  staffId,
-  defaultView,
-}: {
-  staffId: number;
-  defaultView: View;
-}) {
+export default function TechStatsClient({ staffId }: { staffId: number }) {
   const router = useRouter();
-  const view: View = defaultView;
   const [range, setRange] = useState<Range>("month");
-  const [data, setData] = useState<Scorecard | null>(null);
+  const [data, setData] = useState<TechStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    const params = new URLSearchParams({ view, range });
-    fetch(`/api/staff/${staffId}/scorecard?${params}`)
+    const params = new URLSearchParams({ range });
+    fetch(`/api/staff/${staffId}/tech-stats?${params}`)
       .then((r) => r.json())
-      .then((d: Scorecard) => {
+      .then((d: TechStats) => {
         if (!cancelled) setData(d);
       })
       .finally(() => {
@@ -110,21 +93,20 @@ export default function SalesStatsClient({
     return () => {
       cancelled = true;
     };
-  }, [staffId, view, range]);
+  }, [staffId, range]);
 
   const staff = data?.staff;
-  const subs = data?.subscriptions;
-  const ot = data?.one_time;
-  const pins = data?.pins;
+  const cleans = data?.cleans;
+  const upsells = data?.upsells;
+  const reviews = data?.reviews;
 
-  const totalSold = (subs?.arr_cents || 0) + (ot?.revenue_cents || 0);
+  const headlineCents =
+    (cleans?.revenue_cents || 0) + (upsells?.revenue_cents || 0);
 
-  const subSeries = subs?.series ?? [];
-  const otSeries = ot?.series ?? [];
-  const subTotal = subSeries.reduce((s, p) => s + p.cents, 0);
-  const otTotal = otSeries.reduce((s, p) => s + p.cents, 0);
-  const subAvg = avg(subSeries);
-  const otAvg = avg(otSeries);
+  const cleansSeries = cleans?.series ?? [];
+  const upsellSeries = upsells?.series ?? [];
+  const reviewSeries = reviews?.avg_series ?? [];
+  const reviewMaxCents = reviews && reviews.count > 0 ? 500 : 0;
 
   return (
     <div className="space-y-8">
@@ -152,15 +134,18 @@ export default function SalesStatsClient({
           style={{ background: PULSE.bgAlt }}
         >
           <button
-            className="h-auto px-3.5 py-1 rounded-full text-[11.5px] font-extrabold"
-            style={{ background: PULSE.text, color: PULSE.bg }}
+            onClick={() => router.push(`/sales-stats/${staffId}?view=sales`)}
+            className="h-auto px-3.5 py-1 rounded-full text-[11.5px] font-extrabold transition-colors"
+            style={{
+              background: "transparent",
+              color: PULSE.textMuted,
+            }}
           >
             Sales
           </button>
           <button
-            onClick={() => router.push(`/tech-stats/${staffId}`)}
-            className="h-auto px-3.5 py-1 rounded-full text-[11.5px] font-extrabold transition-colors"
-            style={{ background: "transparent", color: PULSE.textMuted }}
+            className="h-auto px-3.5 py-1 rounded-full text-[11.5px] font-extrabold"
+            style={{ background: PULSE.text, color: PULSE.bg }}
           >
             Tech
           </button>
@@ -193,7 +178,7 @@ export default function SalesStatsClient({
               className="text-[11px] uppercase tracking-[0.22em] font-extrabold mb-3"
               style={{ color: PULSE.textDim }}
             >
-              Sales Stats
+              Tech Stats
             </div>
             <h1 className="text-[48px] font-extrabold tracking-tight leading-none tabular-nums">
               {staff?.name || (loading ? "Loading…" : "—")}
@@ -201,7 +186,7 @@ export default function SalesStatsClient({
                 <>
                   {" "}
                   <span style={{ color: PULSE.violet }}>
-                    {formatCentsShort(totalSold)}
+                    {formatCentsShort(headlineCents)}
                   </span>
                 </>
               )}
@@ -223,7 +208,7 @@ export default function SalesStatsClient({
                     {staff.role}
                   </span>
                 )}
-                <span>sold in this range · {formatRange(data.start, data.end)}</span>
+                <span>cleaned + upsold · {formatRange(data.start, data.end)}</span>
               </p>
             )}
           </div>
@@ -251,103 +236,144 @@ export default function SalesStatsClient({
         </div>
       </div>
 
-      <Section title="Subscriptions">
+      <Section title="Cleans">
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <Kpi
-            label="ARR Sold"
-            value={data ? formatCents(subs?.arr_cents || 0) : "—"}
-            help="New ARR booked in this period"
+            label="Revenue Cleaned"
+            value={data ? formatCents(cleans?.revenue_cents || 0) : "—"}
+            help="From jobs cleaned in this period"
           />
           <Kpi
-            label="Subscriptions Sold"
-            value={data ? String(subs?.count || 0) : "—"}
-            help="Recurring services booked"
+            label="Jobs Cleaned"
+            value={data ? String(cleans?.jobs_count || 0) : "—"}
+            help={`${cleans?.jobs_count || 0} total`}
           />
           <Kpi
-            label="Avg Sub Value"
-            value={data ? formatCents(subs?.avg_value_cents || 0) : "—"}
-            help="Annualized per subscription"
-          />
-        </div>
-        <ChartCard
-          title="ARR Sold"
-          headline={data ? formatCentsShort(subTotal) : "—"}
-          footerLeft={
-            data ? `Total: ${formatCents(subTotal)}` : ""
-          }
-          footerRight={
-            data ? `Avg: ${formatCents(subAvg)}` : ""
-          }
-          loading={loading && !data}
-          series={subSeries}
-        />
-      </Section>
-
-      <Section title="One-Time Cleans">
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Kpi
-            label="Total Revenue"
-            value={data ? formatCents(ot?.revenue_cents || 0) : "—"}
-            help="From jobs sold in period"
-          />
-          <Kpi
-            label="Jobs Sold"
-            value={data ? String(ot?.count || 0) : "—"}
-            help={`${ot?.count || 0} total`}
-          />
-          <Kpi
-            label="Avg Job Value"
-            value={data ? formatCents(ot?.avg_value_cents || 0) : "—"}
+            label="Avg Revenue"
+            value={data ? formatCents(cleans?.avg_revenue_cents || 0) : "—"}
             help="Average per job"
           />
         </div>
         <ChartCard
-          title="One-Time Cleans Sold"
-          headline={data ? formatCentsShort(otTotal) : "—"}
-          footerLeft={data ? `Total: ${formatCents(otTotal)}` : ""}
-          footerRight={data ? `Avg: ${formatCents(otAvg)}` : ""}
+          title="Revenue Cleaned"
+          headline={
+            data ? formatCentsShort(cleans?.revenue_cents || 0) : "—"
+          }
+          footerLeft={
+            data ? `Total: ${formatCents(cleans?.revenue_cents || 0)}` : ""
+          }
+          footerRight={data ? `Avg/day: ${formatCents(avgCents(cleansSeries))}` : ""}
           loading={loading && !data}
-          series={otSeries}
+          series={cleansSeries}
         />
       </Section>
 
-      <Section title="Door Knocks">
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <Section title="Upsells">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <Kpi
-            label="Conversion Rate"
-            value={
-              data ? `${((pins?.conversion_rate || 0) * 100).toFixed(1)}%` : "—"
-            }
-            help={
-              data
-                ? `${pins?.counts.sale || 0} sales from ${
-                    pins?.qualified || 0
-                  } qualified pins`
-                : ""
-            }
+            label="Upsold Revenue"
+            value={data ? formatCents(upsells?.revenue_cents || 0) : "—"}
+            help="Revenue from upsell line items"
           />
           <Kpi
-            label="Total Pins"
-            value={data ? String(pins?.total || 0) : "—"}
-            help="All pins dropped in this range"
+            label="Avg Upsell"
+            value={data ? formatCents(upsells?.avg_cents || 0) : "—"}
+            help="Average per upsell line"
+          />
+          <Kpi
+            label="Plans Signed"
+            value={data ? String(upsells?.plans_signed || 0) : "—"}
+            help="Subscriptions sold by this tech"
+          />
+          <Kpi
+            label="Visits Upsold"
+            value={data ? String(upsells?.visits_upsold || 0) : "—"}
+            help={`${upsells?.line_count || 0} upsell lines`}
           />
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          {PIN_DEFS.map((p) => {
-            const count = pins?.counts[p.key] || 0;
-            const total = pins?.total || 0;
+        <ChartCard
+          title="Upsold Revenue"
+          headline={
+            data ? formatCentsShort(upsells?.revenue_cents || 0) : "—"
+          }
+          footerLeft={
+            data
+              ? `Total: ${formatCents(upsells?.revenue_cents || 0)}`
+              : ""
+          }
+          footerRight={
+            data ? `Avg/day: ${formatCents(avgCents(upsellSeries))}` : ""
+          }
+          loading={loading && !data}
+          series={upsellSeries}
+        />
+      </Section>
+
+      <Section title="Reviews">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Kpi
+            label="Reviews Gotten"
+            value={data ? String(reviews?.count || 0) : "—"}
+            help="Customer reviews left in this range"
+          />
+          <Kpi
+            label="Avg Rating"
+            value={
+              data
+                ? reviews && reviews.count > 0
+                  ? `${reviews.avg_rating.toFixed(1)} ★`
+                  : "—"
+                : "—"
+            }
+            help={
+              data && reviews && reviews.count > 0
+                ? `Across ${reviews.count} review${
+                    reviews.count === 1 ? "" : "s"
+                  }`
+                : "No reviews yet"
+            }
+          />
+        </div>
+        <div className="grid grid-cols-5 gap-3">
+          {([5, 4, 3, 2, 1] as const).map((star) => {
+            const count = reviews?.distribution?.[String(star) as "1"] || 0;
+            const total = reviews?.count || 0;
             const pct = total > 0 ? (count / total) * 100 : 0;
             return (
-              <PinTile
-                key={p.key}
-                color={p.color}
-                label={p.label}
+              <RatingTile
+                key={star}
+                star={star}
                 count={count}
                 pct={pct}
               />
             );
           })}
         </div>
+        <ChartCard
+          title="Avg Rating Over Time"
+          headline={
+            data && reviews && reviews.count > 0
+              ? `${reviews.avg_rating.toFixed(1)} ★`
+              : "—"
+          }
+          footerLeft={
+            data
+              ? `${reviews?.count || 0} review${
+                  (reviews?.count || 0) === 1 ? "" : "s"
+                }`
+              : ""
+          }
+          footerRight=""
+          loading={loading && !data}
+          series={reviewSeries}
+          maxCentsHint={reviewMaxCents}
+          formatHeadlineCents={(c) => `${(c / 100).toFixed(1)} ★`}
+          emptyLabel={
+            data && (!reviews || reviews.count === 0)
+              ? "No reviews in this range"
+              : undefined
+          }
+        />
       </Section>
     </div>
   );
@@ -413,6 +439,7 @@ function ChartCard({
   footerRight,
   loading,
   series,
+  emptyLabel,
 }: {
   title: string;
   headline: string;
@@ -420,7 +447,11 @@ function ChartCard({
   footerRight: string;
   loading: boolean;
   series: Series[];
+  maxCentsHint?: number;
+  formatHeadlineCents?: (c: number) => string;
+  emptyLabel?: string;
 }) {
+  const isEmpty = series.length === 0 || series.every((p) => p.cents === 0);
   return (
     <section
       className="rounded-2xl p-7"
@@ -437,6 +468,13 @@ function ChartCard({
           className="rounded-xl animate-pulse"
           style={{ height: 260, background: PULSE.bgAlt }}
         />
+      ) : emptyLabel && isEmpty ? (
+        <div
+          className="flex items-center justify-center rounded-xl text-[13px] font-extrabold"
+          style={{ height: 260, color: PULSE.textDim, background: PULSE.bgAlt }}
+        >
+          {emptyLabel}
+        </div>
       ) : (
         <HeroChart days={series} height={260} />
       )}
@@ -451,14 +489,12 @@ function ChartCard({
   );
 }
 
-function PinTile({
-  color,
-  label,
+function RatingTile({
+  star,
   count,
   pct,
 }: {
-  color: string;
-  label: string;
+  star: 1 | 2 | 3 | 4 | 5;
   count: number;
   pct: number;
 }) {
@@ -472,16 +508,10 @@ function PinTile({
     >
       <div className="flex items-center justify-between mb-3">
         <span
-          className="w-7 h-7 rounded-full flex items-center justify-center"
-          style={{
-            background: `${color}1F`,
-            border: `1px solid ${color}33`,
-          }}
+          className="text-[12px] font-extrabold tabular-nums"
+          style={{ color: PULSE.textMuted }}
         >
-          <span
-            className="w-2 h-2 rounded-full"
-            style={{ background: color }}
-          />
+          {star} ★
         </span>
         <span
           className="text-[10.5px] uppercase tracking-[0.16em] font-extrabold tabular-nums"
@@ -494,18 +524,15 @@ function PinTile({
         {count}
       </div>
       <div
-        className="text-[12px] font-bold mt-1.5"
-        style={{ color: PULSE.textMuted }}
-      >
-        {label}
-      </div>
-      <div
         className="mt-3 h-1 rounded-full overflow-hidden"
         style={{ background: PULSE.bgAlt }}
       >
         <div
           className="h-full rounded-full"
-          style={{ width: `${pct}%`, background: color }}
+          style={{
+            width: `${pct}%`,
+            background: PULSE.violet,
+          }}
         />
       </div>
     </div>

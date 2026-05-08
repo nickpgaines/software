@@ -1156,6 +1156,23 @@ async function init(): Promise<void> {
       received_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS customer_reviews (
+      id             INTEGER PRIMARY KEY AUTOINCREMENT,
+      company_id     INTEGER NOT NULL,
+      job_id         INTEGER REFERENCES jobs(id) ON DELETE SET NULL,
+      customer_id    INTEGER REFERENCES customers(id) ON DELETE SET NULL,
+      technician_id  INTEGER REFERENCES staff(id) ON DELETE SET NULL,
+      rating         INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+      comment        TEXT,
+      created_at     TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_customer_reviews_technician_id
+      ON customer_reviews(technician_id);
+    CREATE INDEX IF NOT EXISTS idx_customer_reviews_created_at
+      ON customer_reviews(created_at);
+    CREATE INDEX IF NOT EXISTS idx_customer_reviews_company_id
+      ON customer_reviews(company_id);
+
     CREATE TABLE IF NOT EXISTS oauth_accounts (
       id                INTEGER PRIMARY KEY AUTOINCREMENT,
       provider          TEXT NOT NULL,
