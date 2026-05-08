@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { SESSION_COOKIE, createSessionToken } from "@/lib/auth";
-import { getDb, type Staff } from "@/lib/db";
+import { getDb, syncReplica, type Staff } from "@/lib/db";
 import { OAUTH_STATE_COOKIE, verifyOAuthState } from "@/lib/oauth";
 
 export const dynamic = "force-dynamic";
@@ -18,11 +18,24 @@ type GoogleUserInfo = {
   name?: string;
 };
 
+// Errors that should also clear the existing session cookie. The user
+// completed Google's auth challenge intending to switch into a specific
+// account; if we can't honor that intent, we must NOT silently leave them
+// signed in as whoever they were before — the middleware would then bounce
+// them off /login and back into the wrong dashboard with no error visible.
+const ERRORS_THAT_END_SESSION = new Set([
+  "no_matching_staff",
+  "google_email_unverified",
+]);
+
 function loginError(req: Request, code: string) {
   const url = new URL("/login", req.url);
   url.searchParams.set("error", code);
   const res = NextResponse.redirect(url);
   res.cookies.delete(OAUTH_STATE_COOKIE);
+  if (ERRORS_THAT_END_SESSION.has(code)) {
+    res.cookies.delete(SESSION_COOKIE);
+  }
   return res;
 }
 
@@ -83,39 +96,51 @@ export async function GET(req: Request) {
   if (!providerUserId || !email || user.email_verified !== true) {
     return loginError(req, "google_email_unverified");
   }
+  const sub: string = providerUserId;
+  const verifiedEmail: string = email;
 
   const db = await getDb();
 
   // Prefer an existing oauth_accounts link; otherwise match by staff email.
-  const link = (await db
-    .prepare(
-      "SELECT staff_id FROM oauth_accounts WHERE provider = ? AND provider_user_id = ? LIMIT 1"
-    )
-    .get("google", providerUserId)) as { staff_id: number } | undefined;
-
-  let staff: Staff | undefined;
-  if (link) {
-    staff = (await db
-      .prepare("SELECT * FROM staff WHERE id = ? LIMIT 1")
-      .get(link.staff_id)) as Staff | undefined;
-  } else {
-    staff = (await db
+  async function resolveStaff(): Promise<Staff | undefined> {
+    const link = (await db
+      .prepare(
+        "SELECT staff_id FROM oauth_accounts WHERE provider = ? AND provider_user_id = ? LIMIT 1"
+      )
+      .get("google", sub)) as { staff_id: number } | undefined;
+    if (link) {
+      return (await db
+        .prepare("SELECT * FROM staff WHERE id = ? LIMIT 1")
+        .get(link.staff_id)) as Staff | undefined;
+    }
+    const byEmail = (await db
       .prepare("SELECT * FROM staff WHERE LOWER(email) = ? LIMIT 1")
-      .get(email)) as Staff | undefined;
-    if (staff) {
+      .get(verifiedEmail)) as Staff | undefined;
+    if (byEmail) {
       await db
         .prepare(
           "INSERT OR IGNORE INTO oauth_accounts (provider, provider_user_id, staff_id, email) VALUES (?, ?, ?, ?)"
         )
-        .run("google", providerUserId, staff.id, email);
+        .run("google", sub, byEmail.id, verifiedEmail);
     }
+    return byEmail;
+  }
+
+  let staff = await resolveStaff();
+  // The function instance handling this OAuth callback may be running
+  // against a stale embedded replica that doesn't yet show recent
+  // signups or oauth_accounts links. Force a sync and retry once before
+  // declaring no match — same pattern as /api/login.
+  if (!staff) {
+    await syncReplica();
+    staff = await resolveStaff();
   }
 
   if (!staff) {
     return loginError(req, "no_matching_staff");
   }
 
-  const identity = staff.email || email;
+  const identity = staff.email || verifiedEmail;
   const token = createSessionToken(identity, {
     staffId: staff.id,
     companyId: staff.company_id ?? 1,
