@@ -124,7 +124,11 @@ export default function LeaderboardClient({
   const router = useRouter();
   const goToStats = useCallback(
     (id: number) => {
-      router.push(`/sales-stats/${id}?view=${view}`);
+      if (view === "tech") {
+        router.push(`/tech-stats/${id}`);
+      } else {
+        router.push(`/sales-stats/${id}?view=sales`);
+      }
     },
     [router, view]
   );
