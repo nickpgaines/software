@@ -1164,6 +1164,13 @@ async function init(): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS idx_oauth_accounts_staff_id ON oauth_accounts(staff_id);
 
+    CREATE TABLE IF NOT EXISTS customization_settings (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      config      TEXT NOT NULL DEFAULT '{}',
+      updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    INSERT OR IGNORE INTO customization_settings (id) VALUES (1);
+
     CREATE TABLE IF NOT EXISTS payroll_settings (
       id                              INTEGER PRIMARY KEY CHECK (id = 1),
       pay_period_frequency            TEXT NOT NULL DEFAULT 'monthly',
@@ -1336,6 +1343,7 @@ async function init(): Promise<void> {
     "ai_settings",
     "meta_integration",
     "payroll_settings",
+    "customization_settings",
   ]) {
     await rebuildDropIdCheck(t);
   }
@@ -1368,6 +1376,7 @@ async function init(): Promise<void> {
     "sprints",
     "payroll_payouts",
     "payroll_settings",
+    "customization_settings",
   ];
 
   for (const table of companyScopedTables) {
