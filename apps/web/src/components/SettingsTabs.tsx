@@ -226,6 +226,8 @@ function ProfilePanel({ username }: { username: string }) {
   const displayName =
     staff?.name?.trim() ||
     (me?.is_admin_account ? "Admin" : me?.identity || username || "—");
+  const firstName = staff?.first_name?.trim() || "—";
+  const lastName = staff?.last_name?.trim() || "—";
   const email = staff?.email || (me?.is_admin_account ? "—" : "—");
   const role = staff
     ? PERMISSION_LABELS[staff.permission_level] || "Staff"
@@ -323,7 +325,8 @@ function ProfilePanel({ username }: { username: string }) {
           </div>
 
           <dl className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <ReadOnlyField label="Name" value={displayName} />
+            <ReadOnlyField label="First name" value={firstName} />
+            <ReadOnlyField label="Last name" value={lastName} />
             <ReadOnlyField label="Email" value={email} />
             <ReadOnlyField label="Role" value={role} />
           </dl>

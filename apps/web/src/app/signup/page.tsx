@@ -10,7 +10,8 @@ import { Label } from "@/components/ui/label";
 export default function SignupPage() {
   const router = useRouter();
   const [companyName, setCompanyName] = useState("");
-  const [name, setName] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [areaCode, setAreaCode] = useState("");
@@ -25,7 +26,14 @@ export default function SignupPage() {
     const res = await fetch("/api/signup", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ companyName, name, email, password, areaCode }),
+      body: JSON.stringify({
+        companyName,
+        firstName,
+        lastName,
+        email,
+        password,
+        areaCode,
+      }),
     });
     setLoading(false);
     if (!res.ok) {
@@ -68,16 +76,29 @@ export default function SignupPage() {
               autoFocus
             />
           </div>
-          <div>
-            <Label className={labelCls}>Your name</Label>
-            <Input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Nick Gaines"
-              autoComplete="name"
-              className={inputCls}
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className={labelCls}>First name</Label>
+              <Input
+                type="text"
+                value={firstName}
+                onChange={(e) => setFirstName(e.target.value)}
+                placeholder="Nick"
+                autoComplete="given-name"
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <Label className={labelCls}>Last name</Label>
+              <Input
+                type="text"
+                value={lastName}
+                onChange={(e) => setLastName(e.target.value)}
+                placeholder="Gaines"
+                autoComplete="family-name"
+                className={inputCls}
+              />
+            </div>
           </div>
           <div>
             <Label className={labelCls}>Email address</Label>
