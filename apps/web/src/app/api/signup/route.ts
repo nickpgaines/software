@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSessionToken, SESSION_COOKIE } from "@/lib/auth";
-import { getDb } from "@/lib/db";
+import { getDb, syncReplica } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
 import {
   getPlatformConfig,
@@ -215,6 +215,14 @@ export async function POST(req: Request) {
 
     return { companyId: newCompanyId, staffId: newStaffId };
   });
+
+  // The transaction committed against the remote primary. In embedded-
+  // replica mode, this instance's local replica still won't see the new
+  // staff/company rows until the next sync tick — so the dashboard SSR
+  // and the sidebar's /api/me fetch immediately after the signup redirect
+  // would render "Good afternoon, there" + the email fallback. Force a
+  // sync now so reads on this instance are immediately consistent.
+  await syncReplica();
 
   // Auto-provision a Twilio subaccount + phone number for this company. Best-
   // effort: a Twilio failure must not block account creation. The user can

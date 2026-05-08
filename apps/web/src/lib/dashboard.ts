@@ -1,4 +1,4 @@
-import { getDb } from "@/lib/db";
+import { getDb, syncReplica } from "@/lib/db";
 import { getSessionContext } from "@/lib/auth";
 import type {
   LiveJob,
@@ -21,13 +21,23 @@ export async function getDashboardIdentity(): Promise<{
     };
   }
   const db = await getDb();
-  const row = (await db
-    .prepare(
-      "SELECT first_name, name FROM staff WHERE id = ? AND company_id = ? LIMIT 1"
-    )
-    .get(ctx.staffId, ctx.companyId)) as
-    | { first_name: string | null; name: string | null }
+  type Row = { first_name: string | null; name: string | null };
+  const sql =
+    "SELECT first_name, name FROM staff WHERE id = ? AND company_id = ? LIMIT 1";
+  let row = (await db.prepare(sql).get(ctx.staffId, ctx.companyId)) as
+    | Row
     | undefined;
+  // The session cookie carries a real staffId, so a missing row almost
+  // always means the embedded replica on this instance hasn't synced the
+  // signup write yet. Force a sync and retry once before falling back to
+  // "there" — that fallback would render "Good afternoon, there" right
+  // after a fresh signup, which is the bug we're fixing here.
+  if (!row) {
+    await syncReplica();
+    row = (await db.prepare(sql).get(ctx.staffId, ctx.companyId)) as
+      | Row
+      | undefined;
+  }
   const rawName = (row?.name ?? "").trim();
   const full = rawName.includes("@") ? "" : rawName;
   const rawFirst = (row?.first_name ?? "").trim();

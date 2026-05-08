@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { createSessionToken, SESSION_COOKIE } from "@/lib/auth";
-import { getDb, type Staff } from "@/lib/db";
+import { getDb, syncReplica, type Staff } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
 
 export async function POST(req: Request) {
@@ -37,9 +37,15 @@ export async function POST(req: Request) {
   const identifier = (username || "").trim().toLowerCase();
   if (identifier) {
     const db = await getDb();
-    const row = (await db
-      .prepare("SELECT * FROM staff WHERE LOWER(email) = ? LIMIT 1")
-      .get(identifier)) as Staff | undefined;
+    const sql = "SELECT * FROM staff WHERE LOWER(email) = ? LIMIT 1";
+    let row = (await db.prepare(sql).get(identifier)) as Staff | undefined;
+    // If we can't find the user, the embedded replica on this instance
+    // may be stale (signup just landed on a different instance). Force a
+    // sync and retry once before declaring the credentials invalid.
+    if (!row) {
+      await syncReplica();
+      row = (await db.prepare(sql).get(identifier)) as Staff | undefined;
+    }
     if (row && row.password_hash && verifyPassword(password, row.password_hash)) {
       return issueSession(row.email || identifier, {
         staffId: row.id,

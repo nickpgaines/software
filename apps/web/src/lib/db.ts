@@ -72,6 +72,26 @@ function getClient(): Client {
   return _client;
 }
 
+// In embedded-replica mode, reads run against a local file that syncs from
+// the remote primary on an interval (default 60s). Right after a write, the
+// local replica on this function instance — and worse, on *other* function
+// instances — may not yet have the new row. Call this after writes that
+// need to be visible on the next read (e.g. signup -> dashboard greeting),
+// or before a read that came up empty unexpectedly. No-op for non-replica
+// clients.
+export async function syncReplica(): Promise<void> {
+  const c = _client;
+  if (!c) return;
+  const sync = (c as { sync?: () => Promise<unknown> }).sync;
+  if (typeof sync !== "function") return;
+  try {
+    await sync.call(c);
+  } catch {
+    // Sync is best-effort. A failure here just means the next read may
+    // still be stale; never break the request over it.
+  }
+}
+
 function rowToObject<T>(row: unknown, columns: string[]): T {
   const obj: Record<string, unknown> = {};
   for (const c of columns) obj[c] = (row as Record<string, unknown>)[c];
