@@ -1361,27 +1361,54 @@ function DocumentPreview({
       </div>
       <div className="rounded-lg bg-white text-zinc-900 p-5 sm:p-6 shadow-sm overflow-hidden">
         <div className="flex items-start justify-between gap-4 pb-4 border-b border-zinc-200">
-          {sections.show_logo ? (
-            <div className="flex items-center gap-2 min-w-0">
-              {company.logo_url ? (
+          <div className="min-w-0 flex-1">
+            {sections.show_logo &&
+              (company.logo_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={company.logo_url}
                   alt={`${company.name} logo`}
-                  className="h-10 w-10 rounded-md object-contain bg-white"
+                  className="h-10 w-10 rounded-md object-contain bg-white mb-2"
                 />
               ) : (
-                <div className="h-10 w-10 rounded-md bg-sky-500" />
-              )}
-              <div className="text-sm font-bold text-zinc-900 truncate">
+                <div className="h-10 w-10 rounded-md bg-sky-500 mb-2" />
+              ))}
+            {(sections.show_logo || sections.show_business_details) && (
+              <div className="text-base font-bold text-zinc-900 truncate">
                 {company.name}
               </div>
-            </div>
-          ) : (
-            <div />
-          )}
+            )}
+            {sections.show_business_details && (
+              <div className="mt-1 space-y-0.5">
+                {businessPhone && (
+                  <div className="text-xs text-zinc-600">{businessPhone}</div>
+                )}
+                {businessEmail && (
+                  <div className="text-xs text-zinc-600 truncate">
+                    {businessEmail}
+                  </div>
+                )}
+                {businessAddress && (
+                  <div className="text-xs text-zinc-600">{businessAddress}</div>
+                )}
+                {businessWebsite && (
+                  <div className="text-xs text-zinc-600 truncate">
+                    {businessWebsite}
+                  </div>
+                )}
+                {!businessAddress &&
+                  !businessEmail &&
+                  !businessPhone &&
+                  !businessWebsite && (
+                    <div className="text-xs text-zinc-400 italic">
+                      Add company contact info in Settings → Company
+                    </div>
+                  )}
+              </div>
+            )}
+          </div>
           {sections.show_details && (
-            <div className="text-right">
+            <div className="text-right shrink-0">
               <div className="text-xs uppercase tracking-wide text-zinc-500">
                 {title}
               </div>
@@ -1398,56 +1425,19 @@ function DocumentPreview({
           )}
         </div>
 
-        {(sections.show_customer_details || sections.show_business_details) && (
-          <div className="grid grid-cols-2 gap-4 py-4 border-b border-zinc-200">
-            {sections.show_customer_details ? (
-              <div>
-                <div className="text-xs uppercase tracking-wide text-zinc-500 mb-1">
-                  Bill to
-                </div>
-                <div className="text-sm font-bold text-zinc-900">
-                  Sample Customer
-                </div>
-                <div className="text-xs text-zinc-600">
-                  123 Main St, Springfield, IL
-                </div>
-                <div className="text-xs text-zinc-600">
-                  customer@example.com
-                </div>
-                <div className="text-xs text-zinc-600">(555) 555-5555</div>
-              </div>
-            ) : (
-              <div />
-            )}
-            {sections.show_business_details ? (
-              <div className="text-right">
-                <div className="text-sm font-bold text-zinc-900">
-                  {company.name}
-                </div>
-                {businessAddress && (
-                  <div className="text-xs text-zinc-600">{businessAddress}</div>
-                )}
-                {businessEmail && (
-                  <div className="text-xs text-zinc-600">{businessEmail}</div>
-                )}
-                {businessPhone && (
-                  <div className="text-xs text-zinc-600">{businessPhone}</div>
-                )}
-                {businessWebsite && (
-                  <div className="text-xs text-zinc-600">{businessWebsite}</div>
-                )}
-                {!businessAddress &&
-                  !businessEmail &&
-                  !businessPhone &&
-                  !businessWebsite && (
-                    <div className="text-xs text-zinc-400 italic">
-                      Add company contact info in Settings → Company
-                    </div>
-                  )}
-              </div>
-            ) : (
-              <div />
-            )}
+        {sections.show_customer_details && (
+          <div className="py-4 border-b border-zinc-200">
+            <div className="text-xs uppercase tracking-wide text-zinc-500 mb-1">
+              Bill to
+            </div>
+            <div className="text-sm font-bold text-zinc-900">
+              Sample Customer
+            </div>
+            <div className="text-xs text-zinc-600">
+              123 Main St, Springfield, IL
+            </div>
+            <div className="text-xs text-zinc-600">customer@example.com</div>
+            <div className="text-xs text-zinc-600">(555) 555-5555</div>
           </div>
         )}
 
