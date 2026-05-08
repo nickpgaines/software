@@ -462,17 +462,17 @@ type Overview = {
 
 function OverviewPanel({ qs }: { qs: string }) {
   const [data, setData] = useState<Overview | null>(null);
+  const [subs, setSubs] = useState<SubscriptionsReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [arrMode, setArrMode] = useState<"net" | "gross">("net");
   const [mixMode, setMixMode] = useState<"collected" | "generated">("collected");
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetch(`/api/reports/overview?${qs}`)
-      .then(async (r) => {
+    Promise.all([
+      fetch(`/api/reports/overview?${qs}`).then(async (r) => {
         const body = await r.json().catch(() => ({}));
         if (!r.ok || !body || !body.company_revenue) {
           throw new Error(
@@ -481,9 +481,14 @@ function OverviewPanel({ qs }: { qs: string }) {
           );
         }
         return body as Overview;
-      })
-      .then((d) => {
-        if (!cancelled) setData(d);
+      }),
+      fetch(`/api/reports/subscriptions?${qs}`).then((r) => r.json()) as Promise<SubscriptionsReport>,
+    ])
+      .then(([d, s]) => {
+        if (!cancelled) {
+          setData(d);
+          setSubs(s);
+        }
       })
       .catch((e: unknown) => {
         if (!cancelled) setError(e instanceof Error ? e.message : String(e));
@@ -508,25 +513,20 @@ function OverviewPanel({ qs }: { qs: string }) {
     );
   if (!data) return null;
 
-  const arrAdded =
-    arrMode === "net"
-      ? data.subscriptions.arr_added_net_cents
-      : data.subscriptions.arr_added_gross_cents;
-
   const collected = data.company_revenue.collected;
   const generated = data.company_revenue.generated;
 
   const mixSegments =
     mixMode === "collected"
       ? [
-          { name: "One-off jobs", value: collected.one_off_cents, color: "#3b82f6" },
+          { name: "One-time jobs", value: collected.one_off_cents, color: "#3b82f6" },
           { name: "Recurring jobs", value: collected.recurring_cents, color: "#10b981" },
           { name: "Subscriptions", value: collected.subscription_cents, color: "#f59e0b" },
           { name: "Tips", value: collected.tips_cents, color: "#a855f7" },
           { name: "Other", value: collected.other_cents, color: "#64748b" },
         ].filter((s) => s.value > 0)
       : [
-          { name: "One-off jobs", value: generated.one_off_cents, color: "#3b82f6" },
+          { name: "One-time jobs", value: generated.one_off_cents, color: "#3b82f6" },
           { name: "Recurring jobs", value: generated.recurring_jobs_cents, color: "#10b981" },
           {
             name: "Subscriptions (booked ARR)",
@@ -539,110 +539,53 @@ function OverviewPanel({ qs }: { qs: string }) {
     mixMode === "collected" ? collected.total_cents : generated.total_cents;
 
   return (
-    <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <BigStatCard
-          label="Total Company Revenue"
-          value={money(collected.total_cents)}
-          sub={`Generated ${money(generated.total_cents)}`}
-        />
-        <BigStatCard label="MRR" value={money(data.subscriptions.mrr_cents)} sub={`ARR ${money(data.subscriptions.arr_cents)}`} />
-        <BigStatCard
-          label={`ARR Added (${arrMode === "net" ? "Net" : "Gross"})`}
-          value={money(arrAdded)}
-          sub={`Churn ${money(data.subscriptions.arr_churned_cents)}`}
-          action={
-            <div className="flex gap-1 text-[10px] font-extrabold">
-              <button
-                onClick={() => setArrMode("net")}
-                className={
-                  "px-2 py-0.5 rounded-full " +
-                  (arrMode === "net"
-                    ? "bg-white text-black"
-                    : "text-zinc-500 hover:text-zinc-300")
-                }
-              >
-                NET
-              </button>
-              <button
-                onClick={() => setArrMode("gross")}
-                className={
-                  "px-2 py-0.5 rounded-full " +
-                  (arrMode === "gross"
-                    ? "bg-white text-black"
-                    : "text-zinc-500 hover:text-zinc-300")
-                }
-              >
-                GROSS
-              </button>
-            </div>
-          }
-        />
-        <BigStatCard
-          label="Net Profit"
-          value={money(data.profit.net_profit_cents)}
-          sub={`Payroll ${money(data.profit.total_payout_cents)}`}
-        />
-      </div>
-
-      <Section title="Income Mix">
-        <div className="bg-card border border-line rounded-2xl px-5 py-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-eyebrow uppercase text-zinc-500">
-              {mixMode === "collected" ? "Cash collected" : "Revenue generated"} —{" "}
-              {money(mixTotal)}
-            </div>
-            <div className="flex gap-1 text-[10px] font-extrabold">
-              <button
-                onClick={() => setMixMode("collected")}
-                className={
-                  "px-2 py-0.5 rounded-full " +
-                  (mixMode === "collected"
-                    ? "bg-white text-black"
-                    : "text-zinc-500 hover:text-zinc-300")
-                }
-              >
-                COLLECTED
-              </button>
-              <button
-                onClick={() => setMixMode("generated")}
-                className={
-                  "px-2 py-0.5 rounded-full " +
-                  (mixMode === "generated"
-                    ? "bg-white text-black"
-                    : "text-zinc-500 hover:text-zinc-300")
-                }
-              >
-                GENERATED
-              </button>
-            </div>
+    <div className="space-y-8">
+      <Section title="Revenue">
+        <div className="grid gap-4 lg:grid-cols-[1fr_2fr] items-stretch">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-1">
+            <StatCard label="Revenue Sold" value={money(data.revenue.total_cents)} />
+            <StatCard label="Revenue Collected" value={money(data.revenue.collected_cents)} />
           </div>
-          {mixSegments.length === 0 ? (
-            <p className="py-10 text-sm text-zinc-500 text-center">
-              No revenue in this window.
-            </p>
-          ) : (
-            <IncomeMixDonut segments={mixSegments} total={mixTotal} />
-          )}
+          <div className="bg-card border border-line rounded-2xl px-5 py-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-eyebrow uppercase text-zinc-500">
+                {mixMode === "collected" ? "Cash collected" : "Revenue generated"} —{" "}
+                {money(mixTotal)}
+              </div>
+              <div className="flex gap-1 text-[10px] font-extrabold">
+                <button
+                  onClick={() => setMixMode("collected")}
+                  className={
+                    "px-2 py-0.5 rounded-full " +
+                    (mixMode === "collected"
+                      ? "bg-white text-black"
+                      : "text-zinc-500 hover:text-zinc-300")
+                  }
+                >
+                  COLLECTED
+                </button>
+                <button
+                  onClick={() => setMixMode("generated")}
+                  className={
+                    "px-2 py-0.5 rounded-full " +
+                    (mixMode === "generated"
+                      ? "bg-white text-black"
+                      : "text-zinc-500 hover:text-zinc-300")
+                  }
+                >
+                  GENERATED
+                </button>
+              </div>
+            </div>
+            {mixSegments.length === 0 ? (
+              <p className="py-10 text-sm text-zinc-500 text-center">
+                No revenue in this window.
+              </p>
+            ) : (
+              <IncomeMixDonut segments={mixSegments} total={mixTotal} />
+            )}
+          </div>
         </div>
-      </Section>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Avg Revenue / Customer" value={money(data.arpc.cents)} />
-        <StatCard label="Paying Customers" value={String(data.arpc.paying_customers)} />
-        <StatCard label="Active Subscriptions" value={String(data.subscriptions.active)} />
-        <StatCard label="New Customers" value={String(data.customers.new)} />
-      </div>
-
-      <Section title="Revenue (jobs)">
-        <Stats
-          items={[
-            { label: "Total Revenue", value: money(data.revenue.total_cents) },
-            { label: "Collected", value: money(data.revenue.collected_cents) },
-            { label: "Unpaid", value: money(data.revenue.unpaid_cents) },
-            { label: "Collection Rate", value: pct(data.revenue.collection_rate) },
-          ]}
-        />
       </Section>
 
       <Section title="Jobs">
@@ -657,48 +600,126 @@ function OverviewPanel({ qs }: { qs: string }) {
         />
       </Section>
 
-      <Section title="Customers">
-        <Stats
-          items={[
-            { label: "Total Customers", value: String(data.customers.total) },
-            { label: "New Customers", value: String(data.customers.new) },
-            { label: "Repeat Customers", value: String(data.customers.repeat) },
-          ]}
+      <Section title="Subscriptions">
+        <SubscriptionsSummary
+          activeCount={data.subscriptions.active}
+          mrrCents={data.subscriptions.mrr_cents}
+          arrCents={data.subscriptions.arr_cents}
+          byTemplate={subs?.breakdowns.by_template ?? []}
+          monthly={subs?.monthly ?? []}
         />
       </Section>
 
-      <div className="grid gap-4 lg:grid-cols-2">
-        <div className="bg-card border border-line rounded-2xl px-5 py-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-sm font-bold text-white tracking-tight">
-              Top Salespeople
+      <Section title="Top performers">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="bg-card border border-line rounded-2xl px-5 py-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm font-bold text-white tracking-tight">
+                Top Salespeople
+              </div>
+              <div className="text-eyebrow uppercase text-zinc-500">Revenue</div>
             </div>
-            <div className="text-eyebrow uppercase text-zinc-500">Revenue</div>
+            {(data.top_sales || []).length === 0 ? (
+              <p className="py-10 text-sm text-zinc-500 text-center">
+                No sales activity in this window.
+              </p>
+            ) : (
+              <RevenueBarChart data={data.top_sales || []} color="#3b82f6" />
+            )}
           </div>
-          {(data.top_sales || []).length === 0 ? (
-            <p className="py-10 text-sm text-zinc-500 text-center">
-              No sales activity in this window.
-            </p>
-          ) : (
-            <RevenueBarChart data={data.top_sales || []} color="#3b82f6" />
-          )}
-        </div>
-        <div className="bg-card border border-line rounded-2xl px-5 py-5">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-sm font-bold text-white tracking-tight">
-              Top Technicians
+          <div className="bg-card border border-line rounded-2xl px-5 py-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm font-bold text-white tracking-tight">
+                Top Technicians
+              </div>
+              <div className="text-eyebrow uppercase text-zinc-500">Revenue</div>
             </div>
-            <div className="text-eyebrow uppercase text-zinc-500">Revenue</div>
+            {(data.top_techs || []).length === 0 ? (
+              <p className="py-10 text-sm text-zinc-500 text-center">
+                No technician activity in this window.
+              </p>
+            ) : (
+              <RevenueBarChart data={data.top_techs || []} color="#10b981" />
+            )}
           </div>
-          {(data.top_techs || []).length === 0 ? (
-            <p className="py-10 text-sm text-zinc-500 text-center">
-              No technician activity in this window.
-            </p>
-          ) : (
-            <RevenueBarChart data={data.top_techs || []} color="#10b981" />
-          )}
         </div>
+      </Section>
+    </div>
+  );
+}
+
+function SubscriptionsSummary({
+  activeCount,
+  mrrCents,
+  arrCents,
+  byTemplate,
+  monthly,
+}: {
+  activeCount: number;
+  mrrCents: number;
+  arrCents: number;
+  byTemplate: SubscriptionsReport["breakdowns"]["by_template"];
+  monthly: SubscriptionsReport["monthly"];
+}) {
+  return (
+    <div className="space-y-4">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <StatCard
+          label="Active Subscriptions"
+          value={String(activeCount)}
+          valueClassName="text-emerald-500"
+        />
+        <StatCard label="Current MRR" value={money(mrrCents)} />
+        <StatCard label="Current ARR" value={money(arrCents)} />
       </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <SubscriptionsByTemplateDonut rows={byTemplate} />
+        <MonthlyMrrChart monthly={monthly} />
+      </div>
+    </div>
+  );
+}
+
+function MonthlyMrrChart({
+  monthly,
+}: {
+  monthly: SubscriptionsReport["monthly"];
+}) {
+  const monthlyMax = Math.max(1, ...monthly.map((m) => m.mrr_cents));
+  return (
+    <div className="bg-card border border-line rounded-2xl p-5 shadow-sm">
+      <div className="text-sm font-extrabold text-white tracking-tight">
+        Monthly Recurring Revenue
+      </div>
+      <div className="text-xs text-zinc-500 mt-0.5">
+        {monthly[0]?.iso} – {monthly[monthly.length - 1]?.iso}
+      </div>
+      {monthly.length === 0 ? (
+        <p className="py-10 text-sm text-zinc-500 text-center">
+          No subscription activity yet.
+        </p>
+      ) : (
+        <div className="mt-4 flex items-end gap-2 h-40">
+          {monthly.map((m) => {
+            const h = Math.max(2, Math.round((m.mrr_cents / monthlyMax) * 100));
+            return (
+              <div
+                key={m.iso}
+                className="flex-1 flex flex-col items-center justify-end gap-1"
+              >
+                <div className="text-[10px] text-zinc-400 tabular-nums">
+                  {m.mrr_cents > 0 ? money(m.mrr_cents) : "—"}
+                </div>
+                <div
+                  className="w-full bg-amber-400 rounded-sm"
+                  style={{ height: `${h}%` }}
+                />
+                <div className="text-[10px] text-zinc-400">{m.label}</div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
@@ -941,9 +962,6 @@ type SubscriptionsReport = {
 function SubscriptionsPanel({ qs: rangeQs }: { qs: string }) {
   const [data, setData] = useState<SubscriptionsReport | null>(null);
   const [loading, setLoading] = useState(true);
-  const [customerId, setCustomerId] = useState<string>("");
-  const [templateId, setTemplateId] = useState<string>("");
-  const [soldById, setSoldById] = useState<string>("");
   const [includeTax, setIncludeTax] = useState(true);
   const [includeCanceled, setIncludeCanceled] = useState(true);
 
@@ -951,9 +969,6 @@ function SubscriptionsPanel({ qs: rangeQs }: { qs: string }) {
     let cancelled = false;
     setLoading(true);
     const params = new URLSearchParams(rangeQs);
-    if (customerId) params.set("customers", customerId);
-    if (templateId) params.set("templates", templateId);
-    if (soldById) params.set("sold_by", soldById);
     if (!includeTax) params.set("include_tax", "0");
     if (!includeCanceled) params.set("include_paid_cancellations", "0");
     const fullQs = params.toString();
@@ -968,7 +983,7 @@ function SubscriptionsPanel({ qs: rangeQs }: { qs: string }) {
     return () => {
       cancelled = true;
     };
-  }, [rangeQs, customerId, templateId, soldById, includeTax, includeCanceled]);
+  }, [rangeQs, includeTax, includeCanceled]);
 
   if (loading && !data)
     return (
@@ -976,198 +991,43 @@ function SubscriptionsPanel({ qs: rangeQs }: { qs: string }) {
     );
   if (!data) return null;
 
-  const monthlyMax = Math.max(1, ...data.monthly.map((m) => m.mrr_cents));
-
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <SelectFilter
-          label="Customers"
-          value={customerId}
-          onChange={setCustomerId}
-          options={data.filters.customers}
+      <div className="flex items-center justify-end flex-wrap gap-6">
+        <Toggle
+          label="Include Taxes"
+          checked={includeTax}
+          onChange={setIncludeTax}
         />
-        <SelectFilter
-          label="Templates"
-          value={templateId}
-          onChange={setTemplateId}
-          options={data.filters.templates.map((t) => ({
-            id: t.id,
-            name: t.active ? t.name : `${t.name} (inactive)`,
-          }))}
-        />
-        <SelectFilter
-          label="Sold By"
-          value={soldById}
-          onChange={setSoldById}
-          options={data.filters.sold_by}
+        <Toggle
+          label="Include Paid Cancellations"
+          checked={includeCanceled}
+          onChange={setIncludeCanceled}
         />
       </div>
 
-      <div className="flex items-center justify-between flex-wrap gap-4">
-        <h2 className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-zinc-500">
-          Statistics
-        </h2>
-        <div className="flex items-center gap-6">
-          <Toggle
-            label="Include Taxes"
-            checked={includeTax}
-            onChange={setIncludeTax}
-          />
-          <Toggle
-            label="Include Paid Cancellations"
-            checked={includeCanceled}
-            onChange={setIncludeCanceled}
-          />
-        </div>
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard label="Total Subscriptions" value={String(data.totals.total)} />
+        <StatCard
+          label="Active Subscriptions"
+          value={String(data.totals.active)}
+          valueClassName="text-emerald-500"
+        />
+        <StatCard
+          label={`Current MRR${includeTax ? " (w/ tax)" : ""}`}
+          value={money(data.revenue.mrr_cents)}
+        />
+        <StatCard
+          label={`Current ARR${includeTax ? " (w/ tax)" : ""}`}
+          value={money(data.revenue.arr_cents)}
+        />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="grid gap-4 grid-cols-2 lg:col-span-2">
-          <StatCard label="Total Subscriptions" value={String(data.totals.total)} />
-          <StatCard
-            label="Active Subscriptions"
-            value={String(data.totals.active)}
-            valueClassName="text-emerald-600"
-          />
-          <StatCard
-            label={`Current MRR${includeTax ? " (w/ tax)" : ""}`}
-            value={money(data.revenue.mrr_cents)}
-          />
-          <StatCard
-            label={`Current ARR${includeTax ? " (w/ tax)" : ""}`}
-            value={money(data.revenue.arr_cents)}
-          />
-        </div>
-
-        <div className="bg-card border border-line rounded-2xl p-5 shadow-sm">
-          <div className="text-sm font-extrabold text-white tracking-tight">
-            Monthly Recurring Revenue
-          </div>
-          <div className="text-xs text-zinc-500 mt-0.5">
-            {data.monthly[0]?.iso} – {data.monthly[data.monthly.length - 1]?.iso}
-          </div>
-          <div className="mt-4 flex items-end gap-2 h-40">
-            {data.monthly.map((m) => {
-              const h = Math.max(2, Math.round((m.mrr_cents / monthlyMax) * 100));
-              return (
-                <div
-                  key={m.iso}
-                  className="flex-1 flex flex-col items-center justify-end gap-1"
-                >
-                  <div className="text-[10px] text-zinc-400 tabular-nums">
-                    {m.mrr_cents > 0 ? money(m.mrr_cents) : "—"}
-                  </div>
-                  <div
-                    className="w-full bg-amber-400 rounded-sm"
-                    style={{ height: `${h}%` }}
-                  />
-                  <div className="text-[10px] text-zinc-400">{m.label}</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <StatCard label="Pending" value={String(data.totals.pending)} compact />
-        <StatCard label="Canceled" value={String(data.totals.canceled)} compact />
-        <StatCard label="Declined" value={String(data.totals.declined)} compact />
-      </div>
-
-      <Section title="Retention">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <BigStatCard
-            label="NRR"
-            value={pct(data.nrr.pct)}
-            sub={`Retained ${money(data.nrr.retained_mrr_cents)} / ${money(data.nrr.mrr_at_start_cents)}`}
-          />
-          <BigStatCard
-            label="Churn $"
-            value={money(data.churn.churned_dollars_cents)}
-            sub={`${data.churn.canceled_in_range} canceled in range`}
-          />
-          <BigStatCard
-            label="Logo Churn"
-            value={pct(data.churn.logo_churn_pct)}
-            sub={`${data.churn.canceled_in_range} of ${data.churn.active_at_start} active at start`}
-          />
-          <BigStatCard
-            label="Forecast MRR (30d)"
-            value={money(data.forecast.mrr_30d_cents)}
-            sub="From currently-active subs"
-          />
-        </div>
-      </Section>
-
-      <Section title="Cohort retention">
-        <CohortRetentionTable rows={data.cohort_retention} />
-      </Section>
-
-      <Section title="ARR added over time">
-        <ArrAddedChart points={data.arr_added} includeTax={includeTax} />
-      </Section>
-
-      <Section title="Subscriptions by template">
+      <div className="grid gap-4 lg:grid-cols-2">
         <SubscriptionsByTemplateDonut rows={data.breakdowns.by_template} />
-      </Section>
-
-      <Section title="By template">
-        <BreakdownTable
-          header="Template"
-          rows={data.breakdowns.by_template.map((t) => ({
-            key: `${t.template_id ?? "none"}-${t.name}`,
-            name: t.name,
-            count: t.count,
-            mrr_cents: t.mrr_cents,
-          }))}
-        />
-      </Section>
-
-      <Section title="By salesperson">
-        <BreakdownTable
-          header="Sold By"
-          rows={data.breakdowns.by_sold_by.map((s) => ({
-            key: String(s.sold_by_id),
-            name: s.name,
-            count: s.count,
-            mrr_cents: s.mrr_cents,
-          }))}
-        />
-      </Section>
+        <MonthlyMrrChart monthly={data.monthly} />
+      </div>
     </div>
-  );
-}
-
-function SelectFilter({
-  label,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  options: { id: number; name: string }[];
-}) {
-  return (
-    <Label className="block font-normal">
-      <span className="text-eyebrow uppercase text-zinc-500">{label}</span>
-      {/* Native <select> kept: Radix Select forbids empty-string item values, which breaks the "All" clear-filter sentinel. Flagged for follow-up. */}
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="mt-1 block w-full rounded-xl border border-line bg-card px-3 py-2 text-sm text-white shadow-sm focus:outline-none focus:ring-2 focus:ring-line-strong"
-      >
-        <option value="">All</option>
-        {options.map((o) => (
-          <option key={o.id} value={o.id}>
-            {o.name}
-          </option>
-        ))}
-      </select>
-    </Label>
   );
 }
 
@@ -1238,49 +1098,6 @@ function StatCard({
   );
 }
 
-function BreakdownTable({
-  header,
-  rows,
-}: {
-  header: string;
-  rows: { key: string; name: string; count: number; mrr_cents: number }[];
-}) {
-  return (
-    <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
-      {rows.length === 0 ? (
-        <p className="p-8 text-sm text-zinc-500 text-center">
-          No subscriptions yet.
-        </p>
-      ) : (
-        <Table>
-          <TableHeader>
-            <TableRow className="border-0 hover:bg-transparent text-eyebrow uppercase text-zinc-500 bg-black">
-              <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">{header}</TableHead>
-              <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Count</TableHead>
-              <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">MRR</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rows.map((r) => (
-              <TableRow key={r.key} className="border-t border-b-0 border-line hover:bg-transparent">
-                <TableCell className="px-5 py-3 font-bold text-white tracking-tight">
-                  {r.name}
-                </TableCell>
-                <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
-                  {r.count}
-                </TableCell>
-                <TableCell className="px-5 py-3 text-right font-extrabold text-white tracking-tight tabular-nums">
-                  {money(r.mrr_cents)}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      )}
-    </div>
-  );
-}
-
 function SubscriptionsByTemplateDonut({
   rows,
 }: {
@@ -1330,112 +1147,6 @@ function SubscriptionsByTemplateDonut({
               );
             })}
           </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function CohortRetentionTable({
-  rows,
-}: {
-  rows: SubscriptionsReport["cohort_retention"];
-}) {
-  function fmt(v: number) {
-    if (v < 0) return "—";
-    return `${(v * 100).toFixed(0)}%`;
-  }
-  function bg(v: number) {
-    if (v < 0) return "transparent";
-    const a = Math.max(0.08, Math.min(0.85, v));
-    return `rgba(16, 185, 129, ${a})`;
-  }
-  return (
-    <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
-      <Table>
-        <TableHeader>
-          <TableRow className="border-0 hover:bg-transparent">
-            <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Cohort</TableHead>
-            <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Started</TableHead>
-            <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">+30d</TableHead>
-            <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">+90d</TableHead>
-            <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">+180d</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {rows.map((r) => (
-            <TableRow key={r.iso} className="border-t border-b-0 border-line hover:bg-transparent">
-              <TableCell className="px-5 py-3 font-bold text-white tracking-tight">{r.label} {r.iso}</TableCell>
-              <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">{r.started}</TableCell>
-              <TableCell className="px-5 py-3 text-right font-extrabold text-white tabular-nums" style={{ background: bg(r.retention_30d) }}>{fmt(r.retention_30d)}</TableCell>
-              <TableCell className="px-5 py-3 text-right font-extrabold text-white tabular-nums" style={{ background: bg(r.retention_90d) }}>{fmt(r.retention_90d)}</TableCell>
-              <TableCell className="px-5 py-3 text-right font-extrabold text-white tabular-nums" style={{ background: bg(r.retention_180d) }}>{fmt(r.retention_180d)}</TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
-}
-
-function ArrAddedChart({
-  points,
-  includeTax,
-}: {
-  points: SubscriptionsReport["arr_added"];
-  includeTax: boolean;
-}) {
-  const max = Math.max(1, ...points.map((p) => p.arr_cents));
-  const total = points.reduce((sum, p) => sum + p.arr_cents, 0);
-  const totalCount = points.reduce((sum, p) => sum + p.count, 0);
-
-  return (
-    <div className="bg-card border border-line rounded-2xl p-5">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <div className="text-sm font-extrabold text-white tracking-tight">
-            New ARR per month{includeTax ? " (w/ tax)" : ""}
-          </div>
-          <div className="text-xs text-zinc-500 mt-0.5 font-bold">
-            {points[0]?.iso} – {points[points.length - 1]?.iso}
-          </div>
-        </div>
-        <div className="text-right">
-          <div className="text-eyebrow uppercase text-zinc-500">
-            Total added ({totalCount} subs)
-          </div>
-          <div className="text-xl font-black text-white tracking-tight tabular-nums mt-1">
-            {money(total)}
-          </div>
-        </div>
-      </div>
-      {points.length === 0 ? (
-        <p className="text-sm text-zinc-500 text-center py-10 font-bold">
-          No subscription activity yet.
-        </p>
-      ) : (
-        <div className="mt-4 flex items-end gap-2 h-48">
-          {points.map((p) => {
-            const h = Math.max(2, Math.round((p.arr_cents / max) * 100));
-            return (
-              <div
-                key={p.iso}
-                className="flex-1 flex flex-col items-center justify-end gap-1"
-                title={`${p.iso}: ${money(p.arr_cents)} from ${p.count} sub${
-                  p.count === 1 ? "" : "s"
-                }`}
-              >
-                <div className="text-[10px] text-zinc-500 tabular-nums font-bold">
-                  {p.arr_cents > 0 ? money(p.arr_cents) : "—"}
-                </div>
-                <div
-                  className="w-full bg-emerald-500 rounded-sm"
-                  style={{ height: `${h}%` }}
-                />
-                <div className="text-[10px] text-zinc-500 font-bold">{p.label}</div>
-              </div>
-            );
-          })}
         </div>
       )}
     </div>
