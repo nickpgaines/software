@@ -9,6 +9,7 @@ import {
   Cell,
   Pie,
   PieChart,
+  ReferenceLine,
   ResponsiveContainer,
   Tooltip as RTooltip,
   XAxis,
@@ -88,9 +89,13 @@ function DonutChart({
 function RevenueBarChart({
   data,
   color,
+  averageDollars,
+  tooltipLabel = "Revenue",
 }: {
   data: { name: string; revenue_cents: number }[];
   color: string;
+  averageDollars?: number;
+  tooltipLabel?: string;
 }) {
   const chartData = data.map((d) => ({
     name: d.name,
@@ -130,11 +135,26 @@ function RevenueBarChart({
               const n = typeof v === "number" ? v : Number(v) || 0;
               return [
                 `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
-                "Revenue",
+                tooltipLabel,
               ];
             }}
           />
           <Bar dataKey="revenue" fill={color} radius={[6, 6, 0, 0]} />
+          {typeof averageDollars === "number" && averageDollars > 0 && (
+            <ReferenceLine
+              y={averageDollars}
+              stroke="#f59e0b"
+              strokeDasharray="4 4"
+              strokeWidth={2}
+              label={{
+                value: `Team avg $${averageDollars.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+                position: "insideTopRight",
+                fill: "#f59e0b",
+                fontSize: 11,
+                fontWeight: 800,
+              }}
+            />
+          )}
         </BarChart>
       </ResponsiveContainer>
     </div>
@@ -1497,6 +1517,7 @@ type EmployeesReport = {
     tech_avg_daily_cents: number;
     tech_avg_per_hour_cents: number;
   };
+  range_days?: number | null;
 };
 
 function EmployeesPanel({ qs }: { qs: string }) {
@@ -1525,8 +1546,124 @@ function EmployeesPanel({ qs }: { qs: string }) {
     );
   if (!data) return null;
 
+  const rangeDays = data.range_days && data.range_days > 0 ? data.range_days : null;
+
+  function buildSeries(
+    rows: { id: number; name: string; lifetime_revenue_cents: number }[],
+    limit = 8,
+  ) {
+    const sorted = rows
+      .filter((r) => r.lifetime_revenue_cents > 0)
+      .sort((a, b) => b.lifetime_revenue_cents - a.lifetime_revenue_cents)
+      .slice(0, limit);
+    const total = sorted.map((r) => ({
+      name: r.name,
+      revenue_cents: r.lifetime_revenue_cents,
+    }));
+    const daily = rangeDays
+      ? sorted.map((r) => ({
+          name: r.name,
+          revenue_cents: Math.round(r.lifetime_revenue_cents / rangeDays),
+        }))
+      : [];
+    const teamTotalAvg =
+      sorted.length > 0
+        ? sorted.reduce((s, r) => s + r.lifetime_revenue_cents, 0) /
+          sorted.length /
+          100
+        : 0;
+    const teamDailyAvg = rangeDays && sorted.length > 0
+      ? sorted.reduce((s, r) => s + r.lifetime_revenue_cents, 0) /
+        sorted.length /
+        rangeDays /
+        100
+      : 0;
+    return { total, daily, teamTotalAvg, teamDailyAvg };
+  }
+
+  const salesSeries = buildSeries(data.sales);
+  const techSeries = buildSeries(data.tech);
+
   return (
     <div className="space-y-6">
+      <Section title="Sales reps · performance">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ChartCard
+            title="Total revenue"
+            sublabel="In selected range"
+            empty={salesSeries.total.length === 0}
+            emptyText="No sales revenue in this window."
+          >
+            <RevenueBarChart
+              data={salesSeries.total}
+              color="#3b82f6"
+              averageDollars={salesSeries.teamTotalAvg}
+              tooltipLabel="Total"
+            />
+          </ChartCard>
+          <ChartCard
+            title="Average revenue / day"
+            sublabel={
+              rangeDays
+                ? `Total ÷ ${rangeDays.toFixed(0)} days in range`
+                : "Pick a date range to see daily avg"
+            }
+            empty={!rangeDays || salesSeries.daily.length === 0}
+            emptyText={
+              rangeDays
+                ? "No sales revenue in this window."
+                : "Daily averages need a date range."
+            }
+          >
+            <RevenueBarChart
+              data={salesSeries.daily}
+              color="#3b82f6"
+              averageDollars={salesSeries.teamDailyAvg}
+              tooltipLabel="Avg / day"
+            />
+          </ChartCard>
+        </div>
+      </Section>
+
+      <Section title="Technicians · performance">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <ChartCard
+            title="Total revenue"
+            sublabel="In selected range"
+            empty={techSeries.total.length === 0}
+            emptyText="No technician revenue in this window."
+          >
+            <RevenueBarChart
+              data={techSeries.total}
+              color="#10b981"
+              averageDollars={techSeries.teamTotalAvg}
+              tooltipLabel="Total"
+            />
+          </ChartCard>
+          <ChartCard
+            title="Average revenue / day"
+            sublabel={
+              rangeDays
+                ? `Total ÷ ${rangeDays.toFixed(0)} days in range`
+                : "Pick a date range to see daily avg"
+            }
+            empty={!rangeDays || techSeries.daily.length === 0}
+            emptyText={
+              rangeDays
+                ? "No technician revenue in this window."
+                : "Daily averages need a date range."
+            }
+          >
+            <RevenueBarChart
+              data={techSeries.daily}
+              color="#10b981"
+              averageDollars={techSeries.teamDailyAvg}
+              tooltipLabel="Avg / day"
+            />
+          </ChartCard>
+        </div>
+      </Section>
+
       <Section title="Sales reps · averages across team">
         <Stats
           items={[
@@ -1574,6 +1711,40 @@ function EmployeesPanel({ qs }: { qs: string }) {
           emptyText="No technicians with attributed revenue yet."
         />
       </Section>
+    </div>
+  );
+}
+
+function ChartCard({
+  title,
+  sublabel,
+  empty,
+  emptyText,
+  children,
+}: {
+  title: string;
+  sublabel?: string;
+  empty?: boolean;
+  emptyText?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="bg-card border border-line rounded-2xl px-5 py-5">
+      <div className="flex items-center justify-between mb-3">
+        <div className="text-sm font-bold text-white tracking-tight">
+          {title}
+        </div>
+        {sublabel && (
+          <div className="text-eyebrow uppercase text-zinc-500">{sublabel}</div>
+        )}
+      </div>
+      {empty ? (
+        <p className="py-10 text-sm text-zinc-500 text-center">
+          {emptyText || "No data."}
+        </p>
+      ) : (
+        children
+      )}
     </div>
   );
 }
