@@ -111,13 +111,20 @@ export async function GET(req: Request) {
     return sum + withTax(monthlyCents(r.price_cents, r.interval), r.tax_rate_bps, includeTax);
   }, 0);
 
-  const months: { label: string; iso: string; mrr_cents: number }[] = [];
-  for (let i = 5; i >= 0; i--) {
+  const months: {
+    label: string;
+    iso: string;
+    mrr_cents: number;
+    is_forecast: boolean;
+  }[] = [];
+  // 3 historical months + current + 2 forecast months
+  for (let i = 3; i >= -2; i--) {
     const ref = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const mStart = startOfMonth(ref);
     const mEnd = endOfMonth(ref);
     const mStartIso = mStart.toISOString();
     const mEndIso = mEnd.toISOString();
+    const isForecast = i < 0;
 
     let mrr = 0;
     for (const r of filtered) {
@@ -138,6 +145,7 @@ export async function GET(req: Request) {
       label: ref.toLocaleString("en-US", { month: "short" }),
       iso: ref.toISOString().slice(0, 7),
       mrr_cents: Math.round(mrr),
+      is_forecast: isForecast,
     });
   }
 

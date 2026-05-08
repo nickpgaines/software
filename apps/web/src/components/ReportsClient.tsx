@@ -465,7 +465,6 @@ function OverviewPanel({ qs }: { qs: string }) {
   const [subs, setSubs] = useState<SubscriptionsReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [mixMode, setMixMode] = useState<"collected" | "generated">("collected");
 
   useEffect(() => {
     let cancelled = false;
@@ -516,75 +515,42 @@ function OverviewPanel({ qs }: { qs: string }) {
   const collected = data.company_revenue.collected;
   const generated = data.company_revenue.generated;
 
-  const mixSegments =
-    mixMode === "collected"
-      ? [
-          { name: "One-time jobs", value: collected.one_off_cents, color: "#3b82f6" },
-          { name: "Recurring jobs", value: collected.recurring_cents, color: "#10b981" },
-          { name: "Subscriptions", value: collected.subscription_cents, color: "#f59e0b" },
-          { name: "Tips", value: collected.tips_cents, color: "#a855f7" },
-          { name: "Other", value: collected.other_cents, color: "#64748b" },
-        ].filter((s) => s.value > 0)
-      : [
-          { name: "One-time jobs", value: generated.one_off_cents, color: "#3b82f6" },
-          { name: "Recurring jobs", value: generated.recurring_jobs_cents, color: "#10b981" },
-          {
-            name: "Subscriptions (booked ARR)",
-            value: generated.subscriptions_booked_arr_cents,
-            color: "#f59e0b",
-          },
-        ].filter((s) => s.value > 0);
+  const collectedSegments = [
+    { name: "One-time jobs", value: collected.one_off_cents, color: "#3b82f6" },
+    { name: "Recurring jobs", value: collected.recurring_cents, color: "#10b981" },
+    { name: "Subscriptions", value: collected.subscription_cents, color: "#f59e0b" },
+    { name: "Tips", value: collected.tips_cents, color: "#a855f7" },
+    { name: "Other", value: collected.other_cents, color: "#64748b" },
+  ].filter((s) => s.value > 0);
 
-  const mixTotal =
-    mixMode === "collected" ? collected.total_cents : generated.total_cents;
+  const generatedSegments = [
+    { name: "One-time jobs", value: generated.one_off_cents, color: "#3b82f6" },
+    { name: "ARR (subscriptions)", value: generated.subscriptions_booked_arr_cents, color: "#f59e0b" },
+  ].filter((s) => s.value > 0);
+
+  const generatedTotal =
+    generatedSegments.reduce((sum, s) => sum + s.value, 0);
 
   return (
     <div className="space-y-8">
       <Section title="Revenue">
-        <div className="grid gap-4 lg:grid-cols-[1fr_2fr] items-stretch">
+        <div className="grid gap-4 lg:grid-cols-3 items-stretch">
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-1">
             <StatCard label="Revenue Sold" value={money(data.revenue.total_cents)} />
             <StatCard label="Revenue Collected" value={money(data.revenue.collected_cents)} />
           </div>
-          <div className="bg-card border border-line rounded-2xl px-5 py-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-eyebrow uppercase text-zinc-500">
-                {mixMode === "collected" ? "Cash collected" : "Revenue generated"} —{" "}
-                {money(mixTotal)}
-              </div>
-              <div className="flex gap-1 text-[10px] font-extrabold">
-                <button
-                  onClick={() => setMixMode("collected")}
-                  className={
-                    "px-2 py-0.5 rounded-full " +
-                    (mixMode === "collected"
-                      ? "bg-white text-black"
-                      : "text-zinc-500 hover:text-zinc-300")
-                  }
-                >
-                  COLLECTED
-                </button>
-                <button
-                  onClick={() => setMixMode("generated")}
-                  className={
-                    "px-2 py-0.5 rounded-full " +
-                    (mixMode === "generated"
-                      ? "bg-white text-black"
-                      : "text-zinc-500 hover:text-zinc-300")
-                  }
-                >
-                  GENERATED
-                </button>
-              </div>
-            </div>
-            {mixSegments.length === 0 ? (
-              <p className="py-10 text-sm text-zinc-500 text-center">
-                No revenue in this window.
-              </p>
-            ) : (
-              <IncomeMixDonut segments={mixSegments} total={mixTotal} />
-            )}
-          </div>
+          <RevenueDonutCard
+            label="Cash collected"
+            total={collected.total_cents}
+            segments={collectedSegments}
+            emptyMessage="No revenue in this window."
+          />
+          <RevenueDonutCard
+            label="Revenue generated"
+            total={generatedTotal}
+            segments={generatedSegments}
+            emptyMessage="No revenue generated in this window."
+          />
         </div>
       </Section>
 
@@ -610,7 +576,7 @@ function OverviewPanel({ qs }: { qs: string }) {
         />
       </Section>
 
-      <Section title="Top performers">
+      <Section title="Employees">
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="bg-card border border-line rounded-2xl px-5 py-5">
             <div className="flex items-center justify-between mb-3">
@@ -669,8 +635,8 @@ function SubscriptionsSummary({
           value={String(activeCount)}
           valueClassName="text-emerald-500"
         />
-        <StatCard label="Current MRR" value={money(mrrCents)} />
-        <StatCard label="Current ARR" value={money(arrCents)} />
+        <StatCard label="Total MRR" value={money(mrrCents)} />
+        <StatCard label="Total ARR" value={money(arrCents)} />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <SubscriptionsByTemplateDonut rows={byTemplate} />
@@ -685,39 +651,92 @@ function MonthlyMrrChart({
 }: {
   monthly: SubscriptionsReport["monthly"];
 }) {
-  const monthlyMax = Math.max(1, ...monthly.map((m) => m.mrr_cents));
+  const chartData = monthly.map((m) => ({
+    name: m.label,
+    iso: m.iso,
+    mrr: m.mrr_cents / 100,
+    is_forecast: m.is_forecast,
+  }));
   return (
     <div className="bg-card border border-line rounded-2xl p-5 shadow-sm">
-      <div className="text-sm font-extrabold text-white tracking-tight">
-        Monthly Recurring Revenue
-      </div>
-      <div className="text-xs text-zinc-500 mt-0.5">
-        {monthly[0]?.iso} – {monthly[monthly.length - 1]?.iso}
+      <div className="flex items-baseline justify-between gap-3">
+        <div>
+          <div className="text-sm font-extrabold text-white tracking-tight">
+            Monthly Recurring Revenue
+          </div>
+          <div className="text-xs text-zinc-500 mt-0.5">
+            {monthly[0]?.iso} – {monthly[monthly.length - 1]?.iso}
+          </div>
+        </div>
+        <div className="flex items-center gap-3 text-[10px] font-extrabold uppercase tracking-[0.18em] text-zinc-500">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-sm bg-amber-400" />
+            Actual
+          </span>
+          <span className="flex items-center gap-1.5">
+            <span className="w-2.5 h-2.5 rounded-sm bg-amber-400/40 border border-amber-400/60" />
+            Forecast
+          </span>
+        </div>
       </div>
       {monthly.length === 0 ? (
         <p className="py-10 text-sm text-zinc-500 text-center">
           No subscription activity yet.
         </p>
       ) : (
-        <div className="mt-4 flex items-end gap-2 h-40">
-          {monthly.map((m) => {
-            const h = Math.max(2, Math.round((m.mrr_cents / monthlyMax) * 100));
-            return (
-              <div
-                key={m.iso}
-                className="flex-1 flex flex-col items-center justify-end gap-1"
-              >
-                <div className="text-[10px] text-zinc-400 tabular-nums">
-                  {m.mrr_cents > 0 ? money(m.mrr_cents) : "—"}
-                </div>
-                <div
-                  className="w-full bg-amber-400 rounded-sm"
-                  style={{ height: `${h}%` }}
-                />
-                <div className="text-[10px] text-zinc-400">{m.label}</div>
-              </div>
-            );
-          })}
+        <div className="mt-4 w-full h-56">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+              <CartesianGrid stroke="#1f1f24" strokeDasharray="3 3" vertical={false} />
+              <XAxis
+                dataKey="name"
+                tick={{ fill: "#a1a1aa", fontSize: 11, fontWeight: 700 }}
+                tickLine={false}
+                axisLine={{ stroke: "#1f1f24" }}
+                interval={0}
+              />
+              <YAxis
+                tick={{ fill: "#a1a1aa", fontSize: 11, fontWeight: 700 }}
+                tickLine={false}
+                axisLine={{ stroke: "#1f1f24" }}
+                tickFormatter={(v: number) =>
+                  v >= 1000 ? `$${(v / 1000).toFixed(1)}k` : `$${v.toFixed(0)}`
+                }
+                width={56}
+              />
+              <RTooltip
+                cursor={{ fill: "rgba(255,255,255,0.04)" }}
+                contentStyle={{
+                  background: "#0f0f12",
+                  border: "1px solid #1f1f24",
+                  borderRadius: 8,
+                  fontSize: 12,
+                  fontWeight: 700,
+                }}
+                formatter={(v, _name, item) => {
+                  const n = typeof v === "number" ? v : Number(v) || 0;
+                  const label =
+                    item && (item.payload as { is_forecast?: boolean })?.is_forecast
+                      ? "Forecast MRR"
+                      : "MRR";
+                  return [
+                    `$${n.toLocaleString(undefined, { maximumFractionDigits: 2 })}`,
+                    label,
+                  ];
+                }}
+              />
+              <Bar dataKey="mrr" radius={[6, 6, 0, 0]}>
+                {chartData.map((d) => (
+                  <Cell
+                    key={d.iso}
+                    fill={d.is_forecast ? "rgba(251, 191, 36, 0.4)" : "#fbbf24"}
+                    stroke={d.is_forecast ? "rgba(251, 191, 36, 0.7)" : undefined}
+                    strokeWidth={d.is_forecast ? 1 : 0}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       )}
     </div>
@@ -755,41 +774,60 @@ function BigStatCard({
   );
 }
 
-function IncomeMixDonut({
-  segments,
+function RevenueDonutCard({
+  label,
   total,
+  segments,
+  emptyMessage,
 }: {
-  segments: { name: string; value: number; color: string }[];
+  label: string;
   total: number;
+  segments: { name: string; value: number; color: string }[];
+  emptyMessage: string;
 }) {
   return (
-    <div className="grid gap-4 lg:grid-cols-[260px_1fr] items-center">
-      <div className="h-[220px]">
-        <DonutChart segments={segments} total={total} />
+    <div className="bg-card border border-line rounded-2xl px-5 py-5">
+      <div className="text-eyebrow uppercase text-zinc-500 mb-3">
+        {label} — {money(total)}
       </div>
-      <div className="space-y-1.5">
-        {segments.map((s) => {
-          const p = total > 0 ? s.value / total : 0;
-          return (
-            <div
-              key={s.name}
-              className="flex items-center justify-between gap-3 text-sm"
-            >
-              <div className="flex items-center gap-2 min-w-0">
-                <span
-                  className="w-3 h-3 rounded-sm shrink-0"
-                  style={{ background: s.color }}
-                />
-                <span className="font-bold text-zinc-300 truncate">{s.name}</span>
-              </div>
-              <div className="flex items-center gap-3 tabular-nums">
-                <span className="text-zinc-500 font-bold">{(p * 100).toFixed(1)}%</span>
-                <span className="text-white font-extrabold tracking-tight">{money(s.value)}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+      {segments.length === 0 ? (
+        <p className="py-10 text-sm text-zinc-500 text-center">{emptyMessage}</p>
+      ) : (
+        <div className="space-y-4">
+          <div className="h-[180px]">
+            <DonutChart segments={segments} total={total} />
+          </div>
+          <div className="space-y-1.5">
+            {segments.map((s) => {
+              const p = total > 0 ? s.value / total : 0;
+              return (
+                <div
+                  key={s.name}
+                  className="flex items-center justify-between gap-3 text-sm"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className="w-3 h-3 rounded-sm shrink-0"
+                      style={{ background: s.color }}
+                    />
+                    <span className="font-bold text-zinc-300 truncate">
+                      {s.name}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-3 tabular-nums">
+                    <span className="text-zinc-500 font-bold">
+                      {(p * 100).toFixed(1)}%
+                    </span>
+                    <span className="text-white font-extrabold tracking-tight">
+                      {money(s.value)}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -936,7 +974,7 @@ type SubscriptionsReport = {
     retention_90d: number;
     retention_180d: number;
   }[];
-  monthly: { label: string; iso: string; mrr_cents: number }[];
+  monthly: { label: string; iso: string; mrr_cents: number; is_forecast: boolean }[];
   arr_added: {
     label: string;
     iso: string;
@@ -1014,11 +1052,11 @@ function SubscriptionsPanel({ qs: rangeQs }: { qs: string }) {
           valueClassName="text-emerald-500"
         />
         <StatCard
-          label={`Current MRR${includeTax ? " (w/ tax)" : ""}`}
+          label={`Total MRR${includeTax ? " (w/ tax)" : ""}`}
           value={money(data.revenue.mrr_cents)}
         />
         <StatCard
-          label={`Current ARR${includeTax ? " (w/ tax)" : ""}`}
+          label={`Total ARR${includeTax ? " (w/ tax)" : ""}`}
           value={money(data.revenue.arr_cents)}
         />
       </div>
