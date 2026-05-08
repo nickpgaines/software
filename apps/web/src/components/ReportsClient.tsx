@@ -1586,7 +1586,7 @@ function EmployeesPanel({ qs }: { qs: string }) {
 
   return (
     <div className="space-y-6">
-      <Section title="Sales reps · performance">
+      <Section title="Sales reps">
         <div className="grid gap-4 lg:grid-cols-2">
           <ChartCard
             title="Total revenue"
@@ -1623,9 +1623,30 @@ function EmployeesPanel({ qs }: { qs: string }) {
             />
           </ChartCard>
         </div>
+        <Stats
+          items={[
+            {
+              label: "Avg Monthly Revenue / Rep",
+              value: money(data.aggregates.sales_avg_monthly_cents),
+            },
+            {
+              label: "Avg Lifetime Value / Rep",
+              value: money(data.aggregates.sales_avg_lifetime_cents),
+            },
+            {
+              label: "Avg Daily Revenue / Rep",
+              value: money(data.aggregates.sales_avg_daily_cents),
+            },
+          ]}
+        />
+        <EmployeeTable
+          rows={data.sales}
+          variant="sales"
+          emptyText="No sales reps with attributed revenue yet."
+        />
       </Section>
 
-      <Section title="Technicians · performance">
+      <Section title="Technicians">
         <div className="grid gap-4 lg:grid-cols-2">
           <ChartCard
             title="Total revenue"
@@ -1662,33 +1683,6 @@ function EmployeesPanel({ qs }: { qs: string }) {
             />
           </ChartCard>
         </div>
-      </Section>
-
-      <Section title="Sales reps · averages across team">
-        <Stats
-          items={[
-            {
-              label: "Avg Monthly Revenue / Rep",
-              value: money(data.aggregates.sales_avg_monthly_cents),
-            },
-            {
-              label: "Avg Lifetime Value / Rep",
-              value: money(data.aggregates.sales_avg_lifetime_cents),
-            },
-            {
-              label: "Avg Daily Revenue / Rep",
-              value: money(data.aggregates.sales_avg_daily_cents),
-            },
-          ]}
-        />
-        <EmployeeTable
-          rows={data.sales}
-          variant="sales"
-          emptyText="No sales reps with attributed revenue yet."
-        />
-      </Section>
-
-      <Section title="Technicians · averages across team">
         <Stats
           items={[
             {
