@@ -141,6 +141,52 @@ export async function GET(req: Request) {
     )
     .get(companyId)) as { active: number };
 
+  // Top salespeople by revenue (sales role) for jobs in range, top 5.
+  const topSales = (await db
+    .prepare(
+      `SELECT s.id AS id,
+              COALESCE(NULLIF(TRIM(COALESCE(s.first_name,'') || ' ' || COALESCE(s.last_name,'')), ''), s.name) AS name,
+              COALESCE(SUM(j.price_cents), 0) AS revenue_cents
+         FROM staff s
+         JOIN job_assignments ja ON ja.staff_id = s.id AND ja.role = 'sales'
+         JOIN jobs j ON j.id = ja.job_id
+        WHERE s.company_id = ?
+          AND j.company_id = ?
+          AND j.status != 'cancelled'
+          AND j.scheduled_at >= ? AND j.scheduled_at < ?
+        GROUP BY s.id
+        ORDER BY revenue_cents DESC
+        LIMIT 5`
+    )
+    .all(companyId, companyId, startIso, endIso)) as {
+    id: number;
+    name: string | null;
+    revenue_cents: number;
+  }[];
+
+  // Top technicians by revenue (tech role) for jobs in range, top 5.
+  const topTechs = (await db
+    .prepare(
+      `SELECT s.id AS id,
+              COALESCE(NULLIF(TRIM(COALESCE(s.first_name,'') || ' ' || COALESCE(s.last_name,'')), ''), s.name) AS name,
+              COALESCE(SUM(j.price_cents), 0) AS revenue_cents
+         FROM staff s
+         JOIN job_assignments ja ON ja.staff_id = s.id AND ja.role = 'tech'
+         JOIN jobs j ON j.id = ja.job_id
+        WHERE s.company_id = ?
+          AND j.company_id = ?
+          AND j.status != 'cancelled'
+          AND j.scheduled_at >= ? AND j.scheduled_at < ?
+        GROUP BY s.id
+        ORDER BY revenue_cents DESC
+        LIMIT 5`
+    )
+    .all(companyId, companyId, startIso, endIso)) as {
+    id: number;
+    name: string | null;
+    revenue_cents: number;
+  }[];
+
   // ARPC: collected revenue / unique paying customers in range.
   const payingRow = (await db
     .prepare(
@@ -203,5 +249,15 @@ export async function GET(req: Request) {
       arr_added_net_cents: arrAdded.net_added_cents,
       arr_churned_cents: arrAdded.churned_cents,
     },
+    top_sales: topSales.map((r) => ({
+      id: r.id,
+      name: (r.name || `Staff #${r.id}`).trim(),
+      revenue_cents: r.revenue_cents || 0,
+    })),
+    top_techs: topTechs.map((r) => ({
+      id: r.id,
+      name: (r.name || `Staff #${r.id}`).trim(),
+      revenue_cents: r.revenue_cents || 0,
+    })),
   });
 }
