@@ -174,19 +174,27 @@ export async function GET(
     .get(id, companyId, start, end)) as { n: number };
   const plans_signed = plansRow.n;
 
-  // Reviews left for this technician in window.
-  const reviewRows = (await db
-    .prepare(
-      `SELECT rating, created_at
-       FROM customer_reviews
-       WHERE technician_id = ?
-         AND company_id = ?
-         AND created_at >= ? AND created_at < ?`
-    )
-    .all(id, companyId, start, end)) as {
-    rating: number;
-    created_at: string;
-  }[];
+  // Reviews left for this technician in window. Guarded because older
+  // deploys may not have run the customer_reviews migration yet — if the
+  // table is missing we just report zero reviews instead of 500-ing the
+  // whole page.
+  let reviewRows: { rating: number; created_at: string }[] = [];
+  try {
+    reviewRows = (await db
+      .prepare(
+        `SELECT rating, created_at
+         FROM customer_reviews
+         WHERE technician_id = ?
+           AND company_id = ?
+           AND created_at >= ? AND created_at < ?`
+      )
+      .all(id, companyId, start, end)) as {
+      rating: number;
+      created_at: string;
+    }[];
+  } catch {
+    reviewRows = [];
+  }
   const reviews_count = reviewRows.length;
   const reviews_total = reviewRows.reduce((s, r) => s + (r.rating || 0), 0);
   const avg_rating =
