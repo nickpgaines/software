@@ -907,33 +907,7 @@ function SalesPanel({ qs }: { qs: string }) {
         </div>
       </Section>
 
-      {/* Row 2 — Funnel KPIs */}
-      <Section title="Sales funnel">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <SalesValueCard
-            label="Pins Added"
-            value={String(f.pins_added.count)}
-            deltaPct={f.pins_added.delta_pct}
-          />
-          <SalesValueCard
-            label="Quote Rate"
-            value={pct(f.quote_rate.rate)}
-            deltaPct={f.quote_rate.delta_pct}
-          />
-          <SalesValueCard
-            label="Close Rate"
-            value={pct(f.close_rate.rate)}
-            deltaPct={f.close_rate.delta_pct}
-          />
-          <SalesValueCard
-            label="Conversion Rate"
-            value={pct(f.conversion_rate.rate)}
-            deltaPct={f.conversion_rate.delta_pct}
-          />
-        </div>
-      </Section>
-
-      {/* Row 3 — Trend charts */}
+      {/* Row 2 — Trend charts */}
       <div className="grid gap-4 lg:grid-cols-2">
         <SalesTrendChart
           title="ARR Sold"
@@ -951,7 +925,7 @@ function SalesPanel({ qs }: { qs: string }) {
         />
       </div>
 
-      {/* Row 4 — Top Reps */}
+      {/* Row 3 — Top Reps */}
       <Section title="Top reps">
         <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
           {data.reps.length === 0 ? (
@@ -992,6 +966,32 @@ function SalesPanel({ qs }: { qs: string }) {
               </TableBody>
             </Table>
           )}
+        </div>
+      </Section>
+
+      {/* Row 4 — Funnel KPIs */}
+      <Section title="Sales funnel">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <SalesValueCard
+            label="Pins Added"
+            value={String(f.pins_added.count)}
+            deltaPct={f.pins_added.delta_pct}
+          />
+          <SalesValueCard
+            label="Quote Rate"
+            value={pct(f.quote_rate.rate)}
+            deltaPct={f.quote_rate.delta_pct}
+          />
+          <SalesValueCard
+            label="Close Rate"
+            value={pct(f.close_rate.rate)}
+            deltaPct={f.close_rate.delta_pct}
+          />
+          <SalesValueCard
+            label="Conversion Rate"
+            value={pct(f.conversion_rate.rate)}
+            deltaPct={f.conversion_rate.delta_pct}
+          />
         </div>
       </Section>
 
