@@ -573,7 +573,7 @@ function JobStatCard({
     <div className="bg-card border border-line rounded-2xl px-5 py-4 flex flex-col min-h-[160px]">
       <div className="text-eyebrow uppercase text-zinc-500">{label}</div>
       <div className="flex-1 flex items-center">
-        <div className="text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
+        <div className="text-[28px] font-bold tracking-tight leading-none tabular-nums text-white">
           {hasCount ? count : money(amountCents)}
         </div>
       </div>
@@ -764,7 +764,7 @@ function BigStatCard({
         </div>
         {action}
       </div>
-      <div className="text-[22px] font-extrabold tracking-tight leading-none tabular-nums text-white">
+      <div className="text-[22px] font-bold tracking-tight leading-none tabular-nums text-white">
         {value}
       </div>
       {sub && (
@@ -1068,7 +1068,7 @@ function StatCard({
         <div
           className={
             (compact ? "text-[20px]" : "text-[28px]") +
-            " font-extrabold tracking-tight leading-none tabular-nums " +
+            " font-bold tracking-tight leading-none tabular-nums " +
             (valueClassName || "text-white")
           }
         >
@@ -1175,7 +1175,7 @@ function Stats({
             <div className="text-eyebrow uppercase text-zinc-500 mb-1.5">
               {it.label}
             </div>
-            <div className="text-[22px] font-extrabold tracking-tight leading-none tabular-nums text-white">
+            <div className="text-[22px] font-bold tracking-tight leading-none tabular-nums text-white">
               {it.value}
             </div>
           </div>

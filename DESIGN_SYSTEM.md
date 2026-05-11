@@ -163,6 +163,8 @@ Every value below is taken from running code. The dashboard does not use
 | **Tooltip date**             | `text-[10px] font-extrabold uppercase tracking-[0.16em]`                              | 10px / weight 800 / tracking 0.16em                       | `widgets.tsx:348`                           |
 | **KPI value — chart hero**   | `text-[52px] font-black tracking-tight leading-none tabular-nums`                     | 52px / weight 900                                         | `widgets.tsx` chart headline                |
 | **KPI value — Compact**      | `text-[26px] font-black tracking-tight leading-none tabular-nums`                     | 26px / weight 900                                         | `widgets.tsx` CompactHeroKpi                |
+| **KPI value — stat card**    | `text-[28px] font-bold tracking-tight leading-none tabular-nums` (compact: `text-[20px]`) | 28px / weight 700 (compact 20px)                          | `ReportsClient.tsx` JobStatCard, StatCard   |
+| **KPI value — stat secondary** | `text-[22px] font-bold tracking-tight leading-none tabular-nums`                    | 22px / weight 700                                         | `ReportsClient.tsx` BigStatCard, `Stats` row|
 | **Range pill label**         | `text-[11.5px] font-extrabold`                                                        | 11.5px / weight 800                                       | `widgets.tsx:446`                           |
 | **`CardHeaderLink`**         | `text-[11.5px] font-extrabold` (color = `PULSE.violetSoft`)                          | 11.5px / weight 800                                       | `CardHeaderLink` in `widgets.tsx`           |
 | **Sidebar nav row**          | `text-[13.5px] font-bold` (idle) / `font-extrabold` (active)                          | 13.5px                                                    | `Sidebar.tsx:226`                           |
@@ -192,14 +194,22 @@ Three tiers, locked. No fourth value.
 
 ### Numeric weight scale
 
-- **`font-black tabular-nums`** for "hero" numbers ≥ 24px (KPI value,
-  chart headline). Big numbers earn black weight; small numbers don't.
-- **`font-bold tabular-nums`** for inline / row-level numbers (prices in
-  table rows, pill counts, pipeline counts).
+- **`font-black tabular-nums`** — reserved for **page-hero** numbers on
+  the dashboard chart hero (52px) and Pulse `CompactHeroKpi` (26px).
+  These are the dominant element of a page, not card-level metrics.
+- **`font-bold tabular-nums`** — every **stat-card KPI value** on the
+  Reports surface (Jobs cards 28px, Subscriptions cards 28px,
+  `BigStatCard` / `Stats` row 22px, compact `StatCard` 20px). Also
+  used for inline / row-level numbers (prices in table rows, pill
+  counts, pipeline counts).
 - `font-extrabold` is reserved for headings and uppercase labels —
   **never used on numbers**.
 - Anything that's a money / count value gets `tabular-nums` to prevent
   digit-width jitter on live updates.
+
+**Rule of thumb:** if the number is the dominant element of the page
+(48px+, single largest number on the screen) use `font-black`. If it's
+one of several stat-card values stacked in a row, use `font-bold`.
 
 ### Weights actually used on the Pulse surfaces
 
