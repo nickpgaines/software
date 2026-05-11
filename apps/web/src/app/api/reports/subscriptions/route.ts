@@ -187,6 +187,7 @@ export async function GET(req: Request) {
     { template_id: number | null; name: string; count: number; mrr_cents: number }
   >();
   for (const r of filtered) {
+    if (r.status !== "active") continue;
     const key = r.template_id == null ? `name:${r.name}` : `id:${r.template_id}`;
     const cur = byTemplate.get(key) || {
       template_id: r.template_id,
@@ -195,13 +196,11 @@ export async function GET(req: Request) {
       mrr_cents: 0,
     };
     cur.count += 1;
-    if (r.status === "active") {
-      cur.mrr_cents += withTax(
-        monthlyCents(r.price_cents, r.interval),
-        r.tax_rate_bps,
-        includeTax
-      );
-    }
+    cur.mrr_cents += withTax(
+      monthlyCents(r.price_cents, r.interval),
+      r.tax_rate_bps,
+      includeTax,
+    );
     byTemplate.set(key, cur);
   }
   const templatesBreakdown = Array.from(byTemplate.values())

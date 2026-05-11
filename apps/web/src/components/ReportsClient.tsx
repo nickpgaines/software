@@ -164,9 +164,11 @@ function RevenueBarChart({
 function CountDonut({
   segments,
   total,
+  centerLabel = "Jobs",
 }: {
   segments: { name: string; value: number; color: string }[];
   total: number;
+  centerLabel?: string;
 }) {
   return (
     <div className="relative w-full h-64">
@@ -205,7 +207,7 @@ function CountDonut({
       </ResponsiveContainer>
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
         <div className="text-[10px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
-          Jobs
+          {centerLabel}
         </div>
         <div className="text-lg font-black text-white tabular-nums tracking-tight">
           {total}
@@ -463,6 +465,7 @@ type Overview = {
 function OverviewPanel({ qs }: { qs: string }) {
   const [data, setData] = useState<Overview | null>(null);
   const [subs, setSubs] = useState<SubscriptionsReport | null>(null);
+  const [jobs, setJobs] = useState<JobsReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -482,11 +485,13 @@ function OverviewPanel({ qs }: { qs: string }) {
         return body as Overview;
       }),
       fetch(`/api/reports/subscriptions?${qs}`).then((r) => r.json()) as Promise<SubscriptionsReport>,
+      fetch(`/api/reports/jobs?${qs}`).then((r) => r.json()) as Promise<JobsReport>,
     ])
-      .then(([d, s]) => {
+      .then(([d, s, j]) => {
         if (!cancelled) {
           setData(d);
           setSubs(s);
+          setJobs(j);
         }
       })
       .catch((e: unknown) => {
@@ -555,19 +560,20 @@ function OverviewPanel({ qs }: { qs: string }) {
       </Section>
 
       <Section title="Jobs">
-        <Stats
-          items={[
-            { label: "Total Jobs", value: String(data.jobs.total) },
-            { label: "Scheduled", value: String(data.jobs.scheduled) },
-            { label: "Completed", value: String(data.jobs.completed) },
-            { label: "Canceled", value: String(data.jobs.cancelled) },
-            { label: "Avg Job Value", value: money(data.jobs.avg_value_cents) },
-          ]}
-        />
+        <div className="grid gap-4 lg:grid-cols-2 items-stretch">
+          <div className="grid gap-4 grid-cols-2">
+            <StatCard label="Total Jobs" value={String(data.jobs.total)} />
+            <StatCard label="Scheduled" value={String(data.jobs.scheduled)} />
+            <StatCard label="Completed" value={String(data.jobs.completed)} />
+            <StatCard label="Canceled" value={String(data.jobs.cancelled)} />
+          </div>
+          <JobsByLeadSourceDonut rows={jobs?.by_source ?? []} />
+        </div>
       </Section>
 
       <Section title="Subscriptions">
         <SubscriptionsSummary
+          totalCount={subs?.totals.total ?? 0}
           activeCount={data.subscriptions.active}
           mrrCents={data.subscriptions.mrr_cents}
           arrCents={data.subscriptions.arr_cents}
@@ -615,12 +621,14 @@ function OverviewPanel({ qs }: { qs: string }) {
 }
 
 function SubscriptionsSummary({
+  totalCount,
   activeCount,
   mrrCents,
   arrCents,
   byTemplate,
   monthly,
 }: {
+  totalCount: number;
   activeCount: number;
   mrrCents: number;
   arrCents: number;
@@ -628,8 +636,9 @@ function SubscriptionsSummary({
   monthly: SubscriptionsReport["monthly"];
 }) {
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-3">
+    <div className="grid gap-4 lg:grid-cols-3 items-stretch">
+      <div className="grid gap-4 grid-cols-2">
+        <StatCard label="Total Subscriptions" value={String(totalCount)} />
         <StatCard
           label="Active Subscriptions"
           value={String(activeCount)}
@@ -638,10 +647,8 @@ function SubscriptionsSummary({
         <StatCard label="Total MRR" value={money(mrrCents)} />
         <StatCard label="Total ARR" value={money(arrCents)} />
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <SubscriptionsByTemplateDonut rows={byTemplate} />
-        <MonthlyMrrChart monthly={monthly} />
-      </div>
+      <SubscriptionsByTemplateDonut rows={byTemplate} />
+      <MonthlyMrrChart monthly={monthly} />
     </div>
   );
 }
@@ -712,7 +719,10 @@ function MonthlyMrrChart({
                   borderRadius: 8,
                   fontSize: 12,
                   fontWeight: 700,
+                  color: "#fafafa",
                 }}
+                labelStyle={{ color: "#a1a1aa" }}
+                itemStyle={{ color: "#fafafa" }}
                 formatter={(v, _name, item) => {
                   const n = typeof v === "number" ? v : Number(v) || 0;
                   const label =
@@ -1044,24 +1054,23 @@ function SubscriptionsPanel({ qs: rangeQs }: { qs: string }) {
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Total Subscriptions" value={String(data.totals.total)} />
-        <StatCard
-          label="Active Subscriptions"
-          value={String(data.totals.active)}
-          valueClassName="text-emerald-500"
-        />
-        <StatCard
-          label={`Total MRR${includeTax ? " (w/ tax)" : ""}`}
-          value={money(data.revenue.mrr_cents)}
-        />
-        <StatCard
-          label={`Total ARR${includeTax ? " (w/ tax)" : ""}`}
-          value={money(data.revenue.arr_cents)}
-        />
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-3 items-stretch">
+        <div className="grid gap-4 grid-cols-2">
+          <StatCard label="Total Subscriptions" value={String(data.totals.total)} />
+          <StatCard
+            label="Active Subscriptions"
+            value={String(data.totals.active)}
+            valueClassName="text-emerald-500"
+          />
+          <StatCard
+            label={`Total MRR${includeTax ? " (w/ tax)" : ""}`}
+            value={money(data.revenue.mrr_cents)}
+          />
+          <StatCard
+            label={`Total ARR${includeTax ? " (w/ tax)" : ""}`}
+            value={money(data.revenue.arr_cents)}
+          />
+        </div>
         <SubscriptionsByTemplateDonut rows={data.breakdowns.by_template} />
         <MonthlyMrrChart monthly={data.monthly} />
       </div>
@@ -1151,13 +1160,16 @@ function SubscriptionsByTemplateDonut({
     }));
   return (
     <div className="bg-card border border-line rounded-2xl px-5 py-5">
+      <div className="text-sm font-extrabold text-white tracking-tight mb-3">
+        Active Subscriptions by Template
+      </div>
       {total === 0 ? (
         <p className="py-10 text-sm text-zinc-500 text-center">
-          No subscriptions yet.
+          No active subscriptions yet.
         </p>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 items-center">
-          <CountDonut segments={segments} total={total} />
+        <div className="space-y-4">
+          <CountDonut segments={segments} total={total} centerLabel="Active" />
           <div className="space-y-2">
             {segments.map((s) => {
               const p = total > 0 ? (s.value / total) * 100 : 0;
@@ -2033,47 +2045,72 @@ function JobsPanel({ qs }: { qs: string }) {
       </Section>
 
       <Section title="Jobs by Lead Source">
-        <div className="bg-card border border-line rounded-2xl px-5 py-5">
-          {sourceTotal === 0 ? (
-            <p className="py-10 text-sm text-zinc-500 text-center">
-              No jobs in this window.
-            </p>
-          ) : (
-            <div className="grid gap-6 md:grid-cols-2 items-center">
-              <CountDonut segments={sourceSegments} total={sourceTotal} />
-              <div className="space-y-2">
-                {sourceSegments.map((s) => {
-                  const p = sourceTotal > 0 ? (s.value / sourceTotal) * 100 : 0;
-                  return (
-                    <div
-                      key={s.name}
-                      className="flex items-center justify-between gap-3 text-sm"
-                    >
-                      <div className="flex items-center gap-2 min-w-0">
-                        <span
-                          className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
-                          style={{ background: s.color }}
-                        />
-                        <span className="font-bold text-white truncate">
-                          {s.name}
-                        </span>
-                      </div>
-                      <div className="flex items-baseline gap-2 shrink-0 tabular-nums">
-                        <span className="text-zinc-300 font-bold">
-                          {s.value}
-                        </span>
-                        <span className="text-eyebrow-tight uppercase text-zinc-500">
-                          {p.toFixed(1)}%
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-        </div>
+        <JobsByLeadSourceDonut rows={sourceList} layout="horizontal" />
       </Section>
+    </div>
+  );
+}
+
+function JobsByLeadSourceDonut({
+  rows,
+  layout = "stacked",
+}: {
+  rows: { name: string; count: number }[];
+  layout?: "horizontal" | "stacked";
+}) {
+  const total = rows.reduce((s, r) => s + r.count, 0);
+  const segments = rows.map((r, i) => ({
+    name: r.name,
+    value: r.count,
+    color: SOURCE_COLORS[i % SOURCE_COLORS.length],
+  }));
+  return (
+    <div className="bg-card border border-line rounded-2xl px-5 py-5">
+      <div className="text-sm font-extrabold text-white tracking-tight mb-3">
+        Jobs by Lead Source
+      </div>
+      {total === 0 ? (
+        <p className="py-10 text-sm text-zinc-500 text-center">
+          No jobs in this window.
+        </p>
+      ) : (
+        <div
+          className={
+            layout === "horizontal"
+              ? "grid gap-6 md:grid-cols-2 items-center"
+              : "space-y-4"
+          }
+        >
+          <CountDonut segments={segments} total={total} />
+          <div className="space-y-2">
+            {segments.map((s) => {
+              const p = total > 0 ? (s.value / total) * 100 : 0;
+              return (
+                <div
+                  key={s.name}
+                  className="flex items-center justify-between gap-3 text-sm"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span
+                      className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
+                      style={{ background: s.color }}
+                    />
+                    <span className="font-bold text-white truncate">
+                      {s.name}
+                    </span>
+                  </div>
+                  <div className="flex items-baseline gap-2 shrink-0 tabular-nums">
+                    <span className="text-zinc-300 font-bold">{s.value}</span>
+                    <span className="text-eyebrow-tight uppercase text-zinc-500">
+                      {p.toFixed(1)}%
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
