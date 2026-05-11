@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
-type Range = "1w" | "1m" | "3m" | "1y";
+type Range = "1w" | "1m" | "3m" | "ytd" | "custom";
 
 type Day = { date: string; cents: number };
 
@@ -20,8 +20,19 @@ const RANGES: { key: Range; label: string }[] = [
   { key: "1w", label: "1W" },
   { key: "1m", label: "1M" },
   { key: "3m", label: "3M" },
-  { key: "1y", label: "1Y" },
+  { key: "ytd", label: "YTD" },
+  { key: "custom", label: "Custom" },
 ];
+
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function thirtyDaysAgoIso() {
+  const d = new Date();
+  d.setDate(d.getDate() - 30);
+  return d.toISOString().slice(0, 10);
+}
 
 function money(cents: number) {
   return `$${(cents / 100).toLocaleString(undefined, {
@@ -40,7 +51,7 @@ function moneyDecimal(cents: number) {
 function formatRangeLabel(start: string, end: string, range: Range) {
   const s = new Date(start);
   const e = new Date(end);
-  if (range === "1y") return `${s.getFullYear()}`;
+  if (range === "ytd") return `${s.getFullYear()} YTD`;
   const fmt = (d: Date) =>
     d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   return `${fmt(s)} – ${fmt(e)}`;
@@ -313,6 +324,8 @@ function Chart({ days }: { days: Day[] }) {
 
 export default function RevenueChart() {
   const [range, setRange] = useState<Range>("1m");
+  const [customStart, setCustomStart] = useState<string>(thirtyDaysAgoIso());
+  const [customEnd, setCustomEnd] = useState<string>(todayIso());
   const [data, setData] = useState<RevenueData | null>(null);
   const [loading, setLoading] = useState(true);
   const [updatedLabel, setUpdatedLabel] = useState<string>("");
@@ -320,7 +333,12 @@ export default function RevenueChart() {
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/revenue?range=${range}`)
+    const params = new URLSearchParams({ range });
+    if (range === "custom") {
+      params.set("start", customStart);
+      params.set("end", customEnd);
+    }
+    fetch(`/api/revenue?${params.toString()}`)
       .then((r) => r.json())
       .then((d: RevenueData) => {
         if (!cancelled) setData(d);
@@ -331,7 +349,7 @@ export default function RevenueChart() {
     return () => {
       cancelled = true;
     };
-  }, [range]);
+  }, [range, customStart, customEnd]);
 
   useEffect(() => {
     setUpdatedLabel(
@@ -355,24 +373,43 @@ export default function RevenueChart() {
             {data ? money(data.total_cents) : "—"}
           </div>
         </div>
-        <div className="flex items-center gap-1 bg-black rounded-full p-1 text-sm">
-          {RANGES.map((r) => (
-            <button
-              key={r.key}
-              onClick={() => setRange(r.key)}
-              className={
-                "px-3 py-1.5 rounded-full transition " +
-                (range === r.key
-                  ? "bg-card text-white shadow-sm"
-                  : "text-zinc-400 hover:text-white")
-              }
-            >
-              {r.label}
-            </button>
-          ))}
-          <div className="px-3 py-1.5 text-zinc-400 text-xs whitespace-nowrap">
-            {data ? formatRangeLabel(data.start, data.end, data.range) : "—"}
+        <div className="flex flex-col items-end gap-2">
+          <div className="flex items-center gap-1 bg-black rounded-full p-1 text-sm">
+            {RANGES.map((r) => (
+              <button
+                key={r.key}
+                onClick={() => setRange(r.key)}
+                className={
+                  "px-3 py-1.5 rounded-full transition " +
+                  (range === r.key
+                    ? "bg-card text-white shadow-sm"
+                    : "text-zinc-400 hover:text-white")
+                }
+              >
+                {r.label}
+              </button>
+            ))}
+            <div className="px-3 py-1.5 text-zinc-400 text-xs whitespace-nowrap">
+              {data ? formatRangeLabel(data.start, data.end, data.range) : "—"}
+            </div>
           </div>
+          {range === "custom" && (
+            <div className="flex items-center gap-2 text-xs">
+              <input
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                className="h-8 w-36 rounded-md border border-line bg-card px-2 text-sm text-white"
+              />
+              <span className="text-zinc-500">to</span>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className="h-8 w-36 rounded-md border border-line bg-card px-2 text-sm text-white"
+              />
+            </div>
+          )}
         </div>
       </div>
 

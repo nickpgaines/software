@@ -4,13 +4,26 @@ import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-type Range = "1w" | "1m" | "3m" | "1y";
+type Range = "1w" | "1m" | "3m" | "ytd" | "custom" | "1y";
 
-function resolveRange(range: Range): { start: Date; end: Date; label: string } {
+function resolveRange(
+  range: Range,
+  customStart: string | null,
+  customEnd: string | null,
+): { start: Date; end: Date; label: string } {
   const now = new Date();
   const endOfDay = new Date(now);
   endOfDay.setHours(23, 59, 59, 999);
 
+  if (range === "custom" && customStart && customEnd) {
+    const start = new Date(customStart);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(customEnd);
+    end.setHours(23, 59, 59, 999);
+    const fmt = (d: Date) =>
+      d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+    return { start, end, label: `${fmt(start)} – ${fmt(end)}` };
+  }
   if (range === "1w") {
     const start = new Date(now);
     start.setDate(start.getDate() - 6);
@@ -22,6 +35,11 @@ function resolveRange(range: Range): { start: Date; end: Date; label: string } {
     start.setMonth(start.getMonth() - 2, 1);
     start.setHours(0, 0, 0, 0);
     return { start, end: endOfDay, label: "Last 3 months" };
+  }
+  if (range === "ytd") {
+    const start = new Date(now.getFullYear(), 0, 1);
+    start.setHours(0, 0, 0, 0);
+    return { start, end: endOfDay, label: `${now.getFullYear()} YTD` };
   }
   if (range === "1y") {
     const start = new Date(now.getFullYear(), 0, 1);
@@ -47,7 +65,9 @@ export async function GET(req: Request) {
   const db = await getDb();
   const url = new URL(req.url);
   const range = (url.searchParams.get("range") || "1m") as Range;
-  const { start, end, label } = resolveRange(range);
+  const customStart = url.searchParams.get("start");
+  const customEnd = url.searchParams.get("end");
+  const { start, end, label } = resolveRange(range, customStart, customEnd);
 
   const rows = (await db
     .prepare(
