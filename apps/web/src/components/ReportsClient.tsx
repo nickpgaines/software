@@ -164,9 +164,11 @@ function RevenueBarChart({
 function CountDonut({
   segments,
   total,
+  centerLabel = "Jobs",
 }: {
   segments: { name: string; value: number; color: string }[];
   total: number;
+  centerLabel?: string;
 }) {
   return (
     <div className="relative w-full h-64">
@@ -205,7 +207,7 @@ function CountDonut({
       </ResponsiveContainer>
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
         <div className="text-[10px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
-          Jobs
+          {centerLabel}
         </div>
         <div className="text-lg font-black text-white tabular-nums tracking-tight">
           {total}
@@ -568,6 +570,7 @@ function OverviewPanel({ qs }: { qs: string }) {
 
       <Section title="Subscriptions">
         <SubscriptionsSummary
+          totalCount={subs?.totals.total ?? 0}
           activeCount={data.subscriptions.active}
           mrrCents={data.subscriptions.mrr_cents}
           arrCents={data.subscriptions.arr_cents}
@@ -615,12 +618,14 @@ function OverviewPanel({ qs }: { qs: string }) {
 }
 
 function SubscriptionsSummary({
+  totalCount,
   activeCount,
   mrrCents,
   arrCents,
   byTemplate,
   monthly,
 }: {
+  totalCount: number;
   activeCount: number;
   mrrCents: number;
   arrCents: number;
@@ -628,8 +633,9 @@ function SubscriptionsSummary({
   monthly: SubscriptionsReport["monthly"];
 }) {
   return (
-    <div className="space-y-4">
-      <div className="grid gap-4 sm:grid-cols-3">
+    <div className="grid gap-4 lg:grid-cols-3 items-stretch">
+      <div className="grid gap-4 grid-cols-2">
+        <StatCard label="Total Subscriptions" value={String(totalCount)} />
         <StatCard
           label="Active Subscriptions"
           value={String(activeCount)}
@@ -638,10 +644,8 @@ function SubscriptionsSummary({
         <StatCard label="Total MRR" value={money(mrrCents)} />
         <StatCard label="Total ARR" value={money(arrCents)} />
       </div>
-      <div className="grid gap-4 lg:grid-cols-2">
-        <SubscriptionsByTemplateDonut rows={byTemplate} />
-        <MonthlyMrrChart monthly={monthly} />
-      </div>
+      <SubscriptionsByTemplateDonut rows={byTemplate} />
+      <MonthlyMrrChart monthly={monthly} />
     </div>
   );
 }
@@ -712,7 +716,10 @@ function MonthlyMrrChart({
                   borderRadius: 8,
                   fontSize: 12,
                   fontWeight: 700,
+                  color: "#fafafa",
                 }}
+                labelStyle={{ color: "#a1a1aa" }}
+                itemStyle={{ color: "#fafafa" }}
                 formatter={(v, _name, item) => {
                   const n = typeof v === "number" ? v : Number(v) || 0;
                   const label =
@@ -1044,24 +1051,23 @@ function SubscriptionsPanel({ qs: rangeQs }: { qs: string }) {
         />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard label="Total Subscriptions" value={String(data.totals.total)} />
-        <StatCard
-          label="Active Subscriptions"
-          value={String(data.totals.active)}
-          valueClassName="text-emerald-500"
-        />
-        <StatCard
-          label={`Total MRR${includeTax ? " (w/ tax)" : ""}`}
-          value={money(data.revenue.mrr_cents)}
-        />
-        <StatCard
-          label={`Total ARR${includeTax ? " (w/ tax)" : ""}`}
-          value={money(data.revenue.arr_cents)}
-        />
-      </div>
-
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 lg:grid-cols-3 items-stretch">
+        <div className="grid gap-4 grid-cols-2">
+          <StatCard label="Total Subscriptions" value={String(data.totals.total)} />
+          <StatCard
+            label="Active Subscriptions"
+            value={String(data.totals.active)}
+            valueClassName="text-emerald-500"
+          />
+          <StatCard
+            label={`Total MRR${includeTax ? " (w/ tax)" : ""}`}
+            value={money(data.revenue.mrr_cents)}
+          />
+          <StatCard
+            label={`Total ARR${includeTax ? " (w/ tax)" : ""}`}
+            value={money(data.revenue.arr_cents)}
+          />
+        </div>
         <SubscriptionsByTemplateDonut rows={data.breakdowns.by_template} />
         <MonthlyMrrChart monthly={data.monthly} />
       </div>
@@ -1151,13 +1157,16 @@ function SubscriptionsByTemplateDonut({
     }));
   return (
     <div className="bg-card border border-line rounded-2xl px-5 py-5">
+      <div className="text-sm font-extrabold text-white tracking-tight mb-3">
+        Active Subscriptions by Template
+      </div>
       {total === 0 ? (
         <p className="py-10 text-sm text-zinc-500 text-center">
-          No subscriptions yet.
+          No active subscriptions yet.
         </p>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2 items-center">
-          <CountDonut segments={segments} total={total} />
+        <div className="space-y-4">
+          <CountDonut segments={segments} total={total} centerLabel="Active" />
           <div className="space-y-2">
             {segments.map((s) => {
               const p = total > 0 ? (s.value / total) * 100 : 0;
