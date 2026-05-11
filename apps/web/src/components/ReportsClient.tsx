@@ -171,7 +171,7 @@ function CountDonut({
   centerLabel?: string;
 }) {
   return (
-    <div className="relative w-full h-64">
+    <div className="relative w-full h-44">
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
@@ -537,7 +537,7 @@ function OverviewPanel({ qs }: { qs: string }) {
     generatedSegments.reduce((sum, s) => sum + s.value, 0);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <Section title="Revenue">
         <div className="grid gap-4 lg:grid-cols-3 items-stretch">
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-1">
@@ -691,7 +691,7 @@ function MonthlyMrrChart({
           No subscription activity yet.
         </p>
       ) : (
-        <div className="mt-4 w-full h-56">
+        <div className="mt-4 w-full h-44">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid stroke="#1f1f24" strokeDasharray="3 3" vertical={false} />
@@ -804,7 +804,7 @@ function RevenueDonutCard({
         <p className="py-10 text-sm text-zinc-500 text-center">{emptyMessage}</p>
       ) : (
         <div className="space-y-4">
-          <div className="h-[180px]">
+          <div className="h-[160px]">
             <DonutChart segments={segments} total={total} />
           </div>
           <div className="space-y-1.5">
@@ -1125,7 +1125,7 @@ function StatCard({
   return (
     <div
       className={
-        "bg-card border border-line rounded-2xl " +
+        "bg-card border border-line rounded-2xl flex flex-col justify-center " +
         (compact ? "px-4 py-3" : "px-5 py-4")
       }
     >
@@ -1134,7 +1134,7 @@ function StatCard({
       </div>
       <div
         className={
-          (compact ? "text-[22px]" : "text-[26px]") +
+          (compact ? "text-[22px]" : "text-[28px]") +
           " font-black tracking-tight leading-none tabular-nums " +
           (valueClassName || "text-white")
         }
