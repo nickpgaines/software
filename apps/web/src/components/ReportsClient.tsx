@@ -519,6 +519,41 @@ function OverviewPanel({ qs }: { qs: string }) {
           monthly={subs?.monthly ?? []}
         />
       </Section>
+
+      <Section title="Employees">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <div className="bg-card border border-line rounded-2xl px-5 py-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm font-bold text-white tracking-tight">
+                Top Salespeople
+              </div>
+              <div className="text-eyebrow uppercase text-zinc-500">Revenue</div>
+            </div>
+            {(data.top_sales || []).length === 0 ? (
+              <p className="py-10 text-sm text-zinc-500 text-center">
+                No sales activity in this window.
+              </p>
+            ) : (
+              <RevenueBarChart data={data.top_sales || []} color="#3b82f6" />
+            )}
+          </div>
+          <div className="bg-card border border-line rounded-2xl px-5 py-5">
+            <div className="flex items-center justify-between mb-3">
+              <div className="text-sm font-bold text-white tracking-tight">
+                Top Technicians
+              </div>
+              <div className="text-eyebrow uppercase text-zinc-500">Revenue</div>
+            </div>
+            {(data.top_techs || []).length === 0 ? (
+              <p className="py-10 text-sm text-zinc-500 text-center">
+                No technician activity in this window.
+              </p>
+            ) : (
+              <RevenueBarChart data={data.top_techs || []} color="#10b981" />
+            )}
+          </div>
+        </div>
+      </Section>
     </div>
   );
 }
@@ -534,24 +569,23 @@ function JobStatCard({
   amountCents: number;
   deltaPct: number | null;
 }) {
+  const hasCount = typeof count === "number";
   return (
-    <div className="bg-card border border-line rounded-2xl px-5 py-4 flex flex-col justify-center">
-      <div className="text-eyebrow uppercase text-zinc-500 mb-1.5">{label}</div>
-      {typeof count === "number" ? (
-        <>
-          <div className="text-[28px] font-black tracking-tight leading-none tabular-nums text-white">
-            {count}
-          </div>
-          <div className="mt-1.5 text-sm font-bold text-zinc-300 tabular-nums">
+    <div className="bg-card border border-line rounded-2xl px-5 py-4 flex flex-col min-h-[160px]">
+      <div className="text-eyebrow uppercase text-zinc-500">{label}</div>
+      <div className="flex-1 flex items-center">
+        <div className="text-[36px] font-black tracking-tight leading-none tabular-nums text-white">
+          {hasCount ? count : money(amountCents)}
+        </div>
+      </div>
+      <div>
+        {hasCount && (
+          <div className="text-sm font-bold text-zinc-300 tabular-nums">
             {money(amountCents)}
           </div>
-        </>
-      ) : (
-        <div className="text-[28px] font-black tracking-tight leading-none tabular-nums text-white">
-          {money(amountCents)}
-        </div>
-      )}
-      <DeltaBadge value={deltaPct} />
+        )}
+        <DeltaBadge value={deltaPct} />
+      </div>
     </div>
   );
 }
@@ -1030,21 +1064,21 @@ function StatCard({
   return (
     <div
       className={
-        "bg-card border border-line rounded-2xl flex flex-col justify-center " +
-        (compact ? "px-4 py-3" : "px-5 py-4")
+        "bg-card border border-line rounded-2xl flex flex-col " +
+        (compact ? "px-4 py-3 min-h-[110px]" : "px-5 py-4 min-h-[160px]")
       }
     >
-      <div className="text-eyebrow uppercase text-zinc-500 mb-1.5">
-        {label}
-      </div>
-      <div
-        className={
-          (compact ? "text-[22px]" : "text-[28px]") +
-          " font-black tracking-tight leading-none tabular-nums " +
-          (valueClassName || "text-white")
-        }
-      >
-        {value}
+      <div className="text-eyebrow uppercase text-zinc-500">{label}</div>
+      <div className="flex-1 flex items-center">
+        <div
+          className={
+            (compact ? "text-[22px]" : "text-[36px]") +
+            " font-black tracking-tight leading-none tabular-nums " +
+            (valueClassName || "text-white")
+          }
+        >
+          {value}
+        </div>
       </div>
     </div>
   );
