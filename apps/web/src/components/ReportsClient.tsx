@@ -573,40 +573,36 @@ function JobStatCard({
     <div className="bg-card border border-line rounded-2xl px-5 py-4 flex flex-col min-h-[160px]">
       <div className="text-eyebrow uppercase text-zinc-500">{label}</div>
       <div className="flex-1 flex items-center">
-        <div className="text-[36px] font-black tracking-tight leading-none tabular-nums text-white">
+        <div className="text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
           {hasCount ? count : money(amountCents)}
         </div>
       </div>
-      <div>
-        {hasCount && (
+      {hasCount && (
+        <div className="flex items-baseline justify-between gap-2">
           <div className="text-sm font-bold text-zinc-300 tabular-nums">
             {money(amountCents)}
           </div>
-        )}
-        <DeltaBadge value={deltaPct} />
-      </div>
+          <DeltaBadge value={deltaPct} />
+        </div>
+      )}
     </div>
   );
 }
 
 function DeltaBadge({ value }: { value: number | null }) {
-  if (value === null || !Number.isFinite(value)) {
-    return (
-      <div className="mt-1.5 text-xs font-bold text-zinc-500 tabular-nums">—</div>
-    );
-  }
+  if (value === null || !Number.isFinite(value)) return null;
   const pct = value * 100;
   const rounded = Math.abs(pct) >= 10 ? Math.round(pct) : Math.round(pct * 10) / 10;
   if (rounded === 0) {
     return (
-      <div className="mt-1.5 text-xs font-bold text-zinc-500 tabular-nums">0%</div>
+      <div className="text-xs font-bold text-zinc-500 tabular-nums">0%</div>
     );
   }
   const positive = rounded > 0;
   return (
     <div
       className={
-        "mt-1.5 text-xs font-bold tabular-nums " +
+        "text-xs font-bold tabular-nums " +
         (positive ? "text-emerald-500" : "text-red-500")
       }
     >
@@ -768,7 +764,7 @@ function BigStatCard({
         </div>
         {action}
       </div>
-      <div className="text-[26px] font-black tracking-tight leading-none tabular-nums text-white">
+      <div className="text-[22px] font-extrabold tracking-tight leading-none tabular-nums text-white">
         {value}
       </div>
       {sub && (
@@ -1071,8 +1067,8 @@ function StatCard({
       <div className="flex-1 flex items-center">
         <div
           className={
-            (compact ? "text-[22px]" : "text-[36px]") +
-            " font-black tracking-tight leading-none tabular-nums " +
+            (compact ? "text-[20px]" : "text-[28px]") +
+            " font-extrabold tracking-tight leading-none tabular-nums " +
             (valueClassName || "text-white")
           }
         >
@@ -1179,7 +1175,7 @@ function Stats({
             <div className="text-eyebrow uppercase text-zinc-500 mb-1.5">
               {it.label}
             </div>
-            <div className="text-[26px] font-black tracking-tight leading-none tabular-nums text-white">
+            <div className="text-[22px] font-extrabold tracking-tight leading-none tabular-nums text-white">
               {it.value}
             </div>
           </div>
