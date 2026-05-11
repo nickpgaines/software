@@ -31,61 +31,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-function DonutChart({
-  segments,
-  total,
-}: {
-  segments: { name: string; value: number; color: string }[];
-  total: number;
-}) {
-  const formatted = `$${(total / 100).toLocaleString(undefined, {
-    maximumFractionDigits: 0,
-  })}`;
-  return (
-    <div className="relative w-full h-full">
-      <ResponsiveContainer width="100%" height="100%">
-        <PieChart>
-          <Pie
-            data={segments}
-            dataKey="value"
-            nameKey="name"
-            innerRadius="60%"
-            outerRadius="90%"
-            paddingAngle={2}
-            stroke="#0f0f12"
-            strokeWidth={2}
-          >
-            {segments.map((s) => (
-              <Cell key={s.name} fill={s.color} />
-            ))}
-          </Pie>
-          <RTooltip
-            contentStyle={{
-              background: "#0f0f12",
-              border: "1px solid #1f1f24",
-              borderRadius: 8,
-              fontSize: 12,
-              fontWeight: 700,
-            }}
-            formatter={(v) => {
-              const n = typeof v === "number" ? v : Number(v) || 0;
-              return `$${(n / 100).toLocaleString(undefined, { maximumFractionDigits: 0 })}`;
-            }}
-          />
-        </PieChart>
-      </ResponsiveContainer>
-      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <div className="text-[10px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
-          Total
-        </div>
-        <div className="text-lg font-black text-white tabular-nums tracking-tight">
-          {formatted}
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function RevenueBarChart({
   data,
   color,
@@ -276,6 +221,18 @@ function pct(v: number) {
   return `${(v * 100).toFixed(1)}%`;
 }
 
+function formatMonthIso(iso?: string): string {
+  if (!iso) return "";
+  const [y, m] = iso.split("-").map(Number);
+  if (!y || !m) return iso;
+  const d = new Date(Date.UTC(y, m - 1, 1));
+  return d.toLocaleString("en-US", {
+    month: "long",
+    year: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
@@ -446,6 +403,12 @@ type Overview = {
     service_plan: JobBucket;
     one_off: JobBucket;
   };
+  jobs_summary: {
+    scheduled: { count: number; revenue_cents: number; delta_pct: number | null };
+    completed: { count: number; revenue_cents: number; delta_pct: number | null };
+    paid: { count: number; revenue_cents: number; delta_pct: number | null };
+    avg_job_value: { cents: number; delta_pct: number | null };
+  };
   customers: { total: number; new: number; repeat: number };
   subscriptions: {
     active: number;
@@ -465,7 +428,6 @@ type Overview = {
 function OverviewPanel({ qs }: { qs: string }) {
   const [data, setData] = useState<Overview | null>(null);
   const [subs, setSubs] = useState<SubscriptionsReport | null>(null);
-  const [jobs, setJobs] = useState<JobsReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -476,7 +438,7 @@ function OverviewPanel({ qs }: { qs: string }) {
     Promise.all([
       fetch(`/api/reports/overview?${qs}`).then(async (r) => {
         const body = await r.json().catch(() => ({}));
-        if (!r.ok || !body || !body.company_revenue) {
+        if (!r.ok || !body || !body.jobs_summary) {
           throw new Error(
             (body && (body.error || body.message)) ||
               `Overview failed (HTTP ${r.status})`,
@@ -485,13 +447,11 @@ function OverviewPanel({ qs }: { qs: string }) {
         return body as Overview;
       }),
       fetch(`/api/reports/subscriptions?${qs}`).then((r) => r.json()) as Promise<SubscriptionsReport>,
-      fetch(`/api/reports/jobs?${qs}`).then((r) => r.json()) as Promise<JobsReport>,
     ])
-      .then(([d, s, j]) => {
+      .then(([d, s]) => {
         if (!cancelled) {
           setData(d);
           setSubs(s);
-          setJobs(j);
         }
       })
       .catch((e: unknown) => {
@@ -517,57 +477,35 @@ function OverviewPanel({ qs }: { qs: string }) {
     );
   if (!data) return null;
 
-  const collected = data.company_revenue.collected;
-  const generated = data.company_revenue.generated;
-
-  const collectedSegments = [
-    { name: "One-time jobs", value: collected.one_off_cents, color: "#3b82f6" },
-    { name: "Recurring jobs", value: collected.recurring_cents, color: "#10b981" },
-    { name: "Subscriptions", value: collected.subscription_cents, color: "#f59e0b" },
-    { name: "Tips", value: collected.tips_cents, color: "#a855f7" },
-    { name: "Other", value: collected.other_cents, color: "#64748b" },
-  ].filter((s) => s.value > 0);
-
-  const generatedSegments = [
-    { name: "One-time jobs", value: generated.one_off_cents, color: "#3b82f6" },
-    { name: "ARR (subscriptions)", value: generated.subscriptions_booked_arr_cents, color: "#f59e0b" },
-  ].filter((s) => s.value > 0);
-
-  const generatedTotal =
-    generatedSegments.reduce((sum, s) => sum + s.value, 0);
+  const js = data.jobs_summary;
 
   return (
     <div className="space-y-6">
-      <Section title="Revenue">
-        <div className="grid gap-4 lg:grid-cols-3 items-stretch">
-          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-1">
-            <StatCard label="Revenue Sold" value={money(data.revenue.total_cents)} />
-            <StatCard label="Revenue Collected" value={money(data.revenue.collected_cents)} />
-          </div>
-          <RevenueDonutCard
-            label="Cash collected"
-            total={collected.total_cents}
-            segments={collectedSegments}
-            emptyMessage="No revenue in this window."
-          />
-          <RevenueDonutCard
-            label="Revenue generated"
-            total={generatedTotal}
-            segments={generatedSegments}
-            emptyMessage="No revenue generated in this window."
-          />
-        </div>
-      </Section>
-
       <Section title="Jobs">
-        <div className="grid gap-4 lg:grid-cols-2 items-stretch">
-          <div className="grid gap-4 grid-cols-2">
-            <StatCard label="Total Jobs" value={String(data.jobs.total)} />
-            <StatCard label="Scheduled" value={String(data.jobs.scheduled)} />
-            <StatCard label="Completed" value={String(data.jobs.completed)} />
-            <StatCard label="Canceled" value={String(data.jobs.cancelled)} />
-          </div>
-          <JobsByLeadSourceDonut rows={jobs?.by_source ?? []} />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <JobStatCard
+            label="Scheduled"
+            count={js.scheduled.count}
+            amountCents={js.scheduled.revenue_cents}
+            deltaPct={js.scheduled.delta_pct}
+          />
+          <JobStatCard
+            label="Completed"
+            count={js.completed.count}
+            amountCents={js.completed.revenue_cents}
+            deltaPct={js.completed.delta_pct}
+          />
+          <JobStatCard
+            label="Paid"
+            count={js.paid.count}
+            amountCents={js.paid.revenue_cents}
+            deltaPct={js.paid.delta_pct}
+          />
+          <JobStatCard
+            label="Avg Job Value"
+            amountCents={js.avg_job_value.cents}
+            deltaPct={js.avg_job_value.delta_pct}
+          />
         </div>
       </Section>
 
@@ -581,41 +519,66 @@ function OverviewPanel({ qs }: { qs: string }) {
           monthly={subs?.monthly ?? []}
         />
       </Section>
+    </div>
+  );
+}
 
-      <Section title="Employees">
-        <div className="grid gap-4 lg:grid-cols-2">
-          <div className="bg-card border border-line rounded-2xl px-5 py-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-sm font-bold text-white tracking-tight">
-                Top Salespeople
-              </div>
-              <div className="text-eyebrow uppercase text-zinc-500">Revenue</div>
-            </div>
-            {(data.top_sales || []).length === 0 ? (
-              <p className="py-10 text-sm text-zinc-500 text-center">
-                No sales activity in this window.
-              </p>
-            ) : (
-              <RevenueBarChart data={data.top_sales || []} color="#3b82f6" />
-            )}
+function JobStatCard({
+  label,
+  count,
+  amountCents,
+  deltaPct,
+}: {
+  label: string;
+  count?: number;
+  amountCents: number;
+  deltaPct: number | null;
+}) {
+  return (
+    <div className="bg-card border border-line rounded-2xl px-5 py-4 flex flex-col justify-center">
+      <div className="text-eyebrow uppercase text-zinc-500 mb-1.5">{label}</div>
+      {typeof count === "number" ? (
+        <>
+          <div className="text-[28px] font-black tracking-tight leading-none tabular-nums text-white">
+            {count}
           </div>
-          <div className="bg-card border border-line rounded-2xl px-5 py-5">
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-sm font-bold text-white tracking-tight">
-                Top Technicians
-              </div>
-              <div className="text-eyebrow uppercase text-zinc-500">Revenue</div>
-            </div>
-            {(data.top_techs || []).length === 0 ? (
-              <p className="py-10 text-sm text-zinc-500 text-center">
-                No technician activity in this window.
-              </p>
-            ) : (
-              <RevenueBarChart data={data.top_techs || []} color="#10b981" />
-            )}
+          <div className="mt-1.5 text-sm font-bold text-zinc-300 tabular-nums">
+            {money(amountCents)}
           </div>
+        </>
+      ) : (
+        <div className="text-[28px] font-black tracking-tight leading-none tabular-nums text-white">
+          {money(amountCents)}
         </div>
-      </Section>
+      )}
+      <DeltaBadge value={deltaPct} />
+    </div>
+  );
+}
+
+function DeltaBadge({ value }: { value: number | null }) {
+  if (value === null || !Number.isFinite(value)) {
+    return (
+      <div className="mt-1.5 text-xs font-bold text-zinc-500 tabular-nums">—</div>
+    );
+  }
+  const pct = value * 100;
+  const rounded = Math.abs(pct) >= 10 ? Math.round(pct) : Math.round(pct * 10) / 10;
+  if (rounded === 0) {
+    return (
+      <div className="mt-1.5 text-xs font-bold text-zinc-500 tabular-nums">0%</div>
+    );
+  }
+  const positive = rounded > 0;
+  return (
+    <div
+      className={
+        "mt-1.5 text-xs font-bold tabular-nums " +
+        (positive ? "text-emerald-500" : "text-red-500")
+      }
+    >
+      {positive ? "+" : ""}
+      {rounded}%
     </div>
   );
 }
@@ -672,7 +635,7 @@ function MonthlyMrrChart({
             Monthly Recurring Revenue
           </div>
           <div className="text-xs text-zinc-500 mt-0.5">
-            {monthly[0]?.iso} – {monthly[monthly.length - 1]?.iso}
+            {formatMonthIso(monthly[0]?.iso)} – {formatMonthIso(monthly[monthly.length - 1]?.iso)}
           </div>
         </div>
         <div className="flex items-center gap-3 text-[10px] font-extrabold uppercase tracking-[0.18em] text-zinc-500">
@@ -778,64 +741,6 @@ function BigStatCard({
       {sub && (
         <div className="mt-1.5 text-xs font-bold text-zinc-500 tabular-nums">
           {sub}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function RevenueDonutCard({
-  label,
-  total,
-  segments,
-  emptyMessage,
-}: {
-  label: string;
-  total: number;
-  segments: { name: string; value: number; color: string }[];
-  emptyMessage: string;
-}) {
-  return (
-    <div className="bg-card border border-line rounded-2xl px-5 py-5">
-      <div className="text-eyebrow uppercase text-zinc-500 mb-3">
-        {label} — {money(total)}
-      </div>
-      {segments.length === 0 ? (
-        <p className="py-10 text-sm text-zinc-500 text-center">{emptyMessage}</p>
-      ) : (
-        <div className="space-y-4">
-          <div className="h-[160px]">
-            <DonutChart segments={segments} total={total} />
-          </div>
-          <div className="space-y-1.5">
-            {segments.map((s) => {
-              const p = total > 0 ? s.value / total : 0;
-              return (
-                <div
-                  key={s.name}
-                  className="flex items-center justify-between gap-3 text-sm"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span
-                      className="w-3 h-3 rounded-sm shrink-0"
-                      style={{ background: s.color }}
-                    />
-                    <span className="font-bold text-zinc-300 truncate">
-                      {s.name}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-3 tabular-nums">
-                    <span className="text-zinc-500 font-bold">
-                      {(p * 100).toFixed(1)}%
-                    </span>
-                    <span className="text-white font-extrabold tracking-tight">
-                      {money(s.value)}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
         </div>
       )}
     </div>

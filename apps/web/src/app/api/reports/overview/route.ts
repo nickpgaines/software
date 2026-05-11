@@ -12,6 +12,74 @@ import { getPayrollSummary } from "@/lib/payroll-calc";
 
 export const dynamic = "force-dynamic";
 
+type JobsSummaryRow = {
+  scheduled_count: number;
+  scheduled_revenue: number;
+  completed_count: number;
+  completed_revenue: number;
+  paid_count: number;
+  paid_revenue: number;
+};
+
+async function getJobsSummary(
+  db: Awaited<ReturnType<typeof getDb>>,
+  companyId: number,
+  startIso: string,
+  endIso: string,
+): Promise<JobsSummaryRow> {
+  const row = (await db
+    .prepare(
+      `SELECT
+         COUNT(*) AS scheduled_count,
+         COALESCE(SUM(price_cents), 0) AS scheduled_revenue,
+         COALESCE(SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END), 0) AS completed_count,
+         COALESCE(SUM(CASE WHEN status = 'completed' THEN price_cents ELSE 0 END), 0) AS completed_revenue,
+         COALESCE(SUM(CASE
+                        WHEN status = 'completed'
+                         AND price_cents > 0
+                         AND COALESCE((SELECT SUM(amount_cents) FROM payments p WHERE p.job_id = jobs.id), 0) >= price_cents
+                        THEN 1 ELSE 0 END), 0) AS paid_count,
+         COALESCE(SUM(CASE
+                        WHEN status = 'completed'
+                         AND price_cents > 0
+                         AND COALESCE((SELECT SUM(amount_cents) FROM payments p WHERE p.job_id = jobs.id), 0) >= price_cents
+                        THEN price_cents ELSE 0 END), 0) AS paid_revenue
+       FROM jobs
+       WHERE company_id = ?
+         AND scheduled_at >= ? AND scheduled_at < ?`,
+    )
+    .get(companyId, startIso, endIso)) as JobsSummaryRow;
+  return row;
+}
+
+function getPriorRange(
+  rangeKey: string,
+  start: Date,
+  end: Date,
+): { start: Date; end: Date } {
+  if (rangeKey === "ytd") {
+    const s = new Date(start);
+    s.setFullYear(s.getFullYear() - 1);
+    const e = new Date(end);
+    e.setFullYear(e.getFullYear() - 1);
+    return { start: s, end: e };
+  }
+  if (rangeKey === "1y") {
+    const s = new Date(start);
+    s.setFullYear(s.getFullYear() - 1);
+    return { start: s, end: new Date(start) };
+  }
+  const span = end.getTime() - start.getTime();
+  const priorEnd = new Date(start);
+  const priorStart = new Date(start.getTime() - span);
+  return { start: priorStart, end: priorEnd };
+}
+
+function deltaPct(current: number, prior: number): number | null {
+  if (prior <= 0) return null;
+  return (current - prior) / prior;
+}
+
 export async function GET(req: Request) {
   const companyId = await requireCompanyId();
   const db = await getDb();
@@ -19,14 +87,48 @@ export async function GET(req: Request) {
   const { range, start, end } = resolveReportRangeFromUrl(url);
   const startIso = start.toISOString();
   const endIso = end.toISOString();
+  const prior = getPriorRange(range, start, end);
+  const priorStartIso = prior.start.toISOString();
+  const priorEndIso = prior.end.toISOString();
 
-  const [collected, generated, mrrCents, arrAdded, payroll] = await Promise.all([
+  const [collected, generated, mrrCents, arrAdded, payroll, jobsSummary, jobsSummaryPrior] = await Promise.all([
     getCollectedRevenue(companyId, startIso, endIso),
     getGeneratedRevenue(companyId, startIso, endIso),
     getMRRSnapshot(companyId),
     getARRAdded(companyId, startIso, endIso),
     getPayrollSummary(companyId, startIso, endIso),
+    getJobsSummary(db, companyId, startIso, endIso),
+    getJobsSummary(db, companyId, priorStartIso, priorEndIso),
   ]);
+
+  const avgValueCents = jobsSummary.scheduled_count > 0
+    ? Math.round(jobsSummary.scheduled_revenue / jobsSummary.scheduled_count)
+    : 0;
+  const avgValueCentsPrior = jobsSummaryPrior.scheduled_count > 0
+    ? Math.round(jobsSummaryPrior.scheduled_revenue / jobsSummaryPrior.scheduled_count)
+    : 0;
+
+  const jobs_summary = {
+    scheduled: {
+      count: jobsSummary.scheduled_count,
+      revenue_cents: jobsSummary.scheduled_revenue,
+      delta_pct: deltaPct(jobsSummary.scheduled_revenue, jobsSummaryPrior.scheduled_revenue),
+    },
+    completed: {
+      count: jobsSummary.completed_count,
+      revenue_cents: jobsSummary.completed_revenue,
+      delta_pct: deltaPct(jobsSummary.completed_revenue, jobsSummaryPrior.completed_revenue),
+    },
+    paid: {
+      count: jobsSummary.paid_count,
+      revenue_cents: jobsSummary.paid_revenue,
+      delta_pct: deltaPct(jobsSummary.paid_revenue, jobsSummaryPrior.paid_revenue),
+    },
+    avg_job_value: {
+      cents: avgValueCents,
+      delta_pct: deltaPct(avgValueCents, avgValueCentsPrior),
+    },
+  };
 
   // Legacy "revenue" block — kept for backwards compatibility with the
   // existing Overview UI. Sourced from jobs.scheduled_at + status.
@@ -233,6 +335,7 @@ export async function GET(req: Request) {
       service_plan: servicePlanJobs,
       one_off: oneOffJobs,
     },
+    jobs_summary,
     customers: {
       total: totalCustomers,
       new: newCustomers,
