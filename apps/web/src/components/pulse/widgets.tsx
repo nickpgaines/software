@@ -334,12 +334,14 @@ export function HeroChart({
 // toggle (7D / 1M / 3M) actually works and the headline + path update
 // when the range changes. The HeroChart inside handles hover tooltips.
 
-type ChartRange = "1w" | "1m" | "3m";
+type ChartRange = "1w" | "1m" | "3m" | "ytd" | "custom";
 
 const CHART_RANGES: { key: ChartRange; label: string; title: string }[] = [
-  { key: "1w", label: "7D", title: "Last 7 days" },
+  { key: "1w", label: "1W", title: "Last 7 days" },
   { key: "1m", label: "1M", title: "This month" },
   { key: "3m", label: "3M", title: "Last 3 months" },
+  { key: "ytd", label: "YTD", title: "Year to date" },
+  { key: "custom", label: "Custom", title: "Custom range" },
 ];
 
 type ApiRevenue = {
@@ -352,6 +354,16 @@ type ApiRevenue = {
   avg_cents: number;
 };
 
+function todayIso() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function thirtyDaysAgoIso() {
+  const d = new Date();
+  d.setDate(d.getDate() - 30);
+  return d.toISOString().slice(0, 10);
+}
+
 export function PulseChartHero({
   initialRange = "1m",
   height = 300,
@@ -360,13 +372,20 @@ export function PulseChartHero({
   height?: number;
 } = {}) {
   const [range, setRange] = useState<ChartRange>(initialRange);
+  const [customStart, setCustomStart] = useState<string>(thirtyDaysAgoIso());
+  const [customEnd, setCustomEnd] = useState<string>(todayIso());
   const [data, setData] = useState<ApiRevenue | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
-    fetch(`/api/revenue?range=${range}`)
+    const params = new URLSearchParams({ range });
+    if (range === "custom") {
+      params.set("start", customStart);
+      params.set("end", customEnd);
+    }
+    fetch(`/api/revenue?${params.toString()}`)
       .then((r) => r.json())
       .then((d: ApiRevenue) => {
         if (!cancelled) setData(d);
@@ -377,7 +396,7 @@ export function PulseChartHero({
     return () => {
       cancelled = true;
     };
-  }, [range]);
+  }, [range, customStart, customEnd]);
 
   const titleLabel =
     CHART_RANGES.find((r) => r.key === range)?.title ?? data?.label ?? "Revenue";
@@ -402,26 +421,55 @@ export function PulseChartHero({
             </span>
           </div>
         </div>
-        <div
-          className="flex items-center gap-1 p-1 rounded-full"
-          style={{ background: PULSE.bgAlt }}
-        >
-          {CHART_RANGES.map((r) => {
-            const active = r.key === range;
-            return (
-              <button
-                key={r.key}
-                onClick={() => setRange(r.key)}
-                className="px-3.5 py-1 rounded-full text-[11.5px] font-extrabold transition-colors"
+        <div className="flex flex-col items-end gap-2">
+          <div
+            className="flex items-center gap-1 p-1 rounded-full"
+            style={{ background: PULSE.bgAlt }}
+          >
+            {CHART_RANGES.map((r) => {
+              const active = r.key === range;
+              return (
+                <button
+                  key={r.key}
+                  onClick={() => setRange(r.key)}
+                  className="px-3.5 py-1 rounded-full text-[11.5px] font-extrabold transition-colors"
+                  style={{
+                    background: active ? PULSE.text : "transparent",
+                    color: active ? PULSE.bg : PULSE.textMuted,
+                  }}
+                >
+                  {r.label}
+                </button>
+              );
+            })}
+          </div>
+          {range === "custom" && (
+            <div className="flex items-center gap-2 text-xs">
+              <input
+                type="date"
+                value={customStart}
+                onChange={(e) => setCustomStart(e.target.value)}
+                className="h-8 w-36 rounded-md px-2 text-sm"
                 style={{
-                  background: active ? PULSE.text : "transparent",
-                  color: active ? PULSE.bg : PULSE.textMuted,
+                  background: PULSE.bgAlt,
+                  border: `1px solid ${PULSE.cardBorder}`,
+                  color: PULSE.text,
                 }}
-              >
-                {r.label}
-              </button>
-            );
-          })}
+              />
+              <span style={{ color: PULSE.textMuted }}>to</span>
+              <input
+                type="date"
+                value={customEnd}
+                onChange={(e) => setCustomEnd(e.target.value)}
+                className="h-8 w-36 rounded-md px-2 text-sm"
+                style={{
+                  background: PULSE.bgAlt,
+                  border: `1px solid ${PULSE.cardBorder}`,
+                  color: PULSE.text,
+                }}
+              />
+            </div>
+          )}
         </div>
       </div>
       {loading && !data ? (

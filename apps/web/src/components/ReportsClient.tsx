@@ -173,7 +173,7 @@ const SOURCE_COLORS = [
 ];
 
 type Tab = "overview" | "sales" | "jobs" | "subscriptions" | "map" | "employees" | "payroll";
-type Range = "7d" | "30d" | "90d" | "ytd" | "1y" | "custom";
+type Range = "1w" | "1m" | "3m" | "ytd" | "custom";
 
 export type RangeQuery = {
   range: Range;
@@ -192,11 +192,10 @@ const TABS: { key: Tab; label: string }[] = [
 ];
 
 const RANGES: { key: Range; label: string }[] = [
-  { key: "7d", label: "7D" },
-  { key: "30d", label: "30D" },
-  { key: "90d", label: "90D" },
+  { key: "1w", label: "1W" },
+  { key: "1m", label: "1M" },
+  { key: "3m", label: "3M" },
   { key: "ytd", label: "YTD" },
-  { key: "1y", label: "1Y" },
   { key: "custom", label: "Custom" },
 ];
 
@@ -245,7 +244,7 @@ function thirtyDaysAgoIso() {
 
 export default function ReportsClient() {
   const [tab, setTab] = useState<Tab>("overview");
-  const [range, setRange] = useState<Range>("30d");
+  const [range, setRange] = useState<Range>("1m");
   const [customStart, setCustomStart] = useState<string>(thirtyDaysAgoIso());
   const [customEnd, setCustomEnd] = useState<string>(todayIso());
 
