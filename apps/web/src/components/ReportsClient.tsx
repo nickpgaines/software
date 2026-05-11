@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Settings } from "lucide-react";
+import { HeroChart } from "@/components/pulse/widgets";
 import {
   Bar,
   BarChart,
@@ -172,7 +174,7 @@ const SOURCE_COLORS = [
   "#64748b",
 ];
 
-type Tab = "overview" | "sales" | "jobs" | "subscriptions" | "map" | "employees" | "payroll";
+type Tab = "overview" | "sales" | "jobs" | "subscriptions" | "employees" | "payroll";
 type Range = "1w" | "1m" | "3m" | "ytd" | "custom";
 
 export type RangeQuery = {
@@ -186,7 +188,6 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "sales", label: "Sales" },
   { key: "jobs", label: "Jobs" },
   { key: "subscriptions", label: "Subscriptions" },
-  { key: "map", label: "Map" },
   { key: "employees", label: "Employees" },
   { key: "payroll", label: "Payroll" },
 ];
@@ -291,7 +292,6 @@ export default function ReportsClient() {
       {tab === "sales" && <SalesPanel qs={qs} />}
       {tab === "jobs" && <JobsPanel qs={qs} />}
       {tab === "subscriptions" && <SubscriptionsPanel qs={qs} />}
-      {tab === "map" && <MapPanel qs={qs} />}
       {tab === "employees" && <EmployeesPanel qs={qs} />}
       {tab === "payroll" && <PayrollPanel qs={qs} range={range} customStart={customStart} customEnd={customEnd} />}
     </div>
@@ -776,34 +776,85 @@ function BigStatCard({
   );
 }
 
-type Sales = {
-  doors: {
-    total: number;
-    sales: number;
-    conversion_rate: number;
-    revenue_cents: number;
-    revenue_per_door_cents: number;
+type SalesSeriesPoint = { date: string; cents: number };
+
+type SalesPinStatusRow = {
+  id: number | null;
+  name: string;
+  total: number;
+  sale: number;
+  not_home: number;
+  not_interested: number;
+  come_back: number;
+  quote_sent: number;
+  do_not_return: number;
+};
+
+type SalesReport = {
+  range: Range;
+  start: string;
+  end: string;
+  revenue_sold: {
+    total: { cents: number; delta_pct: number | null };
+    arr_sold: { cents: number; delta_pct: number | null };
+    one_time: { cents: number; delta_pct: number | null };
+    avg_deal: { cents: number; delta_pct: number | null };
+  };
+  funnel: {
+    pins_added: { count: number; delta_pct: number | null };
+    quote_rate: { rate: number; delta_pct: number | null };
+    close_rate: { rate: number; delta_pct: number | null };
+    conversion_rate: { rate: number; delta_pct: number | null };
+  };
+  trends: {
+    arr_sold_series: SalesSeriesPoint[];
+    one_time_series: SalesSeriesPoint[];
+    arr_total_cents: number;
+    arr_avg_cents: number;
+    one_time_total_cents: number;
+    one_time_avg_cents: number;
   };
   reps: {
     id: number;
     name: string;
-    doors_knocked: number;
+    pins: number;
     sales: number;
     conversion_rate: number;
-    revenue_cents: number;
+    arr_sold_cents: number;
+    one_time_cents: number;
+    total_revenue_cents: number;
   }[];
+  pin_status: {
+    team_totals: SalesPinStatusRow;
+    by_rep: SalesPinStatusRow[];
+  };
+  objections: {
+    pins_with_objections: number;
+    breakdown: { name: string; count: number; pct: number }[];
+  };
 };
 
+const PIN_STATUS_COLS: { key: keyof Omit<SalesPinStatusRow, "id" | "name" | "total">; label: string; color: string }[] = [
+  { key: "sale", label: "Sale", color: "#22c55e" },
+  { key: "not_home", label: "Not Home", color: "#facc15" },
+  { key: "not_interested", label: "Not Interested", color: "#ef4444" },
+  { key: "come_back", label: "Come Back", color: "#3b82f6" },
+  { key: "quote_sent", label: "Quote Sent", color: "#f97316" },
+  { key: "do_not_return", label: "Do Not Return", color: "#64748b" },
+];
+
 function SalesPanel({ qs }: { qs: string }) {
-  const [data, setData] = useState<Sales | null>(null);
+  const router = useRouter();
+  const [data, setData] = useState<SalesReport | null>(null);
   const [loading, setLoading] = useState(true);
+  const [pinFilter, setPinFilter] = useState<string>("team");
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     fetch(`/api/reports/sales?${qs}`)
       .then((r) => r.json())
-      .then((d: Sales) => {
+      .then((d: SalesReport) => {
         if (!cancelled) setData(d);
       })
       .finally(() => {
@@ -820,20 +871,87 @@ function SalesPanel({ qs }: { qs: string }) {
     );
   if (!data) return null;
 
+  const rs = data.revenue_sold;
+  const f = data.funnel;
+
+  const pinRows: SalesPinStatusRow[] =
+    pinFilter === "team"
+      ? [data.pin_status.team_totals, ...data.pin_status.by_rep]
+      : data.pin_status.by_rep.filter((r) => String(r.id ?? "") === pinFilter);
+
   return (
     <div className="space-y-6">
-      <Section title="Door knocking">
-        <Stats
-          items={[
-            { label: "Total Doors Knocked", value: String(data.doors.total) },
-            { label: "Sales Made", value: String(data.doors.sales) },
-            { label: "Conversion Rate", value: pct(data.doors.conversion_rate) },
-            { label: "Revenue / Door", value: money(data.doors.revenue_per_door_cents) },
-            { label: "Total Sales Revenue", value: money(data.doors.revenue_cents) },
-          ]}
-        />
+      {/* Row 1 — Revenue Sold */}
+      <Section title="Revenue sold">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <SalesValueCard
+            label="Total Revenue Sold"
+            value={money(rs.total.cents)}
+            deltaPct={rs.total.delta_pct}
+          />
+          <SalesValueCard
+            label="ARR Sold"
+            value={money(rs.arr_sold.cents)}
+            deltaPct={rs.arr_sold.delta_pct}
+          />
+          <SalesValueCard
+            label="One-Time Revenue Sold"
+            value={money(rs.one_time.cents)}
+            deltaPct={rs.one_time.delta_pct}
+          />
+          <SalesValueCard
+            label="Avg Deal Size"
+            value={money(rs.avg_deal.cents)}
+            deltaPct={rs.avg_deal.delta_pct}
+          />
+        </div>
       </Section>
 
+      {/* Row 2 — Funnel KPIs */}
+      <Section title="Sales funnel">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <SalesValueCard
+            label="Pins Added"
+            value={String(f.pins_added.count)}
+            deltaPct={f.pins_added.delta_pct}
+          />
+          <SalesValueCard
+            label="Quote Rate"
+            value={pct(f.quote_rate.rate)}
+            deltaPct={f.quote_rate.delta_pct}
+          />
+          <SalesValueCard
+            label="Close Rate"
+            value={pct(f.close_rate.rate)}
+            deltaPct={f.close_rate.delta_pct}
+          />
+          <SalesValueCard
+            label="Conversion Rate"
+            value={pct(f.conversion_rate.rate)}
+            deltaPct={f.conversion_rate.delta_pct}
+          />
+        </div>
+      </Section>
+
+      {/* Row 3 — Trend charts */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <SalesTrendChart
+          title="ARR Sold"
+          headline={moneyShort(data.trends.arr_total_cents)}
+          series={data.trends.arr_sold_series}
+          totalCents={data.trends.arr_total_cents}
+          avgCents={data.trends.arr_avg_cents}
+        />
+        <SalesTrendChart
+          title="One-Time Revenue Sold"
+          headline={moneyShort(data.trends.one_time_total_cents)}
+          series={data.trends.one_time_series}
+          totalCents={data.trends.one_time_total_cents}
+          avgCents={data.trends.one_time_avg_cents}
+        />
+      </div>
+
+      {/* Row 4 — Top Reps */}
       <Section title="Top reps">
         <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
           {data.reps.length === 0 ? (
@@ -845,30 +963,30 @@ function SalesPanel({ qs }: { qs: string }) {
               <TableHeader>
                 <TableRow className="border-0 hover:bg-transparent text-eyebrow uppercase text-zinc-500">
                   <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Rep</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Doors</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Pins</TableHead>
                   <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Sales</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Conv.</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Revenue</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Conv %</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">ARR Sold</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">One-Time $</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Total Revenue</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {data.reps.map((r) => (
-                  <TableRow key={r.id} className="border-t border-b-0 border-line hover:bg-transparent">
+                  <TableRow
+                    key={r.id}
+                    onClick={() => router.push(`/sales-stats/${r.id}`)}
+                    className="border-t border-b-0 border-line hover:bg-line/40 cursor-pointer"
+                  >
                     <TableCell className="px-5 py-3 font-bold text-white tracking-tight">
                       {r.name}
                     </TableCell>
-                    <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
-                      {r.doors_knocked}
-                    </TableCell>
-                    <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
-                      {r.sales}
-                    </TableCell>
-                    <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
-                      {pct(r.conversion_rate)}
-                    </TableCell>
-                    <TableCell className="px-5 py-3 text-right font-extrabold text-white tracking-tight tabular-nums">
-                      {money(r.revenue_cents)}
-                    </TableCell>
+                    <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">{r.pins}</TableCell>
+                    <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">{r.sales}</TableCell>
+                    <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">{pct(r.conversion_rate)}</TableCell>
+                    <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">{money(r.arr_sold_cents)}</TableCell>
+                    <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">{money(r.one_time_cents)}</TableCell>
+                    <TableCell className="px-5 py-3 text-right font-extrabold text-white tracking-tight tabular-nums">{money(r.total_revenue_cents)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -876,8 +994,194 @@ function SalesPanel({ qs }: { qs: string }) {
           )}
         </div>
       </Section>
+
+      {/* Row 5 — Pin Status Breakdown */}
+      <Section title="Pin status breakdown">
+        <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
+          <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-line">
+            <div className="text-eyebrow-tight uppercase text-zinc-500">
+              Status counts {pinFilter === "team" ? "(team + per rep)" : "(filtered to rep)"}
+            </div>
+            {/* Native <select> kept: Radix Select forbids empty-string item values. */}
+            <select
+              value={pinFilter}
+              onChange={(e) => setPinFilter(e.target.value)}
+              className="h-8 rounded-md border border-line bg-card px-2 text-sm text-white"
+            >
+              <option value="team">Team</option>
+              {data.pin_status.by_rep
+                .filter((r) => r.id != null)
+                .map((r) => (
+                  <option key={String(r.id)} value={String(r.id)}>
+                    {r.name}
+                  </option>
+                ))}
+            </select>
+          </div>
+          {pinRows.length === 0 ? (
+            <p className="p-8 text-sm text-zinc-500 text-center">No pins in this window.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="border-0 hover:bg-transparent text-eyebrow-tight uppercase text-zinc-500">
+                  <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Team Member</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Total</TableHead>
+                  {PIN_STATUS_COLS.map((c) => (
+                    <TableHead
+                      key={c.key}
+                      className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500"
+                    >
+                      <span className="inline-flex items-center gap-1.5">
+                        <span
+                          className="w-2 h-2 rounded-full"
+                          style={{ background: c.color }}
+                        />
+                        {c.label}
+                      </span>
+                    </TableHead>
+                  ))}
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {pinRows.map((r) => (
+                  <TableRow
+                    key={r.id == null ? `name:${r.name}` : `id:${r.id}`}
+                    className={
+                      "border-t border-b-0 border-line hover:bg-transparent " +
+                      (r.id === null && r.name === "Team Totals" ? "bg-black/30" : "")
+                    }
+                  >
+                    <TableCell className="px-5 py-3 font-bold text-white tracking-tight">
+                      {r.name}
+                    </TableCell>
+                    <TableCell className="px-5 py-3 text-right font-extrabold text-white tabular-nums">
+                      {r.total}
+                    </TableCell>
+                    {PIN_STATUS_COLS.map((c) => (
+                      <TableCell
+                        key={c.key}
+                        className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums"
+                      >
+                        {r[c.key]}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </div>
+      </Section>
+
+      {/* Row 6 — Objections breakdown */}
+      <Section title="Objections breakdown">
+        <ObjectionsBreakdown objections={data.objections} />
+      </Section>
     </div>
   );
+}
+
+function SalesValueCard({
+  label,
+  value,
+  deltaPct,
+}: {
+  label: string;
+  value: string;
+  deltaPct: number | null;
+}) {
+  return (
+    <div className="bg-card border border-line rounded-2xl px-5 py-4 flex flex-col min-h-[140px]">
+      <div className="text-eyebrow uppercase text-zinc-500">{label}</div>
+      <div className="flex-1 flex items-center">
+        <div className="text-[28px] font-bold tracking-tight leading-none tabular-nums text-white">
+          {value}
+        </div>
+      </div>
+      <DeltaBadge value={deltaPct} />
+    </div>
+  );
+}
+
+function SalesTrendChart({
+  title,
+  headline,
+  series,
+  totalCents,
+  avgCents,
+}: {
+  title: string;
+  headline: string;
+  series: SalesSeriesPoint[];
+  totalCents: number;
+  avgCents: number;
+}) {
+  return (
+    <section className="bg-card border border-line rounded-2xl px-5 py-5">
+      <div className="flex items-baseline justify-between mb-4 flex-wrap gap-3">
+        <h3 className="text-sm font-extrabold text-white tracking-tight">{title}</h3>
+        <span className="text-[22px] font-bold tracking-tight leading-none tabular-nums text-white">
+          {headline}
+        </span>
+      </div>
+      <HeroChart days={series} height={220} />
+      <div className="mt-3 flex items-center justify-between text-[11.5px] font-extrabold text-zinc-500">
+        <span>Total: {money(totalCents)}</span>
+        <span>Avg: {money(avgCents)}</span>
+      </div>
+    </section>
+  );
+}
+
+function ObjectionsBreakdown({
+  objections,
+}: {
+  objections: SalesReport["objections"];
+}) {
+  return (
+    <div className="bg-card border border-line rounded-2xl overflow-hidden">
+      {objections.breakdown.length === 0 ? (
+        <p className="p-8 text-sm text-zinc-500 text-center font-bold">
+          No objections recorded in this window.
+        </p>
+      ) : (
+        <div className="divide-y divide-line">
+          <div className="px-5 py-3 text-eyebrow-tight uppercase text-zinc-500 bg-black flex items-center justify-between">
+            <span>
+              Objection ({objections.pins_with_objections} pin
+              {objections.pins_with_objections === 1 ? "" : "s"} with objections)
+            </span>
+            <span>Share</span>
+          </div>
+          {objections.breakdown.map((o) => (
+            <div key={o.name} className="px-5 py-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-bold text-white tracking-tight">{o.name}</span>
+                <span className="text-zinc-300 font-bold tabular-nums">
+                  {o.count} · {pct(o.pct)}
+                </span>
+              </div>
+              <div className="mt-2 h-2 w-full rounded-full bg-line overflow-hidden">
+                <div
+                  className="h-full bg-rose-500"
+                  style={{
+                    width: `${Math.max(2, Math.round(o.pct * 100))}%`,
+                  }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function moneyShort(cents: number): string {
+  const d = cents / 100;
+  if (Math.abs(d) >= 1_000_000) return `$${(d / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(d) >= 1_000) return `$${(d / 1_000).toFixed(1)}k`;
+  return `$${d.toFixed(0)}`;
 }
 
 type SubscriptionsReport = {
@@ -2049,122 +2353,3 @@ function JobsByLeadSourceDonut({
   );
 }
 
-type MapReport = {
-  range: Range;
-  start: string;
-  end: string;
-  days: number;
-  pins: {
-    total: number;
-    sales: number;
-    quotes: number;
-    not_home: number;
-    answered: number;
-    conversion_rate: number;
-    close_rate: number;
-    quote_rate: number;
-    answer_rate: number;
-    avg_per_day: number;
-  };
-  objections: {
-    pins_with_objections: number;
-    breakdown: { name: string; count: number; pct: number }[];
-  };
-};
-
-function MapPanel({ qs }: { qs: string }) {
-  const [data, setData] = useState<MapReport | null>(null);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    fetch(`/api/reports/map?${qs}`)
-      .then((r) => r.json())
-      .then((d: MapReport) => {
-        if (!cancelled) setData(d);
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
-    };
-  }, [qs]);
-
-  if (loading && !data)
-    return (
-      <p className="text-sm text-zinc-500 py-10 text-center font-bold">Loading…</p>
-    );
-  if (!data) return null;
-
-  return (
-    <div className="space-y-6">
-      <Section title="Pins added">
-        <Stats
-          items={[
-            { label: "Pins Added", value: String(data.pins.total) },
-            { label: "Sales Won", value: String(data.pins.sales) },
-            { label: "Conversion Rate", value: pct(data.pins.conversion_rate) },
-            { label: "Close Rate", value: pct(data.pins.close_rate) },
-            {
-              label: "Avg Pins / Day",
-              value: data.pins.avg_per_day.toFixed(1),
-            },
-            { label: "Pins with Quotes", value: String(data.pins.quotes) },
-            { label: "Quote Rate", value: pct(data.pins.quote_rate) },
-            { label: "Answer Rate", value: pct(data.pins.answer_rate) },
-          ]}
-        />
-      </Section>
-
-      <Section title="Objections breakdown">
-        <ObjectionsBreakdown objections={data.objections} />
-      </Section>
-    </div>
-  );
-}
-
-function ObjectionsBreakdown({
-  objections,
-}: {
-  objections: MapReport["objections"];
-}) {
-  return (
-    <div className="bg-card border border-line rounded-2xl overflow-hidden">
-      {objections.breakdown.length === 0 ? (
-        <p className="p-8 text-sm text-zinc-500 text-center font-bold">
-          No objections recorded in this window.
-        </p>
-      ) : (
-        <div className="divide-y divide-line">
-          <div className="px-5 py-3 text-eyebrow-tight uppercase text-zinc-500 bg-black flex items-center justify-between">
-            <span>
-              Objection ({objections.pins_with_objections} pin
-              {objections.pins_with_objections === 1 ? "" : "s"} with objections)
-            </span>
-            <span>Share</span>
-          </div>
-          {objections.breakdown.map((o) => (
-            <div key={o.name} className="px-5 py-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-bold text-white tracking-tight">{o.name}</span>
-                <span className="text-zinc-300 font-bold tabular-nums">
-                  {o.count} · {pct(o.pct)}
-                </span>
-              </div>
-              <div className="mt-2 h-2 w-full rounded-full bg-line overflow-hidden">
-                <div
-                  className="h-full bg-rose-500"
-                  style={{
-                    width: `${Math.max(2, Math.round(o.pct * 100))}%`,
-                  }}
-                />
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
