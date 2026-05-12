@@ -480,12 +480,6 @@ function OverviewPanel({ qs }: { qs: string }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-extrabold text-white tracking-tight">Overview</h2>
-        <p className="text-sm text-zinc-400 mt-3 font-bold">
-          Summary of jobs, subscriptions, and team performance.
-        </p>
-      </div>
       <Section
         title="Jobs"
         description="Job activity and value in this date range."
@@ -925,12 +919,6 @@ function SalesPanel({ qs }: { qs: string }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-extrabold text-white tracking-tight">Sales</h2>
-        <p className="text-sm text-zinc-400 mt-3 font-bold">
-          Revenue sold, sales funnel, and pin performance.
-        </p>
-      </div>
       {/* Row 1 — Revenue Sold */}
       <Section
         title="Revenue sold"
@@ -1357,25 +1345,17 @@ function SubscriptionsPanel({ qs: rangeQs }: { qs: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-extrabold text-white tracking-tight">Subscriptions</h2>
-          <p className="text-sm text-zinc-400 mt-3 font-bold">
-            Recurring revenue, active plans, and subscription performance.
-          </p>
-        </div>
-        <div className="flex items-center flex-wrap gap-6">
-          <Toggle
-            label="Include Taxes"
-            checked={includeTax}
-            onChange={setIncludeTax}
-          />
-          <Toggle
-            label="Include Paid Cancellations"
-            checked={includeCanceled}
-            onChange={setIncludeCanceled}
-          />
-        </div>
+      <div className="flex items-center flex-wrap gap-6 justify-end">
+        <Toggle
+          label="Include Taxes"
+          checked={includeTax}
+          onChange={setIncludeTax}
+        />
+        <Toggle
+          label="Include Paid Cancellations"
+          checked={includeCanceled}
+          onChange={setIncludeCanceled}
+        />
       </div>
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 items-stretch">
@@ -1701,12 +1681,6 @@ function EmployeesPanel({ qs }: { qs: string }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-extrabold text-white tracking-tight">Employees</h2>
-        <p className="text-sm text-zinc-400 mt-3 font-bold">
-          Team performance for sales reps and technicians.
-        </p>
-      </div>
       <Section
         title="Sales reps"
         description="Lifetime and per-period revenue for each sales rep."
@@ -2039,13 +2013,7 @@ function PayrollPanel({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-extrabold text-white tracking-tight">Payroll</h2>
-          <p className="text-sm text-zinc-400 mt-3 font-bold">
-            Calculate commissions for sales and technician teams.
-          </p>
-        </div>
+      <div className="flex justify-end">
         <Button
           variant="ghost"
           onClick={() => setSettingsOpen(true)}
@@ -2380,12 +2348,6 @@ function JobsPanel({ qs }: { qs: string }) {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-lg font-extrabold text-white tracking-tight">Jobs</h2>
-        <p className="text-sm text-zinc-400 mt-3 font-bold">
-          Job performance, cash flow, and lead sources.
-        </p>
-      </div>
       <Section
         title="All jobs"
         description="Counts and revenue across every job status."
