@@ -1321,43 +1321,52 @@ function SubscriptionsPanel({ qs: rangeQs }: { qs: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-end flex-wrap gap-6">
-        <Toggle
-          label="Include Taxes"
-          checked={includeTax}
-          onChange={setIncludeTax}
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-extrabold text-white tracking-tight">Subscriptions</h2>
+          <p className="text-sm text-zinc-400 mt-3 font-bold">
+            Recurring revenue, active plans, and subscription performance.
+          </p>
+        </div>
+        <div className="flex items-center flex-wrap gap-6">
+          <Toggle
+            label="Include Taxes"
+            checked={includeTax}
+            onChange={setIncludeTax}
+          />
+          <Toggle
+            label="Include Paid Cancellations"
+            checked={includeCanceled}
+            onChange={setIncludeCanceled}
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 items-stretch">
+        <StatCard
+          label="Total Subscriptions"
+          value={String(data.totals.total)}
+          description="All subscriptions matching the current filters"
         />
-        <Toggle
-          label="Include Paid Cancellations"
-          checked={includeCanceled}
-          onChange={setIncludeCanceled}
+        <StatCard
+          label="Active Subscriptions"
+          value={String(data.totals.active)}
+          valueClassName="text-emerald-500"
+          description="Subscriptions currently billing on schedule"
+        />
+        <StatCard
+          label={`Total MRR${includeTax ? " (w/ tax)" : ""}`}
+          value={money(data.revenue.mrr_cents)}
+          description={`Monthly recurring revenue${includeTax ? " including taxes" : " excluding taxes"}`}
+        />
+        <StatCard
+          label={`Total ARR${includeTax ? " (w/ tax)" : ""}`}
+          value={money(data.revenue.arr_cents)}
+          description={`Annualized recurring revenue${includeTax ? " including taxes" : " excluding taxes"}`}
         />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3 items-stretch">
-        <div className="grid gap-4 grid-cols-2">
-          <StatCard
-            label="Total Subscriptions"
-            value={String(data.totals.total)}
-            description="All subscriptions matching the current filters"
-          />
-          <StatCard
-            label="Active Subscriptions"
-            value={String(data.totals.active)}
-            valueClassName="text-emerald-500"
-            description="Subscriptions currently billing on schedule"
-          />
-          <StatCard
-            label={`Total MRR${includeTax ? " (w/ tax)" : ""}`}
-            value={money(data.revenue.mrr_cents)}
-            description={`Monthly recurring revenue${includeTax ? " including taxes" : " excluding taxes"}`}
-          />
-          <StatCard
-            label={`Total ARR${includeTax ? " (w/ tax)" : ""}`}
-            value={money(data.revenue.arr_cents)}
-            description={`Annualized recurring revenue${includeTax ? " including taxes" : " excluding taxes"}`}
-          />
-        </div>
+      <div className="grid gap-4 lg:grid-cols-2 items-stretch">
         <SubscriptionsByTemplateDonut rows={data.breakdowns.by_template} />
         <MonthlyMrrChart monthly={data.monthly} />
       </div>
