@@ -486,7 +486,10 @@ function OverviewPanel({ qs }: { qs: string }) {
           Summary of jobs, subscriptions, and team performance.
         </p>
       </div>
-      <Section title="Jobs">
+      <Section
+        title="Jobs"
+        description="Job activity and value in this date range."
+      >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <JobStatCard
             label="Scheduled"
@@ -518,7 +521,10 @@ function OverviewPanel({ qs }: { qs: string }) {
         </div>
       </Section>
 
-      <Section title="Subscriptions">
+      <Section
+        title="Subscriptions"
+        description="Recurring revenue and active subscriptions."
+      >
         <SubscriptionsSummary
           totalCount={subs?.totals.total ?? 0}
           activeCount={data.subscriptions.active}
@@ -529,7 +535,10 @@ function OverviewPanel({ qs }: { qs: string }) {
         />
       </Section>
 
-      <Section title="Employees">
+      <Section
+        title="Employees"
+        description="Top sales reps and technicians in this date range."
+      >
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="bg-card border border-line rounded-2xl px-5 py-5">
             <div className="flex items-center justify-between mb-3">
@@ -923,7 +932,10 @@ function SalesPanel({ qs }: { qs: string }) {
         </p>
       </div>
       {/* Row 1 — Revenue Sold */}
-      <Section title="Revenue sold">
+      <Section
+        title="Revenue sold"
+        description="Dollars and ARR sold across the team in this date range."
+      >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <SalesValueCard
             label="Total Revenue Sold"
@@ -971,7 +983,10 @@ function SalesPanel({ qs }: { qs: string }) {
       </div>
 
       {/* Row 3 — Top Reps */}
-      <Section title="Top reps">
+      <Section
+        title="Top reps"
+        description="Leaderboard of sales reps ranked by revenue."
+      >
         <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
           {data.reps.length === 0 ? (
             <p className="p-8 text-sm text-zinc-500 text-center">
@@ -1015,7 +1030,10 @@ function SalesPanel({ qs }: { qs: string }) {
       </Section>
 
       {/* Row 4 — Funnel KPIs */}
-      <Section title="Sales funnel">
+      <Section
+        title="Sales funnel"
+        description="Pins, sales, and conversion across the door-knock funnel."
+      >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <SalesValueCard
             label="Pins Added"
@@ -1045,7 +1063,10 @@ function SalesPanel({ qs }: { qs: string }) {
       </Section>
 
       {/* Row 5 — Pin Status Breakdown */}
-      <Section title="Pin status breakdown">
+      <Section
+        title="Pin status breakdown"
+        description="Door-knock pin outcomes grouped by status."
+      >
         <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
           <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-line">
             <div className="text-eyebrow-tight uppercase text-zinc-500">
@@ -1123,7 +1144,10 @@ function SalesPanel({ qs }: { qs: string }) {
       </Section>
 
       {/* Row 6 — Objections breakdown */}
-      <Section title="Objections breakdown">
+      <Section
+        title="Objections breakdown"
+        description="Most common objections recorded at the door."
+      >
         <ObjectionsBreakdown objections={data.objections} />
       </Section>
     </div>
@@ -1683,7 +1707,10 @@ function EmployeesPanel({ qs }: { qs: string }) {
           Team performance for sales reps and technicians.
         </p>
       </div>
-      <Section title="Sales reps">
+      <Section
+        title="Sales reps"
+        description="Lifetime and per-period revenue for each sales rep."
+      >
         <div className="grid gap-4 lg:grid-cols-2">
           <ChartCard
             title="Total revenue"
@@ -1746,7 +1773,10 @@ function EmployeesPanel({ qs }: { qs: string }) {
         />
       </Section>
 
-      <Section title="Technicians">
+      <Section
+        title="Technicians"
+        description="Hours worked, revenue, and dollar-per-hour for each technician."
+      >
         <div className="grid gap-4 lg:grid-cols-2">
           <ChartCard
             title="Total revenue"
@@ -2029,6 +2059,7 @@ function PayrollPanel({
 
       <PayrollTable
         title="Sales Payroll"
+        description="Pay computed for each sales rep this pay period."
         rows={data.sales}
         showTips={false}
         showBonus={!!data.summary.plan_sale_bonus_cents}
@@ -2040,6 +2071,7 @@ function PayrollPanel({
 
       <PayrollTable
         title="Technician Payroll"
+        description="Pay computed for each technician this pay period."
         rows={data.tech}
         showTips
         showBonus={false}
@@ -2065,6 +2097,7 @@ function PayrollPanel({
 
 function PayrollTable({
   title,
+  description,
   rows,
   showTips,
   showBonus,
@@ -2074,6 +2107,7 @@ function PayrollTable({
   onPaidToggle,
 }: {
   title: string;
+  description?: string;
   rows: PayrollRow[];
   showTips: boolean;
   showBonus: boolean;
@@ -2083,7 +2117,7 @@ function PayrollTable({
   onPaidToggle: (staffId: number, paid: boolean) => void;
 }) {
   return (
-    <Section title={title}>
+    <Section title={title} description={description}>
       <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
         {rows.length === 0 ? (
           <p className="p-8 text-sm text-zinc-500 text-center">
@@ -2352,7 +2386,10 @@ function JobsPanel({ qs }: { qs: string }) {
           Job performance, cash flow, and lead sources.
         </p>
       </div>
-      <Section title="All jobs">
+      <Section
+        title="All jobs"
+        description="Counts and revenue across every job status."
+      >
         <Stats
           items={[
             {
@@ -2379,7 +2416,10 @@ function JobsPanel({ qs }: { qs: string }) {
         />
       </Section>
 
-      <Section title="Cash flow">
+      <Section
+        title="Cash flow"
+        description="Receipts, time to first payment, and customer mix."
+      >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <BigStatCard
             label="Cash Collected"
@@ -2402,7 +2442,10 @@ function JobsPanel({ qs }: { qs: string }) {
         </div>
       </Section>
 
-      <Section title="Jobs by Lead Source">
+      <Section
+        title="Jobs by Lead Source"
+        description="Where this period's jobs came from."
+      >
         <JobsByLeadSourceDonut rows={sourceList} layout="horizontal" />
       </Section>
     </div>

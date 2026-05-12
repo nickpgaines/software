@@ -408,10 +408,14 @@ function Section({
   return (
     <section className="space-y-4">
       <div>
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400">
+        <h3 className="text-lg font-extrabold tracking-tight text-fg leading-none">
           {title}
         </h3>
-        {subtitle && <p className="text-sm text-zinc-400 mt-3 font-bold">{subtitle}</p>}
+        {subtitle && (
+          <p className="mt-1.5 text-sm font-bold text-zinc-500 leading-snug">
+            {subtitle}
+          </p>
+        )}
       </div>
       {children}
     </section>

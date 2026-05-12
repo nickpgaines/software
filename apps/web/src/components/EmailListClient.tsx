@@ -200,13 +200,13 @@ export default function EmailListClient() {
       )}
 
       <section className="space-y-3">
-        <div className="flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
+        <div>
+          <h2 className="text-lg font-extrabold tracking-tight text-fg leading-none">
             Automated emails
           </h2>
-          <span className="text-eyebrow uppercase text-zinc-500">
+          <p className="mt-1.5 text-sm font-bold text-zinc-500 leading-snug">
             Toggle on to enable. Edit to customize the message.
-          </span>
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -322,9 +322,14 @@ export default function EmailListClient() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="text-sm font-semibold text-zinc-300 uppercase tracking-wide">
-          Blast history
-        </h2>
+        <div>
+          <h2 className="text-lg font-extrabold tracking-tight text-fg leading-none">
+            Blast history
+          </h2>
+          <p className="mt-1.5 text-sm font-bold text-zinc-500 leading-snug">
+            Past one-off email blasts and their delivery status.
+          </p>
+        </div>
         <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
           {loading ? (
             <div className="p-10 text-center text-sm text-zinc-500">Loading…</div>
