@@ -237,6 +237,13 @@ function todayIso() {
   return new Date().toISOString().slice(0, 10);
 }
 
+function todayShort() {
+  return new Date().toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+  });
+}
+
 function thirtyDaysAgoIso() {
   const d = new Date();
   d.setDate(d.getDate() - 30);
@@ -493,27 +500,27 @@ function OverviewPanel({ qs }: { qs: string }) {
             count={js.scheduled.count}
             amountCents={js.scheduled.revenue_cents}
             deltaPct={js.scheduled.delta_pct}
-            description="Jobs scheduled in this date range"
+            description="Scheduled jobs in range"
           />
           <JobStatCard
             label="Completed"
             count={js.completed.count}
             amountCents={js.completed.revenue_cents}
             deltaPct={js.completed.delta_pct}
-            description="Jobs marked completed in this date range"
+            description="Completed jobs in range"
           />
           <JobStatCard
             label="Paid"
             count={js.paid.count}
             amountCents={js.paid.revenue_cents}
             deltaPct={js.paid.delta_pct}
-            description="Jobs fully paid in this date range"
+            description="Fully paid jobs in range"
           />
           <JobStatCard
             label="Avg Job Value"
             amountCents={js.avg_job_value.cents}
             deltaPct={js.avg_job_value.delta_pct}
-            description="Average revenue per job in this date range"
+            description="Average job value"
           />
         </div>
       </Section>
@@ -583,7 +590,7 @@ function JobStatCard({
   const hasCount = typeof count === "number";
   return (
     <div className="bg-card border border-line rounded-2xl px-5 py-4 flex flex-col min-h-[160px]">
-      <div className="text-eyebrow uppercase text-zinc-500">{label}</div>
+      <div className="text-eyebrow uppercase text-zinc-500 font-semibold">{label}</div>
       <div className="flex-1 flex items-center">
         <div className="text-[32px] font-bold tracking-tight leading-none tabular-nums text-white">
           {hasCount ? count : money(amountCents)}
@@ -597,7 +604,7 @@ function JobStatCard({
           <DeltaBadge value={deltaPct} />
         </div>
       )}
-      <div className="mt-1.5 text-[13px] font-bold text-zinc-400 leading-snug">
+      <div className="mt-1.5 text-[13px] font-medium text-zinc-400 leading-snug whitespace-nowrap overflow-hidden text-ellipsis">
         {description}
       </div>
     </div>
@@ -648,23 +655,23 @@ function SubscriptionsSummary({
         <StatCard
           label="Total Subscriptions"
           value={String(totalCount)}
-          description="All subscriptions, including paused and canceled"
+          description="All subscriptions"
         />
         <StatCard
           label="Active Subscriptions"
           value={String(activeCount)}
           valueClassName="text-emerald-500"
-          description="Subscriptions currently billing on schedule"
+          description="Currently billing"
         />
         <StatCard
           label="Total MRR"
           value={money(mrrCents)}
-          description="Monthly recurring revenue from active subscriptions"
+          description={`MRR as of ${todayShort()}`}
         />
         <StatCard
           label="Total ARR"
           value={money(arrCents)}
-          description="Annualized recurring revenue from active subscriptions"
+          description={`ARR as of ${todayShort()}`}
         />
       </div>
       <SubscriptionsByTemplateDonut rows={byTemplate} />
@@ -789,7 +796,7 @@ function BigStatCard({
   return (
     <div className="bg-card border border-line rounded-2xl px-5 py-4 flex flex-col min-h-[140px]">
       <div className="flex items-start justify-between gap-2 mb-1.5">
-        <div className="text-eyebrow uppercase text-zinc-500">
+        <div className="text-eyebrow uppercase text-zinc-500 font-semibold">
           {label}
         </div>
         {action}
@@ -800,11 +807,11 @@ function BigStatCard({
         </div>
       </div>
       {sub && (
-        <div className="mt-1.5 text-xs font-bold text-zinc-500 tabular-nums">
+        <div className="mt-1.5 text-xs font-medium text-zinc-500 tabular-nums">
           {sub}
         </div>
       )}
-      <div className="mt-1.5 text-[13px] font-bold text-zinc-400 leading-snug">
+      <div className="mt-1.5 text-[13px] font-medium text-zinc-400 leading-snug whitespace-nowrap overflow-hidden text-ellipsis">
         {description}
       </div>
     </div>
@@ -929,25 +936,25 @@ function SalesPanel({ qs }: { qs: string }) {
             label="Total Revenue Sold"
             value={money(rs.total.cents)}
             deltaPct={rs.total.delta_pct}
-            description="Total revenue from deals sold in this range"
+            description="Revenue from deals sold"
           />
           <SalesValueCard
             label="ARR Sold"
             value={money(rs.arr_sold.cents)}
             deltaPct={rs.arr_sold.delta_pct}
-            description="Annualized recurring revenue from new subscriptions"
+            description="Annualized recurring revenue"
           />
           <SalesValueCard
             label="One-Time Revenue Sold"
             value={money(rs.one_time.cents)}
             deltaPct={rs.one_time.delta_pct}
-            description="Revenue from non-recurring deals sold in this range"
+            description="Non-recurring deal revenue"
           />
           <SalesValueCard
             label="Avg Deal Size"
             value={money(rs.avg_deal.cents)}
             deltaPct={rs.avg_deal.delta_pct}
-            description="Average revenue per deal closed in this range"
+            description="Average per closed deal"
           />
         </div>
       </Section>
@@ -1021,25 +1028,25 @@ function SalesPanel({ qs }: { qs: string }) {
             label="Pins Added"
             value={String(f.pins_added.count)}
             deltaPct={f.pins_added.delta_pct}
-            description="New prospect pins added in this date range"
+            description="New pins in this range"
           />
           <SalesValueCard
             label="Quote Rate"
             value={pct(f.quote_rate.rate)}
             deltaPct={f.quote_rate.delta_pct}
-            description="Percentage of prospects who got a quote"
+            description="Prospects who got a quote"
           />
           <SalesValueCard
             label="Close Rate"
             value={pct(f.close_rate.rate)}
             deltaPct={f.close_rate.delta_pct}
-            description="Percentage of quoted prospects that were sold"
+            description="Quoted prospects sold"
           />
           <SalesValueCard
             label="Conversion Rate"
             value={pct(f.conversion_rate.rate)}
             deltaPct={f.conversion_rate.delta_pct}
-            description="Pins converted into sales"
+            description="Pins converted to sales"
           />
         </div>
       </Section>
@@ -1143,14 +1150,14 @@ function SalesValueCard({
 }) {
   return (
     <div className="bg-card border border-line rounded-2xl px-5 py-4 flex flex-col min-h-[160px]">
-      <div className="text-eyebrow uppercase text-zinc-500">{label}</div>
+      <div className="text-eyebrow uppercase text-zinc-500 font-semibold">{label}</div>
       <div className="flex-1 flex items-center">
         <div className="text-[32px] font-bold tracking-tight leading-none tabular-nums text-white">
           {value}
         </div>
       </div>
       <DeltaBadge value={deltaPct} />
-      <div className="mt-1.5 text-[13px] font-bold text-zinc-400 leading-snug">
+      <div className="mt-1.5 text-[13px] font-medium text-zinc-400 leading-snug whitespace-nowrap overflow-hidden text-ellipsis">
         {description}
       </div>
     </div>
@@ -1358,23 +1365,23 @@ function SubscriptionsPanel({ qs: rangeQs }: { qs: string }) {
         <StatCard
           label="Total Subscriptions"
           value={String(data.totals.total)}
-          description="All subscriptions matching the current filters"
+          description="All subscriptions"
         />
         <StatCard
           label="Active Subscriptions"
           value={String(data.totals.active)}
           valueClassName="text-emerald-500"
-          description="Subscriptions currently billing on schedule"
+          description="Currently billing"
         />
         <StatCard
           label={`Total MRR${includeTax ? " (w/ tax)" : ""}`}
           value={money(data.revenue.mrr_cents)}
-          description={`Monthly recurring revenue${includeTax ? " including taxes" : " excluding taxes"}`}
+          description={`MRR as of ${todayShort()}`}
         />
         <StatCard
           label={`Total ARR${includeTax ? " (w/ tax)" : ""}`}
           value={money(data.revenue.arr_cents)}
-          description={`Annualized recurring revenue${includeTax ? " including taxes" : " excluding taxes"}`}
+          description={`ARR as of ${todayShort()}`}
         />
       </div>
 
@@ -1439,7 +1446,7 @@ function StatCard({
         (compact ? "px-4 py-3 min-h-[110px]" : "px-5 py-4 min-h-[160px]")
       }
     >
-      <div className="text-eyebrow uppercase text-zinc-500">{label}</div>
+      <div className="text-eyebrow uppercase text-zinc-500 font-semibold">{label}</div>
       <div className="flex-1 flex items-center">
         <div
           className={
@@ -1454,7 +1461,7 @@ function StatCard({
       <div
         className={
           (compact ? "text-xs" : "text-[13px]") +
-          " font-bold text-zinc-400 leading-snug mt-1.5"
+          " font-medium text-zinc-400 leading-snug mt-1.5 whitespace-nowrap overflow-hidden text-ellipsis"
         }
       >
         {description}
@@ -1555,7 +1562,7 @@ function Stats({
           key={it.label}
           className="bg-card border border-line rounded-2xl px-5 py-4 flex flex-col min-h-[140px]"
         >
-          <div className="text-eyebrow uppercase text-zinc-500 mb-1.5">
+          <div className="text-eyebrow uppercase text-zinc-500 font-semibold mb-1.5">
             {it.label}
           </div>
           <div className="flex-1 flex items-center">
@@ -1563,7 +1570,7 @@ function Stats({
               {it.value}
             </div>
           </div>
-          <div className="mt-1.5 text-[13px] font-bold text-zinc-400 leading-snug">
+          <div className="mt-1.5 text-[13px] font-medium text-zinc-400 leading-snug whitespace-nowrap overflow-hidden text-ellipsis">
             {it.description}
           </div>
         </div>
@@ -1716,17 +1723,17 @@ function EmployeesPanel({ qs }: { qs: string }) {
             {
               label: "Avg Monthly Revenue / Rep",
               value: money(data.aggregates.sales_avg_monthly_cents),
-              description: "Average revenue each rep generates per month",
+              description: "Per rep, per month",
             },
             {
               label: "Avg Lifetime Value / Rep",
               value: money(data.aggregates.sales_avg_lifetime_cents),
-              description: "Total revenue per rep across their tenure",
+              description: "Per rep, lifetime",
             },
             {
               label: "Avg Daily Revenue / Rep",
               value: money(data.aggregates.sales_avg_daily_cents),
-              description: "Average revenue each rep generates per day",
+              description: "Per rep, per day",
             },
           ]}
         />
@@ -1779,17 +1786,17 @@ function EmployeesPanel({ qs }: { qs: string }) {
             {
               label: "Avg Monthly Revenue / Tech",
               value: money(data.aggregates.tech_avg_monthly_cents),
-              description: "Average revenue each tech generates per month",
+              description: "Per tech, per month",
             },
             {
               label: "Avg Daily Revenue / Tech",
               value: money(data.aggregates.tech_avg_daily_cents),
-              description: "Average revenue each tech generates per day",
+              description: "Per tech, per day",
             },
             {
               label: "Avg $ / Hour Cleaned",
               value: money(data.aggregates.tech_avg_per_hour_cents),
-              description: "Average revenue per hour worked on jobs",
+              description: "Per hour worked",
             },
           ]}
         />
@@ -2349,22 +2356,22 @@ function JobsPanel({ qs }: { qs: string }) {
             {
               label: "Jobs",
               value: String(data.all.count),
-              description: "Total jobs in this date range",
+              description: "Jobs in this range",
             },
             {
               label: "Expected Revenue",
               value: money(data.all.expected_cents),
-              description: "Total invoiced value of jobs in this range",
+              description: "Invoiced value of jobs",
             },
             {
               label: "Completed Job Value",
               value: money(data.all.collected_cents),
-              description: "Revenue from jobs marked completed",
+              description: "Revenue from completed jobs",
             },
             {
               label: "Average Job Value",
               value: money(data.all.avg_value_cents),
-              description: "Average revenue per job in this range",
+              description: "Average per job",
             },
           ]}
         />
@@ -2376,19 +2383,19 @@ function JobsPanel({ qs }: { qs: string }) {
             label="Cash Collected"
             value={money(data.cash_collected_cents)}
             sub="From payments table"
-            description="Payments received against jobs in this range"
+            description="Payments received"
           />
           <BigStatCard
             label="Avg Collection Lag"
             value={`${data.avg_collection_lag_days.toFixed(1)} days`}
             sub="Completion → first payment"
-            description="Average wait between job completion and first payment"
+            description="Wait to first payment"
           />
           <BigStatCard
             label="First-time vs Repeat"
             value={pct(firstTimePct)}
             sub={`${money(split.first_time_cents)} new · ${money(split.repeat_cents)} repeat`}
-            description="Share of revenue coming from first-time customers"
+            description="First-time customer share"
           />
         </div>
       </Section>
