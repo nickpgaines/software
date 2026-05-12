@@ -480,6 +480,12 @@ function OverviewPanel({ qs }: { qs: string }) {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-extrabold text-white tracking-tight">Overview</h2>
+        <p className="text-sm text-zinc-400 mt-3 font-bold">
+          Summary of jobs, subscriptions, and team performance.
+        </p>
+      </div>
       <Section title="Jobs">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <JobStatCard
@@ -910,6 +916,12 @@ function SalesPanel({ qs }: { qs: string }) {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-extrabold text-white tracking-tight">Sales</h2>
+        <p className="text-sm text-zinc-400 mt-3 font-bold">
+          Revenue sold, sales funnel, and pin performance.
+        </p>
+      </div>
       {/* Row 1 — Revenue Sold */}
       <Section title="Revenue sold">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -940,37 +952,7 @@ function SalesPanel({ qs }: { qs: string }) {
         </div>
       </Section>
 
-      {/* Row 2 — Funnel KPIs */}
-      <Section title="Sales funnel">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <SalesValueCard
-            label="Pins Added"
-            value={String(f.pins_added.count)}
-            deltaPct={f.pins_added.delta_pct}
-            description="New prospect pins added in this date range"
-          />
-          <SalesValueCard
-            label="Quote Rate"
-            value={pct(f.quote_rate.rate)}
-            deltaPct={f.quote_rate.delta_pct}
-            description="Percentage of prospects who got a quote"
-          />
-          <SalesValueCard
-            label="Close Rate"
-            value={pct(f.close_rate.rate)}
-            deltaPct={f.close_rate.delta_pct}
-            description="Percentage of quoted prospects that were sold"
-          />
-          <SalesValueCard
-            label="Conversion Rate"
-            value={pct(f.conversion_rate.rate)}
-            deltaPct={f.conversion_rate.delta_pct}
-            description="Pins converted into sales"
-          />
-        </div>
-      </Section>
-
-      {/* Row 3 — Trend charts */}
+      {/* Row 2 — Trend charts */}
       <div className="grid gap-4 lg:grid-cols-2">
         <SalesTrendChart
           title="ARR Sold"
@@ -988,7 +970,7 @@ function SalesPanel({ qs }: { qs: string }) {
         />
       </div>
 
-      {/* Row 4 — Top Reps */}
+      {/* Row 3 — Top Reps */}
       <Section title="Top reps">
         <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
           {data.reps.length === 0 ? (
@@ -1029,6 +1011,36 @@ function SalesPanel({ qs }: { qs: string }) {
               </TableBody>
             </Table>
           )}
+        </div>
+      </Section>
+
+      {/* Row 4 — Funnel KPIs */}
+      <Section title="Sales funnel">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <SalesValueCard
+            label="Pins Added"
+            value={String(f.pins_added.count)}
+            deltaPct={f.pins_added.delta_pct}
+            description="New prospect pins added in this date range"
+          />
+          <SalesValueCard
+            label="Quote Rate"
+            value={pct(f.quote_rate.rate)}
+            deltaPct={f.quote_rate.delta_pct}
+            description="Percentage of prospects who got a quote"
+          />
+          <SalesValueCard
+            label="Close Rate"
+            value={pct(f.close_rate.rate)}
+            deltaPct={f.close_rate.delta_pct}
+            description="Percentage of quoted prospects that were sold"
+          />
+          <SalesValueCard
+            label="Conversion Rate"
+            value={pct(f.conversion_rate.rate)}
+            deltaPct={f.conversion_rate.delta_pct}
+            description="Pins converted into sales"
+          />
         </div>
       </Section>
 
@@ -1656,6 +1668,12 @@ function EmployeesPanel({ qs }: { qs: string }) {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-extrabold text-white tracking-tight">Employees</h2>
+        <p className="text-sm text-zinc-400 mt-3 font-bold">
+          Team performance for sales reps and technicians.
+        </p>
+      </div>
       <Section title="Sales reps">
         <div className="grid gap-4 lg:grid-cols-2">
           <ChartCard
@@ -2319,6 +2337,12 @@ function JobsPanel({ qs }: { qs: string }) {
 
   return (
     <div className="space-y-6">
+      <div>
+        <h2 className="text-lg font-extrabold text-white tracking-tight">Jobs</h2>
+        <p className="text-sm text-zinc-400 mt-3 font-bold">
+          Job performance, cash flow, and lead sources.
+        </p>
+      </div>
       <Section title="All jobs">
         <Stats
           items={[
