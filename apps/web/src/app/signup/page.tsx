@@ -48,7 +48,7 @@ export default function SignupPage() {
   const inputCls =
     "w-full h-auto bg-black border-line-strong rounded-lg px-3 py-2.5 text-sm font-bold text-white placeholder-zinc-600 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50";
   const labelCls =
-    "block text-eyebrow uppercase text-zinc-500 mb-2";
+    "block text-xs font-bold text-zinc-500 mb-2";
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-12">

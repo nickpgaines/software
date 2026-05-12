@@ -336,7 +336,7 @@ export default function NewSubscriptionForm() {
                 type="button"
                 variant="ghost"
                 onClick={() => setShowNewCustomer(true)}
-                className="text-eyebrow uppercase text-zinc-500 border-line hover:bg-black rounded-full px-3 py-1.5 h-auto"
+                className="text-xs font-bold text-zinc-500 border-line hover:bg-black rounded-full px-3 py-1.5 h-auto"
               >
                 + Create New Customer
               </Button>
@@ -693,7 +693,7 @@ function Field({
 }) {
   return (
     <div className="mb-3">
-      <Label className="block text-eyebrow uppercase text-zinc-500 mb-2">
+      <Label className="block text-xs font-bold text-zinc-500 mb-2">
         {label}
       </Label>
       {children}
@@ -749,7 +749,7 @@ function BillingChoice({
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4 px-4 py-2.5">
-      <dt className="text-eyebrow uppercase text-zinc-500 shrink-0">
+      <dt className="text-xs font-bold text-zinc-500 shrink-0">
         {label}
       </dt>
       <dd className="text-xs text-zinc-300 text-right">{value}</dd>

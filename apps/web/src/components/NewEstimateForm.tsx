@@ -259,7 +259,7 @@ export default function NewEstimateForm() {
                 type="button"
                 variant="ghost"
                 onClick={() => setShowNewCustomer(true)}
-                className="text-eyebrow uppercase text-zinc-500 border-line hover:bg-black rounded-full px-3 py-1.5 h-auto"
+                className="text-xs font-bold text-zinc-500 border-line hover:bg-black rounded-full px-3 py-1.5 h-auto"
               >
                 + Create New Customer
               </Button>
@@ -369,7 +369,7 @@ export default function NewEstimateForm() {
               />
               {acceptMode === "accept" && (
                 <div className="space-y-2 pt-1">
-                  <div className="text-xs uppercase tracking-wide text-zinc-500">
+                  <div className="text-xs font-bold text-zinc-500">
                     Customer signature
                   </div>
                   <SignaturePad
@@ -399,7 +399,7 @@ export default function NewEstimateForm() {
                 type="button"
                 variant="ghost"
                 onClick={() => addItem()}
-                className="text-eyebrow uppercase text-zinc-500 border-line hover:bg-black rounded-full px-3 py-1.5 h-auto"
+                className="text-xs font-bold text-zinc-500 border-line hover:bg-black rounded-full px-3 py-1.5 h-auto"
               >
                 + Add item
               </Button>
@@ -458,7 +458,7 @@ export default function NewEstimateForm() {
                   />
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <Label className="block text-[10px] uppercase tracking-wide text-zinc-500 mb-1 font-normal">
+                      <Label className="block text-[10px] font-bold text-zinc-500 mb-1 font-normal">
                         Qty
                       </Label>
                       <Input
@@ -473,7 +473,7 @@ export default function NewEstimateForm() {
                       />
                     </div>
                     <div>
-                      <Label className="block text-[10px] uppercase tracking-wide text-zinc-500 mb-1 font-normal">
+                      <Label className="block text-[10px] font-bold text-zinc-500 mb-1 font-normal">
                         Price (USD)
                       </Label>
                       <Input
@@ -489,7 +489,7 @@ export default function NewEstimateForm() {
                       />
                     </div>
                     <div>
-                      <Label className="block text-[10px] uppercase tracking-wide text-zinc-500 mb-1 font-normal">
+                      <Label className="block text-[10px] font-bold text-zinc-500 mb-1 font-normal">
                         Line total
                       </Label>
                       <div className="text-sm font-bold text-white tracking-tight px-3 py-2 bg-black rounded-lg">
@@ -593,7 +593,7 @@ function Field({
 }) {
   return (
     <div className="mb-3">
-      <Label className="block text-eyebrow uppercase text-zinc-500 mb-2">
+      <Label className="block text-xs font-bold text-zinc-500 mb-2">
         {label}
       </Label>
       {children}

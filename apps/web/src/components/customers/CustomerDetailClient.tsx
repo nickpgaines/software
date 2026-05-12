@@ -289,7 +289,7 @@ export default function CustomerDetailClient({
           <div>
             <Link
               href="/customers"
-              className="inline-flex items-center text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500 hover:text-zinc-300"
+              className="inline-flex items-center text-xs font-bold text-zinc-500 hover:text-zinc-300"
             >
               ← Customers
             </Link>
@@ -317,7 +317,7 @@ export default function CustomerDetailClient({
             <Button
               variant="ghost"
               onClick={() => setEditing(true)}
-              className="h-auto text-[11px] uppercase tracking-[0.14em] font-extrabold border border-line-strong bg-card hover:bg-black text-zinc-300 rounded px-3 py-1.5"
+              className="h-auto text-xs font-bold border border-line-strong bg-card hover:bg-black text-zinc-300 rounded px-3 py-1.5"
             >
               Edit
             </Button>
@@ -343,7 +343,7 @@ export default function CustomerDetailClient({
                       })
                     }
                     disabled={phone.state.kind !== "idle"}
-                    className="h-auto p-0 text-[11px] uppercase tracking-[0.14em] font-extrabold text-emerald-400 hover:text-emerald-300 hover:bg-transparent"
+                    className="h-auto p-0 text-xs font-bold text-emerald-400 hover:text-emerald-300 hover:bg-transparent"
                   >
                     Call
                   </Button>
@@ -372,7 +372,7 @@ export default function CustomerDetailClient({
             action={
               <Link
                 href={`/messages?customer=${customer.id}`}
-                className="text-[11px] uppercase tracking-[0.14em] font-extrabold text-zinc-400 hover:text-white"
+                className="text-xs font-bold text-zinc-400 hover:text-white"
               >
                 Open
               </Link>
@@ -651,7 +651,7 @@ export default function CustomerDetailClient({
                     {activity.map((a) => {
                       const inner = (
                         <div className="flex items-start gap-4 px-4 py-3">
-                          <span className="text-[11px] uppercase tracking-[0.14em] font-extrabold text-zinc-500 w-20 pt-0.5">
+                          <span className="text-xs font-bold text-zinc-500 w-20 pt-0.5">
                             {a.kind}
                           </span>
                           <div className="flex-1 min-w-0">
@@ -718,7 +718,7 @@ function Section({
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <h3 className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+        <h3 className="text-xs font-bold text-zinc-500">
           {title}
         </h3>
         {action}
@@ -739,7 +739,7 @@ function Stat({
 }) {
   return (
     <Card className="p-4">
-      <p className="text-[11px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+      <p className="text-xs font-bold text-zinc-500">
         {label}
       </p>
       <p
@@ -761,7 +761,7 @@ function Th({ cols }: { cols: string[] }) {
         {cols.map((c) => (
           <TableHead
             key={c}
-            className="h-auto text-left px-4 py-2 text-eyebrow-tight uppercase text-zinc-500"
+            className="h-auto text-left px-4 py-2 text-xs font-bold text-zinc-500"
           >
             {c}
           </TableHead>

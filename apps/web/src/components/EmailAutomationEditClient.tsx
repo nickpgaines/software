@@ -258,7 +258,7 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
 
       <div className="bg-card border border-line rounded-2xl shadow-sm p-6 space-y-5">
         <div>
-          <Label className="block text-xs font-normal uppercase tracking-wide text-zinc-500 mb-2">
+          <Label className="block text-xs font-bold text-zinc-500 mb-2">
             Audience
           </Label>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -291,7 +291,7 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
 
         {automation.kind === "seasonal" && (
           <div>
-            <Label className="block text-xs font-normal uppercase tracking-wide text-zinc-500 mb-2">
+            <Label className="block text-xs font-bold text-zinc-500 mb-2">
               Send date
             </Label>
             <div className="flex items-center gap-2">
@@ -327,7 +327,7 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
                 placeholder="Day"
                 className="h-auto border-line rounded-full px-3 py-2 text-sm bg-card w-24"
               />
-              <span className="text-eyebrow uppercase text-zinc-500">
+              <span className="text-xs font-bold text-zinc-500">
                 Sends once per year on this date when enabled.
               </span>
             </div>
@@ -335,7 +335,7 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
         )}
 
         <div>
-          <Label className="block text-xs font-normal uppercase tracking-wide text-zinc-500 mb-1.5">
+          <Label className="block text-xs font-bold text-zinc-500 mb-1.5">
             Subject
           </Label>
           <Input
@@ -348,7 +348,7 @@ export default function EmailAutomationEditClient({ id }: { id: string }) {
         </div>
 
         <div>
-          <Label className="block text-xs font-normal uppercase tracking-wide text-zinc-500 mb-1.5">
+          <Label className="block text-xs font-bold text-zinc-500 mb-1.5">
             Message (HTML or plain text)
           </Label>
           <Textarea

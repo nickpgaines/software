@@ -377,7 +377,7 @@ export default function PayrollSettingsModal({
           <Button
             variant="ghost"
             onClick={onClose}
-            className="h-auto px-4 py-2 text-eyebrow uppercase text-zinc-500 hover:text-white hover:bg-transparent"
+            className="h-auto px-4 py-2 text-xs font-bold text-zinc-500 hover:text-white hover:bg-transparent"
             disabled={saving}
           >
             Cancel
@@ -689,7 +689,7 @@ function TiersEditor({
           className="flex items-center gap-2 bg-black rounded-2xl p-2"
         >
           <div className="flex-1">
-            <Label className="block text-[11px] uppercase tracking-wider text-zinc-400 px-2 font-normal">
+            <Label className="block text-xs font-bold text-zinc-400 px-2">
               From ($)
             </Label>
             <DollarInput
@@ -698,7 +698,7 @@ function TiersEditor({
             />
           </div>
           <div className="flex-1">
-            <Label className="block text-[11px] uppercase tracking-wider text-zinc-400 px-2 font-normal">
+            <Label className="block text-xs font-bold text-zinc-400 px-2">
               Rate (%)
             </Label>
             <PctInput
@@ -721,7 +721,7 @@ function TiersEditor({
         type="button"
         variant="ghost"
         onClick={add}
-        className="h-auto p-0 gap-1 text-eyebrow uppercase text-zinc-500 hover:text-white hover:bg-transparent"
+        className="h-auto p-0 gap-1 text-xs font-bold text-zinc-500 hover:text-white hover:bg-transparent"
       >
         <Plus className="w-4 h-4" /> Add tier
       </Button>
@@ -766,7 +766,7 @@ function BonusTiersEditor({
           className="flex items-center gap-2 bg-black rounded-2xl p-2"
         >
           <div className="flex-1">
-            <Label className="block text-[11px] uppercase tracking-wider text-zinc-400 px-2 font-normal">
+            <Label className="block text-xs font-bold text-zinc-400 px-2">
               Daily revenue ≥ ($)
             </Label>
             <DollarInput
@@ -775,7 +775,7 @@ function BonusTiersEditor({
             />
           </div>
           <div className="flex-1">
-            <Label className="block text-[11px] uppercase tracking-wider text-zinc-400 px-2 font-normal">
+            <Label className="block text-xs font-bold text-zinc-400 px-2">
               Bonus ($)
             </Label>
             <DollarInput
@@ -798,7 +798,7 @@ function BonusTiersEditor({
         type="button"
         variant="ghost"
         onClick={add}
-        className="h-auto p-0 gap-1 text-eyebrow uppercase text-zinc-500 hover:text-white hover:bg-transparent"
+        className="h-auto p-0 gap-1 text-xs font-bold text-zinc-500 hover:text-white hover:bg-transparent"
       >
         <Plus className="w-4 h-4" /> Add bonus tier
       </Button>

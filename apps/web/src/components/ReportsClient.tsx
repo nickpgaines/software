@@ -995,14 +995,14 @@ function SalesPanel({ qs }: { qs: string }) {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-0 hover:bg-transparent text-eyebrow uppercase text-zinc-500">
-                  <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Rep</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Pins</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Sales</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Conv %</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">ARR Sold</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">One-Time $</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Total Revenue</TableHead>
+                <TableRow className="border-0 hover:bg-transparent">
+                  <TableHead className="h-auto text-left px-5 py-3 text-xs font-bold text-zinc-500">Rep</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Pins</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Sales</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Conv %</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">ARR Sold</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">One-Time $</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Total Revenue</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1069,7 +1069,7 @@ function SalesPanel({ qs }: { qs: string }) {
       >
         <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
           <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-line">
-            <div className="text-eyebrow-tight uppercase text-zinc-500">
+            <div className="text-sm font-bold text-zinc-300">
               Status counts {pinFilter === "team" ? "(team + per rep)" : "(filtered to rep)"}
             </div>
             {/* Native <select> kept: Radix Select forbids empty-string item values. */}
@@ -1093,13 +1093,13 @@ function SalesPanel({ qs }: { qs: string }) {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-0 hover:bg-transparent text-eyebrow-tight uppercase text-zinc-500">
-                  <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Team Member</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Total</TableHead>
+                <TableRow className="border-0 hover:bg-transparent">
+                  <TableHead className="h-auto text-left px-5 py-3 text-xs font-bold text-zinc-500">Team Member</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Total</TableHead>
                   {PIN_STATUS_COLS.map((c) => (
                     <TableHead
                       key={c.key}
-                      className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500"
+                      className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500"
                     >
                       <span className="inline-flex items-center gap-1.5">
                         <span
@@ -1224,7 +1224,7 @@ function ObjectionsBreakdown({
         </p>
       ) : (
         <div className="divide-y divide-line">
-          <div className="px-5 py-3 text-eyebrow-tight uppercase text-zinc-500 bg-black flex items-center justify-between">
+          <div className="px-5 py-3 text-xs font-bold text-zinc-500 bg-black flex items-center justify-between">
             <span>
               Objection ({objections.pins_with_objections} pin
               {objections.pins_with_objections === 1 ? "" : "s"} with objections)
@@ -1893,13 +1893,13 @@ function EmployeeTable({
         <Table>
           <TableHeader>
             <TableRow className="border-0 hover:bg-transparent bg-black">
-              <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Employee</TableHead>
-              <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Tenure</TableHead>
-              <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Lifetime</TableHead>
-              <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Monthly</TableHead>
-              <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Daily</TableHead>
+              <TableHead className="h-auto text-left px-5 py-3 text-xs font-bold text-zinc-500">Employee</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Tenure</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Lifetime</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Monthly</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Daily</TableHead>
               {variant === "tech" && (
-                <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">$/hr</TableHead>
+                <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">$/hr</TableHead>
               )}
             </TableRow>
           </TableHeader>
@@ -2049,7 +2049,7 @@ function PayrollPanel({
         <Button
           variant="ghost"
           onClick={() => setSettingsOpen(true)}
-          className="h-auto gap-2 px-3 py-2 text-eyebrow uppercase text-zinc-500 bg-card border border-line rounded-full hover:bg-black shadow-sm"
+          className="h-auto gap-2 px-3 py-2 text-sm font-bold text-zinc-300 bg-card border border-line rounded-full hover:bg-black shadow-sm"
           aria-label="Payroll settings"
         >
           <Settings className="w-4 h-4" />
@@ -2126,20 +2126,20 @@ function PayrollTable({
         ) : (
           <Table>
             <TableHeader>
-              <TableRow className="border-0 hover:bg-transparent text-eyebrow uppercase text-zinc-500 bg-black">
-                <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Employee</TableHead>
-                <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Email</TableHead>
-                <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Role</TableHead>
-                <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">{rateLabel}</TableHead>
-                <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Total</TableHead>
+              <TableRow className="border-0 hover:bg-transparent bg-black">
+                <TableHead className="h-auto text-left px-5 py-3 text-xs font-bold text-zinc-500">Employee</TableHead>
+                <TableHead className="h-auto text-left px-5 py-3 text-xs font-bold text-zinc-500">Email</TableHead>
+                <TableHead className="h-auto text-left px-5 py-3 text-xs font-bold text-zinc-500">Role</TableHead>
+                <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">{rateLabel}</TableHead>
+                <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Total</TableHead>
                 {showTips && (
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Tips</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Tips</TableHead>
                 )}
                 {showBonus && (
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Bonus</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Bonus</TableHead>
                 )}
-                <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Payout</TableHead>
-                <TableHead className="h-auto text-center px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Paid</TableHead>
+                <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Payout</TableHead>
+                <TableHead className="h-auto text-center px-5 py-3 text-xs font-bold text-zinc-500">Paid</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

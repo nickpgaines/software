@@ -69,7 +69,7 @@ export default async function InvoicePayPage({
 
   return (
     <Shell>
-      <p className="text-xs uppercase tracking-wide text-zinc-500">
+      <p className="text-xs font-bold text-zinc-500">
         Invoice from {companyName}
       </p>
       <h1 className="text-page-title text-white mt-1">
@@ -90,7 +90,7 @@ export default async function InvoicePayPage({
         token={params.token}
         cancelled={searchParams.status === "cancel"}
       />
-      <p className="mt-6 text-eyebrow uppercase text-zinc-500 text-center">
+      <p className="mt-6 text-xs font-bold text-zinc-500 text-center">
         Payments are processed securely by Stripe.
       </p>
     </Shell>

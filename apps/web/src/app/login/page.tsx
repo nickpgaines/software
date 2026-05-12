@@ -92,7 +92,7 @@ function LoginPageInner() {
             </svg>
             Sign in with Google
           </a>
-          <div className="flex items-center gap-3 text-[10px] uppercase tracking-[0.22em] font-extrabold text-zinc-500">
+          <div className="flex items-center gap-3 text-xs font-bold text-zinc-500">
             <div className="flex-1 h-px bg-line" />
             <span>or</span>
             <div className="flex-1 h-px bg-line" />
@@ -108,7 +108,7 @@ function LoginPageInner() {
           className="bg-card border border-line rounded-2xl p-6 space-y-5"
         >
           <div>
-            <Label className="block text-eyebrow uppercase text-zinc-500 mb-2">
+            <Label className="block text-xs font-bold text-zinc-500 mb-2">
               Email or username
             </Label>
             <Input
@@ -122,7 +122,7 @@ function LoginPageInner() {
             />
           </div>
           <div>
-            <Label className="block text-eyebrow uppercase text-zinc-500 mb-2">
+            <Label className="block text-xs font-bold text-zinc-500 mb-2">
               Password
             </Label>
             <Input

@@ -159,7 +159,7 @@ export default function MapPinDropModal({
             type="button"
             variant="ghost"
             onClick={onCancel}
-            className="h-auto rounded-md border border-line px-4 py-2 text-eyebrow uppercase text-zinc-500 hover:bg-black"
+            className="h-auto rounded-md border border-line px-4 py-2 text-xs font-bold text-zinc-500 hover:bg-black"
           >
             Cancel
           </Button>

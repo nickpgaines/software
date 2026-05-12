@@ -245,7 +245,7 @@ export default function NewInvoiceForm() {
                 type="button"
                 variant="ghost"
                 onClick={() => setShowNewCustomer(true)}
-                className="h-auto text-eyebrow uppercase text-zinc-500 border-line hover:bg-black rounded-full px-3 py-1.5"
+                className="h-auto text-xs font-bold text-zinc-500 border-line hover:bg-black rounded-full px-3 py-1.5"
               >
                 + Create New Customer
               </Button>
@@ -367,7 +367,7 @@ export default function NewInvoiceForm() {
                 type="button"
                 variant="ghost"
                 onClick={() => addItem()}
-                className="h-auto text-eyebrow uppercase text-zinc-500 border-line hover:bg-black rounded-full px-3 py-1.5"
+                className="h-auto text-xs font-bold text-zinc-500 border-line hover:bg-black rounded-full px-3 py-1.5"
               >
                 + Add item
               </Button>
@@ -426,7 +426,7 @@ export default function NewInvoiceForm() {
                   />
                   <div className="grid grid-cols-3 gap-2">
                     <div>
-                      <Label className="block text-[10px] font-normal uppercase tracking-wide text-zinc-500 mb-1">
+                      <Label className="block text-[10px] font-bold text-zinc-500 mb-1">
                         Qty
                       </Label>
                       <Input
@@ -441,7 +441,7 @@ export default function NewInvoiceForm() {
                       />
                     </div>
                     <div>
-                      <Label className="block text-[10px] font-normal uppercase tracking-wide text-zinc-500 mb-1">
+                      <Label className="block text-[10px] font-bold text-zinc-500 mb-1">
                         Price (USD)
                       </Label>
                       <Input
@@ -457,7 +457,7 @@ export default function NewInvoiceForm() {
                       />
                     </div>
                     <div>
-                      <Label className="block text-[10px] font-normal uppercase tracking-wide text-zinc-500 mb-1">
+                      <Label className="block text-[10px] font-bold text-zinc-500 mb-1">
                         Line total
                       </Label>
                       <div className="text-sm font-bold text-white tracking-tight px-3 py-2 bg-black rounded-lg">
@@ -561,7 +561,7 @@ function Field({
 }) {
   return (
     <div className="mb-3">
-      <Label className="block text-eyebrow uppercase text-zinc-500 mb-2">
+      <Label className="block text-xs font-bold text-zinc-500 mb-2">
         {label}
       </Label>
       {children}

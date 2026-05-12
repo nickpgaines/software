@@ -658,7 +658,7 @@ function DayView({
           <div
             key={h}
             style={{ height: `${HOUR_PX}px` }}
-            className="text-eyebrow uppercase text-zinc-500 pr-3 text-right -translate-y-1.5"
+            className="text-xs font-bold text-zinc-500 pr-3 text-right -translate-y-1.5"
           >
             {formatHour(h)}
           </div>
@@ -712,7 +712,7 @@ function MonthView({
         {weekDayHeaders.map((d) => (
           <div
             key={d}
-            className="text-eyebrow uppercase text-zinc-500 uppercase tracking-wide text-center py-2"
+            className="text-xs font-bold text-zinc-500 uppercase tracking-wide text-center py-2"
           >
             {d}
           </div>

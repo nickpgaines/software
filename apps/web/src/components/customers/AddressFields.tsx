@@ -174,7 +174,7 @@ function AddressFieldsInner({
             required
           />
           {loading && (
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-eyebrow uppercase text-zinc-500">
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-zinc-500">
               …
             </span>
           )}
@@ -344,7 +344,7 @@ function Field({
   if (!show) return <>{children}</>;
   return (
     <div>
-      <Label className="block text-eyebrow uppercase text-zinc-500 mb-2">
+      <Label className="block text-xs font-bold text-zinc-500 mb-2">
         {label}
         {required && <span className="text-red-500 ml-0.5">*</span>}
       </Label>

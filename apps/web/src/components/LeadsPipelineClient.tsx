@@ -236,7 +236,7 @@ export default function LeadsPipelineClient({
                       s.key === "new" ? (
                         <EmptyNewHint />
                       ) : (
-                        <p className="text-eyebrow uppercase text-zinc-500 px-2 py-1">
+                        <p className="text-xs font-bold text-zinc-500 px-2 py-1">
                           No leads in this stage.
                         </p>
                       )
@@ -333,7 +333,7 @@ function LeadCard({
         <div className="text-xs text-zinc-400 truncate">{lead.phone}</div>
       )}
       {lead.source_page_name && (
-        <div className="text-[10px] uppercase tracking-wide text-zinc-500 mt-2">
+        <div className="text-[10px] font-bold text-zinc-500 mt-2">
           {lead.source_page_name}
         </div>
       )}
@@ -352,7 +352,7 @@ function ListView({ leads }: { leads: Lead[] }) {
   return (
     <div className="border border-line rounded-2xl overflow-hidden">
       <Table>
-        <TableHeader className="bg-black text-xs uppercase text-zinc-400">
+        <TableHeader className="bg-black text-xs font-bold text-zinc-400">
           <TableRow className="border-0 hover:bg-transparent">
             <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Name</TableHead>
             <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Email</TableHead>
@@ -513,7 +513,7 @@ function Field({
 }) {
   return (
     <Label className="block text-sm font-normal">
-      <span className="text-eyebrow uppercase text-zinc-500 mb-2 block">
+      <span className="text-xs font-bold text-zinc-500 mb-2 block">
         {label}
       </span>
       {children}

@@ -503,7 +503,7 @@ export default function EmployeeSchedulingModal({
           </div>
 
           <div className="border border-line rounded-2xl overflow-hidden">
-            <div className="grid grid-cols-[160px_repeat(7,1fr)] bg-black text-[11px] uppercase tracking-wider text-zinc-400">
+            <div className="grid grid-cols-[160px_repeat(7,1fr)] bg-black text-xs font-bold text-zinc-400">
               <div className="px-3 py-3">Employee</div>
               {days.map((d) => {
                 const isToday = isoDate(d) === isoDate(new Date());
@@ -593,7 +593,7 @@ export default function EmployeeSchedulingModal({
           </div>
 
           <div>
-            <div className="flex items-center gap-2 text-xs uppercase tracking-wider text-zinc-400 mb-2">
+            <div className="flex items-center gap-2 text-xs font-bold text-zinc-400 mb-2">
               <Users className="w-3.5 h-3.5" /> Add employees
             </div>
             <div className="relative mb-2">
@@ -670,7 +670,7 @@ export default function EmployeeSchedulingModal({
 
           {selected.size > 0 && (
             <div className="bg-sky-50 border border-sky-100 rounded-2xl p-4">
-              <div className="text-center text-xs uppercase tracking-wider text-sky-700 font-semibold">
+              <div className="text-center text-xs font-boldr text-sky-700 font-semibold">
                 Edit {selected.size} selected shift{selected.size === 1 ? "" : "s"}
               </div>
               <div className="flex items-center justify-center gap-3 mt-3">
@@ -741,7 +741,7 @@ export default function EmployeeSchedulingModal({
             <Button
               variant="ghost"
               onClick={onClose}
-              className="h-auto px-4 py-2 text-eyebrow uppercase text-zinc-500 bg-card border border-line rounded-full hover:bg-black"
+              className="h-auto px-4 py-2 text-xs font-bold text-zinc-500 bg-card border border-line rounded-full hover:bg-black"
               disabled={saving}
             >
               Cancel

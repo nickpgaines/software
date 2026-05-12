@@ -16,7 +16,7 @@ export function PageHeader({
       <div>
         {kicker && (
           <div
-            className="text-[11px] uppercase tracking-[0.22em] font-extrabold mb-3"
+            className="text-sm font-bold mb-3"
             style={{ color: PULSE.textDim }}
           >
             {kicker}

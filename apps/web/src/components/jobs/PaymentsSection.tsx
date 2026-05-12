@@ -133,7 +133,7 @@ export default function PaymentsSection({
                   variant="ghost"
                   type="button"
                   onClick={() => deletePayment(p.id)}
-                  className="h-auto p-0 text-eyebrow uppercase text-zinc-500 hover:text-rose-600 hover:bg-transparent"
+                  className="h-auto p-0 text-xs font-bold text-zinc-500 hover:text-rose-600 hover:bg-transparent"
                   aria-label="Delete payment"
                 >
                   Delete

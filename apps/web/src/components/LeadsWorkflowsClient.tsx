@@ -191,7 +191,7 @@ function Stat({
 }) {
   return (
     <div className="border border-line rounded-2xl p-5">
-      <div className="text-xs uppercase tracking-wide text-zinc-400">
+      <div className="text-xs font-bold text-zinc-400">
         {label}
       </div>
       <div className={`text-3xl font-bold mt-2 ${valueClass}`}>{value}</div>
@@ -280,7 +280,7 @@ function LogsTable({
   return (
     <div className="border border-line rounded-2xl overflow-hidden">
       <Table>
-        <TableHeader className="bg-black text-xs uppercase text-zinc-400">
+        <TableHeader className="bg-black text-xs font-bold text-zinc-400">
           <TableRow className="border-0 hover:bg-transparent">
             <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Workflow</TableHead>
             <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Lead</TableHead>

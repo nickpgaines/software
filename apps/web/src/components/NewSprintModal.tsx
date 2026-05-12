@@ -218,7 +218,7 @@ export default function NewSprintModal({
             {duration === "custom" && (
               <div className="grid grid-cols-2 gap-3 mt-3">
                 <div>
-                  <Label className="block text-xs font-normal uppercase tracking-wide text-zinc-500 mb-1">
+                  <Label className="block text-xs font-bold text-zinc-500 mb-1">
                     Start
                   </Label>
                   <Input
@@ -230,7 +230,7 @@ export default function NewSprintModal({
                   />
                 </div>
                 <div>
-                  <Label className="block text-xs font-normal uppercase tracking-wide text-zinc-500 mb-1">
+                  <Label className="block text-xs font-bold text-zinc-500 mb-1">
                     End
                   </Label>
                   <Input
