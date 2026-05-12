@@ -178,6 +178,9 @@ export async function GET(req: Request) {
     const lifetime = data?.revenue || 0;
     const days = s ? tenureDays(s.created_at, now) : 1;
     const months = days / DAYS_PER_MONTH;
+    // Floor the per-month divisor at 1 so the monthly run-rate never
+    // exceeds the actual lifetime for reps with sub-month tenure.
+    const monthsForRate = Math.max(1, months);
     return {
       id: staffId,
       name: s ? displayName(s) : `Staff #${staffId}`,
@@ -185,7 +188,7 @@ export async function GET(req: Request) {
       days_active: days,
       months_active: months,
       lifetime_revenue_cents: lifetime,
-      avg_monthly_revenue_cents: months > 0 ? Math.round(lifetime / months) : 0,
+      avg_monthly_revenue_cents: Math.round(lifetime / monthsForRate),
       avg_daily_revenue_cents: days > 0 ? Math.round(lifetime / days) : 0,
     };
   }
