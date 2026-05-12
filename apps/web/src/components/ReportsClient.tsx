@@ -1523,16 +1523,25 @@ function SubscriptionsByTemplateDonut({
 
 function Section({
   title,
+  description,
   children,
 }: {
   title: string;
+  description?: string;
   children: React.ReactNode;
 }) {
   return (
     <section className="space-y-3">
-      <h2 className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-zinc-500">
-        {title}
-      </h2>
+      <div>
+        <h2 className="text-lg font-extrabold tracking-tight text-fg leading-none">
+          {title}
+        </h2>
+        {description && (
+          <p className="mt-1.5 text-sm font-bold text-zinc-500 leading-snug">
+            {description}
+          </p>
+        )}
+      </div>
       {children}
     </section>
   );
