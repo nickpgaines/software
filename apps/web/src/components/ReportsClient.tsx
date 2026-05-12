@@ -486,7 +486,10 @@ function OverviewPanel({ qs }: { qs: string }) {
           Summary of jobs, subscriptions, and team performance.
         </p>
       </div>
-      <Section title="Jobs">
+      <Section
+        title="Jobs"
+        description="Job activity and value in this date range."
+      >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <JobStatCard
             label="Scheduled"
@@ -518,7 +521,10 @@ function OverviewPanel({ qs }: { qs: string }) {
         </div>
       </Section>
 
-      <Section title="Subscriptions">
+      <Section
+        title="Subscriptions"
+        description="Recurring revenue and active subscriptions."
+      >
         <SubscriptionsSummary
           totalCount={subs?.totals.total ?? 0}
           activeCount={data.subscriptions.active}
@@ -529,7 +535,10 @@ function OverviewPanel({ qs }: { qs: string }) {
         />
       </Section>
 
-      <Section title="Employees">
+      <Section
+        title="Employees"
+        description="Top sales reps and technicians in this date range."
+      >
         <div className="grid gap-4 lg:grid-cols-2">
           <div className="bg-card border border-line rounded-2xl px-5 py-5">
             <div className="flex items-center justify-between mb-3">
@@ -923,7 +932,10 @@ function SalesPanel({ qs }: { qs: string }) {
         </p>
       </div>
       {/* Row 1 — Revenue Sold */}
-      <Section title="Revenue sold">
+      <Section
+        title="Revenue sold"
+        description="Dollars and ARR sold across the team in this date range."
+      >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <SalesValueCard
             label="Total Revenue Sold"
@@ -971,7 +983,10 @@ function SalesPanel({ qs }: { qs: string }) {
       </div>
 
       {/* Row 3 — Top Reps */}
-      <Section title="Top reps">
+      <Section
+        title="Top reps"
+        description="Leaderboard of sales reps ranked by revenue."
+      >
         <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
           {data.reps.length === 0 ? (
             <p className="p-8 text-sm text-zinc-500 text-center">
@@ -980,14 +995,14 @@ function SalesPanel({ qs }: { qs: string }) {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-0 hover:bg-transparent text-eyebrow uppercase text-zinc-500">
-                  <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Rep</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Pins</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Sales</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Conv %</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">ARR Sold</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">One-Time $</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Total Revenue</TableHead>
+                <TableRow className="border-0 hover:bg-transparent">
+                  <TableHead className="h-auto text-left px-5 py-3 text-xs font-bold text-zinc-500">Rep</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Pins</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Sales</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Conv %</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">ARR Sold</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">One-Time $</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Total Revenue</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1015,7 +1030,10 @@ function SalesPanel({ qs }: { qs: string }) {
       </Section>
 
       {/* Row 4 — Funnel KPIs */}
-      <Section title="Sales funnel">
+      <Section
+        title="Sales funnel"
+        description="Pins, sales, and conversion across the door-knock funnel."
+      >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <SalesValueCard
             label="Pins Added"
@@ -1045,10 +1063,13 @@ function SalesPanel({ qs }: { qs: string }) {
       </Section>
 
       {/* Row 5 — Pin Status Breakdown */}
-      <Section title="Pin status breakdown">
+      <Section
+        title="Pin status breakdown"
+        description="Door-knock pin outcomes grouped by status."
+      >
         <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
           <div className="flex items-center justify-between gap-3 px-5 py-3 border-b border-line">
-            <div className="text-eyebrow-tight uppercase text-zinc-500">
+            <div className="text-sm font-bold text-zinc-300">
               Status counts {pinFilter === "team" ? "(team + per rep)" : "(filtered to rep)"}
             </div>
             {/* Native <select> kept: Radix Select forbids empty-string item values. */}
@@ -1072,13 +1093,13 @@ function SalesPanel({ qs }: { qs: string }) {
           ) : (
             <Table>
               <TableHeader>
-                <TableRow className="border-0 hover:bg-transparent text-eyebrow-tight uppercase text-zinc-500">
-                  <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Team Member</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Total</TableHead>
+                <TableRow className="border-0 hover:bg-transparent">
+                  <TableHead className="h-auto text-left px-5 py-3 text-xs font-bold text-zinc-500">Team Member</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Total</TableHead>
                   {PIN_STATUS_COLS.map((c) => (
                     <TableHead
                       key={c.key}
-                      className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500"
+                      className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500"
                     >
                       <span className="inline-flex items-center gap-1.5">
                         <span
@@ -1123,7 +1144,10 @@ function SalesPanel({ qs }: { qs: string }) {
       </Section>
 
       {/* Row 6 — Objections breakdown */}
-      <Section title="Objections breakdown">
+      <Section
+        title="Objections breakdown"
+        description="Most common objections recorded at the door."
+      >
         <ObjectionsBreakdown objections={data.objections} />
       </Section>
     </div>
@@ -1200,7 +1224,7 @@ function ObjectionsBreakdown({
         </p>
       ) : (
         <div className="divide-y divide-line">
-          <div className="px-5 py-3 text-eyebrow-tight uppercase text-zinc-500 bg-black flex items-center justify-between">
+          <div className="px-5 py-3 text-xs font-bold text-zinc-500 bg-black flex items-center justify-between">
             <span>
               Objection ({objections.pins_with_objections} pin
               {objections.pins_with_objections === 1 ? "" : "s"} with objections)
@@ -1523,16 +1547,25 @@ function SubscriptionsByTemplateDonut({
 
 function Section({
   title,
+  description,
   children,
 }: {
   title: string;
+  description?: string;
   children: React.ReactNode;
 }) {
   return (
     <section className="space-y-3">
-      <h2 className="text-[11px] font-extrabold uppercase tracking-[0.22em] text-zinc-500">
-        {title}
-      </h2>
+      <div>
+        <h2 className="text-lg font-extrabold tracking-tight text-fg leading-none">
+          {title}
+        </h2>
+        {description && (
+          <p className="mt-1.5 text-sm font-bold text-zinc-500 leading-snug">
+            {description}
+          </p>
+        )}
+      </div>
       {children}
     </section>
   );
@@ -1674,7 +1707,10 @@ function EmployeesPanel({ qs }: { qs: string }) {
           Team performance for sales reps and technicians.
         </p>
       </div>
-      <Section title="Sales reps">
+      <Section
+        title="Sales reps"
+        description="Lifetime and per-period revenue for each sales rep."
+      >
         <div className="grid gap-4 lg:grid-cols-2">
           <ChartCard
             title="Total revenue"
@@ -1737,7 +1773,10 @@ function EmployeesPanel({ qs }: { qs: string }) {
         />
       </Section>
 
-      <Section title="Technicians">
+      <Section
+        title="Technicians"
+        description="Hours worked, revenue, and dollar-per-hour for each technician."
+      >
         <div className="grid gap-4 lg:grid-cols-2">
           <ChartCard
             title="Total revenue"
@@ -1854,13 +1893,13 @@ function EmployeeTable({
         <Table>
           <TableHeader>
             <TableRow className="border-0 hover:bg-transparent bg-black">
-              <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Employee</TableHead>
-              <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Tenure</TableHead>
-              <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Lifetime</TableHead>
-              <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Monthly</TableHead>
-              <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Daily</TableHead>
+              <TableHead className="h-auto text-left px-5 py-3 text-xs font-bold text-zinc-500">Employee</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Tenure</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Lifetime</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Monthly</TableHead>
+              <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Daily</TableHead>
               {variant === "tech" && (
-                <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">$/hr</TableHead>
+                <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">$/hr</TableHead>
               )}
             </TableRow>
           </TableHeader>
@@ -2010,7 +2049,7 @@ function PayrollPanel({
         <Button
           variant="ghost"
           onClick={() => setSettingsOpen(true)}
-          className="h-auto gap-2 px-3 py-2 text-eyebrow uppercase text-zinc-500 bg-card border border-line rounded-full hover:bg-black shadow-sm"
+          className="h-auto gap-2 px-3 py-2 text-sm font-bold text-zinc-300 bg-card border border-line rounded-full hover:bg-black shadow-sm"
           aria-label="Payroll settings"
         >
           <Settings className="w-4 h-4" />
@@ -2020,6 +2059,7 @@ function PayrollPanel({
 
       <PayrollTable
         title="Sales Payroll"
+        description="Pay computed for each sales rep this pay period."
         rows={data.sales}
         showTips={false}
         showBonus={!!data.summary.plan_sale_bonus_cents}
@@ -2031,6 +2071,7 @@ function PayrollPanel({
 
       <PayrollTable
         title="Technician Payroll"
+        description="Pay computed for each technician this pay period."
         rows={data.tech}
         showTips
         showBonus={false}
@@ -2056,6 +2097,7 @@ function PayrollPanel({
 
 function PayrollTable({
   title,
+  description,
   rows,
   showTips,
   showBonus,
@@ -2065,6 +2107,7 @@ function PayrollTable({
   onPaidToggle,
 }: {
   title: string;
+  description?: string;
   rows: PayrollRow[];
   showTips: boolean;
   showBonus: boolean;
@@ -2074,7 +2117,7 @@ function PayrollTable({
   onPaidToggle: (staffId: number, paid: boolean) => void;
 }) {
   return (
-    <Section title={title}>
+    <Section title={title} description={description}>
       <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
         {rows.length === 0 ? (
           <p className="p-8 text-sm text-zinc-500 text-center">
@@ -2083,20 +2126,20 @@ function PayrollTable({
         ) : (
           <Table>
             <TableHeader>
-              <TableRow className="border-0 hover:bg-transparent text-eyebrow uppercase text-zinc-500 bg-black">
-                <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Employee</TableHead>
-                <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Email</TableHead>
-                <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Role</TableHead>
-                <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">{rateLabel}</TableHead>
-                <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Total</TableHead>
+              <TableRow className="border-0 hover:bg-transparent bg-black">
+                <TableHead className="h-auto text-left px-5 py-3 text-xs font-bold text-zinc-500">Employee</TableHead>
+                <TableHead className="h-auto text-left px-5 py-3 text-xs font-bold text-zinc-500">Email</TableHead>
+                <TableHead className="h-auto text-left px-5 py-3 text-xs font-bold text-zinc-500">Role</TableHead>
+                <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">{rateLabel}</TableHead>
+                <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Total</TableHead>
                 {showTips && (
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Tips</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Tips</TableHead>
                 )}
                 {showBonus && (
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Bonus</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Bonus</TableHead>
                 )}
-                <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Payout</TableHead>
-                <TableHead className="h-auto text-center px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Paid</TableHead>
+                <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Payout</TableHead>
+                <TableHead className="h-auto text-center px-5 py-3 text-xs font-bold text-zinc-500">Paid</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -2343,7 +2386,10 @@ function JobsPanel({ qs }: { qs: string }) {
           Job performance, cash flow, and lead sources.
         </p>
       </div>
-      <Section title="All jobs">
+      <Section
+        title="All jobs"
+        description="Counts and revenue across every job status."
+      >
         <Stats
           items={[
             {
@@ -2370,7 +2416,10 @@ function JobsPanel({ qs }: { qs: string }) {
         />
       </Section>
 
-      <Section title="Cash flow">
+      <Section
+        title="Cash flow"
+        description="Receipts, time to first payment, and customer mix."
+      >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <BigStatCard
             label="Cash Collected"
@@ -2393,7 +2442,10 @@ function JobsPanel({ qs }: { qs: string }) {
         </div>
       </Section>
 
-      <Section title="Jobs by Lead Source">
+      <Section
+        title="Jobs by Lead Source"
+        description="Where this period's jobs came from."
+      >
         <JobsByLeadSourceDonut rows={sourceList} layout="horizontal" />
       </Section>
     </div>

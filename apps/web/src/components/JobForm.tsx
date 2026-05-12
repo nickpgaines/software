@@ -482,7 +482,7 @@ export default function JobForm({
       <Section title="Scheduling">
         <div className="space-y-3">
           <div className="grid grid-cols-1 sm:grid-cols-[80px_1fr_1fr] items-center gap-3">
-            <Label className="text-eyebrow uppercase text-zinc-500">Start</Label>
+            <Label className="text-xs font-bold text-zinc-500">Start</Label>
             <Input
               type="date"
               value={startDate}
@@ -499,7 +499,7 @@ export default function JobForm({
             />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-[80px_1fr_1fr] items-center gap-3">
-            <Label className="text-eyebrow uppercase text-zinc-500">End</Label>
+            <Label className="text-xs font-bold text-zinc-500">End</Label>
             <Input
               type="date"
               value={endDate}
@@ -732,7 +732,7 @@ function Field({
 }) {
   return (
     <div>
-      <Label className="block text-eyebrow uppercase text-zinc-500 mb-2">
+      <Label className="block text-xs font-bold text-zinc-500 mb-2">
         {label}
       </Label>
       {children}
@@ -755,7 +755,7 @@ function Total({
 }) {
   return (
     <div>
-      <div className="text-xs uppercase tracking-wide text-zinc-500">
+      <div className="text-xs font-bold text-zinc-500">
         {label}
       </div>
       <div
@@ -1031,7 +1031,7 @@ function StaffMultiPicker({
             >
               <span className="font-bold text-white tracking-tight">{s.name}</span>
               {s.role && (
-                <span className="text-eyebrow uppercase text-zinc-500">{s.role}</span>
+                <span className="text-xs font-bold text-zinc-500">{s.role}</span>
               )}
             </Button>
           ))}
@@ -1220,10 +1220,10 @@ function Dropzone() {
       }
     >
       <div className="text-3xl text-zinc-500">⤴</div>
-      <p className="mt-2 text-eyebrow uppercase text-zinc-500">
+      <p className="mt-2 text-xs font-bold text-zinc-500">
         Click to upload or drag and drop
       </p>
-      <p className="text-eyebrow uppercase text-zinc-500">PNG, JPG, GIF up to 5MB</p>
+      <p className="text-xs font-bold text-zinc-500">PNG, JPG, GIF up to 5MB</p>
     </div>
   );
 }

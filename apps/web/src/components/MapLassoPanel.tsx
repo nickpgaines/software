@@ -190,7 +190,7 @@ export default function MapLassoPanel({
       <div className="px-4 pb-3">
         <ul className="border border-line rounded-lg max-h-44 overflow-y-auto divide-y divide-line">
           {customers.length === 0 ? (
-            <li className="px-3 py-6 text-center text-eyebrow uppercase text-zinc-500">
+            <li className="px-3 py-6 text-center text-xs font-bold text-zinc-500">
               No customers selected.
             </li>
           ) : (
@@ -233,7 +233,7 @@ export default function MapLassoPanel({
       </div>
 
       <div className="px-4 pt-1 pb-2">
-        <div className="text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
+        <div className="text-xs font-bold text-zinc-500 mb-1.5">
           Message
         </div>
         <Textarea

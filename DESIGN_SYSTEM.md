@@ -148,6 +148,8 @@ Every value below is taken from running code. The dashboard does not use
 | **H2 — card title**          | `text-[15px] font-extrabold tracking-tight`                                           | 15px / weight 800 / lh 1.5 (default) / tracking -0.025em  | `widgets.tsx:566` (Schedule), :617 (Pipeline), :696 (Inbox), :720 (Tasks), :788 (Activity) |
 | **H3 — empty-state title**   | `text-sm font-extrabold`                                                              | 14px / weight 800 / lh 1.25                               | `widgets.tsx` empty-state                   |
 | **Subtitle (under H1)**      | `text-sm font-bold`                                                                   | 14px / weight 700 / lh 1.25                               | `PageHeader.tsx` subtitle slot              |
+| **Section subheading**       | `text-lg font-extrabold tracking-tight text-fg leading-none`                          | 18px / weight 800 / lh 1 / tracking -0.025em              | `ReportsClient.tsx` `Section()`             |
+| **Section subheading caption** | `text-sm font-bold text-zinc-500 leading-snug` *(with `mt-1.5` under the heading)*  | 14px / weight 700 / lh 1.375                              | `ReportsClient.tsx` `Section()`             |
 | **Body — small subtitle**    | `text-[12px] font-bold`                                                               | 12px / weight 700                                         | `widgets.tsx` Pipeline "35 active"          |
 | **Body — activity item**     | `text-[12.5px] font-bold leading-snug`                                                | 12.5px / weight 700 / lh 1.375                            | `widgets.tsx` activity body                 |
 | **Body — schedule row name** | `text-[14px] font-bold`                                                               | 14px / weight 700                                         | `widgets.tsx` schedule row                  |
@@ -192,6 +194,36 @@ Three tiers, locked. No fourth value.
 | `0.22em`  | **Page-level / hero section kicker** — above an H1 or hero number             | `text-[11px] uppercase font-extrabold`      |
 | `0.18em`  | **Widget-internal label** — KPI label, status indicator, badge                | `text-[10–11px] uppercase font-extrabold`   |
 | `0.16em`  | **Micro caps** — chip text, table column header, tiny caption                 | `text-[10–10.5px] uppercase font-bold`      |
+
+### Uppercase usage policy
+
+**Hard rule: all-caps gray tracked text is reserved for two zones only.**
+
+1. The left sidebar / nav (`Sidebar.tsx`, `NavBar.tsx`) — section
+   headers in the sidebar dropdown.
+2. The inside of a chart, widget, or KPI / stat tile — chart axis
+   labels, legend chips, donut-center labels, status badges, the small
+   gray label above the big number inside a stat card, and any other
+   label that lives inside a `widgets.tsx` Pulse card.
+
+Everywhere else — page section subheadings, table column headers,
+form field labels, modal section headers, card headers above tables,
+empty-state messages, helper text, button labels, breadcrumb links,
+detail-view field labels — use sentence-case, not uppercase. The
+typography options for those are:
+
+- **Page section subheading** — `text-lg font-extrabold tracking-tight text-fg leading-none`,
+  optionally followed by **Section subheading caption** —
+  `mt-1.5 text-sm font-bold text-zinc-500 leading-snug`.
+- **Table column header / card sub-header / form field label** —
+  `text-xs font-bold text-zinc-500` (or `text-zinc-400` for stronger
+  contrast). No uppercase, no extra tracking.
+
+The `text-eyebrow` / `text-eyebrow-tight` tokens and the §4 uppercase
+tracking scale above are still valid — but only inside the two zones
+listed above. If you find yourself reaching for `uppercase` outside
+those zones, you're inventing a fourth zone and should use one of the
+sentence-case patterns instead.
 
 ### Numeric weight scale
 

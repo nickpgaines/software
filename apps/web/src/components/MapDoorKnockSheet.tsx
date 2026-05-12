@@ -156,7 +156,7 @@ export default function MapDoorKnockSheet({
           </Field>
 
           <div>
-            <div className="text-xs uppercase tracking-wide text-zinc-500 mb-2">
+            <div className="text-xs font-bold text-zinc-500 mb-2">
               Status
             </div>
             <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
@@ -197,7 +197,7 @@ export default function MapDoorKnockSheet({
               type="button"
               variant="ghost"
               onClick={() => setObjectionsOpen((o) => !o)}
-              className="w-full h-auto justify-between px-4 py-3 text-eyebrow uppercase text-zinc-500 rounded-b-none hover:bg-transparent"
+              className="w-full h-auto justify-between px-4 py-3 text-xs font-bold text-zinc-500 rounded-b-none hover:bg-transparent"
             >
               <span>Objections{objections.length > 0 ? ` (${objections.length})` : ""}</span>
               <svg
@@ -296,7 +296,7 @@ function Field({
 }) {
   return (
     <div>
-      <Label className="block text-xs font-normal uppercase tracking-wide text-zinc-500 mb-1.5">
+      <Label className="block text-xs font-bold text-zinc-500 mb-1.5">
         {label}
       </Label>
       {children}

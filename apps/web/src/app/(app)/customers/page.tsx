@@ -164,10 +164,10 @@ function CustomersPage() {
           <Table>
             <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-line">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="h-auto text-left px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Name</TableHead>
-                <TableHead className="h-auto text-left px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Address</TableHead>
-                <TableHead className="h-auto text-left px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Phone</TableHead>
-                <TableHead className="h-auto text-left px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Email</TableHead>
+                <TableHead className="h-auto text-left px-4 py-2 text-xs font-bold text-zinc-500">Name</TableHead>
+                <TableHead className="h-auto text-left px-4 py-2 text-xs font-bold text-zinc-500">Address</TableHead>
+                <TableHead className="h-auto text-left px-4 py-2 text-xs font-bold text-zinc-500">Phone</TableHead>
+                <TableHead className="h-auto text-left px-4 py-2 text-xs font-bold text-zinc-500">Email</TableHead>
                 <TableHead className="h-auto px-4 py-2" />
               </TableRow>
             </TableHeader>
@@ -205,7 +205,7 @@ function CustomersPage() {
                           })
                         }
                         disabled={phone.state.kind !== "idle"}
-                        className="h-auto p-0 text-[11px] uppercase tracking-[0.14em] font-extrabold text-emerald-400 hover:text-emerald-300 hover:bg-transparent mr-4"
+                        className="h-auto p-0 text-xs font-bold text-emerald-400 hover:text-emerald-300 hover:bg-transparent mr-4"
                       >
                         Call
                       </Button>
@@ -213,14 +213,14 @@ function CustomersPage() {
                     <Button
                       variant="ghost"
                       onClick={() => setEditing(c)}
-                      className="h-auto p-0 text-[11px] uppercase tracking-[0.14em] font-extrabold text-zinc-400 hover:text-white hover:bg-transparent mr-4"
+                      className="h-auto p-0 text-xs font-bold text-zinc-400 hover:text-white hover:bg-transparent mr-4"
                     >
                       Edit
                     </Button>
                     <Button
                       variant="ghost"
                       onClick={() => del(c.id)}
-                      className="h-auto p-0 text-[11px] uppercase tracking-[0.14em] font-extrabold text-red-400 hover:text-red-300 hover:bg-transparent"
+                      className="h-auto p-0 text-xs font-bold text-red-400 hover:text-red-300 hover:bg-transparent"
                     >
                       Delete
                     </Button>

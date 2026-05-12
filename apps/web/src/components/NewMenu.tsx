@@ -63,7 +63,7 @@ export default function NewMenu({ fullWidth }: { fullWidth?: boolean }) {
               <>
                 <span>{it.label}</span>
                 {it.disabled && (
-                  <span className="text-[10px] uppercase tracking-wide bg-black text-zinc-400 rounded-full px-1.5 py-0.5">
+                  <span className="text-[10px] font-bold bg-black text-zinc-400 rounded-full px-1.5 py-0.5">
                     Soon
                   </span>
                 )}

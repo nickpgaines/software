@@ -101,7 +101,7 @@ export default function AcceptClient({
     <main className="min-h-screen bg-black text-white px-4 py-10">
       <div className="mx-auto max-w-xl space-y-6">
         <header className="space-y-1">
-          <p className="text-eyebrow uppercase text-zinc-500">
+          <p className="text-xs font-bold text-zinc-500">
             {companyName}
           </p>
           <h1 className="text-3xl font-extrabold tracking-tight">
@@ -167,7 +167,7 @@ export default function AcceptClient({
               Signature
             </h2>
             <SignaturePad value={signatureData} onChange={setSignatureData} />
-            <Label className="block text-eyebrow uppercase text-zinc-500">
+            <Label className="block text-xs font-bold text-zinc-500">
               Printed name
             </Label>
             <Input
@@ -224,7 +224,7 @@ export default function AcceptClient({
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4 px-4 py-2.5">
-      <dt className="text-eyebrow uppercase text-zinc-500 shrink-0">
+      <dt className="text-xs font-bold text-zinc-500 shrink-0">
         {label}
       </dt>
       <dd className="text-xs text-zinc-300 text-right">{value}</dd>

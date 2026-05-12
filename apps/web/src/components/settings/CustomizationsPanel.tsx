@@ -251,7 +251,7 @@ function SectionHeader({
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return (
-    <Label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1.5 font-normal">
+    <Label className="block text-xs font-bold text-zinc-500 mb-1.5 font-normal">
       {children}
     </Label>
   );
@@ -467,7 +467,7 @@ function JobRemindersSection({
       />
 
       <div className="rounded-xl border border-line bg-card p-4">
-        <div className="grid grid-cols-[1fr_140px_60px] items-center gap-3 text-xs uppercase tracking-wide text-zinc-500 mb-3">
+        <div className="grid grid-cols-[1fr_140px_60px] items-center gap-3 text-xs font-bold text-zinc-500 mb-3">
           <div>Time before job</div>
           <div>Time to send</div>
           <div></div>
@@ -540,7 +540,7 @@ function JobRemindersSection({
         <div className="text-sm font-bold text-white">Notification Methods</div>
         <div className="space-y-3">
           <div>
-            <div className="text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
+            <div className="text-xs font-bold text-zinc-500 mb-1.5">
               Customer
             </div>
             <div className="flex gap-4">
@@ -567,7 +567,7 @@ function JobRemindersSection({
             </div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
+            <div className="text-xs font-bold text-zinc-500 mb-1.5">
               Business Owner
             </div>
             <div className="flex gap-4">
@@ -594,7 +594,7 @@ function JobRemindersSection({
             </div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
+            <div className="text-xs font-bold text-zinc-500 mb-1.5">
               Dispatched Employees
             </div>
             <div className="flex gap-4">
@@ -1356,7 +1356,7 @@ function DocumentPreview({
 
   return (
     <div className="rounded-xl border border-line bg-card p-3">
-      <div className="text-xs uppercase tracking-wide text-zinc-500 mb-2 px-1">
+      <div className="text-xs font-bold text-zinc-500 mb-2 px-1">
         Preview
       </div>
       <div className="rounded-lg bg-white text-zinc-900 p-5 sm:p-6 shadow-sm overflow-hidden">
@@ -1409,7 +1409,7 @@ function DocumentPreview({
           </div>
           {sections.show_details && (
             <div className="text-right shrink-0">
-              <div className="text-xs uppercase tracking-wide text-zinc-500">
+              <div className="text-xs font-bold text-zinc-500">
                 {title}
               </div>
               <div className="text-base font-extrabold text-zinc-900 tabular-nums">
@@ -1427,7 +1427,7 @@ function DocumentPreview({
 
         {sections.show_customer_details && (
           <div className="py-4 border-b border-zinc-200">
-            <div className="text-xs uppercase tracking-wide text-zinc-500 mb-1">
+            <div className="text-xs font-bold text-zinc-500 mb-1">
               Bill to
             </div>
             <div className="text-sm font-bold text-zinc-900">
@@ -1443,7 +1443,7 @@ function DocumentPreview({
 
         {sections.show_line_items && (
           <div className="py-4">
-            <div className="grid grid-cols-[1fr_50px_90px_90px] text-xs uppercase tracking-wide text-zinc-500 pb-2 border-b border-zinc-200">
+            <div className="grid grid-cols-[1fr_50px_90px_90px] text-xs font-bold text-zinc-500 pb-2 border-b border-zinc-200">
               <div>Description</div>
               <div className="text-right">Qty</div>
               <div className="text-right">Unit Price</div>

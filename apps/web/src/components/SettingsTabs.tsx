@@ -303,7 +303,7 @@ function ProfilePanel({ username }: { username: string }) {
                 )}
               </div>
               {isAdminEnv && (
-                <p className="text-eyebrow uppercase text-zinc-500">
+                <p className="text-xs font-bold text-zinc-500">
                   This is the built-in admin account. Create an employee record to
                   manage your own profile.
                 </p>
@@ -336,7 +336,7 @@ function ProfilePanel({ username }: { username: string }) {
           </dl>
 
           {!isAdminEnv && (
-            <p className="text-eyebrow uppercase text-zinc-500">
+            <p className="text-xs font-bold text-zinc-500">
               To change your name, email, or password, edit your record from
               the <span className="font-bold">Employees</span> page.
             </p>
@@ -350,7 +350,7 @@ function ProfilePanel({ username }: { username: string }) {
 function ReadOnlyField({ label, value }: { label: string; value: string }) {
   return (
     <div>
-      <dt className="text-xs uppercase tracking-wide text-zinc-500 mb-1">
+      <dt className="text-xs font-bold text-zinc-500 mb-1">
         {label}
       </dt>
       <dd className="text-sm font-bold text-white tracking-tight bg-black border border-line rounded-full px-4 py-2">
@@ -767,7 +767,7 @@ function PaymentsPanel() {
             </Button>
           </div>
           {!status.oauth_configured && (
-            <p className="text-eyebrow uppercase text-zinc-500">
+            <p className="text-xs font-bold text-zinc-500">
               The &ldquo;Sign in&rdquo; option is unavailable until{" "}
               <code>STRIPE_CONNECT_CLIENT_ID</code> is set in the deployment
               environment.
@@ -796,7 +796,7 @@ function PaymentsPanel() {
               <p className="text-xs text-zinc-400 mt-1 font-mono">
                 {status.account_id}
                 {status.account_type && (
-                  <span className="ml-2 inline-block px-2 py-0.5 rounded-full bg-black text-zinc-400 text-[10px] uppercase tracking-wide font-sans not-italic">
+                  <span className="ml-2 inline-block px-2 py-0.5 rounded-full bg-black text-zinc-400 text-[10px] font-bold font-sans not-italic">
                     {status.account_type === "standard"
                       ? "Existing account"
                       : "New account"}
@@ -1307,7 +1307,7 @@ function SubscriptionsPanel() {
                       {t.name}
                     </span>
                     {t.active === 0 && (
-                      <span className="text-[10px] uppercase tracking-wide text-zinc-400 bg-black rounded-full px-2 py-0.5">
+                      <span className="text-[10px] font-bold text-zinc-400 bg-black rounded-full px-2 py-0.5">
                         Inactive
                       </span>
                     )}
@@ -1642,7 +1642,7 @@ function StatusBadge({ status }: { status: CustomerSubscription["status"] }) {
   return (
     <span
       className={
-        "text-[10px] uppercase tracking-wide rounded-full px-2 py-0.5 " +
+        "text-[10px] font-bold rounded-full px-2 py-0.5 " +
         styles[status]
       }
     >
@@ -1804,7 +1804,7 @@ function SendOrAcceptModal({
 
         {linkedTerms && (
           <div>
-            <div className="text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
+            <div className="text-xs font-bold text-zinc-500 mb-1.5">
               Terms — {linkedTerms.name}
             </div>
             <div className="text-xs text-zinc-300 bg-black border border-line rounded-xl p-3 max-h-40 overflow-y-auto whitespace-pre-wrap">
@@ -1815,7 +1815,7 @@ function SendOrAcceptModal({
 
         {requireSignature && (
           <div className="space-y-2">
-            <div className="text-xs uppercase tracking-wide text-zinc-500">
+            <div className="text-xs font-bold text-zinc-500">
               Customer signature
             </div>
             <SignaturePad value={signatureData} onChange={setSignatureData} />
@@ -1853,7 +1853,7 @@ function SendOrAcceptModal({
             Accept on device
           </Button>
         </div>
-        <p className="text-eyebrow uppercase text-zinc-500">
+        <p className="text-xs font-bold text-zinc-500">
           &quot;Send&quot; messages the customer with the offer.
           &quot;Accept on device&quot; activates it immediately for in-person
           sign-ups.
@@ -2170,7 +2170,7 @@ function MessagingPanel() {
 
       {onPlatform && (
         <div className="rounded-xl border border-line bg-black p-4">
-          <div className="text-eyebrow uppercase text-zinc-500">
+          <div className="text-xs font-bold text-zinc-500">
             Your number
           </div>
           <div className="mt-1 text-2xl font-black text-white font-mono tabular-nums tracking-tight">
@@ -2233,7 +2233,7 @@ function MessagingPanel() {
             </li>
           </ol>
           <div>
-            <div className="text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
+            <div className="text-xs font-bold text-zinc-500 mb-1.5">
               Inbound webhook URL
             </div>
             <div className="flex gap-2">
@@ -2462,7 +2462,7 @@ function CallingPanel() {
           <li>Paste all three values below.</li>
         </ol>
         <div>
-          <div className="text-xs uppercase tracking-wide text-zinc-500 mb-1.5">
+          <div className="text-xs font-bold text-zinc-500 mb-1.5">
             TwiML App Voice URL
           </div>
           <Input
@@ -2889,7 +2889,7 @@ function AiPanel() {
             "e.g. Friendly and concise. Never defensive. If a customer complains, always offer a free re-clean and a callback within 24 hours."
           }
         />
-        <p className="text-eyebrow uppercase text-zinc-500 mt-2">
+        <p className="text-xs font-bold text-zinc-500 mt-2">
           Used as part of the prompt for every drafted reply. Describe tone,
           policies, and how you want to handle complaints.
         </p>
@@ -2945,7 +2945,7 @@ function Field({
 }) {
   return (
     <div>
-      <Label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1.5 font-normal">
+      <Label className="block text-xs font-bold text-zinc-500 mb-1.5 font-normal">
         {label}
       </Label>
       {children}

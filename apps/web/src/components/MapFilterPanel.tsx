@@ -140,7 +140,7 @@ export default function MapFilterPanel({
           </Button>
           <div className="flex flex-wrap gap-1.5">
             {staff.length === 0 && (
-              <p className="text-eyebrow uppercase text-zinc-500">No employees yet.</p>
+              <p className="text-xs font-bold text-zinc-500">No employees yet.</p>
             )}
             {staff.map((s) => {
               const active =
@@ -187,7 +187,7 @@ function Section({
 }) {
   return (
     <div>
-      <div className="text-xs uppercase tracking-wide text-zinc-500 mb-2">
+      <div className="text-xs font-bold text-zinc-500 mb-2">
         {label}
       </div>
       {children}

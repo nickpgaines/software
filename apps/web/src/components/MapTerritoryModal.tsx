@@ -128,7 +128,7 @@ export default function MapTerritoryModal({
 
         <div className="p-5 space-y-4">
           <div ref={ref} className="relative">
-            <Label className="block text-xs font-normal uppercase tracking-wide text-zinc-500 mb-1.5">
+            <Label className="block text-xs font-bold text-zinc-500 mb-1.5">
               Assign to Employee
             </Label>
             <div className="min-h-[42px] flex flex-wrap items-center gap-1.5 border border-line rounded-2xl px-2 py-1.5 bg-card">
@@ -191,7 +191,7 @@ export default function MapTerritoryModal({
                 ))}
               </div>
             )}
-            <p className="text-eyebrow uppercase text-zinc-500 mt-2.5">
+            <p className="text-xs font-bold text-zinc-500 mt-2.5">
               The territory will use this employee&apos;s color on the map.
             </p>
           </div>

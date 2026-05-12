@@ -131,7 +131,7 @@ export default function SalesStatsClient({
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <Link
           href="/leaderboard"
-          className="inline-flex items-center gap-2 text-[12px] font-extrabold uppercase tracking-[0.18em]"
+          className="inline-flex items-center gap-2 text-xs font-bold"
           style={{ color: PULSE.textSubtle }}
         >
           <svg
@@ -190,7 +190,7 @@ export default function SalesStatsClient({
           </div>
           <div className="min-w-0">
             <div
-              className="text-[11px] uppercase tracking-[0.22em] font-extrabold mb-3"
+              className="text-sm font-bold mb-3"
               style={{ color: PULSE.textDim }}
             >
               Sales Stats
@@ -213,7 +213,7 @@ export default function SalesStatsClient({
               >
                 {staff?.role && (
                   <span
-                    className="text-[10.5px] uppercase tracking-[0.16em] font-extrabold px-2 py-0.5 rounded-full capitalize"
+                    className="text-xs font-bold px-2 py-0.5 rounded-full capitalize"
                     style={{
                       background: `${PULSE.violet}1F`,
                       color: PULSE.violetSoft,
@@ -386,7 +386,7 @@ function Kpi({
       }}
     >
       <div
-        className="text-eyebrow uppercase mb-2"
+        className="text-xs font-bold mb-2 text-zinc-500"
         style={{ color: PULSE.textSubtle }}
       >
         {label}
@@ -484,7 +484,7 @@ function PinTile({
           />
         </span>
         <span
-          className="text-[10.5px] uppercase tracking-[0.16em] font-extrabold tabular-nums"
+          className="text-xs font-bold tabular-nums"
           style={{ color: PULSE.textSubtle }}
         >
           {pct.toFixed(0)}%

@@ -223,7 +223,7 @@ function Row({
 }) {
   return (
     <div className="grid grid-cols-[80px_1fr] gap-2">
-      <dt className="text-xs uppercase tracking-wide text-zinc-500 pt-0.5">
+      <dt className="text-xs font-bold text-zinc-500 pt-0.5">
         {label}
       </dt>
       <dd className="min-w-0">{children}</dd>

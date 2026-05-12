@@ -125,13 +125,13 @@ export default function CallsClient() {
           <Table>
             <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-line">
               <TableRow className="hover:bg-transparent">
-                <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">When</TableHead>
-                <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Direction</TableHead>
-                <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Customer</TableHead>
-                <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Number</TableHead>
-                <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Status</TableHead>
-                <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Duration</TableHead>
-                <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Recording</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-xs font-bold text-zinc-500">When</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-xs font-bold text-zinc-500">Direction</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-xs font-bold text-zinc-500">Customer</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-xs font-bold text-zinc-500">Number</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-xs font-bold text-zinc-500">Status</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-xs font-bold text-zinc-500">Duration</TableHead>
+                <TableHead className="h-auto px-4 py-2 text-xs font-bold text-zinc-500">Recording</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-line">
@@ -175,7 +175,7 @@ export default function CallsClient() {
                           className="h-8"
                         />
                       ) : (
-                        <span className="text-eyebrow uppercase text-zinc-500">—</span>
+                        <span className="text-xs font-bold text-zinc-500">—</span>
                       )}
                     </TableCell>
                   </TableRow>

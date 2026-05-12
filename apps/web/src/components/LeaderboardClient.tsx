@@ -411,7 +411,7 @@ export default function LeaderboardClient({
                 {customOpen && (
                   <div className="absolute right-0 mt-2 z-30 bg-card border border-line rounded-2xl shadow-lg p-4 w-64 space-y-3">
                     <div>
-                      <Label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1 font-normal">
+                      <Label className="block text-xs font-bold text-zinc-500 mb-1 font-normal">
                         From
                       </Label>
                       <Input
@@ -423,7 +423,7 @@ export default function LeaderboardClient({
                       />
                     </div>
                     <div>
-                      <Label className="block text-xs uppercase tracking-wide text-zinc-500 mb-1 font-normal">
+                      <Label className="block text-xs font-bold text-zinc-500 mb-1 font-normal">
                         To
                       </Label>
                       <Input
@@ -479,16 +479,16 @@ export default function LeaderboardClient({
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="border-0 hover:bg-transparent text-eyebrow uppercase text-zinc-500">
-                  <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Rank</TableHead>
-                  <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">
+                <TableRow className="border-0 hover:bg-transparent text-xs font-bold text-zinc-500">
+                  <TableHead className="h-auto text-left px-5 py-3 text-xs font-bold text-zinc-500">Rank</TableHead>
+                  <TableHead className="h-auto text-left px-5 py-3 text-xs font-bold text-zinc-500">
                     {personColumn}
                   </TableHead>
-                  <TableHead className="h-auto text-left px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Role</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Revenue</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">Jobs</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">{avgColumn}</TableHead>
-                  <TableHead className="h-auto text-right px-5 py-3 text-eyebrow-tight uppercase text-zinc-500">{lastColumn}</TableHead>
+                  <TableHead className="h-auto text-left px-5 py-3 text-xs font-bold text-zinc-500">Role</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Revenue</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Jobs</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">{avgColumn}</TableHead>
+                  <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">{lastColumn}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

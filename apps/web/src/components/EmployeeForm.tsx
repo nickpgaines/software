@@ -479,7 +479,7 @@ function Field({
 }) {
   return (
     <div>
-      <Label className="block text-eyebrow uppercase text-zinc-500 mb-2">
+      <Label className="block text-xs font-bold text-zinc-500 mb-2">
         {label}
         {required && <span className="text-rose-500 ml-0.5">*</span>}
       </Label>

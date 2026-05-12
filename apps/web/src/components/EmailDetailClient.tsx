@@ -109,7 +109,7 @@ export default function EmailDetailClient({ id }: { id: number }) {
       </div>
 
       <div className="bg-card border border-line rounded-2xl shadow-sm p-6">
-        <div className="text-xs uppercase tracking-wide text-zinc-500 mb-2">
+        <div className="text-xs font-bold text-zinc-500 mb-2">
           Message preview
         </div>
         <div
@@ -125,11 +125,11 @@ export default function EmailDetailClient({ id }: { id: number }) {
         <Table>
           <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-line">
             <TableRow className="hover:bg-transparent">
-              <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Email</TableHead>
-              <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Name</TableHead>
-              <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Status</TableHead>
-              <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Sent</TableHead>
-              <TableHead className="h-auto px-4 py-2 text-eyebrow-tight uppercase text-zinc-500">Error</TableHead>
+              <TableHead className="h-auto px-4 py-2 text-xs font-bold text-zinc-500">Email</TableHead>
+              <TableHead className="h-auto px-4 py-2 text-xs font-bold text-zinc-500">Name</TableHead>
+              <TableHead className="h-auto px-4 py-2 text-xs font-bold text-zinc-500">Status</TableHead>
+              <TableHead className="h-auto px-4 py-2 text-xs font-bold text-zinc-500">Sent</TableHead>
+              <TableHead className="h-auto px-4 py-2 text-xs font-bold text-zinc-500">Error</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-line">
@@ -166,7 +166,7 @@ function Stat({
       : "bg-card border-line text-white";
   return (
     <div className={`border rounded-xl p-4 ${ring}`}>
-      <div className="text-xs uppercase tracking-wide text-zinc-500 mb-1">
+      <div className="text-xs font-bold text-zinc-500 mb-1">
         {label}
       </div>
       <div className="text-xl font-semibold capitalize">{value}</div>

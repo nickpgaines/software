@@ -357,7 +357,7 @@ export default function JobDetailClient({
             </h2>
             <div className="space-y-3 text-sm">
               <div>
-                <div className="text-xs text-zinc-500 uppercase tracking-wide">
+                <div className="text-xs font-bold text-zinc-500">
                   Name
                 </div>
                 <div className="font-bold text-white tracking-tight">
@@ -504,7 +504,7 @@ export default function JobDetailClient({
             </div>
             <div className="grid grid-cols-2 gap-4 text-sm">
               <div>
-                <div className="text-xs text-zinc-500 uppercase tracking-wide">
+                <div className="text-xs font-bold text-zinc-500">
                   Scheduled
                 </div>
                 <div className="font-bold text-white tracking-tight">
@@ -519,7 +519,7 @@ export default function JobDetailClient({
                 </div>
               </div>
               <div>
-                <div className="text-xs text-zinc-500 uppercase tracking-wide">
+                <div className="text-xs font-bold text-zinc-500">
                   Duration
                 </div>
                 <div className="font-bold text-white tracking-tight">
@@ -527,7 +527,7 @@ export default function JobDetailClient({
                 </div>
               </div>
               <div>
-                <div className="text-xs text-zinc-500 uppercase tracking-wide">
+                <div className="text-xs font-bold text-zinc-500">
                   Salesperson
                 </div>
                 <div className="font-bold text-white tracking-tight">
@@ -537,7 +537,7 @@ export default function JobDetailClient({
                 </div>
               </div>
               <div>
-                <div className="text-xs text-zinc-500 uppercase tracking-wide">
+                <div className="text-xs font-bold text-zinc-500">
                   Dispatched To
                 </div>
                 <div className="font-bold text-white tracking-tight">
@@ -548,7 +548,7 @@ export default function JobDetailClient({
               </div>
               {job.lead_source && (
                 <div>
-                  <div className="text-xs text-zinc-500 uppercase tracking-wide">
+                  <div className="text-xs font-bold text-zinc-500">
                     Lead Source
                   </div>
                   <div className="font-bold text-white tracking-tight">
@@ -558,7 +558,7 @@ export default function JobDetailClient({
               )}
               {job.recurring ? (
                 <div>
-                  <div className="text-xs text-zinc-500 uppercase tracking-wide">
+                  <div className="text-xs font-bold text-zinc-500">
                     Recurring
                   </div>
                   <div className="font-bold text-white tracking-tight">Yes</div>
@@ -567,7 +567,7 @@ export default function JobDetailClient({
             </div>
             {job.notes && (
               <div className="mt-4">
-                <div className="text-xs text-zinc-500 uppercase tracking-wide">
+                <div className="text-xs font-bold text-zinc-500">
                   Notes
                 </div>
                 <p className="text-sm text-zinc-300 font-bold mt-1 whitespace-pre-wrap">
@@ -595,7 +595,7 @@ export default function JobDetailClient({
                           {li.description}
                         </div>
                       )}
-                      <div className="text-eyebrow uppercase text-zinc-500 mt-2 flex gap-2 flex-wrap">
+                      <div className="text-xs font-bold text-zinc-500 mt-2 flex gap-2 flex-wrap">
                         <span>
                           Qty {li.quantity} · {money(li.price_cents)} ea
                         </span>
@@ -806,7 +806,7 @@ function StepButton({
         {icon}
       </div>
       <div className="flex-1 min-w-0">
-        <div className="text-xs text-zinc-500 uppercase tracking-wide">
+        <div className="text-xs font-bold text-zinc-500">
           Step {index + 1}
         </div>
         <div className="font-extrabold text-white tracking-tight">{label}</div>

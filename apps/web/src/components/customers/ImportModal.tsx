@@ -407,10 +407,10 @@ function UploadStep({
         }
       >
         <div className="text-3xl text-zinc-500">⤴</div>
-        <p className="mt-2 text-eyebrow uppercase text-zinc-500">
+        <p className="mt-2 text-xs font-bold text-zinc-500">
           Click to choose or drag & drop a CSV file
         </p>
-        <p className="text-eyebrow uppercase text-zinc-500">.csv files only</p>
+        <p className="text-xs font-bold text-zinc-500">.csv files only</p>
       </div>
       <Input
         ref={fileInputRef}
@@ -450,9 +450,9 @@ function MappingStep({
         <Table>
           <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-line">
             <TableRow className="hover:bg-transparent">
-              <TableHead className="h-auto text-left px-3 py-2 text-eyebrow-tight uppercase text-zinc-500">CSV column</TableHead>
-              <TableHead className="h-auto text-left px-3 py-2 text-eyebrow-tight uppercase text-zinc-500">Sample</TableHead>
-              <TableHead className="h-auto text-left px-3 py-2 text-eyebrow-tight uppercase text-zinc-500">
+              <TableHead className="h-auto text-left px-3 py-2 text-xs font-bold text-zinc-500">CSV column</TableHead>
+              <TableHead className="h-auto text-left px-3 py-2 text-xs font-bold text-zinc-500">Sample</TableHead>
+              <TableHead className="h-auto text-left px-3 py-2 text-xs font-bold text-zinc-500">
                 Forge CRM field
               </TableHead>
             </TableRow>
@@ -597,7 +597,7 @@ function ResultStep({
                     <TableHead className="h-auto text-left px-3 py-2 font-bold w-16">
                       Row
                     </TableHead>
-                    <TableHead className="h-auto text-left px-3 py-2 text-eyebrow-tight uppercase text-zinc-500">Reason</TableHead>
+                    <TableHead className="h-auto text-left px-3 py-2 text-xs font-bold text-zinc-500">Reason</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="divide-y divide-line">

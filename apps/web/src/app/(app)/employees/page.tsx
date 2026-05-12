@@ -83,19 +83,19 @@ export default async function EmployeesPage() {
             <TableHeader>
               <TableRow className="border-b border-line text-left hover:bg-transparent">
                 <TableHead className="h-auto px-4 py-3 w-14"></TableHead>
-                <TableHead className="h-auto px-4 py-3 text-eyebrow uppercase text-zinc-500">
+                <TableHead className="h-auto px-4 py-3 text-xs font-bold text-zinc-500">
                   Name
                 </TableHead>
-                <TableHead className="h-auto px-4 py-3 text-eyebrow uppercase text-zinc-500">
+                <TableHead className="h-auto px-4 py-3 text-xs font-bold text-zinc-500">
                   Role
                 </TableHead>
-                <TableHead className="h-auto px-4 py-3 text-eyebrow uppercase text-zinc-500">
+                <TableHead className="h-auto px-4 py-3 text-xs font-bold text-zinc-500">
                   Phone
                 </TableHead>
-                <TableHead className="h-auto px-4 py-3 text-eyebrow uppercase text-zinc-500">
+                <TableHead className="h-auto px-4 py-3 text-xs font-bold text-zinc-500">
                   Email
                 </TableHead>
-                <TableHead className="h-auto px-4 py-3 text-eyebrow uppercase text-zinc-500">
+                <TableHead className="h-auto px-4 py-3 text-xs font-bold text-zinc-500">
                   Created
                 </TableHead>
                 <TableHead className="h-auto px-4 py-3 w-20"></TableHead>
