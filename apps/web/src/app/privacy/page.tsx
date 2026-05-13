@@ -1,12 +1,12 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Privacy Policy — Forge CRM",
+  title: "Privacy Policy — the NG Ventures messaging platform",
   description:
-    "How Forge CRM (operated by NG Ventures LLC) collects, uses, and protects your information.",
+    "How the NG Ventures messaging platform (operated by NG Ventures LLC) collects, uses, and protects your information.",
 };
 
-const EFFECTIVE_DATE = "May 3, 2026";
+const EFFECTIVE_DATE = "May 13, 2026";
 
 export default function PrivacyPolicyPage() {
   return (
@@ -25,7 +25,7 @@ export default function PrivacyPolicyPage() {
 
         <div className="mt-8 space-y-6 text-zinc-300 leading-relaxed font-bold">
           <p>
-            This Privacy Policy describes how Forge CRM (the &ldquo;Service,&rdquo;
+            This Privacy Policy describes how the NG Ventures messaging platform (the &ldquo;Service,&rdquo;
             &ldquo;we,&rdquo; or &ldquo;us&rdquo;), operated by NG Ventures LLC,
             collects, uses, and protects information about (a) businesses that
             sign up to use the Service (&ldquo;Customers&rdquo;) and (b) end
@@ -51,7 +51,7 @@ export default function PrivacyPolicyPage() {
             Phone numbers and SMS opt-in records are collected at the point an
             End User provides their phone number to a Customer&mdash;for
             example, by entering it on a Customer&rsquo;s website, customer
-            portal, scheduling form, or paper intake form&mdash;in order to
+            portal, scheduling form, or digital tablet form during in-person or telephone sale&mdash;in order to
             receive transactional, reminder, and promotional messages from that
             Customer.
           </p>
