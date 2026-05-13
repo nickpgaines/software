@@ -1,12 +1,12 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Terms of Service — Forge CRM",
+  title: "Terms of Service — the NG Ventures messaging platform",
   description:
-    "Terms of Service for Forge CRM, operated by NG Ventures LLC.",
+    "Terms of Service for the NG Ventures messaging platform, operated by NG Ventures LLC.",
 };
 
-const EFFECTIVE_DATE = "May 3, 2026";
+const EFFECTIVE_DATE = "May 13, 2026";
 
 export default function TermsOfServicePage() {
   return (
@@ -28,7 +28,7 @@ export default function TermsOfServicePage() {
         <div className="mt-8 space-y-6 text-zinc-300 leading-relaxed font-bold">
           <p>
             These Terms of Service (&ldquo;Terms&rdquo;) govern your use of
-            Forge CRM (the &ldquo;Service&rdquo;), operated by NG Ventures LLC
+            the NG Ventures messaging platform (the &ldquo;Service&rdquo;), operated by NG Ventures LLC
             (&ldquo;we,&rdquo; &ldquo;us&rdquo;). By creating an account or
             using the Service you agree to these Terms.
           </p>
@@ -37,7 +37,7 @@ export default function TermsOfServicePage() {
             1. The Service
           </h2>
           <p>
-            Forge CRM is a customer-relationship and operations platform for
+            The NG Ventures messaging platform is a customer-relationship and operations platform for
             service businesses. It includes scheduling, customer records,
             invoicing, payments, email, and SMS messaging features.
           </p>
@@ -46,7 +46,7 @@ export default function TermsOfServicePage() {
             2. SMS messaging program
           </h2>
           <p>
-            <strong className="text-white">Program name:</strong> Forge CRM Customer Messaging.
+            <strong className="text-white">Program name:</strong> NG Ventures Customer Messaging.
           </p>
           <p>
             <strong className="text-white">Program description:</strong> the Service sends
@@ -78,10 +78,10 @@ export default function TermsOfServicePage() {
             contact the business that originated the message directly using
             the phone number or email they provided you. You may also email{" "}
             <a
-              href="mailto:nick@homeserviceascension.com"
+              href="mailto:support@ngventures.com"
               className="text-violet-400 hover:text-violet-300 font-extrabold"
             >
-              nick@homeserviceascension.com
+              support@ngventures.com
             </a>
             .
           </p>
