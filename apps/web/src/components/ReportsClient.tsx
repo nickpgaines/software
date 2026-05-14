@@ -77,7 +77,10 @@ function RevenueBarChart({
               borderRadius: 8,
               fontSize: 12,
               fontWeight: 700,
+              color: "#fafafa",
             }}
+            labelStyle={{ color: "#fafafa", fontWeight: 800 }}
+            itemStyle={{ color: "#fafafa" }}
             formatter={(v) => {
               const n = typeof v === "number" ? v : Number(v) || 0;
               return [
@@ -142,7 +145,10 @@ function CountDonut({
               borderRadius: 8,
               fontSize: 12,
               fontWeight: 700,
+              color: "#fafafa",
             }}
+            labelStyle={{ color: "#fafafa", fontWeight: 800 }}
+            itemStyle={{ color: "#fafafa" }}
             formatter={(v, name) => {
               const n = typeof v === "number" ? v : Number(v) || 0;
               const pctStr =
@@ -739,7 +745,7 @@ function MonthlyMrrChart({
                   fontWeight: 700,
                   color: "#fafafa",
                 }}
-                labelStyle={{ color: "#a1a1aa" }}
+                labelStyle={{ color: "#fafafa", fontWeight: 800 }}
                 itemStyle={{ color: "#fafafa" }}
                 formatter={(v, _name, item) => {
                   const n = typeof v === "number" ? v : Number(v) || 0;
@@ -1517,7 +1523,6 @@ function SubscriptionsByTemplateDonut({
 
 function Section({
   title,
-  description,
   children,
 }: {
   title: string;
@@ -1525,17 +1530,10 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="space-y-3">
-      <div>
-        <h2 className="text-lg font-extrabold tracking-tight text-fg leading-none">
-          {title}
-        </h2>
-        {description && (
-          <p className="mt-1.5 text-sm font-bold text-zinc-500 leading-snug">
-            {description}
-          </p>
-        )}
-      </div>
+    <section className="space-y-4">
+      <h2 className="text-[22px] font-extrabold tracking-tight text-fg">
+        {title}
+      </h2>
       {children}
     </section>
   );

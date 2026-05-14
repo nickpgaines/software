@@ -958,6 +958,33 @@ Right-side variants:
 
 The dashboard has no tables. The closest analog inside the Pulse primitives is the **Schedule row pattern** (`widgets.tsx:472-525`) which is a flex row, not a real table. For actual tables (Customers / Reports / Leaderboard) the canonical markup is documented in code at `app/(app)/customers/page.tsx:127-180` after the post-sweep typography update; a true `<Table>` primitive does not exist.
 
+### 9.5 Chart tooltip text color
+
+Applies to every chart on every surface — recharts bar charts, donuts, line charts, plus any hand-rolled SVG hover tooltips (e.g. `HeroChart`).
+
+Tooltip text is **always white** (`#fafafa`), regardless of the chart's bar / segment / line color. The chart fills stay colored (blue bars, donut segments, yellow MRR bars, etc.); only the hover text is forced to white so it's readable against the dark popover card.
+
+Canonical recharts `<Tooltip>` config:
+
+```tsx
+<Tooltip
+  contentStyle={{
+    background: "#0f0f12",
+    border: "1px solid #1f1f24",
+    borderRadius: 8,
+    fontSize: 12,
+    fontWeight: 700,
+    color: "#fafafa",
+  }}
+  labelStyle={{ color: "#fafafa", fontWeight: 800 }}
+  itemStyle={{ color: "#fafafa" }}
+/>
+```
+
+Both the label row (X-axis category — month, name, etc.) and the item row (Y value / series name) render in white. Do not let recharts default the item color to the bar / segment `fill`, since that produces hard-to-read colored text on the popover. The same rule applies to `MonthlyMrrChart`, `RevenueBarChart` (Top Salespeople / Top Technicians), `CountDonut` (Active Subscriptions by Template, Jobs by Lead Source), and any future chart added to the codebase.
+
+Reference call sites: `components/ReportsClient.tsx:72-91` (bar chart), `components/ReportsClient.tsx:138-160` (donut), `components/ReportsClient.tsx:738-770` (MRR bar chart with forecast).
+
 ---
 
 ## 10. Inconsistencies (resolved)
