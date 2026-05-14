@@ -200,7 +200,7 @@ export default function SalesStatsClient({
               {data && (
                 <>
                   {" "}
-                  <span style={{ color: PULSE.violet }}>
+                  <span style={{ color: PULSE.violetVar }}>
                     {formatCentsShort(totalSold)}
                   </span>
                 </>

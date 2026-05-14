@@ -249,7 +249,7 @@ export default function TechStatsClient({ staffId }: { staffId: number }) {
               {data && (
                 <>
                   {" "}
-                  <span style={{ color: PULSE.violet }}>
+                  <span style={{ color: PULSE.violetVar }}>
                     {formatCentsShort(headlineCents)}
                   </span>
                 </>

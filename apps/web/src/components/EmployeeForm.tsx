@@ -246,7 +246,7 @@ export default function EmployeeForm({
             type="submit"
             variant="ghost"
             disabled={saving}
-            className="h-auto gap-2 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-lg px-5 py-2 text-sm font-bold"
+            className="h-auto gap-2 bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-lg px-5 py-2 text-sm font-bold"
           >
             {saving ? "Saving…" : "Save"}
           </Button>

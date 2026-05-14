@@ -215,7 +215,7 @@ export default function NewInvoiceForm() {
           variant="ghost"
           onClick={submit}
           disabled={!canSubmit}
-          className="h-auto inline-flex items-center gap-1.5 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2.5 text-sm font-bold shadow-sm"
+          className="h-auto inline-flex items-center gap-1.5 bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-2.5 text-sm font-bold shadow-sm"
         >
           <span aria-hidden>⊕</span>
           {submitting
@@ -821,7 +821,7 @@ function NewCustomerModal({
             type="submit"
             variant="ghost"
             disabled={saving}
-            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
+            className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-2 font-bold"
           >
             {saving ? "Saving…" : "Save customer"}
           </Button>

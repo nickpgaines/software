@@ -63,7 +63,7 @@ export default async function EmployeesPage() {
         <h1 className="text-page-title text-white">Employees</h1>
         <Link
           href="/employees/new"
-          className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-md px-4 py-2 text-sm font-bold"
+          className="inline-flex items-center gap-2 bg-primary hover:opacity-90 text-primary-foreground rounded-md px-4 py-2 text-sm font-bold"
         >
           <span className="w-5 h-5 rounded-full bg-card/15 flex items-center justify-center">
             <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />

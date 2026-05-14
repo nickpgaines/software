@@ -32,7 +32,7 @@ export function CardHeaderLink({
     <Link
       href={href}
       className="text-[11.5px] font-extrabold"
-      style={{ color: PULSE.textMuted }}
+      style={{ color: PULSE.violetVar }}
     >
       {label}
     </Link>
@@ -234,7 +234,7 @@ export function HeroChart({
         <path
           d={path}
           fill="none"
-          stroke={PULSE.text}
+          stroke="currentColor"
           strokeWidth="3"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -292,7 +292,7 @@ export function HeroChart({
           className="absolute"
           style={{ right: 0, top: 0, width: `${padRPct}%`, height: "100%" }}
         />
-        {/* Hover dot — outline + violet fill, sits exactly on the path */}
+        {/* Hover dot — sits exactly on the path, tinted with the accent. */}
         {hovered && (
           <div
             className="absolute rounded-full"
@@ -302,7 +302,7 @@ export function HeroChart({
               transform: "translate(-50%, -50%)",
               width: 12,
               height: 12,
-              background: PULSE.text,
+              background: PULSE.violetVar,
               boxShadow: `0 0 0 3px ${PULSE.bg}`,
             }}
           />
