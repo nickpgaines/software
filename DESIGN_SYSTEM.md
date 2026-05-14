@@ -98,7 +98,7 @@ defaults' light-mode overrides — only surfaces:
 
 | Token             | Dark value | Light value                  | Role in light mode                                       |
 | ----------------- | ---------- | ---------------------------- | -------------------------------------------------------- |
-| `--color-canvas`  | `#000000`  | `#f5f5f7`                    | Page background — subtle gray showing behind widgets     |
+| `--color-canvas`  | `#000000`  | `#f9f9fb`                    | Page background — subtle gray showing behind widgets     |
 | `--color-elevated`| `#0a0a0a`  | `#ebebef`                    | Secondary surfaces (search button, range pill track)     |
 | `--color-card`    | `#0f0f12`  | `#ffffff`                    | Widget surface — white                                   |
 | `--color-sidebar` | `var(--color-canvas)` | `var(--color-card)` | Sidebar surface — matches canvas in dark, decoupled to white in light so it reads as a separate panel from the gray page bg |
