@@ -211,43 +211,89 @@ Every value below is taken from running code. The dashboard does not use
 
 ### Uppercase tracking scale
 
-Three tiers, locked. No fourth value.
+**Banned everywhere except the sidebar group header.** The
+spaced-out all-caps eyebrow pattern was swept out of every production
+surface in commit (see PR for the SHA). It is permitted in **exactly one
+place**: the left-rail sidebar group headers in
+`components/pulse/Sidebar.tsx` ("Workspace", "Pipeline", "Inbox",
+"Insights", "Team"). Nowhere else.
 
-| Tracking  | Role                                                                          | Pairs with                                  |
-| --------- | ----------------------------------------------------------------------------- | ------------------------------------------- |
-| `0.22em`  | **Page-level / hero section kicker** — above an H1 or hero number             | `text-[11px] uppercase font-extrabold`      |
-| `0.18em`  | **Widget-internal label** — KPI label, status indicator, badge                | `text-[10–11px] uppercase font-extrabold`   |
-| `0.16em`  | **Micro caps** — chip text, table column header, tiny caption                 | `text-[10–10.5px] uppercase font-bold`      |
+The historical three-tier tracking scale (0.22em / 0.18em / 0.16em
+with `uppercase font-extrabold`) is retired. The `text-eyebrow` and
+`text-eyebrow-tight` font-size tokens still exist in
+`tailwind.config.ts` for the sidebar group header only; do not pair
+them with `uppercase` anywhere else.
 
-### Uppercase usage policy
+### Label scale
 
-**Hard rule: all-caps gray tracked text is reserved for two zones only.**
+Use these wherever a small gray supporting label used to be uppercase.
 
-1. The left sidebar / nav (`Sidebar.tsx`, `NavBar.tsx`) — section
-   headers in the sidebar dropdown.
-2. The inside of a chart, widget, or KPI / stat tile — chart axis
-   labels, legend chips, donut-center labels, status badges, the small
-   gray label above the big number inside a stat card, and any other
-   label that lives inside a `widgets.tsx` Pulse card.
+- **Page section heading** — `text-[22px] font-extrabold tracking-tight text-fg`.
+  No description / subtitle line beneath (see §10 #25).
+- **Stat-card / KPI top label** (e.g. "Scheduled", "Close Rate",
+  "Cash Collected", "Total ARR") — `text-xs font-extrabold text-zinc-300`.
+  This is the **emphasized** small line: bolder weight and brighter color
+  than the supporting line beneath the value.
+- **Stat-card / KPI bottom supporting line** (the dollar amount under a
+  count, the one-line description below the value, etc.) — `text-xs
+  font-bold text-zinc-500`. Dimmer than the top label so the eye lands on
+  the top label first.
+- **Card sub-header, table column header, form-field label, legend chip,
+  chart-tooltip date, donut-center label, "X unread" indicator** —
+  `text-xs font-bold text-zinc-500` (use `text-zinc-400` if you need
+  stronger contrast). Never `uppercase`, never `tracking-[…]`.
+- **Inline status pill** (colored bg) — `text-xs font-bold` plus the
+  color tokens (`text-emerald-300 bg-emerald-500/20` etc.), Title Case
+  text, `rounded-full px-2 py-0.5`.
 
-Everywhere else — page section subheadings, table column headers,
-form field labels, modal section headers, card headers above tables,
-empty-state messages, helper text, button labels, breadcrumb links,
-detail-view field labels — use sentence-case, not uppercase. The
-typography options for those are:
+### Stat-card emphasis ladder
 
-- **Page section subheading** — `text-lg font-extrabold tracking-tight text-fg leading-none`,
-  optionally followed by **Section subheading caption** —
-  `mt-1.5 text-sm font-bold text-zinc-500 leading-snug`.
-- **Table column header / card sub-header / form field label** —
-  `text-xs font-bold text-zinc-500` (or `text-zinc-400` for stronger
-  contrast). No uppercase, no extra tracking.
+A stat / KPI card has three text lines. Visual weight is ranked
+top-to-bottom in this order:
 
-The `text-eyebrow` / `text-eyebrow-tight` tokens and the §4 uppercase
-tracking scale above are still valid — but only inside the two zones
-listed above. If you find yourself reaching for `uppercase` outside
-those zones, you're inventing a fourth zone and should use one of the
-sentence-case patterns instead.
+1. **Top label** — `text-xs font-extrabold text-zinc-300`. Title Case.
+2. **Center value** — the big number / dollar amount. Largest and
+   brightest, white (`text-white`), `font-bold tabular-nums`. Never
+   touch this in stylistic sweeps.
+3. **Bottom supporting line** — `text-xs font-bold text-zinc-500`.
+   Dimmer than the top label. One line only (see §10 #24); a card never
+   has two bottom lines.
+
+The top label must always read **brighter and bolder than the bottom
+supporting line**. If you find a stat card where the bottom line is
+heavier than the top, that's an inversion bug — fix it to the ladder
+above.
+
+### Widget label casing — Title Case
+
+Every widget label uses **Title Case** — capitalize the first letter of
+every word. "Close Rate", not "Close rate". "Jobs Sold", not "Jobs
+sold". "Cash Flow", not "Cash flow". "Top Reps", not "Top reps". "This
+Month", not "This month". Applies to: stat-card top labels, chart card
+titles, section headings, KPI labels, pipeline-stage labels,
+leaderboard card labels, date-range pill titles, status pill text — any
+widget-level label.
+
+- Short connector words in multi-word labels keep lowercase (`vs`, `of`,
+  `to`, `for`, `and`, `or`, `in`, `on`, `the`, `a`, `an`) — e.g.
+  "First-Time vs Repeat". Use sparingly.
+- Sentence-case is reserved for **sentences**, not labels — empty-state
+  prompts ("Nothing on the calendar.", "No recent conversations."),
+  form-field labels ("First name", "Email"), modal section titles inside
+  forms. Those are full sentences / conventional form labels, not widget
+  labels.
+
+Narrow exceptions that are not "eyebrow" styling:
+- **2-letter US state / region code input** (`customers/AddressFields.tsx`,
+  the Settings region field) — the CSS `uppercase` transform is
+  data-semantic (state abbreviations are conventionally uppercase),
+  paired with `.toUpperCase()` in JS.
+- **Naturally-uppercase abbreviations as literal content** (AM / PM,
+  USD, MRR, ARR) — fine as written content, but never paired with
+  extra `tracking-[…]`.
+
+If you find yourself reaching for `uppercase` + `tracking-[…]` outside
+the sidebar group header, stop and use the label scale above.
 
 ### Numeric weight scale
 

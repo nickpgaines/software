@@ -149,7 +149,7 @@ export default function NavBar() {
           type="button"
           variant="ghost"
           onClick={logout}
-          className="h-auto justify-start gap-3 w-full px-3 py-2.5 rounded-lg text-eyebrow uppercase text-zinc-500 hover:bg-black hover:text-white"
+          className="h-auto justify-start gap-3 w-full px-3 py-2.5 rounded-lg text-sm font-bold text-zinc-500 hover:bg-black hover:text-white"
         >
           <LogOut className="w-5 h-5" strokeWidth={1.8} />
           Sign out

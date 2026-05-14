@@ -635,7 +635,7 @@ function WeekView({
                   (isToday ? "text-white bg-black" : "text-zinc-400")
                 }
               >
-                <div className="uppercase tracking-wide">
+                <div>
                   {d.toLocaleDateString(undefined, { weekday: "short" })}
                 </div>
                 <div
@@ -783,7 +783,7 @@ function MonthView({
         {weekDayHeaders.map((d) => (
           <div
             key={d}
-            className="text-xs font-bold text-zinc-500 uppercase tracking-wide text-center py-2"
+            className="text-xs font-bold text-zinc-500 text-center py-2"
           >
             {d}
           </div>
@@ -889,7 +889,7 @@ function AgendaView({
     <div className="divide-y divide-line">
       {groups.map(({ day, items }) => (
         <div key={day.toISOString()} className="p-4">
-          <div className="text-xs uppercase tracking-wide text-zinc-500 font-bold mb-2">
+          <div className="text-xs text-zinc-500 font-bold mb-2">
             {day.toLocaleDateString(undefined, {
               weekday: "long",
               month: "long",

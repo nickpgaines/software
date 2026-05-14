@@ -68,7 +68,7 @@ export function CompactHeroKpi({
     >
       <div className="min-w-0">
         <div
-          className="text-eyebrow uppercase mb-1.5"
+          className="text-xs font-bold mb-1.5"
           style={{ color: PULSE.textSubtle }}
         >
           {label}
@@ -315,7 +315,7 @@ export function HeroChart({
             }}
           >
             <div
-              className="text-[10px] font-extrabold uppercase tracking-[0.16em]"
+              className="text-xs font-bold"
               style={{ color: PULSE.textSubtle }}
             >
               {tooltipDate(hovered.date)}
@@ -338,11 +338,11 @@ export function HeroChart({
 type ChartRange = "1w" | "1m" | "3m" | "ytd" | "custom";
 
 const CHART_RANGES: { key: ChartRange; label: string; title: string }[] = [
-  { key: "1w", label: "1W", title: "Last 7 days" },
-  { key: "1m", label: "1M", title: "This month" },
-  { key: "3m", label: "3M", title: "Last 3 months" },
-  { key: "ytd", label: "YTD", title: "Year to date" },
-  { key: "custom", label: "Custom", title: "Custom range" },
+  { key: "1w", label: "1W", title: "Last 7 Days" },
+  { key: "1m", label: "1M", title: "This Month" },
+  { key: "3m", label: "3M", title: "Last 3 Months" },
+  { key: "ytd", label: "YTD", title: "Year To Date" },
+  { key: "custom", label: "Custom", title: "Custom Range" },
 ];
 
 type ApiRevenue = {
@@ -411,7 +411,7 @@ export function PulseChartHero({
       <div className="flex items-baseline justify-between mb-5 flex-wrap gap-3">
         <div>
           <div
-            className="text-[11px] uppercase tracking-[0.22em] font-extrabold mb-3"
+            className="text-xs font-bold mb-3"
             style={{ color: PULSE.textSubtle }}
           >
             Revenue · {titleLabel}
@@ -506,7 +506,7 @@ export function PulseScheduleRow({
       <div className="text-center w-12">
         <div className="text-[18px] font-bold leading-none">{time}</div>
         <div
-          className="text-[10px] font-bold mt-1 tracking-[0.18em]"
+          className="text-[10px] font-bold mt-1"
           style={{ color: PULSE.textDim }}
         >
           {ampm}
@@ -582,7 +582,7 @@ export function PulseScheduleCard({
     >
       <div className="flex items-baseline justify-between mb-4">
         <h2 className="text-[15px] font-extrabold tracking-tight">
-          Today's schedule
+          Today's Schedule
         </h2>
         <CardHeaderLink label="View all →" href="/schedule" />
       </div>
@@ -608,7 +608,7 @@ export function PulseScheduleCard({
 // be wired in when the pipeline aggregator is ready.
 
 export const PLACEHOLDER_PIPELINE: PipelineEntry[] = [
-  { label: "New leads", count: 12, value: 540_000, pct: 0.4 },
+  { label: "New Leads", count: 12, value: 540_000, pct: 0.4 },
   { label: "Contacted", count: 8, value: 410_000, pct: 0.3 },
   { label: "Estimating", count: 9, value: 890_000, pct: 0.66 },
   { label: "Won", count: 6, value: 630_000, pct: 0.47 },
@@ -707,7 +707,7 @@ export function PulseInboxCard() {
       <div className="flex items-baseline justify-between mb-4">
         <h2 className="text-[15px] font-extrabold tracking-tight">Inbox</h2>
         <span
-          className="text-[10.5px] font-extrabold uppercase tracking-[0.18em]"
+          className="text-xs font-bold"
           style={{ color: PULSE.textSubtle }}
         >
           0 unread
@@ -752,7 +752,7 @@ export function PulseTasksCard() {
 export function LiveBadge() {
   return (
     <span
-      className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em]"
+      className="flex items-center gap-1.5 text-xs font-bold"
       style={{ color: PULSE.green }}
     >
       <span
@@ -831,7 +831,7 @@ export function PulseActivityCard({ jobs }: { jobs: LiveJob[] }) {
                   {it.what}
                 </div>
                 <div
-                  className="text-[10.5px] mt-0.5 font-bold uppercase tracking-[0.16em]"
+                  className="text-xs mt-0.5 font-bold"
                   style={{ color: PULSE.textDim }}
                 >
                   {it.when}

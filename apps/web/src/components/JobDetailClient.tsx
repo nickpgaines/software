@@ -304,10 +304,10 @@ export default function JobDetailClient({
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-[10px] uppercase tracking-[0.18em] font-extrabold text-emerald-300 bg-emerald-500/20 rounded-full px-2 py-0.5">
-                  Active Subscription
+                <span className="text-xs font-bold text-emerald-300 bg-emerald-500/20 rounded-full px-2 py-0.5">
+                  Active subscription
                 </span>
-                <span className="text-[10px] uppercase tracking-[0.18em] font-extrabold text-rose-300 bg-rose-500/20 rounded-full px-2 py-0.5">
+                <span className="text-xs font-bold text-rose-300 bg-rose-500/20 rounded-full px-2 py-0.5">
                   Do not collect
                 </span>
               </div>
