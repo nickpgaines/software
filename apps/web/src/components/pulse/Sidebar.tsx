@@ -240,7 +240,10 @@ function PulseNavRow({
         <Link
           href={item.href}
           className={`${baseRow} font-extrabold`}
-          style={{ background: PULSE.text, color: PULSE.bg }}
+          style={{
+            background: `color-mix(in srgb, ${PULSE.violetVar} 16%, transparent)`,
+            color: PULSE.text,
+          }}
         >
           <PulseIcon name={item.icon} />
           <span className="flex-1 truncate">{item.name}</span>
