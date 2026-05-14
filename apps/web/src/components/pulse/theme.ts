@@ -21,6 +21,7 @@ export const PULSE = {
   bg: "var(--color-canvas)",
   bgAlt: "var(--color-elevated)",
   card: "var(--color-card)",
+  sidebar: "var(--color-sidebar)",
   divider: "var(--color-divider)",
   cardBorder: "var(--color-line)",
   cardBorderHi: "var(--color-line-strong)",

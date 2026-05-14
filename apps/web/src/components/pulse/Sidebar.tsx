@@ -107,7 +107,7 @@ export function PulseSidebar() {
   return (
     <aside
       className="fixed left-0 top-0 bottom-0 w-60 z-40 flex flex-col px-3 py-4"
-      style={{ background: PULSE.bg, borderRight: `1px solid ${PULSE.divider}` }}
+      style={{ background: PULSE.sidebar, borderRight: `1px solid ${PULSE.divider}` }}
     >
       {/* Brand */}
       <div className="px-2 mb-1">
