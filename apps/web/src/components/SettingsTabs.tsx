@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import CustomizationsPanel from "@/components/settings/CustomizationsPanel";
+import AccentPicker from "@/components/AccentPicker";
 import { PulseIcon } from "@/components/pulse/Icon";
 
 type Tab =
@@ -342,6 +343,10 @@ function ProfilePanel({ username }: { username: string }) {
               the <span className="font-bold">Employees</span> page.
             </p>
           )}
+
+          <div className="pt-6 border-t border-line">
+            <AccentPicker />
+          </div>
         </>
       )}
     </div>

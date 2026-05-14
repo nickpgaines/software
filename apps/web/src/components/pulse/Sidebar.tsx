@@ -130,7 +130,7 @@ export function PulseSidebar() {
           className="w-full h-10 rounded-xl flex items-center justify-center gap-2 text-[13px] font-extrabold transition-colors shadow-glow-violet"
           style={{
             background: PULSE.violetVar,
-            color: PULSE.bg,
+            color: PULSE.violetFgVar,
           }}
         >
           <PulseIcon name="plus" className="w-3.5 h-3.5" />

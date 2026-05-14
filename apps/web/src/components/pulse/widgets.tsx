@@ -32,7 +32,7 @@ export function CardHeaderLink({
     <Link
       href={href}
       className="text-[11.5px] font-extrabold"
-      style={{ color: PULSE.violetSoftVar }}
+      style={{ color: PULSE.textMuted }}
     >
       {label}
     </Link>
@@ -208,7 +208,7 @@ export function HeroChart({
         viewBox={`0 0 ${w} ${h}`}
         className="absolute inset-0 w-full h-full"
         preserveAspectRatio="none"
-        style={{ color: PULSE.text }}
+        style={{ color: PULSE.violetVar }}
       >
         <defs>
           <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
@@ -741,7 +741,7 @@ export function PulseTasksCard() {
           className="w-7 h-7 rounded-full flex items-center justify-center shadow-glow-violet-sm"
           style={{
             background: PULSE.violetVar,
-            color: "#fff",
+            color: PULSE.violetFgVar,
           }}
         >
           <PulseIcon name="plus" className="w-3.5 h-3.5" />
