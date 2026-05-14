@@ -241,7 +241,7 @@ function PulseNavRow({
           href={item.href}
           className={`${baseRow} font-extrabold`}
           style={{
-            background: `color-mix(in srgb, ${PULSE.violetVar} 16%, transparent)`,
+            background: `color-mix(in srgb, ${PULSE.violetVar} 32%, transparent)`,
             color: PULSE.text,
           }}
         >
