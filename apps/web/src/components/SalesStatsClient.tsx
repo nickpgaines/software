@@ -385,20 +385,14 @@ function Kpi({
         border: `1px solid ${PULSE.cardBorder}`,
       }}
     >
-      <div
-        className="text-[13px] font-bold mb-2 text-zinc-500"
-        style={{ color: PULSE.textSubtle }}
-      >
+      <div className="text-[13px] font-bold mb-2 text-zinc-500">
         {label}
       </div>
-      <div className="text-[28px] font-black tracking-tight leading-none tabular-nums">
+      <div className="text-[28px] font-extrabold tracking-tight leading-none tabular-nums">
         {value}
       </div>
       {help ? (
-        <div
-          className="text-[13px] font-bold mt-2"
-          style={{ color: PULSE.textMuted }}
-        >
+        <div className="text-[13px] font-bold mt-2 text-zinc-400">
           {help}
         </div>
       ) : null}
@@ -490,13 +484,10 @@ function PinTile({
           {pct.toFixed(0)}%
         </span>
       </div>
-      <div className="text-[28px] font-black tracking-tight leading-none tabular-nums">
+      <div className="text-[28px] font-extrabold tracking-tight leading-none tabular-nums">
         {count}
       </div>
-      <div
-        className="text-[13px] font-bold mt-1.5"
-        style={{ color: PULSE.textMuted }}
-      >
+      <div className="text-[13px] font-bold mt-1.5 text-zinc-400">
         {label}
       </div>
       <div

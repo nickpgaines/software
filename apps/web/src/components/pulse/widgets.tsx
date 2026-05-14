@@ -69,7 +69,7 @@ export function CompactHeroKpi({
       style={{ background: PULSE.card, border: `1px solid ${PULSE.cardBorder}` }}
     >
       <div className="flex items-start justify-between gap-4">
-        <div className="text-[13px] font-bold" style={{ color: PULSE.textSubtle }}>
+        <div className="text-[13px] font-bold text-zinc-500">
           {label}
         </div>
         <span
@@ -82,14 +82,11 @@ export function CompactHeroKpi({
           {delta}
         </span>
       </div>
-      <div className="mt-3 text-[26px] font-black tracking-tight leading-none tabular-nums">
+      <div className="mt-3 text-[28px] font-extrabold tracking-tight leading-none tabular-nums">
         {value}
       </div>
       {subLabel && (
-        <div
-          className="mt-2 text-[13px] font-bold"
-          style={{ color: PULSE.textDim }}
-        >
+        <div className="mt-2 text-[13px] font-bold text-zinc-400">
           {subLabel}
         </div>
       )}
@@ -417,10 +414,7 @@ export function PulseChartHero({
     >
       <div className="flex items-baseline justify-between mb-5 flex-wrap gap-3">
         <div>
-          <div
-            className="text-xs font-bold mb-3"
-            style={{ color: PULSE.textSubtle }}
-          >
+          <div className="text-[13px] font-bold mb-3 text-zinc-500">
             Revenue · {titleLabel}
           </div>
           <div className="flex items-baseline gap-3">
