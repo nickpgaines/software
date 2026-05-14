@@ -476,7 +476,7 @@ function Kpi({
       }}
     >
       <div
-        className="text-xs font-bold mb-2 text-zinc-500"
+        className="text-[13px] font-bold mb-2 text-zinc-500"
         style={{ color: PULSE.textSubtle }}
       >
         {label}
@@ -486,7 +486,7 @@ function Kpi({
       </div>
       {help ? (
         <div
-          className="text-[12px] font-bold mt-2"
+          className="text-[13px] font-bold mt-2"
           style={{ color: PULSE.textMuted }}
         >
           {help}

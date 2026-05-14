@@ -69,7 +69,7 @@ export function CompactHeroKpi({
       style={{ background: PULSE.card, border: `1px solid ${PULSE.cardBorder}` }}
     >
       <div className="flex items-start justify-between gap-4">
-        <div className="text-xs font-bold" style={{ color: PULSE.textSubtle }}>
+        <div className="text-[13px] font-bold" style={{ color: PULSE.textSubtle }}>
           {label}
         </div>
         <span
@@ -87,7 +87,7 @@ export function CompactHeroKpi({
       </div>
       {subLabel && (
         <div
-          className="mt-2 text-[11px] font-bold"
+          className="mt-2 text-[13px] font-bold"
           style={{ color: PULSE.textDim }}
         >
           {subLabel}
