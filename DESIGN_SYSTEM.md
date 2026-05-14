@@ -295,16 +295,19 @@ Use these wherever a small gray supporting label used to be uppercase.
 - **Page section heading** — `text-[22px] font-extrabold tracking-tight text-fg`.
   No description / subtitle line beneath (see §10 #25).
 - **Stat-card / KPI top label** (e.g. "Scheduled", "Close Rate",
-  "Cash Collected", "Total ARR") — `text-[13px] font-extrabold text-zinc-500`.
-  Matches the dashboard `CompactHeroKpi` top label color
-  (`PULSE.textSubtle` = `var(--color-fg-subtle)` = zinc-500). 100 weight
-  units bolder than the bottom supporting line.
+  "Cash Collected", "Total ARR") — `text-[13px] font-bold text-zinc-500`.
+  Always the literal Tailwind class `text-zinc-500` — do not use
+  inline `PULSE.textSubtle` style for this token, so every stat card
+  in the CRM resolves to exactly the same color value.
 - **Stat-card / KPI bottom supporting line** (the dollar amount under a
   count, the one-line description below the value, etc.) — `text-[13px]
-  font-bold text-zinc-600`. Matches the dashboard `CompactHeroKpi`
-  sub-label color (`PULSE.textDim` = zinc-600) — one step dimmer than
-  the top label, and one weight step lighter (`font-bold` = 700 vs
-  `font-extrabold` = 800).
+  font-bold text-zinc-400`. Same size and weight as the top label,
+  brighter color (zinc-400 vs zinc-500) so it reads as supporting
+  rather than recessive. Always the literal Tailwind `text-zinc-400`
+  class — never the inline `PULSE.textMuted` / `PULSE.textDim` styles.
+- **Chart-card / dashboard hero eyebrow** (the "Revenue · This Month"
+  label above the dashboard hero chart and similar chart-card labels)
+  uses the same top-label scale — `text-[13px] font-bold text-zinc-500`.
 - **Card sub-header, table column header, form-field label, legend chip,
   chart-tooltip date, donut-center label, "X unread" indicator** —
   `text-xs font-bold text-zinc-500` (use `text-zinc-400` if you need
@@ -318,23 +321,23 @@ Use these wherever a small gray supporting label used to be uppercase.
 A stat / KPI card has three text lines. Visual weight is ranked
 top-to-bottom in this order:
 
-1. **Top label** — `text-[13px] font-extrabold text-zinc-500`. Title Case.
-   Color matches the dashboard `CompactHeroKpi` top label
-   (`PULSE.textSubtle`).
-2. **Center value** — the big number / dollar amount. Largest and
-   brightest, white (`text-white`), `text-[32px] font-bold tabular-nums`
-   on the standard Reports cards. Never touch this in stylistic sweeps.
-3. **Bottom supporting line** — `text-[13px] font-bold text-zinc-600`.
-   Color matches the dashboard `CompactHeroKpi` sub-label
-   (`PULSE.textDim`) — one step dimmer than the top label. One weight
-   step lighter (`font-bold` vs `font-extrabold`). One line only (see
-   §10 #24); a card never has two bottom lines.
+1. **Top label** — `text-[13px] font-bold text-zinc-500`. Title Case.
+   Literal Tailwind class — no inline `PULSE.textSubtle` style.
+2. **Center value** — `text-[28px] font-extrabold tracking-tight
+   leading-none tabular-nums text-white`. Same 28 px / weight 800 /
+   white on every stat card in the CRM. The big number is the only
+   line that uses `font-extrabold`; the two small lines both use
+   `font-bold`.
+3. **Bottom supporting line** — `text-[13px] font-bold text-zinc-400`.
+   Same size and weight as the top label, one tone brighter (zinc-400
+   vs zinc-500). Literal Tailwind class — no inline `PULSE.textMuted` /
+   `PULSE.textDim` style. One line only (see §10 #24); a card never has
+   two bottom lines.
 
-The top label must always read **bolder and brighter than the bottom
-supporting line** (zinc-500 + extrabold on top vs zinc-600 + bold on
-bottom). If you find a stat card where the bottom line is heavier or
-brighter than the top, that's an inversion bug — fix it to the ladder
-above.
+All three lines share the same 13 px / `font-bold` baseline on the
+small labels, with the value as the lone visual anchor. The "delta
+pill" (top-right corner of `CompactHeroKpi`) is a separate element —
+not bound by this ladder.
 
 ### Widget label casing — Title Case
 
