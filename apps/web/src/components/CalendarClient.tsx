@@ -4,7 +4,14 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import EmployeeSchedulingModal from "./EmployeeSchedulingModal";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type Job = {
   id: number;
@@ -26,7 +33,15 @@ type Job = {
     | "completed_paid";
 };
 
-type View = "day" | "week" | "month";
+type View = "day" | "week" | "month" | "agenda" | "map";
+
+const VIEW_OPTIONS: { value: View; label: string }[] = [
+  { value: "day", label: "Day" },
+  { value: "week", label: "Week" },
+  { value: "month", label: "Month" },
+  { value: "agenda", label: "Agenda" },
+  { value: "map", label: "Map" },
+];
 
 const DAY_MS = 86_400_000;
 const HOUR_PX = 56;
@@ -76,10 +91,11 @@ function formatHour(h: number) {
 function formatRange(start: Date, end: Date) {
   const sM = start.toLocaleString(undefined, { month: "short" });
   const eM = end.toLocaleString(undefined, { month: "short" });
+  const year = end.getFullYear();
   if (sM === eM) {
-    return `${sM} ${start.getDate()} – ${end.getDate()}`;
+    return `${sM} ${start.getDate()} – ${end.getDate()}, ${year}`;
   }
-  return `${sM} ${start.getDate()} – ${eM} ${end.getDate()}`;
+  return `${sM} ${start.getDate()} – ${eM} ${end.getDate()}, ${year}`;
 }
 
 function money(cents: number) {
@@ -110,7 +126,6 @@ export default function CalendarClient() {
   const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState<Date>(startOfDay(new Date()));
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [search, setSearch] = useState("");
   const [now, setNow] = useState<Date>(new Date());
   const [schedulingOpen, setSchedulingOpen] = useState(false);
 
@@ -144,16 +159,6 @@ export default function CalendarClient() {
       .then((js: Job[]) => setJobs(js));
   }, [range.start.getTime(), range.end.getTime()]);
 
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return jobs;
-    return jobs.filter(
-      (j) =>
-        j.customer_name.toLowerCase().includes(q) ||
-        (j.customer_address || "").toLowerCase().includes(q)
-    );
-  }, [jobs, search]);
-
   function navigate(delta: number) {
     if (view === "day") setCursor(addDays(cursor, delta));
     else if (view === "month") {
@@ -183,55 +188,152 @@ export default function CalendarClient() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-start justify-between gap-3 flex-wrap">
-        <div>
-          <h1 className="text-page-title text-white">Schedule</h1>
-          <p className="text-sm text-zinc-500 mt-1">
-            Drag, plan, and dispatch your jobs.
-          </p>
-        </div>
-        <div className="flex items-center gap-1 bg-black rounded-full p-1 text-sm">
-          {(["day", "week", "month"] as View[]).map((v) => (
-            <Button
-              key={v}
-              variant="ghost"
-              onClick={() => setView(v)}
-              className={
-                "h-auto px-4 py-1.5 rounded-full capitalize font-bold hover:bg-transparent " +
-                (view === v
-                  ? "bg-card text-white shadow-sm"
-                  : "text-zinc-400 hover:text-white")
-              }
-            >
-              {v}
-            </Button>
-          ))}
-        </div>
-      </div>
-
       <div className="flex items-center justify-between gap-3 flex-wrap">
-        <div className="relative w-full sm:w-72">
-          <Input
-            type="search"
-            placeholder="Search customers..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full h-auto bg-card border-line rounded-full pl-10 pr-4 py-2.5 text-sm focus-visible:ring-zinc-500"
-          />
-          <svg
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <circle cx="11" cy="11" r="8" />
-            <path d="m21 21-4.3-4.3" />
-          </svg>
-        </div>
         <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setCursor(startOfDay(new Date()))}
+            className="h-auto gap-2 border border-line bg-card hover:bg-black rounded-full px-4 py-2 text-sm text-zinc-300 font-bold"
+          >
+            <svg
+              className="w-4 h-4"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+              <line x1="16" y1="2" x2="16" y2="6" />
+              <line x1="8" y1="2" x2="8" y2="6" />
+              <line x1="3" y1="10" x2="21" y2="10" />
+            </svg>
+            Today
+          </Button>
+          <div className="inline-flex items-center gap-1 bg-card border border-line rounded-full px-1 py-1">
+            <Button
+              variant="ghost"
+              onClick={() => navigate(-1)}
+              className="w-8 h-8 p-0 rounded-full hover:bg-black"
+              aria-label="Previous"
+            >
+              ‹
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => navigate(1)}
+              className="w-8 h-8 p-0 rounded-full hover:bg-black"
+              aria-label="Next"
+            >
+              ›
+            </Button>
+          </div>
+          <span className="px-2 text-sm font-bold text-zinc-200">
+            {navLabel}
+          </span>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="inline-flex items-center gap-1 bg-black border border-line rounded-full p-1 text-sm">
+            {VIEW_OPTIONS.map((v) => (
+              <Button
+                key={v.value}
+                variant="ghost"
+                onClick={() => setView(v.value)}
+                className={
+                  "h-auto px-3 py-1.5 rounded-full font-bold hover:bg-transparent " +
+                  (view === v.value
+                    ? "bg-card text-white shadow-sm"
+                    : "text-zinc-400 hover:text-white")
+                }
+              >
+                {v.value === "map" && (
+                  <svg
+                    className="w-3.5 h-3.5 mr-1 inline-block align-[-2px]"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                    <circle cx="12" cy="10" r="3" />
+                  </svg>
+                )}
+                {v.label}
+              </Button>
+            ))}
+          </div>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                className="h-auto gap-2 border border-line bg-card hover:bg-black rounded-full px-4 py-2 text-sm text-zinc-300 font-bold"
+              >
+                <svg
+                  className="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+                </svg>
+                Filters
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Filter by status</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem disabled>Scheduled</DropdownMenuItem>
+              <DropdownMenuItem disabled>In progress</DropdownMenuItem>
+              <DropdownMenuItem disabled>Completed</DropdownMenuItem>
+              <DropdownMenuItem disabled>Cancelled</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem disabled>Coming soon</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                aria-label="Schedule settings"
+                className="h-auto w-9 p-0 border border-line bg-card hover:bg-black rounded-full text-sm text-zinc-300"
+              >
+                <svg
+                  className="w-4 h-4"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                </svg>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-56">
+              <DropdownMenuLabel>Schedule settings</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem disabled>Working hours</DropdownMenuItem>
+              <DropdownMenuItem disabled>Default view</DropdownMenuItem>
+              <DropdownMenuItem disabled>Week starts on</DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem disabled>Coming soon</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           <Button
             type="button"
             variant="ghost"
@@ -274,12 +376,6 @@ export default function CalendarClient() {
             </svg>
             Route Optimization
           </Button>
-          <Link
-            href="/schedule/new"
-            className="inline-flex items-center gap-2 bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 text-sm font-bold shadow-sm"
-          >
-            <span className="text-base leading-none">+</span> New Job
-          </Link>
         </div>
       </div>
 
@@ -287,52 +383,27 @@ export default function CalendarClient() {
         {view === "week" && (
           <WeekView
             start={startOfWeek(cursor)}
-            jobs={filtered}
+            jobs={jobs}
             now={now}
           />
         )}
         {view === "day" && (
-          <DayView day={startOfDay(cursor)} jobs={filtered} now={now} />
+          <DayView day={startOfDay(cursor)} jobs={jobs} now={now} />
         )}
         {view === "month" && (
           <MonthView
             cursor={cursor}
-            jobs={filtered}
+            jobs={jobs}
             onPickDay={(d) => {
               setCursor(d);
               setView("day");
             }}
           />
         )}
-      </div>
-
-      <div className="flex items-center justify-center">
-        <div className="inline-flex items-center gap-2 bg-card border border-line rounded-full px-2 py-1 text-sm text-zinc-300 font-bold">
-          <Button
-            variant="ghost"
-            onClick={() => navigate(-1)}
-            className="w-8 h-8 p-0 rounded-full hover:bg-black"
-            aria-label="Previous"
-          >
-            ‹
-          </Button>
-          <span className="px-3 font-bold">{navLabel}</span>
-          <Button
-            variant="ghost"
-            onClick={() => navigate(1)}
-            className="w-8 h-8 p-0 rounded-full hover:bg-black"
-            aria-label="Next"
-          >
-            ›
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => setCursor(startOfDay(new Date()))}
-            className="h-auto ml-1 px-3 py-1 rounded-full text-xs text-zinc-400 hover:text-white hover:bg-black font-bold"
-          >
-            Today
-          </Button>
-        </div>
+        {view === "agenda" && (
+          <AgendaView jobs={jobs} rangeStart={range.start} rangeEnd={range.end} />
+        )}
+        {view === "map" && <MapView />}
       </div>
 
       <EmployeeSchedulingModal
@@ -759,6 +830,121 @@ function MonthView({
             </button>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+function AgendaView({
+  jobs,
+  rangeStart,
+  rangeEnd,
+}: {
+  jobs: Job[];
+  rangeStart: Date;
+  rangeEnd: Date;
+}) {
+  const sorted = useMemo(
+    () =>
+      [...jobs].sort(
+        (a, b) =>
+          new Date(a.scheduled_at).getTime() -
+          new Date(b.scheduled_at).getTime()
+      ),
+    [jobs]
+  );
+  const groups = useMemo(() => {
+    const map = new Map<string, Job[]>();
+    for (const j of sorted) {
+      const d = startOfDay(new Date(j.scheduled_at));
+      const key = d.toISOString();
+      if (!map.has(key)) map.set(key, []);
+      map.get(key)!.push(j);
+    }
+    return Array.from(map.entries()).map(([key, items]) => ({
+      day: new Date(key),
+      items,
+    }));
+  }, [sorted]);
+
+  if (groups.length === 0) {
+    return (
+      <div className="p-10 text-center text-sm text-zinc-500">
+        No jobs scheduled between{" "}
+        {rangeStart.toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+        })}{" "}
+        and{" "}
+        {addDays(rangeEnd, -1).toLocaleDateString(undefined, {
+          month: "short",
+          day: "numeric",
+        })}
+        .
+      </div>
+    );
+  }
+
+  return (
+    <div className="divide-y divide-line">
+      {groups.map(({ day, items }) => (
+        <div key={day.toISOString()} className="p-4">
+          <div className="text-xs uppercase tracking-wide text-zinc-500 font-bold mb-2">
+            {day.toLocaleDateString(undefined, {
+              weekday: "long",
+              month: "long",
+              day: "numeric",
+            })}
+          </div>
+          <ul className="space-y-1">
+            {items.map((j) => (
+              <li key={j.id}>
+                <Link
+                  href={`/schedule/${j.id}`}
+                  className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-black transition"
+                >
+                  <span className="w-20 text-xs font-bold text-zinc-400 shrink-0">
+                    {j.anytime ? "Anytime" : timeLabel(j.scheduled_at)}
+                  </span>
+                  <span className="flex-1 text-sm font-bold text-zinc-200 truncate">
+                    {j.customer_name}
+                  </span>
+                  <span className="text-xs text-zinc-500 truncate hidden md:block">
+                    {j.customer_address || ""}
+                  </span>
+                  <span className="text-sm font-bold text-zinc-300 shrink-0">
+                    {money(j.price_cents)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MapView() {
+  return (
+    <div className="p-10 text-center">
+      <div className="mx-auto w-12 h-12 rounded-full bg-black border border-line flex items-center justify-center mb-3">
+        <svg
+          className="w-5 h-5 text-zinc-400"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+          <circle cx="12" cy="10" r="3" />
+        </svg>
+      </div>
+      <div className="text-sm font-bold text-zinc-200">Map view</div>
+      <div className="text-sm text-zinc-500 mt-1">
+        Visualize your jobs on a map — coming soon.
       </div>
     </div>
   );
