@@ -231,13 +231,14 @@ Use these wherever a small gray supporting label used to be uppercase.
 - **Page section heading** — `text-[22px] font-extrabold tracking-tight text-fg`.
   No description / subtitle line beneath (see §10 #25).
 - **Stat-card / KPI top label** (e.g. "Scheduled", "Close Rate",
-  "Cash Collected", "Total ARR") — `text-xs font-extrabold text-zinc-300`.
-  This is the **emphasized** small line: bolder weight and brighter color
-  than the supporting line beneath the value.
+  "Cash Collected", "Total ARR") — `text-[13px] font-extrabold text-zinc-300`.
+  This is the **emphasized** small line: 100 weight units bolder than the
+  supporting line beneath the value. Same color (zinc-300) as the
+  bottom supporting line — the differentiation is weight, not color.
 - **Stat-card / KPI bottom supporting line** (the dollar amount under a
-  count, the one-line description below the value, etc.) — `text-xs
-  font-bold text-zinc-500`. Dimmer than the top label so the eye lands on
-  the top label first.
+  count, the one-line description below the value, etc.) — `text-[13px]
+  font-bold text-zinc-300`. Same size and color as the top label, just
+  one weight step lighter (`font-bold` = 700 vs `font-extrabold` = 800).
 - **Card sub-header, table column header, form-field label, legend chip,
   chart-tooltip date, donut-center label, "X unread" indicator** —
   `text-xs font-bold text-zinc-500` (use `text-zinc-400` if you need
@@ -251,18 +252,21 @@ Use these wherever a small gray supporting label used to be uppercase.
 A stat / KPI card has three text lines. Visual weight is ranked
 top-to-bottom in this order:
 
-1. **Top label** — `text-xs font-extrabold text-zinc-300`. Title Case.
+1. **Top label** — `text-[13px] font-extrabold text-zinc-300`. Title Case.
 2. **Center value** — the big number / dollar amount. Largest and
-   brightest, white (`text-white`), `font-bold tabular-nums`. Never
-   touch this in stylistic sweeps.
-3. **Bottom supporting line** — `text-xs font-bold text-zinc-500`.
-   Dimmer than the top label. One line only (see §10 #24); a card never
-   has two bottom lines.
+   brightest, white (`text-white`), `text-[32px] font-bold tabular-nums`
+   on the standard Reports cards. Never touch this in stylistic sweeps.
+3. **Bottom supporting line** — `text-[13px] font-bold text-zinc-300`.
+   Same size and color as the top label, one weight step lighter
+   (`font-bold` vs `font-extrabold` — a 100-unit weight delta is the
+   only differentiator between the two small lines). One line only (see
+   §10 #24); a card never has two bottom lines.
 
-The top label must always read **brighter and bolder than the bottom
-supporting line**. If you find a stat card where the bottom line is
-heavier than the top, that's an inversion bug — fix it to the ladder
-above.
+The top label must always read **slightly bolder than the bottom
+supporting line** (the 100-unit weight delta is the sole signal — both
+lines share the same size and color). If you find a stat card where
+the bottom line is heavier than the top, or where they use different
+sizes / colors, that's an inversion bug — fix it to the ladder above.
 
 ### Widget label casing — Title Case
 
