@@ -55,37 +55,44 @@ export function CompactHeroKpi({
   value,
   delta,
   deltaPositive,
+  subLabel = "vs last week",
 }: {
   label: string;
   value: string;
   delta: string;
   deltaPositive: boolean;
+  subLabel?: string;
 }) {
   return (
     <div
-      className="rounded-2xl px-5 py-4 flex items-center justify-between gap-4"
+      className="rounded-2xl px-5 py-4"
       style={{ background: PULSE.card, border: `1px solid ${PULSE.cardBorder}` }}
     >
-      <div className="min-w-0">
-        <div
-          className="text-xs font-bold mb-1.5"
-          style={{ color: PULSE.textSubtle }}
-        >
+      <div className="flex items-start justify-between gap-4">
+        <div className="text-xs font-bold" style={{ color: PULSE.textSubtle }}>
           {label}
         </div>
-        <div className="text-[26px] font-black tracking-tight leading-none tabular-nums">
-          {value}
-        </div>
+        <span
+          className="text-[11px] px-2 py-0.5 rounded-full font-extrabold whitespace-nowrap"
+          style={{
+            background: deltaPositive ? `${PULSE.green}1F` : `${PULSE.red}1F`,
+            color: deltaPositive ? PULSE.green : PULSE.red,
+          }}
+        >
+          {delta}
+        </span>
       </div>
-      <span
-        className="text-[11px] px-2 py-0.5 rounded-md font-extrabold whitespace-nowrap"
-        style={{
-          background: deltaPositive ? `${PULSE.green}1F` : `${PULSE.red}1F`,
-          color: deltaPositive ? PULSE.green : PULSE.red,
-        }}
-      >
-        {delta}
-      </span>
+      <div className="mt-3 text-[26px] font-black tracking-tight leading-none tabular-nums">
+        {value}
+      </div>
+      {subLabel && (
+        <div
+          className="mt-2 text-[11px] font-bold"
+          style={{ color: PULSE.textDim }}
+        >
+          {subLabel}
+        </div>
+      )}
     </div>
   );
 }
