@@ -295,14 +295,16 @@ Use these wherever a small gray supporting label used to be uppercase.
 - **Page section heading** — `text-[22px] font-extrabold tracking-tight text-fg`.
   No description / subtitle line beneath (see §10 #25).
 - **Stat-card / KPI top label** (e.g. "Scheduled", "Close Rate",
-  "Cash Collected", "Total ARR") — `text-[13px] font-extrabold text-zinc-300`.
-  This is the **emphasized** small line: 100 weight units bolder than the
-  supporting line beneath the value. Same color (zinc-300) as the
-  bottom supporting line — the differentiation is weight, not color.
+  "Cash Collected", "Total ARR") — `text-[13px] font-extrabold text-zinc-500`.
+  Matches the dashboard `CompactHeroKpi` top label color
+  (`PULSE.textSubtle` = `var(--color-fg-subtle)` = zinc-500). 100 weight
+  units bolder than the bottom supporting line.
 - **Stat-card / KPI bottom supporting line** (the dollar amount under a
   count, the one-line description below the value, etc.) — `text-[13px]
-  font-bold text-zinc-300`. Same size and color as the top label, just
-  one weight step lighter (`font-bold` = 700 vs `font-extrabold` = 800).
+  font-bold text-zinc-600`. Matches the dashboard `CompactHeroKpi`
+  sub-label color (`PULSE.textDim` = zinc-600) — one step dimmer than
+  the top label, and one weight step lighter (`font-bold` = 700 vs
+  `font-extrabold` = 800).
 - **Card sub-header, table column header, form-field label, legend chip,
   chart-tooltip date, donut-center label, "X unread" indicator** —
   `text-xs font-bold text-zinc-500` (use `text-zinc-400` if you need
@@ -316,21 +318,23 @@ Use these wherever a small gray supporting label used to be uppercase.
 A stat / KPI card has three text lines. Visual weight is ranked
 top-to-bottom in this order:
 
-1. **Top label** — `text-[13px] font-extrabold text-zinc-300`. Title Case.
+1. **Top label** — `text-[13px] font-extrabold text-zinc-500`. Title Case.
+   Color matches the dashboard `CompactHeroKpi` top label
+   (`PULSE.textSubtle`).
 2. **Center value** — the big number / dollar amount. Largest and
    brightest, white (`text-white`), `text-[32px] font-bold tabular-nums`
    on the standard Reports cards. Never touch this in stylistic sweeps.
-3. **Bottom supporting line** — `text-[13px] font-bold text-zinc-300`.
-   Same size and color as the top label, one weight step lighter
-   (`font-bold` vs `font-extrabold` — a 100-unit weight delta is the
-   only differentiator between the two small lines). One line only (see
+3. **Bottom supporting line** — `text-[13px] font-bold text-zinc-600`.
+   Color matches the dashboard `CompactHeroKpi` sub-label
+   (`PULSE.textDim`) — one step dimmer than the top label. One weight
+   step lighter (`font-bold` vs `font-extrabold`). One line only (see
    §10 #24); a card never has two bottom lines.
 
-The top label must always read **slightly bolder than the bottom
-supporting line** (the 100-unit weight delta is the sole signal — both
-lines share the same size and color). If you find a stat card where
-the bottom line is heavier than the top, or where they use different
-sizes / colors, that's an inversion bug — fix it to the ladder above.
+The top label must always read **bolder and brighter than the bottom
+supporting line** (zinc-500 + extrabold on top vs zinc-600 + bold on
+bottom). If you find a stat card where the bottom line is heavier or
+brighter than the top, that's an inversion bug — fix it to the ladder
+above.
 
 ### Widget label casing — Title Case
 
