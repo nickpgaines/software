@@ -159,7 +159,7 @@ function CountDonut({
         </PieChart>
       </ResponsiveContainer>
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <div className="text-[10px] uppercase tracking-[0.18em] font-extrabold text-zinc-500">
+        <div className="text-xs font-bold text-zinc-500">
           {centerLabel}
         </div>
         <div className="text-lg font-black text-white tabular-nums tracking-tight">
@@ -541,7 +541,7 @@ function OverviewPanel({ qs }: { qs: string }) {
               <div className="text-sm font-bold text-white tracking-tight">
                 Top Salespeople
               </div>
-              <div className="text-eyebrow uppercase text-zinc-500">Revenue</div>
+              <div className="text-xs font-bold text-zinc-500">Revenue</div>
             </div>
             {(data.top_sales || []).length === 0 ? (
               <p className="py-10 text-sm text-zinc-500 text-center">
@@ -556,7 +556,7 @@ function OverviewPanel({ qs }: { qs: string }) {
               <div className="text-sm font-bold text-white tracking-tight">
                 Top Technicians
               </div>
-              <div className="text-eyebrow uppercase text-zinc-500">Revenue</div>
+              <div className="text-xs font-bold text-zinc-500">Revenue</div>
             </div>
             {(data.top_techs || []).length === 0 ? (
               <p className="py-10 text-sm text-zinc-500 text-center">
@@ -586,7 +586,7 @@ function JobStatCard({
   const hasCount = typeof count === "number";
   return (
     <div className="bg-card border border-line rounded-2xl px-5 py-4 flex flex-col min-h-[140px]">
-      <div className="text-eyebrow uppercase text-zinc-500">{label}</div>
+      <div className="text-xs font-bold text-zinc-500">{label}</div>
       <div className="flex-1 flex items-center">
         <div className="text-[32px] font-bold tracking-tight leading-none tabular-nums text-white">
           {hasCount ? count : money(amountCents)}
@@ -699,7 +699,7 @@ function MonthlyMrrChart({
             {formatMonthIso(monthly[0]?.iso)} – {formatMonthIso(monthly[monthly.length - 1]?.iso)}
           </div>
         </div>
-        <div className="flex items-center gap-3 text-[10px] font-extrabold uppercase tracking-[0.18em] text-zinc-500">
+        <div className="flex items-center gap-3 text-xs font-bold text-zinc-500">
           <span className="flex items-center gap-1.5">
             <span className="w-2.5 h-2.5 rounded-sm bg-amber-400" />
             Actual
@@ -791,7 +791,7 @@ function BigStatCard({
   return (
     <div className="bg-card border border-line rounded-2xl px-5 py-4 flex flex-col min-h-[140px]">
       <div className="flex items-start justify-between gap-2 mb-1.5">
-        <div className="text-eyebrow uppercase text-zinc-500">
+        <div className="text-xs font-bold text-zinc-500">
           {label}
         </div>
         {action}
@@ -1151,7 +1151,7 @@ function SalesValueCard({
 }) {
   return (
     <div className="bg-card border border-line rounded-2xl px-5 py-4 flex flex-col min-h-[160px]">
-      <div className="text-eyebrow uppercase text-zinc-500">{label}</div>
+      <div className="text-xs font-bold text-zinc-500">{label}</div>
       <div className="flex-1 flex items-center">
         <div className="text-[32px] font-bold tracking-tight leading-none tabular-nums text-white">
           {value}
@@ -1439,7 +1439,7 @@ function StatCard({
         (compact ? "px-4 py-3 min-h-[110px]" : "px-5 py-4 min-h-[160px]")
       }
     >
-      <div className="text-eyebrow uppercase text-zinc-500">{label}</div>
+      <div className="text-xs font-bold text-zinc-500">{label}</div>
       <div className="flex-1 flex items-center">
         <div
           className={
@@ -1507,7 +1507,7 @@ function SubscriptionsByTemplateDonut({
                   </div>
                   <div className="flex items-baseline gap-2 shrink-0 tabular-nums">
                     <span className="text-zinc-300 font-bold">{s.value}</span>
-                    <span className="text-eyebrow-tight uppercase text-zinc-500">
+                    <span className="text-xs font-bold text-zinc-500">
                       {p.toFixed(1)}%
                     </span>
                   </div>
@@ -1556,7 +1556,7 @@ function Stats({
           key={it.label}
           className="bg-card border border-line rounded-2xl px-5 py-4 flex flex-col min-h-[140px]"
         >
-          <div className="text-eyebrow uppercase text-zinc-500 mb-1.5">
+          <div className="text-xs font-bold text-zinc-500 mb-1.5">
             {it.label}
           </div>
           <div className="flex-1 flex items-center">
@@ -1824,7 +1824,7 @@ function ChartCard({
           {title}
         </div>
         {sublabel && (
-          <div className="text-eyebrow uppercase text-zinc-500">{sublabel}</div>
+          <div className="text-xs font-bold text-zinc-500">{sublabel}</div>
         )}
       </div>
       {empty ? (
@@ -2449,7 +2449,7 @@ function JobsByLeadSourceDonut({
                   </div>
                   <div className="flex items-baseline gap-2 shrink-0 tabular-nums">
                     <span className="text-zinc-300 font-bold">{s.value}</span>
-                    <span className="text-eyebrow-tight uppercase text-zinc-500">
+                    <span className="text-xs font-bold text-zinc-500">
                       {p.toFixed(1)}%
                     </span>
                   </div>

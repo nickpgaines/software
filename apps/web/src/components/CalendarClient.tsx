@@ -564,7 +564,7 @@ function WeekView({
                   (isToday ? "text-white bg-black" : "text-zinc-400")
                 }
               >
-                <div className="uppercase tracking-wide">
+                <div>
                   {d.toLocaleDateString(undefined, { weekday: "short" })}
                 </div>
                 <div
@@ -712,7 +712,7 @@ function MonthView({
         {weekDayHeaders.map((d) => (
           <div
             key={d}
-            className="text-xs font-bold text-zinc-500 uppercase tracking-wide text-center py-2"
+            className="text-xs font-bold text-zinc-500 text-center py-2"
           >
             {d}
           </div>
