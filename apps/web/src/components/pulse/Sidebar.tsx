@@ -130,7 +130,7 @@ export function PulseSidebar() {
           className="w-full h-10 rounded-xl flex items-center justify-center gap-2 text-[13px] font-extrabold transition-colors shadow-glow-violet"
           style={{
             background: PULSE.violetVar,
-            color: "#fff",
+            color: PULSE.bg,
           }}
         >
           <PulseIcon name="plus" className="w-3.5 h-3.5" />
@@ -240,7 +240,7 @@ function PulseNavRow({
         <Link
           href={item.href}
           className={`${baseRow} font-extrabold`}
-          style={{ background: PULSE.cardBorderHi, color: PULSE.text }}
+          style={{ background: PULSE.text, color: PULSE.bg }}
         >
           <PulseIcon name={item.icon} />
           <span className="flex-1 truncate">{item.name}</span>

@@ -33,9 +33,9 @@ export const PULSE = {
   textDim: "var(--color-fg-dim)",
 
   // Accents — hex literals because opacity concatenation (`${…}1F`) is used.
-  violet: "#8b5cf6",
-  violetSoft: "#a78bfa",
-  violetGlow: "rgba(139, 92, 246, 0.35)",
+  violet: "#ffffff",
+  violetSoft: "#e4e4e7",
+  violetGlow: "rgba(255, 255, 255, 0.18)",
   green: "#22c55e",
   red: "#ef4444",
   cyan: "#22d3ee",

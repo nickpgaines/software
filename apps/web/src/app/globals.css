@@ -27,9 +27,9 @@
   --color-fg-dim: #52525b;        /* zinc-600 — placeholders, axis labels */
 
   /* Accents ----------------------------------------------------------------- */
-  --color-violet: #8b5cf6;
-  --color-violet-soft: #a78bfa;
-  --color-violet-glow: rgba(139, 92, 246, 0.35);
+  --color-violet: #ffffff;
+  --color-violet-soft: #e4e4e7;
+  --color-violet-glow: rgba(255, 255, 255, 0.18);
   --color-green: #22c55e;
   --color-red: #ef4444;
   --color-cyan: #22d3ee;
@@ -43,8 +43,8 @@
     "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
 
   /* Shadows ----------------------------------------------------------------- */
-  --shadow-glow-violet: 0 0 16px rgba(139, 92, 246, 0.35);
-  --shadow-glow-violet-sm: 0 0 12px rgba(139, 92, 246, 0.35);
+  --shadow-glow-violet: 0 0 16px rgba(255, 255, 255, 0.18);
+  --shadow-glow-violet-sm: 0 0 12px rgba(255, 255, 255, 0.18);
   --shadow-glow-green: 0 0 8px #22c55e;
   --shadow-menu: 0 12px 28px -8px rgba(0, 0, 0, 0.5);
   --shadow-tooltip: 0 8px 24px -8px rgba(0, 0, 0, 0.6);
@@ -107,7 +107,7 @@ html[data-theme="light"] {
   --popover-foreground: var(--color-fg);
 
   --primary: var(--color-violet);
-  --primary-foreground: var(--color-fg);
+  --primary-foreground: var(--color-canvas);
 
   --secondary: var(--color-elevated);
   --secondary-foreground: var(--color-fg);
