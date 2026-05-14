@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import CustomizationsPanel from "@/components/settings/CustomizationsPanel";
+import { PulseIcon } from "@/components/pulse/Icon";
 
 type Tab =
   | "profile"
@@ -2275,7 +2276,7 @@ function MessagingPanel() {
 
       {!isApproved && (
         <div className="rounded-xl border border-indigo-900/40 bg-indigo-950/30 p-4 flex gap-3">
-          <div className="text-indigo-300 text-xl leading-none">💬</div>
+          <PulseIcon name="message" className="w-5 h-5 text-indigo-300 shrink-0 mt-0.5" />
           <div>
             <div className="text-sm font-extrabold text-white">
               Trial Plan: One-Way Texting Only
@@ -2304,7 +2305,7 @@ function MessagingPanel() {
 
       <div className="rounded-xl border border-line bg-card p-5 space-y-5">
         <div className="flex items-center gap-3">
-          <div className="text-zinc-400 text-xl leading-none">💬</div>
+          <PulseIcon name="message" className="w-5 h-5 text-zinc-400 shrink-0" />
           <div>
             <div className="text-base font-extrabold text-white">
               10DLC Registration
