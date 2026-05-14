@@ -338,7 +338,7 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
 // Bump when init() gains migrations that must run on existing deploys.
 // First call after deploy runs the full init; subsequent cold starts hit
 // the fast-path below (one SELECT) and skip the ~150 DDL statements.
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 async function init(): Promise<void> {
   // Fast path: if the schema is already at the current version, skip the
@@ -786,6 +786,44 @@ async function init(): Promise<void> {
     );
     CREATE UNIQUE INDEX IF NOT EXISTS idx_sms_opt_outs_company_phone
       ON sms_opt_outs(company_id, phone);
+
+    -- 10DLC / A2P registration form data, one row per tenant. The state
+    -- machine on company.a2p_registration_state drives the async Trust Hub
+    -- API chain; this table stores the inputs the form collected. Failure
+    -- reasons are persisted on the company row (a2p_registration_error)
+    -- so the UI can render an "edit and resubmit" path against the same
+    -- registration row.
+    CREATE TABLE IF NOT EXISTS sms_brand_registrations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      company_id INTEGER NOT NULL REFERENCES company(id) ON DELETE CASCADE,
+      legal_company_name TEXT NOT NULL,
+      dba TEXT,
+      ein TEXT NOT NULL,
+      address_line1 TEXT NOT NULL,
+      address_line2 TEXT,
+      city TEXT NOT NULL,
+      region TEXT NOT NULL,
+      postal_code TEXT NOT NULL,
+      iso_country TEXT NOT NULL DEFAULT 'US',
+      business_email TEXT NOT NULL,
+      business_phone TEXT NOT NULL,
+      business_website TEXT,
+      industry TEXT NOT NULL,
+      entity_type TEXT NOT NULL,
+      monthly_volume TEXT NOT NULL,
+      business_description TEXT NOT NULL,
+      auth_rep_name TEXT NOT NULL,
+      auth_rep_title TEXT NOT NULL,
+      auth_rep_email TEXT NOT NULL,
+      confirmed_authorized INTEGER NOT NULL DEFAULT 0,
+      confirmed_aup_tcpa INTEGER NOT NULL DEFAULT 0,
+      confirmed_consent INTEGER NOT NULL DEFAULT 0,
+      submitted_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_sms_brand_registrations_company
+      ON sms_brand_registrations(company_id);
 
     CREATE TABLE IF NOT EXISTS calls (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1816,13 +1854,48 @@ export type A2pRegistrationState =
   | "not_started"
   | "customer_profile_pending"
   | "customer_profile_approved"
+  | "customer_profile_failed"
   | "trust_product_pending"
   | "trust_product_approved"
+  | "trust_product_failed"
   | "brand_pending"
   | "brand_approved"
+  | "brand_failed"
   | "campaign_pending"
   | "campaign_approved"
-  | "failed";
+  | "campaign_failed";
+
+export type SmsMonthlyVolume = "under_1k" | "1k_6k" | "6k_plus";
+
+export type SmsBrandRegistration = {
+  id: number;
+  company_id: number;
+  legal_company_name: string;
+  dba: string | null;
+  ein: string;
+  address_line1: string;
+  address_line2: string | null;
+  city: string;
+  region: string;
+  postal_code: string;
+  iso_country: string;
+  business_email: string;
+  business_phone: string;
+  business_website: string | null;
+  industry: string;
+  entity_type: string;
+  monthly_volume: SmsMonthlyVolume;
+  business_description: string;
+  auth_rep_name: string;
+  auth_rep_title: string;
+  auth_rep_email: string;
+  confirmed_authorized: number;
+  confirmed_aup_tcpa: number;
+  confirmed_consent: number;
+  submitted_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
 
 export type Company = {
   id: number;

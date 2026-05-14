@@ -1,10 +1,30 @@
 import crypto from "node:crypto";
 import { getDb, type Company, type MessagingSettings } from "@/lib/db";
-import { hasPlatformSms, sendPlatformSms } from "@/lib/twilio-platform";
+import {
+  hasPlatformSms,
+  sendDedicatedSms,
+  sendPlatformSms,
+  sendTrialPoolSms,
+} from "@/lib/twilio-platform";
 
 export type SmsSendResult =
   | { ok: true; sid: string; status: string }
   | { ok: false; error: string; code?: number };
+
+async function isOptedOut(
+  companyId: number,
+  to: string
+): Promise<boolean> {
+  const normalized = normalizeUSPhone(to) || to;
+  const db = await getDb();
+  const row = await db
+    .prepare(
+      `SELECT opted_out FROM sms_opt_outs
+         WHERE company_id = ? AND phone = ? LIMIT 1`
+    )
+    .get<{ opted_out: number }>(companyId, normalized);
+  return !!row && row.opted_out === 1;
+}
 
 export async function getMessagingSettings(
   companyId: number
@@ -55,24 +75,49 @@ export function normalizeUSPhone(raw: string | null | undefined): string | null 
   return null;
 }
 
-// Returns the company's effective messaging configuration: prefers the
-// platform-managed phone number if provisioned, otherwise falls back to BYO
-// messaging_settings. `fromPhone` is null if neither is configured.
+// Returns the company's effective messaging configuration. Trial and pending
+// tenants use the shared trial-pool Messaging Service; approved tenants use
+// their own dedicated number. BYO is left in place as a no-UI fallback for
+// the legacy tenant only.
 export async function getCompanyMessagingStatus(companyId: number): Promise<{
   configured: boolean;
   fromPhone: string | null;
-  source: "platform" | "byo" | "none";
+  source: "trial_pool" | "dedicated" | "platform" | "byo" | "none";
 }> {
   const db = await getDb();
   const company = await db
     .prepare("SELECT * FROM company WHERE id = ? LIMIT 1")
     .get<Company>(companyId);
-  if (company && hasPlatformSms(company)) {
-    return {
-      configured: true,
-      fromPhone: company.platform_phone_number,
-      source: "platform",
-    };
+  if (company) {
+    if (
+      company.sms_tier === "paid_approved" &&
+      company.sms_dedicated_number &&
+      company.twilio_messaging_service_sid
+    ) {
+      return {
+        configured: true,
+        fromPhone: company.sms_dedicated_number,
+        source: "dedicated",
+      };
+    }
+    if (
+      (company.sms_tier === "trial" ||
+        company.sms_tier === "paid_pending_registration") &&
+      process.env.TWILIO_TRIAL_POOL_MESSAGING_SERVICE_SID
+    ) {
+      return {
+        configured: true,
+        fromPhone: null,
+        source: "trial_pool",
+      };
+    }
+    if (hasPlatformSms(company)) {
+      return {
+        configured: true,
+        fromPhone: company.platform_phone_number,
+        source: "platform",
+      };
+    }
   }
   const settings = await getMessagingSettings(companyId);
   if (isMessagingConfigured(settings)) {
@@ -85,10 +130,10 @@ export async function getCompanyMessagingStatus(companyId: number): Promise<{
   return { configured: false, fromPhone: null, source: "none" };
 }
 
-// High-level send: prefer the platform-managed Twilio subaccount if the
-// company has been provisioned, otherwise fall back to the company's BYO
-// credentials. Callers should use this instead of sendSms() directly so the
-// BYO escape hatch keeps working for any tenant without a platform number.
+// High-level send. Routes by sms_tier:
+//   paid_approved              → tenant's own Messaging Service + dedicated #
+//   trial / paid_pending_reg.  → shared trial-pool Messaging Service
+//   (legacy)                   → platform/BYO escape hatches if neither set
 export async function sendCompanySms(args: {
   companyId: number;
   to: string;
@@ -99,8 +144,30 @@ export async function sendCompanySms(args: {
   const company = await db
     .prepare("SELECT * FROM company WHERE id = ? LIMIT 1")
     .get<Company>(companyId);
-  if (company && hasPlatformSms(company)) {
-    return sendPlatformSms({ company, to, body });
+
+  if (await isOptedOut(companyId, to)) {
+    return {
+      ok: false,
+      error: "Recipient has opted out of SMS for this business",
+    };
+  }
+
+  if (company) {
+    if (
+      company.sms_tier === "paid_approved" &&
+      company.twilio_messaging_service_sid
+    ) {
+      return sendDedicatedSms({ company, to, body });
+    }
+    if (
+      company.sms_tier === "trial" ||
+      company.sms_tier === "paid_pending_registration"
+    ) {
+      return sendTrialPoolSms({ to, body });
+    }
+    if (hasPlatformSms(company)) {
+      return sendPlatformSms({ company, to, body });
+    }
   }
   const settings = await getMessagingSettings(companyId);
   return sendSms({ settings, to, body });
