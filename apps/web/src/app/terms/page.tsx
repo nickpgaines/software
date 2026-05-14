@@ -76,14 +76,16 @@ export default function TermsOfServicePage() {
           <p>
             <strong className="text-white">Help:</strong> reply <strong className="text-white">HELP</strong> for help, or
             contact the business that originated the message directly using
-            the phone number or email they provided you. You may also email{" "}
+            the phone number or email they provided you. For platform-level
+            questions, you may email{" "}
             <a
-              href="mailto:support@ngventures.com"
+              href="mailto:nick@homeserviceascension.com"
               className="text-violet-400 hover:text-violet-300 font-extrabold"
             >
-              support@ngventures.com
-            </a>
-            .
+              nick@homeserviceascension.com
+            </a>{" "}
+            (NG Ventures LLC operates the messaging platform through its
+            affiliated company Home Service Ascension).
           </p>
           <p>
             <strong className="text-white">Carriers:</strong> carriers (including AT&amp;T, T-Mobile,
