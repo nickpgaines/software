@@ -3,6 +3,10 @@
  * at `/`. Mirrors `(app)/page.tsx` so each preview option shows the real
  * scrollable, interactive dashboard — not a static mock. Imported from each
  * option route under /design/theme-options/option-N.
+ *
+ * The single deviation from `(app)/page.tsx` is the `accentName` flag, which
+ * wraps the user's first name in the greeting in a span the preview shell
+ * can recolor via CSS (`[data-accent-name="true"] [data-name-token]`).
  */
 
 import {
@@ -28,7 +32,11 @@ import {
   greeting,
 } from "@/components/pulse/format";
 
-export async function DashboardContent() {
+export async function DashboardContent({
+  accentName = false,
+}: {
+  accentName?: boolean;
+} = {}) {
   const [{ firstName }, jobs, revenue] = await Promise.all([
     getDashboardIdentity(),
     getTodayJobs(),
@@ -39,11 +47,21 @@ export async function DashboardContent() {
   const arrCents = revenue.totalCents * 12;
   const jobsSold = completedCount + jobs.length;
 
+  const greetingText = `${greeting(new Date().getHours())}, `;
+  const title = accentName ? (
+    <>
+      {greetingText}
+      <span data-name-token>{firstName}</span>.
+    </>
+  ) : (
+    `${greetingText}${firstName}.`
+  );
+
   return (
     <>
       <PageHeader
         kicker={dateLabel()}
-        title={`${greeting(new Date().getHours())}, ${firstName}.`}
+        title={title}
         subtitle={`${jobs.length} jobs today · ${completedCount} completed this month`}
         actions={
           <Button

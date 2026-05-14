@@ -11,11 +11,10 @@ export default async function Option3Page() {
         label: "Option 3 — Purple + dashes",
         description:
           "Same layout as Option 2 but keeping the existing violet accent.",
-        accent: "violet",
-        dashes: true,
+        variant: "violet",
       }}
     >
-      <DashboardContent />
+      <DashboardContent accentName />
     </ThemePreviewShell>
   );
 }

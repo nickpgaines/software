@@ -32,7 +32,7 @@ export function CardHeaderLink({
     <Link
       href={href}
       className="text-[11.5px] font-extrabold"
-      style={{ color: PULSE.violetSoft }}
+      style={{ color: PULSE.violetSoftVar }}
     >
       {label}
     </Link>
@@ -651,7 +651,7 @@ export function PulsePipelineCard({
                 className="h-full rounded-full"
                 style={{
                   width: `${p.pct * 100}%`,
-                  background: `linear-gradient(90deg, ${PULSE.violet}, ${PULSE.violetSoft})`,
+                  background: `linear-gradient(90deg, ${PULSE.violetVar}, ${PULSE.violetSoftVar})`,
                 }}
               />
             </div>
@@ -733,7 +733,7 @@ export function PulseTasksCard() {
         <button
           className="w-7 h-7 rounded-full flex items-center justify-center shadow-glow-violet-sm"
           style={{
-            background: PULSE.violet,
+            background: PULSE.violetVar,
             color: "#fff",
           }}
         >
@@ -776,7 +776,7 @@ export function PulseActivityCard({ jobs }: { jobs: LiveJob[] }) {
   }
   if (jobs.length > 1) {
     items.push({
-      color: PULSE.violet,
+      color: PULSE.violetVar,
       who: "System",
       what: `noted ${jobs[1].customer_name}`,
       when: formatTime(jobs[1].scheduled_at).time,

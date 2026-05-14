@@ -10,8 +10,7 @@ export default async function Option1Page() {
         id: 1,
         label: "Option 1 — As-is",
         description: "Current dashboard, no changes.",
-        accent: "violet",
-        dashes: false,
+        variant: null,
       }}
     >
       <DashboardContent />
