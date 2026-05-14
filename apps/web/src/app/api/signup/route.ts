@@ -2,11 +2,6 @@ import { NextResponse } from "next/server";
 import { createSessionToken, SESSION_COOKIE } from "@/lib/auth";
 import { getDb, syncReplica } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
-import {
-  getPlatformConfig,
-  isPlatformSmsEnabled,
-  provisionTwilioForCompany,
-} from "@/lib/twilio-platform";
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const MIN_PASSWORD_LEN = 8;
@@ -230,28 +225,11 @@ export async function POST(req: Request) {
   // sync now so reads on this instance are immediately consistent.
   await syncReplica();
 
-  // Auto-provision a Twilio subaccount + phone number for this company. Best-
-  // effort: a Twilio failure must not block account creation. The user can
-  // retry from the Messaging settings page if this fails.
-  if (isPlatformSmsEnabled() && getPlatformConfig()) {
-    try {
-      const result = await provisionTwilioForCompany({
-        companyId: companyId as number,
-        companyName,
-        areaCode,
-      });
-      if (!result.ok) {
-        console.error(
-          `[signup] Twilio provision failed for company ${companyId}: ${result.error}`
-        );
-      }
-    } catch (e) {
-      console.error(
-        `[signup] Twilio provision threw for company ${companyId}:`,
-        e
-      );
-    }
-  }
+  // SMS provisioning happens after 10DLC approval, not at signup. New
+  // tenants start on sms_tier='trial' (set by the db default) and send
+  // through the shared trial-pool Messaging Service until they submit the
+  // 10DLC form and Twilio approves their dedicated Brand + Campaign.
+  void areaCode;
 
   const token = createSessionToken(email, {
     staffId: typeof staffId === "number" ? staffId : null,

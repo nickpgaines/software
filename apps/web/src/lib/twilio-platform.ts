@@ -16,6 +16,7 @@ export type PlatformConfig = {
   masterAccountSid: string;
   masterAuthToken: string;
   messagingServiceSid: string | null;
+  trialPoolMessagingServiceSid: string | null;
   defaultAreaCode: string | null;
   inboundSmsWebhookUrl: string | null;
   inboundVoiceWebhookUrl: string | null;
@@ -30,6 +31,8 @@ export function getPlatformConfig(): PlatformConfig | null {
     masterAccountSid,
     masterAuthToken,
     messagingServiceSid: process.env.TWILIO_MESSAGING_SERVICE_SID || null,
+    trialPoolMessagingServiceSid:
+      process.env.TWILIO_TRIAL_POOL_MESSAGING_SERVICE_SID || null,
     defaultAreaCode: process.env.TWILIO_DEFAULT_AREA_CODE || null,
     inboundSmsWebhookUrl: process.env.TWILIO_INBOUND_SMS_WEBHOOK_URL || null,
     inboundVoiceWebhookUrl:
@@ -215,9 +218,121 @@ export async function findCompanyByPlatformNumber(
 ): Promise<Company | null> {
   const db = await getDb();
   const row = await db
-    .prepare("SELECT * FROM company WHERE platform_phone_number = ? LIMIT 1")
-    .get<Company>(toNumber);
+    .prepare(
+      `SELECT * FROM company
+         WHERE platform_phone_number = ?
+            OR sms_dedicated_number = ?
+         LIMIT 1`
+    )
+    .get<Company>(toNumber, toNumber);
   return row ?? null;
+}
+
+// Send through the shared trial-pool Messaging Service. Twilio picks From
+// from whatever numbers are attached to that service; sticky-sender keeps
+// each (tenant, recipient) pair routed through the same number once the
+// first message goes out.
+export async function sendTrialPoolSms(args: {
+  to: string;
+  body: string;
+}): Promise<PlatformSmsResult> {
+  const cfg = getPlatformConfig();
+  if (!cfg) return { ok: false, error: "Platform Twilio is not configured" };
+  if (!cfg.trialPoolMessagingServiceSid) {
+    return {
+      ok: false,
+      error:
+        "TWILIO_TRIAL_POOL_MESSAGING_SERVICE_SID is not configured — trial outbound SMS is offline",
+    };
+  }
+  return postTwilioMessage({
+    masterAccountSid: cfg.masterAccountSid,
+    masterAuthToken: cfg.masterAuthToken,
+    to: args.to,
+    body: args.body,
+    from: null,
+    messagingServiceSid: cfg.trialPoolMessagingServiceSid,
+  });
+}
+
+// Send through a tenant's own approved Messaging Service. Used once their
+// 10DLC chain reaches campaign_approved and they have a dedicated number.
+export async function sendDedicatedSms(args: {
+  company: Pick<
+    Company,
+    "twilio_messaging_service_sid" | "sms_dedicated_number"
+  >;
+  to: string;
+  body: string;
+}): Promise<PlatformSmsResult> {
+  const cfg = getPlatformConfig();
+  if (!cfg) return { ok: false, error: "Platform Twilio is not configured" };
+  if (!args.company.twilio_messaging_service_sid) {
+    return {
+      ok: false,
+      error: "Tenant has no Messaging Service provisioned",
+    };
+  }
+  return postTwilioMessage({
+    masterAccountSid: cfg.masterAccountSid,
+    masterAuthToken: cfg.masterAuthToken,
+    to: args.to,
+    body: args.body,
+    from: args.company.sms_dedicated_number ?? null,
+    messagingServiceSid: args.company.twilio_messaging_service_sid,
+  });
+}
+
+async function postTwilioMessage(args: {
+  masterAccountSid: string;
+  masterAuthToken: string;
+  to: string;
+  body: string;
+  from: string | null;
+  messagingServiceSid: string;
+}): Promise<PlatformSmsResult> {
+  const form = new URLSearchParams();
+  form.set("To", args.to);
+  form.set("MessagingServiceSid", args.messagingServiceSid);
+  form.set("Body", args.body);
+  if (args.from) form.set("From", args.from);
+
+  const auth = Buffer.from(
+    `${args.masterAccountSid}:${args.masterAuthToken}`
+  ).toString("base64");
+
+  let res: Response;
+  try {
+    res = await fetch(
+      `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(
+        args.masterAccountSid
+      )}/Messages.json`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Basic ${auth}`,
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: form.toString(),
+      }
+    );
+  } catch (e) {
+    return { ok: false, error: (e as Error).message || "Network error" };
+  }
+  const data = (await res.json().catch(() => ({}))) as {
+    sid?: string;
+    status?: string;
+    message?: string;
+    code?: number;
+  };
+  if (!res.ok) {
+    return {
+      ok: false,
+      error: data.message || `Twilio error ${res.status}`,
+      code: data.code,
+    };
+  }
+  return { ok: true, sid: data.sid || "", status: data.status || "queued" };
 }
 
 function asMsg(e: unknown): string {

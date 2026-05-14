@@ -1,0 +1,642 @@
+// 10DLC registration state machine. Drives the async Twilio Trust Hub chain
+// for a single tenant by reading their company row, figuring out the next
+// step from a2p_registration_state, calling the Trust Hub API, and writing
+// the resulting SID + new state back. Idempotent: re-running advance() on a
+// company that's already in 'campaign_approved' is a no-op; re-running it
+// while waiting on a pending review is a no-op until Twilio's status flips.
+//
+// advance() is called from:
+//   - POST /api/sms/registration (right after the form submit)
+//   - Twilio status webhook handlers (when a resource flips to approved)
+//   - GET  /api/sms/registration  (so the panel can self-heal stalled chains)
+//
+// All side effects are wrapped in try/catch and persisted as failure states
+// on the company row so the UI can render an actionable error. The orchestrator
+// never throws back to its callers — it always returns the new state.
+
+import {
+  getDb,
+  type A2pRegistrationState,
+  type Company,
+  type SmsBrandRegistration,
+} from "@/lib/db";
+import { getPlatformConfig } from "@/lib/twilio-platform";
+import {
+  attachA2pProfileInfoEndUser,
+  attachNumberToMessagingService,
+  attachToCustomerProfile,
+  attachToTrustProduct,
+  createA2pTrustProduct,
+  createAddress,
+  createAuthorizedRepEndUser,
+  createBrandRegistration,
+  createBusinessInformationEndUser,
+  createCampaign,
+  createMessagingService,
+  createSecondaryCustomerProfile,
+  fetchBrandRegistration,
+  fetchCampaign,
+  fetchCustomerProfile,
+  fetchTrustProduct,
+  findAvailableLocalNumber,
+  purchasePhoneNumber,
+  submitCustomerProfile,
+  submitTrustProduct,
+} from "@/lib/twilio-trust-hub";
+
+const CAMPAIGN_USECASE = "MIXED";
+
+const CAMPAIGN_OPT_IN_KEYWORDS = ["START", "YES"];
+const CAMPAIGN_OPT_OUT_KEYWORDS = [
+  "STOP",
+  "STOPALL",
+  "UNSUBSCRIBE",
+  "CANCEL",
+  "END",
+  "QUIT",
+];
+const CAMPAIGN_HELP_KEYWORDS = ["HELP", "INFO"];
+
+const CAMPAIGN_OPT_IN_MESSAGE =
+  "You're re-subscribed. Reply STOP to unsubscribe again, HELP for help.";
+const CAMPAIGN_HELP_MESSAGE =
+  "For help, contact the business that sent you this message. Reply STOP to unsubscribe.";
+
+const CAMPAIGN_MESSAGE_FLOW =
+  "End users opt in to receive SMS in three ways, and we keep a timestamped record of each. " +
+  "Most opt-ins happen in person — when a service business sells a job at the door, the homeowner provides their phone number on a digital form and agrees to receive text messages from that business by checking an 'I agree to receive SMS messages' box before the form can be submitted, with date, time, and disclosure language recorded. " +
+  "Some opt-ins happen by phone, where the representative reads a disclosure covering message types, frequency, and opt-out, then logs the customer's verbal agreement with a timestamp. " +
+  "The remaining opt-ins come through the business's website booking form with the same disclosure and consent checkbox. " +
+  "Recipients can reply STOP to unsubscribe at any time or HELP for assistance. We retain consent records and never share numbers with third parties.";
+
+export type AdvanceResult = {
+  state: A2pRegistrationState;
+  error: string | null;
+  done: boolean;
+};
+
+function buildWebhookUrl(path: string): string | null {
+  const base = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (!base) return null;
+  return `${base.replace(/\/$/, "")}${path}`;
+}
+
+function entityTypeToA2p(formEntityType: string): {
+  brandType: "STANDARD" | "SOLE_PROPRIETOR";
+  companyType: string;
+} {
+  const v = formEntityType.toLowerCase();
+  if (v.includes("sole")) {
+    return { brandType: "SOLE_PROPRIETOR", companyType: "private" };
+  }
+  if (v.includes("public") || v.includes("non-profit") || v.includes("nonprofit")) {
+    return {
+      brandType: "STANDARD",
+      companyType: v.includes("non") ? "non-profit" : "public",
+    };
+  }
+  return { brandType: "STANDARD", companyType: "private" };
+}
+
+function volumeLabel(v: string): string {
+  if (v === "1k_6k") return "1,000-6,000";
+  if (v === "6k_plus") return "6,000+";
+  return "under 1,000";
+}
+
+function buildCampaignDescription(name: string): string {
+  return (
+    `${name} sends SMS notifications to its customers including appointment ` +
+    `reminders, payment receipts, post-service follow-ups, two-way customer ` +
+    `service replies, and occasional promotional offers. Recipients have ` +
+    `provided express consent at the point of sale (in-person or by phone) ` +
+    `when initiating a service relationship with the business. Estimated ` +
+    `monthly volume: ${volumeLabel("under_1k")}.`
+  );
+}
+
+function buildMessageSamples(name: string): string[] {
+  return [
+    `Hi {first_name}, reminder that your appointment with ${name} is tomorrow at {time}. Reply STOP to opt out.`,
+    `Thanks {first_name} — ${name} received your payment of \${amount}. Receipt: {receipt_url} Reply STOP to opt out.`,
+    `Hi {first_name}, ${name} checking in after your service. Let us know if you need anything else. Reply STOP to opt out.`,
+  ];
+}
+
+async function loadContext(companyId: number): Promise<{
+  company: Company;
+  registration: SmsBrandRegistration | null;
+}> {
+  const db = await getDb();
+  const company = await db
+    .prepare("SELECT * FROM company WHERE id = ? LIMIT 1")
+    .get<Company>(companyId);
+  if (!company) throw new Error(`Company ${companyId} not found`);
+  const registration = await db
+    .prepare(
+      "SELECT * FROM sms_brand_registrations WHERE company_id = ? LIMIT 1"
+    )
+    .get<SmsBrandRegistration>(companyId);
+  return { company, registration: registration ?? null };
+}
+
+async function persistState(
+  companyId: number,
+  state: A2pRegistrationState,
+  error: string | null,
+  patch: Partial<Company> = {}
+): Promise<void> {
+  const db = await getDb();
+  const fields: string[] = [
+    "a2p_registration_state = ?",
+    "a2p_registration_error = ?",
+  ];
+  const args: (string | number | null)[] = [state, error];
+  for (const [k, v] of Object.entries(patch)) {
+    if (v === undefined) continue;
+    fields.push(`${k} = ?`);
+    args.push(v as string | number | null);
+  }
+  if (state === "campaign_approved") {
+    fields.push("a2p_registration_approved_at = datetime('now')");
+  }
+  if (state === "customer_profile_pending") {
+    fields.push(
+      "a2p_registration_started_at = COALESCE(a2p_registration_started_at, datetime('now'))"
+    );
+  }
+  args.push(companyId);
+  await db
+    .prepare(
+      `UPDATE company SET ${fields.join(", ")}, updated_at = datetime('now')
+       WHERE id = ?`
+    )
+    .run(...args);
+}
+
+function isPending(status: string): boolean {
+  return (
+    status === "pending-review" ||
+    status === "in-review" ||
+    status === "pending"
+  );
+}
+
+function isApproved(status: string): boolean {
+  return (
+    status === "twilio-approved" ||
+    status === "approved" ||
+    status === "compliant"
+  );
+}
+
+function isFailed(status: string): boolean {
+  return (
+    status === "twilio-rejected" ||
+    status === "rejected" ||
+    status === "failed" ||
+    status === "noncompliant"
+  );
+}
+
+// One step. Returns whether the caller should immediately recurse to try the
+// next step in the same request (true for steps that complete synchronously
+// like creating resources; false for steps that wait on Twilio review).
+async function step(companyId: number): Promise<{
+  state: A2pRegistrationState;
+  error: string | null;
+  recurse: boolean;
+}> {
+  const cfg = getPlatformConfig();
+  if (!cfg) {
+    return {
+      state: "not_started",
+      error: "Platform Twilio is not configured",
+      recurse: false,
+    };
+  }
+
+  const { company, registration } = await loadContext(companyId);
+  if (!registration) {
+    return {
+      state: company.a2p_registration_state,
+      error: "Registration form has not been submitted",
+      recurse: false,
+    };
+  }
+  if (!registration.submitted_at) {
+    return {
+      state: company.a2p_registration_state,
+      error: "Registration form is not submitted yet",
+      recurse: false,
+    };
+  }
+
+  const state = company.a2p_registration_state;
+  const { brandType, companyType } = entityTypeToA2p(registration.entity_type);
+  const cpCallback = buildWebhookUrl(
+    "/api/twilio/webhooks/customer-profile-status"
+  );
+
+  // 1. Create Secondary Customer Profile (+ EndUsers + Address + submit)
+  if (state === "not_started" || state === "customer_profile_failed") {
+    try {
+      let cpSid = company.twilio_customer_profile_sid;
+      if (!cpSid) {
+        const cp = await createSecondaryCustomerProfile({
+          friendlyName: `nick360 tenant ${companyId} customer profile`,
+          email: registration.business_email,
+          statusCallback: cpCallback,
+        });
+        cpSid = cp.sid;
+        await persistState(companyId, "customer_profile_pending", null, {
+          twilio_customer_profile_sid: cpSid,
+        });
+      }
+
+      const bi = await createBusinessInformationEndUser({
+        friendlyName: `tenant-${companyId}-business-info`,
+        legalCompanyName: registration.legal_company_name,
+        ein: registration.ein,
+        entityType: companyType,
+        industry: registration.industry,
+        website: registration.business_website,
+        description: registration.business_description,
+      });
+      await attachToCustomerProfile({
+        customerProfileSid: cpSid,
+        objectSid: bi.sid,
+      });
+
+      const [firstName, ...lastParts] = registration.auth_rep_name.split(/\s+/);
+      const lastName = lastParts.join(" ") || firstName;
+      const rep = await createAuthorizedRepEndUser({
+        friendlyName: `tenant-${companyId}-auth-rep`,
+        firstName,
+        lastName,
+        email: registration.auth_rep_email,
+        phone: registration.business_phone,
+        title: registration.auth_rep_title,
+        businessTitle: registration.auth_rep_title,
+      });
+      await attachToCustomerProfile({
+        customerProfileSid: cpSid,
+        objectSid: rep.sid,
+      });
+
+      const addr = await createAddress({
+        customerName: registration.legal_company_name,
+        street: registration.address_line1,
+        street2: registration.address_line2,
+        city: registration.city,
+        region: registration.region,
+        postalCode: registration.postal_code,
+        isoCountry: registration.iso_country,
+      });
+      await attachToCustomerProfile({
+        customerProfileSid: cpSid,
+        objectSid: addr.sid,
+      });
+
+      await submitCustomerProfile(cpSid);
+      return { state: "customer_profile_pending", error: null, recurse: false };
+    } catch (e) {
+      const msg = (e as Error).message;
+      await persistState(companyId, "customer_profile_failed", msg);
+      return { state: "customer_profile_failed", error: msg, recurse: false };
+    }
+  }
+
+  // 2. Wait for Customer Profile approval (Twilio webhook or refresh).
+  if (state === "customer_profile_pending") {
+    if (!company.twilio_customer_profile_sid) {
+      await persistState(companyId, "not_started", "Missing customer profile SID");
+      return { state: "not_started", error: null, recurse: true };
+    }
+    try {
+      const cp = await fetchCustomerProfile(company.twilio_customer_profile_sid);
+      if (isApproved(cp.status)) {
+        await persistState(companyId, "customer_profile_approved", null);
+        return { state: "customer_profile_approved", error: null, recurse: true };
+      }
+      if (isFailed(cp.status)) {
+        await persistState(
+          companyId,
+          "customer_profile_failed",
+          `Customer Profile rejected by Twilio (status=${cp.status})`
+        );
+        return {
+          state: "customer_profile_failed",
+          error: `status=${cp.status}`,
+          recurse: false,
+        };
+      }
+      return {
+        state: "customer_profile_pending",
+        error: null,
+        recurse: false,
+      };
+    } catch (e) {
+      return {
+        state: "customer_profile_pending",
+        error: (e as Error).message,
+        recurse: false,
+      };
+    }
+  }
+
+  // 3. Customer Profile approved → create A2P Trust Product, attach, submit.
+  if (
+    state === "customer_profile_approved" ||
+    state === "trust_product_failed"
+  ) {
+    try {
+      let tpSid = company.twilio_trust_product_sid;
+      if (!tpSid) {
+        const tp = await createA2pTrustProduct({
+          friendlyName: `nick360 tenant ${companyId} A2P trust product`,
+          email: registration.business_email,
+          statusCallback: cpCallback,
+        });
+        tpSid = tp.sid;
+        await persistState(companyId, "trust_product_pending", null, {
+          twilio_trust_product_sid: tpSid,
+        });
+      }
+      await attachToTrustProduct({
+        trustProductSid: tpSid,
+        objectSid: company.twilio_customer_profile_sid!,
+      });
+      await attachA2pProfileInfoEndUser({
+        trustProductSid: tpSid,
+        companyType,
+        stockExchange: null,
+        stockTicker: null,
+      });
+      await submitTrustProduct(tpSid);
+      return { state: "trust_product_pending", error: null, recurse: false };
+    } catch (e) {
+      const msg = (e as Error).message;
+      await persistState(companyId, "trust_product_failed", msg);
+      return { state: "trust_product_failed", error: msg, recurse: false };
+    }
+  }
+
+  // 4. Wait for Trust Product approval.
+  if (state === "trust_product_pending") {
+    if (!company.twilio_trust_product_sid) {
+      await persistState(companyId, "customer_profile_approved", null);
+      return { state: "customer_profile_approved", error: null, recurse: true };
+    }
+    try {
+      const tp = await fetchTrustProduct(company.twilio_trust_product_sid);
+      if (isApproved(tp.status)) {
+        await persistState(companyId, "trust_product_approved", null);
+        return { state: "trust_product_approved", error: null, recurse: true };
+      }
+      if (isFailed(tp.status)) {
+        const msg = `Trust Product rejected (status=${tp.status})`;
+        await persistState(companyId, "trust_product_failed", msg);
+        return { state: "trust_product_failed", error: msg, recurse: false };
+      }
+      return { state: "trust_product_pending", error: null, recurse: false };
+    } catch (e) {
+      return {
+        state: "trust_product_pending",
+        error: (e as Error).message,
+        recurse: false,
+      };
+    }
+  }
+
+  // 5. Trust Product approved → create Brand Registration.
+  if (state === "trust_product_approved" || state === "brand_failed") {
+    try {
+      let brandSid = company.twilio_brand_sid;
+      if (!brandSid) {
+        const brand = await createBrandRegistration({
+          customerProfileSid: company.twilio_customer_profile_sid!,
+          trustProductSid: company.twilio_trust_product_sid!,
+          brandType,
+          skipAutomaticSecondaryVetting: false,
+        });
+        brandSid = brand.sid;
+        await persistState(companyId, "brand_pending", null, {
+          twilio_brand_sid: brandSid,
+        });
+      } else {
+        await persistState(companyId, "brand_pending", null);
+      }
+      return { state: "brand_pending", error: null, recurse: false };
+    } catch (e) {
+      const msg = (e as Error).message;
+      await persistState(companyId, "brand_failed", msg);
+      return { state: "brand_failed", error: msg, recurse: false };
+    }
+  }
+
+  // 6. Wait for Brand approval.
+  if (state === "brand_pending") {
+    if (!company.twilio_brand_sid) {
+      await persistState(companyId, "trust_product_approved", null);
+      return { state: "trust_product_approved", error: null, recurse: true };
+    }
+    try {
+      const brand = await fetchBrandRegistration(company.twilio_brand_sid);
+      if (isApproved(brand.status)) {
+        await persistState(companyId, "brand_approved", null);
+        return { state: "brand_approved", error: null, recurse: true };
+      }
+      if (isFailed(brand.status)) {
+        const msg =
+          brand.failure_reason ||
+          `Brand registration rejected (status=${brand.status})`;
+        await persistState(companyId, "brand_failed", msg);
+        return { state: "brand_failed", error: msg, recurse: false };
+      }
+      return { state: "brand_pending", error: null, recurse: false };
+    } catch (e) {
+      return {
+        state: "brand_pending",
+        error: (e as Error).message,
+        recurse: false,
+      };
+    }
+  }
+
+  // 7. Brand approved → create Messaging Service + Campaign.
+  if (state === "brand_approved" || state === "campaign_failed") {
+    try {
+      let msSid = company.twilio_messaging_service_sid;
+      if (!msSid) {
+        const inboundUrl = buildWebhookUrl("/api/messages/webhook");
+        const statusUrl = buildWebhookUrl(
+          "/api/twilio/webhooks/campaign-status"
+        );
+        const ms = await createMessagingService({
+          friendlyName:
+            `nick360 tenant ${companyId} (${registration.legal_company_name})`.slice(
+              0,
+              64
+            ),
+          inboundRequestUrl: inboundUrl,
+          statusCallback: statusUrl,
+        });
+        msSid = ms.sid;
+        await persistState(companyId, "brand_approved", null, {
+          twilio_messaging_service_sid: msSid,
+        });
+      }
+
+      let campaignSid = company.twilio_campaign_sid;
+      if (!campaignSid) {
+        const campaign = await createCampaign({
+          messagingServiceSid: msSid,
+          brandRegistrationSid: company.twilio_brand_sid!,
+          description: buildCampaignDescription(registration.legal_company_name),
+          messageSamples: buildMessageSamples(registration.legal_company_name),
+          messageFlow: CAMPAIGN_MESSAGE_FLOW,
+          usAppToPersonUsecase: CAMPAIGN_USECASE,
+          hasEmbeddedLinks: true,
+          hasEmbeddedPhone: false,
+          optInKeywords: CAMPAIGN_OPT_IN_KEYWORDS,
+          optInMessage: CAMPAIGN_OPT_IN_MESSAGE,
+          optOutKeywords: CAMPAIGN_OPT_OUT_KEYWORDS,
+          optOutMessage:
+            "You have been unsubscribed and will not receive any more messages. Reply START to re-subscribe.",
+          helpKeywords: CAMPAIGN_HELP_KEYWORDS,
+          helpMessage: CAMPAIGN_HELP_MESSAGE,
+        });
+        campaignSid = campaign.sid;
+        await persistState(companyId, "campaign_pending", null, {
+          twilio_campaign_sid: campaignSid,
+        });
+      }
+      return { state: "campaign_pending", error: null, recurse: false };
+    } catch (e) {
+      const msg = (e as Error).message;
+      await persistState(companyId, "campaign_failed", msg);
+      return { state: "campaign_failed", error: msg, recurse: false };
+    }
+  }
+
+  // 8. Wait for Campaign approval.
+  if (state === "campaign_pending") {
+    if (
+      !company.twilio_campaign_sid ||
+      !company.twilio_messaging_service_sid
+    ) {
+      await persistState(companyId, "brand_approved", null);
+      return { state: "brand_approved", error: null, recurse: true };
+    }
+    try {
+      const campaign = await fetchCampaign({
+        messagingServiceSid: company.twilio_messaging_service_sid,
+        campaignSid: company.twilio_campaign_sid,
+      });
+      if (isApproved(campaign.status) || campaign.status === "VERIFIED") {
+        await persistState(companyId, "campaign_approved", null);
+        return { state: "campaign_approved", error: null, recurse: true };
+      }
+      if (isFailed(campaign.status) || campaign.status === "FAILED") {
+        const msg =
+          campaign.failure_reason ||
+          `Campaign rejected (status=${campaign.status})`;
+        await persistState(companyId, "campaign_failed", msg);
+        return { state: "campaign_failed", error: msg, recurse: false };
+      }
+      return { state: "campaign_pending", error: null, recurse: false };
+    } catch (e) {
+      return {
+        state: "campaign_pending",
+        error: (e as Error).message,
+        recurse: false,
+      };
+    }
+  }
+
+  // 9. Campaign approved → buy + attach dedicated number, flip to paid_approved.
+  if (state === "campaign_approved" && !company.sms_dedicated_number) {
+    try {
+      const areaCode =
+        (registration.business_phone.replace(/\D/g, "").match(/\d{10}$/)?.[0] ?? "")
+          .slice(0, 3) || "843";
+      const number = await findAvailableLocalNumber({ areaCode });
+      if (!number) {
+        const msg = `No numbers available in area code ${areaCode}`;
+        await persistState(companyId, "campaign_failed", msg);
+        return { state: "campaign_failed", error: msg, recurse: false };
+      }
+      const inboundUrl = buildWebhookUrl("/api/messages/webhook");
+      const voiceUrl = buildWebhookUrl("/api/voice/outbound");
+      const purchased = await purchasePhoneNumber({
+        phoneNumber: number,
+        friendlyName: `nick360:${companyId}:${registration.legal_company_name}`,
+        smsUrl: inboundUrl,
+        voiceUrl,
+      });
+      await attachNumberToMessagingService({
+        messagingServiceSid: company.twilio_messaging_service_sid!,
+        phoneNumberSid: purchased.sid,
+      });
+      await persistState(companyId, "campaign_approved", null, {
+        sms_dedicated_number: purchased.phone_number,
+        sms_dedicated_number_sid: purchased.sid,
+      });
+      return { state: "campaign_approved", error: null, recurse: false };
+    } catch (e) {
+      const msg = (e as Error).message;
+      await persistState(companyId, "campaign_failed", msg);
+      return { state: "campaign_failed", error: msg, recurse: false };
+    }
+  }
+
+  return { state, error: company.a2p_registration_error, recurse: false };
+}
+
+export async function advanceRegistration(
+  companyId: number
+): Promise<AdvanceResult> {
+  // Cap the loop in case a step incorrectly returns recurse=true forever.
+  let remaining = 12;
+  let last: { state: A2pRegistrationState; error: string | null } = {
+    state: "not_started",
+    error: null,
+  };
+  while (remaining-- > 0) {
+    const r = await step(companyId);
+    last = { state: r.state, error: r.error };
+    if (!r.recurse) break;
+  }
+  return {
+    state: last.state,
+    error: last.error,
+    done: last.state === "campaign_approved",
+  };
+}
+
+// Pure helpers exported for the UI / API to know whether to expose form
+// editing and the "resubmit" affordance.
+
+const PENDING_STATES: A2pRegistrationState[] = [
+  "customer_profile_pending",
+  "trust_product_pending",
+  "brand_pending",
+  "campaign_pending",
+];
+
+const FAILED_STATES: A2pRegistrationState[] = [
+  "customer_profile_failed",
+  "trust_product_failed",
+  "brand_failed",
+  "campaign_failed",
+];
+
+export function isPendingState(s: A2pRegistrationState): boolean {
+  return PENDING_STATES.includes(s);
+}
+
+export function isFailedState(s: A2pRegistrationState): boolean {
+  return FAILED_STATES.includes(s);
+}
+export { isPending, isApproved, isFailed };
