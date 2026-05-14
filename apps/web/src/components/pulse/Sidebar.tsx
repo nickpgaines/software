@@ -122,45 +122,45 @@ export function PulseSidebar() {
         </div>
       </div>
 
-      {/* + New menu */}
-      <div ref={newRef} className="relative px-1 mt-2">
-        <button
-          type="button"
-          onClick={() => setNewOpen((v) => !v)}
-          className="w-full h-10 rounded-xl flex items-center justify-center gap-2 text-[13px] font-extrabold transition-colors shadow-glow-violet"
-          style={{
-            background: PULSE.violetVar,
-            color: PULSE.violetFgVar,
-          }}
-        >
-          <PulseIcon name="plus" className="w-3.5 h-3.5" />
-          New
-        </button>
-        {newOpen && (
-          <div
-            className="absolute top-full left-1 right-1 mt-1.5 z-50 rounded-xl overflow-hidden shadow-menu"
-            style={{
-              background: PULSE.card,
-              border: `1px solid ${PULSE.cardBorder}`,
-            }}
-          >
-            {NEW_ITEMS.map((item) => (
-              <Link
-                key={item.key}
-                href={item.href}
-                onClick={() => setNewOpen(false)}
-                className="block px-3.5 py-2.5 text-[13px] font-bold transition-colors"
-                style={{ color: PULSE.textMuted }}
-              >
-                {item.label}
-              </Link>
-            ))}
-          </div>
-        )}
-      </div>
-
       {/* Nav */}
       <ul className="flex-1 overflow-y-auto px-1 mt-4 space-y-3">
+        <li>
+          <div ref={newRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setNewOpen((v) => !v)}
+              className="flex items-center gap-3 w-full px-3 py-2 rounded-lg text-[13.5px] font-extrabold transition-colors"
+              style={{
+                background: PULSE.violetVar,
+                color: PULSE.violetFgVar,
+              }}
+            >
+              <PulseIcon name="plus" />
+              <span className="flex-1 truncate text-left">Create</span>
+            </button>
+            {newOpen && (
+              <div
+                className="absolute top-full left-0 right-0 mt-1.5 z-50 rounded-xl overflow-hidden shadow-menu"
+                style={{
+                  background: PULSE.card,
+                  border: `1px solid ${PULSE.cardBorder}`,
+                }}
+              >
+                {NEW_ITEMS.map((item) => (
+                  <Link
+                    key={item.key}
+                    href={item.href}
+                    onClick={() => setNewOpen(false)}
+                    className="block px-3.5 py-2.5 text-[13px] font-bold transition-colors"
+                    style={{ color: PULSE.textMuted }}
+                  >
+                    {item.label}
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
+        </li>
         {SECTIONS.map((section) => {
           const items = NAV.filter((i) => i.section === section);
           if (items.length === 0) return null;
