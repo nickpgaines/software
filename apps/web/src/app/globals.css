@@ -58,9 +58,9 @@
    avoid a flash. Default (no attribute) = dark, the original Pulse look.
    ============================================================================= */
 html[data-theme="light"] {
-  /* Surfaces — page bg is a light gray, cards + sidebar sit on top as white */
-  --color-canvas: #f4f4f5;         /* zinc-100 — page bg, visibly gray behind widgets */
-  --color-elevated: #e4e4e7;       /* zinc-200 — one tier darker so search button etc. show on the gray canvas */
+  /* Surfaces — page bg is a subtle light gray, cards + sidebar sit on top as white */
+  --color-canvas: #f5f5f7;         /* subtle gray — page bg behind widgets */
+  --color-elevated: #ebebef;       /* one tier darker so search button etc. show on the gray canvas */
   --color-card: #ffffff;           /* pure white widgets */
   --color-sidebar: var(--color-card); /* white sidebar, distinct from gray page bg */
   --color-divider: #e4e4e7;        /* zinc-200 */
