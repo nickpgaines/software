@@ -84,9 +84,33 @@ on the exported `PULSE` constant.
 | `PULSE.bg`       | `#000000`   | `bg-black`          | theme.ts:8 | `(app)/layout.tsx:10` body bg via inline style              |
 | `PULSE.bgAlt`    | `#0a0a0a`   | `bg-[#0a0a0a]`      | theme.ts:9 | `widgets.tsx:68` (header search button); `widgets.tsx:438` (range pill track); `widgets.tsx:484` (schedule row bg) |
 | `PULSE.card`     | `#0f0f12`   | `bg-[#0f0f12]`      | theme.ts:10 | `widgets.tsx:97` (CompactHeroKpi); `widgets.tsx:420` (chart card); every `<section>` widget |
+| `PULSE.sidebar`  | `#000000`   | `bg-sidebar`        | theme.ts    | `Sidebar.tsx:110` (sidebar surface — dark: matches `bg`; light: white like cards) |
 | `PULSE.cardBorder` | `#1f1f24` | `border-[#1f1f24]`  | theme.ts:11 | `widgets.tsx:97` (every default card border)                |
 | `PULSE.cardBorderHi` | `#2a2a32` | `border-[#2a2a32]` | theme.ts:12 | `widgets.tsx:189` (sidebar profile chip); `widgets.tsx:342` (chart tooltip border); login/signup input borders |
 | `PULSE.divider`  | `#18181b`   | `bg-[#18181b]`      | theme.ts:13 | `Sidebar.tsx:107` (sidebar right border); `Sidebar.tsx:185` (sidebar top divider)            |
+
+#### Light theme surface mapping
+
+Light mode (`html[data-theme="light"]`, defined in `globals.css:59-77`)
+overrides the surface tokens so widgets and the sidebar render as white
+on a light-gray page. The text tokens are unchanged from the dark
+defaults' light-mode overrides — only surfaces:
+
+| Token             | Dark value | Light value                  | Role in light mode                                       |
+| ----------------- | ---------- | ---------------------------- | -------------------------------------------------------- |
+| `--color-canvas`  | `#000000`  | `#f4f4f5` (zinc-100)         | Page background — the gray showing behind widgets        |
+| `--color-elevated`| `#0a0a0a`  | `#e4e4e7` (zinc-200)         | Secondary surfaces (search button, range pill track)     |
+| `--color-card`    | `#0f0f12`  | `#ffffff`                    | Widget surface — white                                   |
+| `--color-sidebar` | `var(--color-canvas)` | `var(--color-card)` | Sidebar surface — matches canvas in dark, decoupled to white in light so it reads as a separate panel from the gray page bg |
+| `--color-divider` | `#18181b`  | `#e4e4e7` (zinc-200)         | Sidebar dividers                                         |
+| `--color-line`    | `#1f1f24`  | `#e4e4e7` (zinc-200)         | Default borders                                          |
+| `--color-line-strong` | `#2a2a32` | `#d4d4d8` (zinc-300)      | Input borders, profile chip                              |
+
+The `--color-sidebar` token exists so the sidebar can be visually
+distinct from the page canvas in light mode without changing dark
+mode (where both should remain pure black). In dark mode it aliases
+`--color-canvas`; in light mode it aliases `--color-card`. The sidebar
+is the only consumer — `Sidebar.tsx:110` via `PULSE.sidebar`.
 
 ### Text
 

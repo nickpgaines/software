@@ -24,6 +24,7 @@ export default {
         canvas: "var(--color-canvas)",
         elevated: "var(--color-elevated)",
         card: "var(--color-card)",
+        sidebar: "var(--color-sidebar)",
         divider: "var(--color-divider)",
         line: "var(--color-line)",
         "line-strong": "var(--color-line-strong)",

@@ -15,6 +15,7 @@
   --color-canvas: #000000;        /* page bg */
   --color-elevated: #0a0a0a;      /* secondary surfaces (search button, schedule rows, range pill track) */
   --color-card: #0f0f12;          /* card surface */
+  --color-sidebar: var(--color-canvas); /* sidebar surface — matches canvas in dark, decoupled in light */
   --color-divider: #18181b;       /* sidebar dividers */
   --color-line: #1f1f24;          /* default border */
   --color-line-strong: #2a2a32;   /* input borders, profile chip */
@@ -57,10 +58,11 @@
    avoid a flash. Default (no attribute) = dark, the original Pulse look.
    ============================================================================= */
 html[data-theme="light"] {
-  /* Surfaces */
-  --color-canvas: #fafafa;         /* zinc-50 — page bg, slightly off-white */
-  --color-elevated: #f4f4f5;       /* zinc-100 */
-  --color-card: #ffffff;           /* pure white card on a zinc-50 page */
+  /* Surfaces — page bg is a light gray, cards + sidebar sit on top as white */
+  --color-canvas: #f4f4f5;         /* zinc-100 — page bg, visibly gray behind widgets */
+  --color-elevated: #e4e4e7;       /* zinc-200 — one tier darker so search button etc. show on the gray canvas */
+  --color-card: #ffffff;           /* pure white widgets */
+  --color-sidebar: var(--color-card); /* white sidebar, distinct from gray page bg */
   --color-divider: #e4e4e7;        /* zinc-200 */
   --color-line: #e4e4e7;           /* zinc-200 */
   --color-line-strong: #d4d4d8;    /* zinc-300 */
