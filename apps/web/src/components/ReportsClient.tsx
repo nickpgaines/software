@@ -159,7 +159,7 @@ function CountDonut({
         </PieChart>
       </ResponsiveContainer>
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <div className="text-xs font-bold text-zinc-500">
+        <div className="text-xs font-extrabold text-zinc-300">
           {centerLabel}
         </div>
         <div className="text-lg font-black text-white tabular-nums tracking-tight">
@@ -541,7 +541,7 @@ function OverviewPanel({ qs }: { qs: string }) {
               <div className="text-sm font-bold text-white tracking-tight">
                 Top Salespeople
               </div>
-              <div className="text-xs font-bold text-zinc-500">Revenue</div>
+              <div className="text-xs font-extrabold text-zinc-300">Revenue</div>
             </div>
             {(data.top_sales || []).length === 0 ? (
               <p className="py-10 text-sm text-zinc-500 text-center">
@@ -556,7 +556,7 @@ function OverviewPanel({ qs }: { qs: string }) {
               <div className="text-sm font-bold text-white tracking-tight">
                 Top Technicians
               </div>
-              <div className="text-xs font-bold text-zinc-500">Revenue</div>
+              <div className="text-xs font-extrabold text-zinc-300">Revenue</div>
             </div>
             {(data.top_techs || []).length === 0 ? (
               <p className="py-10 text-sm text-zinc-500 text-center">
@@ -586,7 +586,7 @@ function JobStatCard({
   const hasCount = typeof count === "number";
   return (
     <div className="bg-card border border-line rounded-2xl px-5 py-4 flex flex-col min-h-[140px]">
-      <div className="text-xs font-bold text-zinc-500">{label}</div>
+      <div className="text-xs font-extrabold text-zinc-300">{label}</div>
       <div className="flex-1 flex items-center">
         <div className="text-[32px] font-bold tracking-tight leading-none tabular-nums text-white">
           {hasCount ? count : money(amountCents)}
@@ -594,7 +594,7 @@ function JobStatCard({
       </div>
       {hasCount ? (
         <div className="mt-1.5 flex items-baseline justify-between gap-2">
-          <div className="text-xs font-bold text-zinc-400 tabular-nums">
+          <div className="text-xs font-bold text-zinc-500 tabular-nums">
             {money(amountCents)}
           </div>
           <DeltaBadge value={deltaPct} />
@@ -791,7 +791,7 @@ function BigStatCard({
   return (
     <div className="bg-card border border-line rounded-2xl px-5 py-4 flex flex-col min-h-[140px]">
       <div className="flex items-start justify-between gap-2 mb-1.5">
-        <div className="text-xs font-bold text-zinc-500">
+        <div className="text-xs font-extrabold text-zinc-300">
           {label}
         </div>
         {action}
@@ -802,7 +802,7 @@ function BigStatCard({
         </div>
       </div>
       {sub && (
-        <div className="mt-1.5 text-xs font-bold text-zinc-400 tabular-nums truncate">
+        <div className="mt-1.5 text-xs font-bold text-zinc-500 tabular-nums truncate">
           {sub}
         </div>
       )}
@@ -917,7 +917,7 @@ function SalesPanel({ qs }: { qs: string }) {
     <div className="space-y-6">
       {/* Row 1 — Revenue Sold */}
       <Section
-        title="Revenue sold"
+        title="Revenue Sold"
         description="Dollars and ARR sold across the team in this date range."
       >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -968,7 +968,7 @@ function SalesPanel({ qs }: { qs: string }) {
 
       {/* Row 3 — Top Reps */}
       <Section
-        title="Top reps"
+        title="Top Reps"
         description="Leaderboard of sales reps ranked by revenue."
       >
         <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
@@ -1015,7 +1015,7 @@ function SalesPanel({ qs }: { qs: string }) {
 
       {/* Row 4 — Funnel KPIs */}
       <Section
-        title="Sales funnel"
+        title="Sales Funnel"
         description="Pins, sales, and conversion across the door-knock funnel."
       >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -1048,7 +1048,7 @@ function SalesPanel({ qs }: { qs: string }) {
 
       {/* Row 5 — Pin Status Breakdown */}
       <Section
-        title="Pin status breakdown"
+        title="Pin Status Breakdown"
         description="Door-knock pin outcomes grouped by status."
       >
         <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
@@ -1129,7 +1129,7 @@ function SalesPanel({ qs }: { qs: string }) {
 
       {/* Row 6 — Objections breakdown */}
       <Section
-        title="Objections breakdown"
+        title="Objections Breakdown"
         description="Most common objections recorded at the door."
       >
         <ObjectionsBreakdown objections={data.objections} />
@@ -1151,14 +1151,14 @@ function SalesValueCard({
 }) {
   return (
     <div className="bg-card border border-line rounded-2xl px-5 py-4 flex flex-col min-h-[160px]">
-      <div className="text-xs font-bold text-zinc-500">{label}</div>
+      <div className="text-xs font-extrabold text-zinc-300">{label}</div>
       <div className="flex-1 flex items-center">
         <div className="text-[32px] font-bold tracking-tight leading-none tabular-nums text-white">
           {value}
         </div>
       </div>
       <DeltaBadge value={deltaPct} />
-      <div className="mt-1.5 text-xs font-bold text-zinc-400 leading-tight truncate">
+      <div className="mt-1.5 text-xs font-bold text-zinc-500 leading-tight truncate">
         {description}
       </div>
     </div>
@@ -1439,7 +1439,7 @@ function StatCard({
         (compact ? "px-4 py-3 min-h-[110px]" : "px-5 py-4 min-h-[160px]")
       }
     >
-      <div className="text-xs font-bold text-zinc-500">{label}</div>
+      <div className="text-xs font-extrabold text-zinc-300">{label}</div>
       <div className="flex-1 flex items-center">
         <div
           className={
@@ -1454,7 +1454,7 @@ function StatCard({
       <div
         className={
           (compact ? "text-[11px]" : "text-xs") +
-          " font-bold text-zinc-400 leading-tight mt-1.5 truncate"
+          " font-bold text-zinc-500 leading-tight mt-1.5 truncate"
         }
       >
         {description}
@@ -1556,7 +1556,7 @@ function Stats({
           key={it.label}
           className="bg-card border border-line rounded-2xl px-5 py-4 flex flex-col min-h-[140px]"
         >
-          <div className="text-xs font-bold text-zinc-500 mb-1.5">
+          <div className="text-xs font-extrabold text-zinc-300 mb-1.5">
             {it.label}
           </div>
           <div className="flex-1 flex items-center">
@@ -1564,7 +1564,7 @@ function Stats({
               {it.value}
             </div>
           </div>
-          <div className="mt-1.5 text-xs font-bold text-zinc-400 leading-tight truncate">
+          <div className="mt-1.5 text-xs font-bold text-zinc-500 leading-tight truncate">
             {it.description}
           </div>
         </div>
@@ -1670,13 +1670,13 @@ function EmployeesPanel({ qs }: { qs: string }) {
   return (
     <div className="space-y-6">
       <Section
-        title="Sales reps"
+        title="Sales Reps"
         description="Lifetime and per-period revenue for each sales rep."
       >
         <div className="grid gap-4 lg:grid-cols-2">
           <ChartCard
-            title="Total revenue"
-            sublabel="In selected range"
+            title="Total Revenue"
+            sublabel="In Selected Range"
             empty={salesSeries.total.length === 0}
             emptyText="No sales revenue in this window."
           >
@@ -1688,7 +1688,7 @@ function EmployeesPanel({ qs }: { qs: string }) {
             />
           </ChartCard>
           <ChartCard
-            title="Average revenue / day"
+            title="Average Revenue / Day"
             sublabel={
               rangeDays
                 ? `Total ÷ ${rangeDays.toFixed(0)} days in range`
@@ -1741,8 +1741,8 @@ function EmployeesPanel({ qs }: { qs: string }) {
       >
         <div className="grid gap-4 lg:grid-cols-2">
           <ChartCard
-            title="Total revenue"
-            sublabel="In selected range"
+            title="Total Revenue"
+            sublabel="In Selected Range"
             empty={techSeries.total.length === 0}
             emptyText="No technician revenue in this window."
           >
@@ -1754,7 +1754,7 @@ function EmployeesPanel({ qs }: { qs: string }) {
             />
           </ChartCard>
           <ChartCard
-            title="Average revenue / day"
+            title="Average Revenue / Day"
             sublabel={
               rangeDays
                 ? `Total ÷ ${rangeDays.toFixed(0)} days in range`
@@ -1824,7 +1824,7 @@ function ChartCard({
           {title}
         </div>
         {sublabel && (
-          <div className="text-xs font-bold text-zinc-500">{sublabel}</div>
+          <div className="text-xs font-extrabold text-zinc-300">{sublabel}</div>
         )}
       </div>
       {empty ? (
@@ -2337,7 +2337,7 @@ function JobsPanel({ qs }: { qs: string }) {
   return (
     <div className="space-y-6">
       <Section
-        title="All jobs"
+        title="All Jobs"
         description="Counts and revenue across every job status."
       >
         <Stats
@@ -2367,7 +2367,7 @@ function JobsPanel({ qs }: { qs: string }) {
       </Section>
 
       <Section
-        title="Cash flow"
+        title="Cash Flow"
         description="Receipts, time to first payment, and customer mix."
       >
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -2382,7 +2382,7 @@ function JobsPanel({ qs }: { qs: string }) {
             sub="Completion → first payment"
           />
           <BigStatCard
-            label="First-time vs Repeat"
+            label="First-Time vs Repeat"
             value={pct(firstTimePct)}
             sub={`${money(split.first_time_cents)} new · ${money(split.repeat_cents)} repeat`}
           />

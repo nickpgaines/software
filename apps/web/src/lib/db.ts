@@ -338,7 +338,7 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
 // Bump when init() gains migrations that must run on existing deploys.
 // First call after deploy runs the full init; subsequent cold starts hit
 // the fast-path below (one SELECT) and skip the ~150 DDL statements.
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 5;
 
 async function init(): Promise<void> {
   // Fast path: if the schema is already at the current version, skip the
@@ -500,6 +500,14 @@ async function init(): Promise<void> {
     ["provider_sid", "TEXT"],
     ["to_phone", "TEXT"],
     ["from_phone", "TEXT"],
+    // Audit / debugging fields for multi-tenant SMS. messaging_service_sid
+    // and tier_at_send identify which path (trial pool vs. dedicated) sent
+    // the message; num_segments and price_micro_usd help reconcile usage.
+    ["num_segments", "INTEGER"],
+    ["error_code", "INTEGER"],
+    ["price_micro_usd", "INTEGER"],
+    ["messaging_service_sid", "TEXT"],
+    ["tier_at_send", "TEXT"],
   ];
   for (const [col, def] of messageAdds) {
     await alterAddColumn("messages", col, def, messageCols);
@@ -579,6 +587,40 @@ async function init(): Promise<void> {
     ["email", "TEXT"],
     ["website", "TEXT"],
     ["logo_url", "TEXT"],
+    // SMS tier state machine. Tenants progress:
+    //   trial → paid_pending_registration → paid_approved
+    // 'trial' and 'paid_pending_registration' both send through a shared
+    // pool number (sms_trial_pool_number / sms_trial_pool_number_sid) and
+    // have inbound replies suppressed. 'paid_approved' sends from the
+    // tenant's own provisioned number (sms_dedicated_number) attached to
+    // their own Brand + Campaign + Messaging Service.
+    ["sms_tier", "TEXT NOT NULL DEFAULT 'trial'"],
+    ["sms_trial_pool_number", "TEXT"],
+    ["sms_trial_pool_number_sid", "TEXT"],
+    ["sms_dedicated_number", "TEXT"],
+    ["sms_dedicated_number_sid", "TEXT"],
+    // Twilio A2P 10DLC resource SIDs accumulated during registration.
+    // Each is set as the corresponding Twilio resource is created.
+    ["twilio_customer_profile_sid", "TEXT"],
+    ["twilio_trust_product_sid", "TEXT"],
+    ["twilio_brand_sid", "TEXT"],
+    ["twilio_campaign_sid", "TEXT"],
+    ["twilio_messaging_service_sid", "TEXT"],
+    // A2P registration state machine. See A2pRegistrationState in types
+    // below for the full set of values. a2p_campaign_status (legacy) is
+    // kept for backwards compatibility but new code should drive off
+    // a2p_registration_state.
+    ["a2p_registration_state", "TEXT NOT NULL DEFAULT 'not_started'"],
+    ["a2p_registration_error", "TEXT"],
+    ["a2p_registration_started_at", "TEXT"],
+    ["a2p_registration_approved_at", "TEXT"],
+    // Per-tenant daily send rate limit. sms_daily_send_date stores the
+    // UTC date the count applies to; the sender resets the counter when
+    // it rolls over. sms_daily_send_limit lets us per-tenant override
+    // the tier default (set by the sender based on sms_tier when 0).
+    ["sms_daily_send_count", "INTEGER NOT NULL DEFAULT 0"],
+    ["sms_daily_send_date", "TEXT"],
+    ["sms_daily_send_limit", "INTEGER NOT NULL DEFAULT 0"],
   ];
   for (const [col, def] of companyAdds) {
     await alterAddColumn("company", col, def, companyCols);
@@ -727,6 +769,61 @@ async function init(): Promise<void> {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     INSERT OR IGNORE INTO messaging_settings (id) VALUES (1);
+
+    -- Per-tenant STOP/HELP/START opt-out state. Updated by the inbound SMS
+    -- webhook when a recipient texts one of the carrier keywords. The
+    -- sender must check (company_id, phone) before every outbound send.
+    CREATE TABLE IF NOT EXISTS sms_opt_outs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      company_id INTEGER REFERENCES company(id) ON DELETE CASCADE,
+      phone TEXT NOT NULL,
+      opted_out INTEGER NOT NULL DEFAULT 1,
+      last_keyword TEXT,
+      opted_out_at TEXT,
+      opted_in_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_sms_opt_outs_company_phone
+      ON sms_opt_outs(company_id, phone);
+
+    -- 10DLC / A2P registration form data, one row per tenant. The state
+    -- machine on company.a2p_registration_state drives the async Trust Hub
+    -- API chain; this table stores the inputs the form collected. Failure
+    -- reasons are persisted on the company row (a2p_registration_error)
+    -- so the UI can render an "edit and resubmit" path against the same
+    -- registration row.
+    CREATE TABLE IF NOT EXISTS sms_brand_registrations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      company_id INTEGER NOT NULL REFERENCES company(id) ON DELETE CASCADE,
+      legal_company_name TEXT NOT NULL,
+      dba TEXT,
+      ein TEXT NOT NULL,
+      address_line1 TEXT NOT NULL,
+      address_line2 TEXT,
+      city TEXT NOT NULL,
+      region TEXT NOT NULL,
+      postal_code TEXT NOT NULL,
+      iso_country TEXT NOT NULL DEFAULT 'US',
+      business_email TEXT NOT NULL,
+      business_phone TEXT NOT NULL,
+      business_website TEXT,
+      industry TEXT NOT NULL,
+      entity_type TEXT NOT NULL,
+      monthly_volume TEXT NOT NULL,
+      business_description TEXT NOT NULL,
+      auth_rep_name TEXT NOT NULL,
+      auth_rep_title TEXT NOT NULL,
+      auth_rep_email TEXT NOT NULL,
+      confirmed_authorized INTEGER NOT NULL DEFAULT 0,
+      confirmed_aup_tcpa INTEGER NOT NULL DEFAULT 0,
+      confirmed_consent INTEGER NOT NULL DEFAULT 0,
+      submitted_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_sms_brand_registrations_company
+      ON sms_brand_registrations(company_id);
 
     CREATE TABLE IF NOT EXISTS calls (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1748,6 +1845,58 @@ export type Territory = {
   created_at: string;
 };
 
+export type SmsTier =
+  | "trial"
+  | "paid_pending_registration"
+  | "paid_approved";
+
+export type A2pRegistrationState =
+  | "not_started"
+  | "customer_profile_pending"
+  | "customer_profile_approved"
+  | "customer_profile_failed"
+  | "trust_product_pending"
+  | "trust_product_approved"
+  | "trust_product_failed"
+  | "brand_pending"
+  | "brand_approved"
+  | "brand_failed"
+  | "campaign_pending"
+  | "campaign_approved"
+  | "campaign_failed";
+
+export type SmsMonthlyVolume = "under_1k" | "1k_6k" | "6k_plus";
+
+export type SmsBrandRegistration = {
+  id: number;
+  company_id: number;
+  legal_company_name: string;
+  dba: string | null;
+  ein: string;
+  address_line1: string;
+  address_line2: string | null;
+  city: string;
+  region: string;
+  postal_code: string;
+  iso_country: string;
+  business_email: string;
+  business_phone: string;
+  business_website: string | null;
+  industry: string;
+  entity_type: string;
+  monthly_volume: SmsMonthlyVolume;
+  business_description: string;
+  auth_rep_name: string;
+  auth_rep_title: string;
+  auth_rep_email: string;
+  confirmed_authorized: number;
+  confirmed_aup_tcpa: number;
+  confirmed_consent: number;
+  submitted_at: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type Company = {
   id: number;
   name: string | null;
@@ -1767,6 +1916,35 @@ export type Company = {
   platform_phone_number: string | null;
   platform_phone_sid: string | null;
   a2p_campaign_status: "pending" | "active" | "failed" | null;
+  sms_tier: SmsTier;
+  sms_trial_pool_number: string | null;
+  sms_trial_pool_number_sid: string | null;
+  sms_dedicated_number: string | null;
+  sms_dedicated_number_sid: string | null;
+  twilio_customer_profile_sid: string | null;
+  twilio_trust_product_sid: string | null;
+  twilio_brand_sid: string | null;
+  twilio_campaign_sid: string | null;
+  twilio_messaging_service_sid: string | null;
+  a2p_registration_state: A2pRegistrationState;
+  a2p_registration_error: string | null;
+  a2p_registration_started_at: string | null;
+  a2p_registration_approved_at: string | null;
+  sms_daily_send_count: number;
+  sms_daily_send_date: string | null;
+  sms_daily_send_limit: number;
+};
+
+export type SmsOptOut = {
+  id: number;
+  company_id: number;
+  phone: string;
+  opted_out: number;
+  last_keyword: string | null;
+  opted_out_at: string | null;
+  opted_in_at: string | null;
+  created_at: string;
+  updated_at: string;
 };
 
 export type MessageStatus =
@@ -1790,6 +1968,11 @@ export type Message = {
   provider_sid: string | null;
   to_phone: string | null;
   from_phone: string | null;
+  num_segments: number | null;
+  error_code: number | null;
+  price_micro_usd: number | null;
+  messaging_service_sid: string | null;
+  tier_at_send: SmsTier | null;
 };
 
 export type MessagingSettings = {

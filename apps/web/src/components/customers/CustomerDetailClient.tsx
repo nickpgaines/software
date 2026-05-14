@@ -449,9 +449,9 @@ export default function CustomerDetailClient({
           </div>
 
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-            <Stat label="Lifetime revenue" value={formatCents(data?.stats.lifetime_revenue_cents ?? 0)} />
+            <Stat label="Lifetime Revenue" value={formatCents(data?.stats.lifetime_revenue_cents ?? 0)} />
             <Stat label="Jobs" value={String(data?.stats.jobs_count ?? 0)} />
-            <Stat label="Avg job" value={formatCents(data?.stats.avg_job_cents ?? 0)} />
+            <Stat label="Avg Job" value={formatCents(data?.stats.avg_job_cents ?? 0)} />
             <Stat
               label="Outstanding"
               value={formatCents(data?.stats.outstanding_cents ?? 0)}
@@ -460,7 +460,7 @@ export default function CustomerDetailClient({
               }
             />
             <Stat
-              label="Last service"
+              label="Last Service"
               value={
                 data?.stats.last_service_at
                   ? formatDate(data.stats.last_service_at)

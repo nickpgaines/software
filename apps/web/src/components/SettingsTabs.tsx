@@ -2065,17 +2065,6 @@ function SignaturePad({
   );
 }
 
-type MessagingStatus = {
-  provider: string;
-  account_sid_masked: string | null;
-  auth_token_set: boolean;
-  from_number: string | null;
-  configured: boolean;
-  updated_at: string;
-  platform_phone_number: string | null;
-  platform_a2p_status: string | null;
-};
-
 function formatUSPhone(e164: string): string {
   const digits = e164.replace(/\D/g, "");
   const ten = digits.length === 11 && digits.startsWith("1") ? digits.slice(1) : digits;
@@ -2083,26 +2072,142 @@ function formatUSPhone(e164: string): string {
   return `(${ten.slice(0, 3)}) ${ten.slice(3, 6)}-${ten.slice(6)}`;
 }
 
+type RegistrationStatus = {
+  registration: {
+    legal_company_name: string;
+    dba: string | null;
+    ein: string;
+    address_line1: string;
+    address_line2: string | null;
+    city: string;
+    region: string;
+    postal_code: string;
+    iso_country: string;
+    business_email: string;
+    business_phone: string;
+    business_website: string | null;
+    industry: string;
+    entity_type: string;
+    monthly_volume: "under_1k" | "1k_6k" | "6k_plus";
+    business_description: string;
+    auth_rep_name: string;
+    auth_rep_title: string;
+    auth_rep_email: string;
+    submitted_at: string | null;
+  } | null;
+  company: {
+    sms_tier: "trial" | "paid_pending_registration" | "paid_approved";
+    a2p_registration_state: string;
+    a2p_registration_error: string | null;
+    a2p_registration_started_at: string | null;
+    a2p_registration_approved_at: string | null;
+    sms_dedicated_number: string | null;
+    twilio_brand_sid: string | null;
+    twilio_campaign_sid: string | null;
+  };
+};
+
+const INDUSTRY_OPTIONS = [
+  "Home services",
+  "Construction",
+  "Real estate",
+  "Retail",
+  "Healthcare",
+  "Education",
+  "Hospitality",
+  "Professional services",
+  "Technology",
+  "Other",
+];
+
+const ENTITY_TYPE_OPTIONS = [
+  "Sole proprietorship",
+  "Partnership",
+  "LLC",
+  "Corporation (private)",
+  "Corporation (public)",
+  "Non-profit",
+];
+
+const STATE_LABELS: Record<string, string> = {
+  not_started: "Not submitted",
+  customer_profile_pending: "Customer profile in review",
+  customer_profile_approved: "Customer profile approved",
+  customer_profile_failed: "Customer profile rejected",
+  trust_product_pending: "Trust product in review",
+  trust_product_approved: "Trust product approved",
+  trust_product_failed: "Trust product rejected",
+  brand_pending: "Brand registration in review",
+  brand_approved: "Brand approved",
+  brand_failed: "Brand registration rejected",
+  campaign_pending: "Campaign in review",
+  campaign_approved: "Campaign approved",
+  campaign_failed: "Campaign rejected",
+};
+
 function MessagingPanel() {
-  const [status, setStatus] = useState<MessagingStatus | null>(null);
+  const [data, setData] = useState<RegistrationStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [accountSid, setAccountSid] = useState("");
-  const [authToken, setAuthToken] = useState("");
-  const [fromNumber, setFromNumber] = useState("");
-  const [webhookUrl, setWebhookUrl] = useState("");
-  const [copied, setCopied] = useState(false);
-  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [form, setForm] = useState({
+    legal_company_name: "",
+    dba: "",
+    ein: "",
+    address_line1: "",
+    address_line2: "",
+    city: "",
+    region: "",
+    postal_code: "",
+    iso_country: "US",
+    business_email: "",
+    business_phone: "",
+    business_website: "",
+    industry: "",
+    entity_type: "",
+    monthly_volume: "under_1k" as "under_1k" | "1k_6k" | "6k_plus",
+    business_description: "",
+    auth_rep_name: "",
+    auth_rep_title: "",
+    auth_rep_email: "",
+    confirmed_authorized: false,
+    confirmed_aup_tcpa: false,
+    confirmed_consent: false,
+  });
 
-  async function load() {
-    const res = await fetch("/api/settings/messaging", { cache: "no-store" });
+  async function load(refresh = false) {
+    const res = await fetch(
+      `/api/sms/registration${refresh ? "?refresh=1" : ""}`,
+      { cache: "no-store" }
+    );
     if (res.ok) {
-      const s = (await res.json()) as MessagingStatus;
-      setStatus(s);
-      setFromNumber(s.from_number ?? "");
+      const s = (await res.json()) as RegistrationStatus;
+      setData(s);
+      if (s.registration) {
+        setForm((f) => ({
+          ...f,
+          legal_company_name: s.registration!.legal_company_name,
+          dba: s.registration!.dba ?? "",
+          ein: s.registration!.ein,
+          address_line1: s.registration!.address_line1,
+          address_line2: s.registration!.address_line2 ?? "",
+          city: s.registration!.city,
+          region: s.registration!.region,
+          postal_code: s.registration!.postal_code,
+          iso_country: s.registration!.iso_country,
+          business_email: s.registration!.business_email,
+          business_phone: s.registration!.business_phone,
+          business_website: s.registration!.business_website ?? "",
+          industry: s.registration!.industry,
+          entity_type: s.registration!.entity_type,
+          monthly_volume: s.registration!.monthly_volume,
+          business_description: s.registration!.business_description,
+          auth_rep_name: s.registration!.auth_rep_name,
+          auth_rep_title: s.registration!.auth_rep_title,
+          auth_rep_email: s.registration!.auth_rep_email,
+        }));
+      }
     }
     setLoading(false);
   }
@@ -2111,222 +2216,485 @@ function MessagingPanel() {
     load();
   }, []);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setWebhookUrl(`${window.location.origin}/api/messages/webhook`);
-    }
-  }, []);
+  const company = data?.company;
+  const state = company?.a2p_registration_state ?? "not_started";
+  const isApproved = state === "campaign_approved";
+  const isPending = [
+    "customer_profile_pending",
+    "trust_product_pending",
+    "brand_pending",
+    "campaign_pending",
+  ].includes(state);
+  const isFailed = [
+    "customer_profile_failed",
+    "trust_product_failed",
+    "brand_failed",
+    "campaign_failed",
+  ].includes(state);
+  const editable = !isPending; // allow edit + resubmit when not_started or failed
+  const submitted = !!data?.registration?.submitted_at;
 
-  async function save(e: React.FormEvent) {
+  async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
     setSaving(true);
-    const res = await fetch("/api/settings/messaging", {
-      method: "PUT",
+    const res = await fetch("/api/sms/registration", {
+      method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        account_sid: accountSid || undefined,
-        auth_token: authToken || undefined,
-        from_number: fromNumber || undefined,
-      }),
+      body: JSON.stringify(form),
     });
     setSaving(false);
     if (!res.ok) {
       const data = (await res.json().catch(() => ({}))) as { error?: string };
-      setError(data.error || "Could not save");
+      setError(data.error || "Could not submit");
       return;
     }
-    const s = (await res.json()) as MessagingStatus;
-    setStatus(s);
-    setAccountSid("");
-    setAuthToken("");
-    setFromNumber(s.from_number ?? "");
-    setSavedAt(Date.now());
+    const s = (await res.json()) as RegistrationStatus;
+    setData(s);
   }
 
-  async function copyWebhook() {
-    try {
-      await navigator.clipboard.writeText(webhookUrl);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // ignore
-    }
+  function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
+    setForm((f) => ({ ...f, [key]: value }));
   }
-
-  const platformPhone = status?.platform_phone_number ?? null;
-  const onPlatform = !!platformPhone;
 
   return (
-    <form onSubmit={save} className="space-y-5">
-      <div>
-        <h2 className="text-lg font-extrabold text-white tracking-tight">Messaging</h2>
-        <p className="text-sm text-zinc-400 mt-3 font-bold">
-          {onPlatform
-            ? "Your business has a phone number for texting and calling customers. It's ready to use from the Messages tab."
-            : "Connect your Twilio account to send and receive SMS from the Messages tab."}
-        </p>
+    <div className="space-y-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-lg font-extrabold text-white tracking-tight">
+            Phone &amp; Messaging
+          </h2>
+          <p className="text-sm text-zinc-400 mt-2 font-bold">
+            {isApproved
+              ? "Two-way texting is enabled on your dedicated business number."
+              : "Complete your 10DLC registration to start sending text messages to customers."}
+          </p>
+        </div>
+        <TierBadge isApproved={isApproved} isPending={isPending} />
       </div>
 
-      {onPlatform && (
-        <div className="rounded-xl border border-line bg-black p-4">
-          <div className="text-xs font-bold text-zinc-500">
-            Your number
+      {!isApproved && (
+        <div className="rounded-xl border border-indigo-900/40 bg-indigo-950/30 p-4 flex gap-3">
+          <div className="text-indigo-300 text-xl leading-none">💬</div>
+          <div>
+            <div className="text-sm font-extrabold text-white">
+              Trial Plan: One-Way Texting Only
+            </div>
+            <p className="text-sm text-indigo-200/80 mt-1">
+              Outgoing texts are sent from a shared pool of numbers we
+              provision. Customer replies won&apos;t reach you while on a
+              trial. Upgrade to a paid plan to activate two-way texting with a
+              dedicated business number.
+            </p>
           </div>
+        </div>
+      )}
+
+      {isApproved && company?.sms_dedicated_number && (
+        <div className="rounded-xl border border-line bg-black p-4">
+          <div className="text-xs font-bold text-zinc-500">Your number</div>
           <div className="mt-1 text-2xl font-black text-white font-mono tabular-nums tracking-tight">
-            {formatUSPhone(platformPhone!)}
+            {formatUSPhone(company.sms_dedicated_number)}
           </div>
           <div className="mt-2 text-xs text-emerald-400 font-bold">
-            Active. SMS and voice routed through this number.
+            Active. Two-way SMS routed through this number.
           </div>
         </div>
       )}
 
-      <div
-        className={
-          "flex items-center gap-2 text-xs font-bold rounded-full px-3 py-1 w-fit " +
-          (status?.configured
-            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-            : "bg-black text-zinc-400 border border-line")
-        }
-      >
-        <span
-          className={
-            "w-1.5 h-1.5 rounded-full " +
-            (status?.configured ? "bg-emerald-500" : "bg-slate-400")
-          }
-        />
-        {status?.configured ? "Connected" : "Not connected"}
-        {!onPlatform && status?.from_number && (
-          <span className="text-zinc-400 font-normal">
-            · {status.from_number}
-          </span>
+      <div className="rounded-xl border border-line bg-card p-5 space-y-5">
+        <div className="flex items-center gap-3">
+          <div className="text-zinc-400 text-xl leading-none">💬</div>
+          <div>
+            <div className="text-base font-extrabold text-white">
+              10DLC Registration
+            </div>
+            <div className="text-xs text-zinc-400 mt-0.5">
+              Required to send text messages to your customers
+            </div>
+          </div>
+        </div>
+
+        {!submitted && (
+          <div className="rounded-lg border border-line bg-black/40 p-4 text-sm text-zinc-300 space-y-2">
+            <p>
+              To send text messages to your customers, businesses must
+              register their 10-digit long code (10DLC) phone numbers with
+              carriers. Failure to register will result in message filtering
+              and eventual blocking.
+            </p>
+            <div className="font-bold text-white">Action Needed:</div>
+            <ol className="list-decimal list-inside space-y-1 text-zinc-400">
+              <li>
+                <span className="font-bold text-zinc-200">
+                  Complete the registration form below:
+                </span>{" "}
+                Provide the necessary details for us to register your
+                business. Approval typically takes 1 to 7 days.
+              </li>
+              <li>
+                <span className="font-bold text-zinc-200">Stay informed:</span>{" "}
+                We&apos;ll reach out via email if additional information is
+                needed or if there are issues with your registration.
+              </li>
+            </ol>
+          </div>
+        )}
+
+        {(isPending || isApproved || isFailed) && (
+          <RegistrationStatusCard
+            state={state}
+            error={company?.a2p_registration_error ?? null}
+            submittedAt={data?.registration?.submitted_at ?? null}
+            approvedAt={company?.a2p_registration_approved_at ?? null}
+            onRefresh={() => load(true)}
+          />
+        )}
+
+        {editable && (
+          <form onSubmit={submit} className="space-y-4">
+            <Field label="Legal Company Name">
+              <Input
+                value={form.legal_company_name}
+                onChange={(e) => set("legal_company_name", e.target.value)}
+                disabled={loading || saving}
+                className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+              />
+            </Field>
+            <Field label="DBA or Trade Name (optional)">
+              <Input
+                value={form.dba}
+                onChange={(e) => set("dba", e.target.value)}
+                disabled={loading || saving}
+                className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+              />
+            </Field>
+            <Field label="EIN (format XX-XXXXXXX)">
+              <Input
+                value={form.ein}
+                onChange={(e) => set("ein", e.target.value)}
+                disabled={loading || saving}
+                placeholder="12-3456789"
+                className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card font-mono"
+              />
+            </Field>
+            <Field label="Business Address">
+              <Input
+                value={form.address_line1}
+                onChange={(e) => set("address_line1", e.target.value)}
+                disabled={loading || saving}
+                placeholder="Street address"
+                className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+              />
+            </Field>
+            <div className="grid grid-cols-3 gap-3">
+              <Field label="City">
+                <Input
+                  value={form.city}
+                  onChange={(e) => set("city", e.target.value)}
+                  disabled={loading || saving}
+                  className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+                />
+              </Field>
+              <Field label="State">
+                <Input
+                  value={form.region}
+                  onChange={(e) => set("region", e.target.value.toUpperCase())}
+                  disabled={loading || saving}
+                  placeholder="SC"
+                  maxLength={2}
+                  className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card uppercase"
+                />
+              </Field>
+              <Field label="Postal Code">
+                <Input
+                  value={form.postal_code}
+                  onChange={(e) => set("postal_code", e.target.value)}
+                  disabled={loading || saving}
+                  className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+                />
+              </Field>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Business Email">
+                <Input
+                  type="email"
+                  value={form.business_email}
+                  onChange={(e) => set("business_email", e.target.value)}
+                  disabled={loading || saving}
+                  className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+                />
+              </Field>
+              <Field label="Business Phone">
+                <Input
+                  type="tel"
+                  value={form.business_phone}
+                  onChange={(e) => set("business_phone", e.target.value)}
+                  disabled={loading || saving}
+                  placeholder="+1 555 555 1234"
+                  className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+                />
+              </Field>
+            </div>
+            <Field label="Business Website (optional)">
+              <Input
+                value={form.business_website}
+                onChange={(e) => set("business_website", e.target.value)}
+                disabled={loading || saving}
+                placeholder="https://example.com"
+                className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+              />
+            </Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Industry">
+                {/* Native select kept: Radix Select forbids empty-string item values. */}
+                <select
+                  value={form.industry}
+                  onChange={(e) => set("industry", e.target.value)}
+                  disabled={loading || saving}
+                  className="h-auto w-full border border-line rounded-lg px-3 py-2 text-sm bg-card text-white"
+                >
+                  <option value="">Select industry</option>
+                  {INDUSTRY_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Business Entity Type">
+                {/* Native select kept: Radix Select forbids empty-string item values. */}
+                <select
+                  value={form.entity_type}
+                  onChange={(e) => set("entity_type", e.target.value)}
+                  disabled={loading || saving}
+                  className="h-auto w-full border border-line rounded-lg px-3 py-2 text-sm bg-card text-white"
+                >
+                  <option value="">Select entity type</option>
+                  {ENTITY_TYPE_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <Field label="Estimated Monthly SMS Volume">
+              <div className="flex gap-3 text-sm text-zinc-300">
+                {(
+                  [
+                    ["under_1k", "Under 1,000"],
+                    ["1k_6k", "1,000 – 6,000"],
+                    ["6k_plus", "6,000+"],
+                  ] as const
+                ).map(([val, label]) => (
+                  <label
+                    key={val}
+                    className="flex items-center gap-2 cursor-pointer"
+                  >
+                    {/* Native radio kept: no Radio primitive in design system yet. */}
+                    <input
+                      type="radio"
+                      name="monthly_volume"
+                      value={val}
+                      checked={form.monthly_volume === val}
+                      onChange={() => set("monthly_volume", val)}
+                      disabled={loading || saving}
+                    />
+                    {label}
+                  </label>
+                ))}
+              </div>
+            </Field>
+            <Field label="Business Description (min 40 characters)">
+              <Textarea
+                value={form.business_description}
+                onChange={(e) => set("business_description", e.target.value)}
+                disabled={loading || saving}
+                rows={3}
+                className="w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+              />
+              <div className="mt-1 text-xs text-zinc-500">
+                {form.business_description.length} / 40
+              </div>
+            </Field>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <Field label="Authorized Rep Name">
+                <Input
+                  value={form.auth_rep_name}
+                  onChange={(e) => set("auth_rep_name", e.target.value)}
+                  disabled={loading || saving}
+                  className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+                />
+              </Field>
+              <Field label="Title">
+                <Input
+                  value={form.auth_rep_title}
+                  onChange={(e) => set("auth_rep_title", e.target.value)}
+                  disabled={loading || saving}
+                  className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+                />
+              </Field>
+              <Field label="Email">
+                <Input
+                  type="email"
+                  value={form.auth_rep_email}
+                  onChange={(e) => set("auth_rep_email", e.target.value)}
+                  disabled={loading || saving}
+                  className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+                />
+              </Field>
+            </div>
+
+            <div className="space-y-2 pt-2">
+              <label className="flex items-start gap-2 text-sm text-zinc-300 cursor-pointer">
+                <Checkbox
+                  checked={form.confirmed_authorized}
+                  onCheckedChange={(v) =>
+                    set("confirmed_authorized", v === true)
+                  }
+                />
+                <span>
+                  I am authorized to register this business with carriers.
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm text-zinc-300 cursor-pointer">
+                <Checkbox
+                  checked={form.confirmed_aup_tcpa}
+                  onCheckedChange={(v) =>
+                    set("confirmed_aup_tcpa", v === true)
+                  }
+                />
+                <span>
+                  I agree to the SMS Acceptable Use Policy and the TCPA.
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm text-zinc-300 cursor-pointer">
+                <Checkbox
+                  checked={form.confirmed_consent}
+                  onCheckedChange={(v) =>
+                    set("confirmed_consent", v === true)
+                  }
+                />
+                <span>
+                  Every recipient I will text has provided express consent.
+                </span>
+              </label>
+            </div>
+
+            {error && <p className="text-sm text-rose-500">{error}</p>}
+
+            <div className="flex items-center gap-3 pt-2">
+              <Button
+                type="submit"
+                variant="ghost"
+                disabled={saving || loading}
+                className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
+              >
+                {saving
+                  ? "Submitting…"
+                  : isFailed
+                  ? "Resubmit Registration"
+                  : "Submit Registration"}
+              </Button>
+              {submitted && !isFailed && (
+                <span className="text-xs text-zinc-500">
+                  Last submitted{" "}
+                  {data?.registration?.submitted_at?.slice(0, 19).replace("T", " ")}
+                </span>
+              )}
+            </div>
+          </form>
         )}
       </div>
+    </div>
+  );
+}
 
-      {!onPlatform && (
-        <div className="rounded-xl border border-line bg-black p-4 space-y-3 text-sm">
-          <div className="font-bold text-white tracking-tight">Setup steps</div>
-          <ol className="list-decimal list-inside space-y-1 text-zinc-400">
-            <li>
-              Sign up at{" "}
-              <a
-                href="https://www.twilio.com/try-twilio"
-                target="_blank"
-                rel="noreferrer"
-                className="text-white underline"
-              >
-                twilio.com
-              </a>{" "}
-              and buy a local number with SMS enabled.
-            </li>
-            <li>
-              Copy your <span className="font-mono">Account SID</span> and{" "}
-              <span className="font-mono">Auth Token</span> from the Twilio
-              Console dashboard.
-            </li>
-            <li>Paste them below along with the number you bought.</li>
-            <li>
-              In Twilio, open your number&apos;s settings and set{" "}
-              <span className="font-bold">A message comes in</span> to the
-              webhook URL below (HTTP POST).
-            </li>
-          </ol>
-          <div>
-            <div className="text-xs font-bold text-zinc-500 mb-1.5">
-              Inbound webhook URL
-            </div>
-            <div className="flex gap-2">
-              <Input
-                type="text"
-                readOnly
-                value={webhookUrl}
-                className="h-auto flex-1 border-line rounded-full px-4 py-2 text-sm bg-card font-mono text-xs"
-              />
-              <Button
-                variant="ghost"
-                type="button"
-                onClick={copyWebhook}
-                className="h-auto text-sm bg-card border border-line hover:bg-black rounded-full px-4 py-2 font-bold"
-              >
-                {copied ? "Copied" : "Copy"}
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+function TierBadge({
+  isApproved,
+  isPending,
+}: {
+  isApproved: boolean;
+  isPending: boolean;
+}) {
+  if (isApproved) {
+    return (
+      <span className="text-xs font-bold rounded-full px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
+        SMS: Two-way active
+      </span>
+    );
+  }
+  if (isPending) {
+    return (
+      <span className="text-xs font-bold rounded-full px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
+        SMS: Pending review
+      </span>
+    );
+  }
+  return (
+    <span className="text-xs font-bold rounded-full px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
+      SMS: One-way only
+    </span>
+  );
+}
 
-      {onPlatform && (
+function RegistrationStatusCard({
+  state,
+  error,
+  submittedAt,
+  approvedAt,
+  onRefresh,
+}: {
+  state: string;
+  error: string | null;
+  submittedAt: string | null;
+  approvedAt: string | null;
+  onRefresh: () => void;
+}) {
+  const isFailed = state.endsWith("_failed");
+  const isApproved = state === "campaign_approved";
+  return (
+    <div
+      className={
+        "rounded-lg border p-4 text-sm space-y-1 " +
+        (isFailed
+          ? "border-rose-900/40 bg-rose-950/30 text-rose-100"
+          : isApproved
+          ? "border-emerald-900/40 bg-emerald-950/30 text-emerald-100"
+          : "border-line bg-black/40 text-zinc-200")
+      }
+    >
+      <div className="flex items-center justify-between gap-3">
+        <div className="font-bold">{STATE_LABELS[state] ?? state}</div>
         <Button
           type="button"
           variant="ghost"
-          onClick={() => setShowAdvanced((v) => !v)}
-          className="h-auto p-0 text-xs text-zinc-500 hover:text-zinc-300 hover:bg-transparent underline font-bold"
+          onClick={onRefresh}
+          className="h-auto text-xs underline font-bold hover:bg-transparent"
         >
-          {showAdvanced
-            ? "Hide advanced options"
-            : "Advanced: bring your own Twilio account"}
+          Refresh status
         </Button>
-      )}
-
-      {(!onPlatform || showAdvanced) && (
-        <>
-      <Field label="Account SID">
-        <Input
-          type="text"
-          value={accountSid}
-          disabled={loading}
-          onChange={(e) => setAccountSid(e.target.value)}
-          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card font-mono"
-          placeholder={
-            status?.account_sid_masked || "ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-          }
-        />
-      </Field>
-      <Field label="Auth Token">
-        <Input
-          type="password"
-          value={authToken}
-          disabled={loading}
-          onChange={(e) => setAuthToken(e.target.value)}
-          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card font-mono"
-          placeholder={
-            status?.auth_token_set ? "•••••••••••••••• (saved)" : "Auth Token"
-          }
-        />
-      </Field>
-      <Field label="From number">
-        <Input
-          type="tel"
-          value={fromNumber}
-          disabled={loading}
-          onChange={(e) => setFromNumber(e.target.value)}
-          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card"
-          placeholder="e.g. +18435551234 (your Twilio number)"
-        />
-      </Field>
-        </>
-      )}
-
-      {error && <p className="text-sm text-rose-600">{error}</p>}
-      {(!onPlatform || showAdvanced) && (
-        <div className="flex items-center gap-3 pt-2">
-          <Button
-            variant="ghost"
-            type="submit"
-            disabled={saving || loading}
-            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
-          >
-            {saving ? "Saving…" : "Save changes"}
-          </Button>
-          {savedAt && !saving && (
-            <span className="text-xs text-emerald-600">Saved</span>
-          )}
+      </div>
+      {submittedAt && (
+        <div className="text-xs opacity-70">
+          Submitted {submittedAt.slice(0, 19).replace("T", " ")}
         </div>
       )}
-    </form>
+      {approvedAt && (
+        <div className="text-xs opacity-70">
+          Approved {approvedAt.slice(0, 19).replace("T", " ")}
+        </div>
+      )}
+      {error && (
+        <div className="mt-2 text-xs opacity-80 font-mono break-all">
+          {error}
+        </div>
+      )}
+    </div>
   );
 }
+
 
 type CallingStatus = {
   api_key_sid_masked: string | null;

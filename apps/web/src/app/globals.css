@@ -59,7 +59,7 @@
    ============================================================================= */
 html[data-theme="light"] {
   /* Surfaces — page bg is a subtle light gray, cards + sidebar sit on top as white */
-  --color-canvas: #f5f5f7;         /* subtle gray — page bg behind widgets */
+  --color-canvas: #f9f9fb;         /* subtle gray — page bg behind widgets */
   --color-elevated: #ebebef;       /* one tier darker so search button etc. show on the gray canvas */
   --color-card: #ffffff;           /* pure white widgets */
   --color-sidebar: var(--color-card); /* white sidebar, distinct from gray page bg */

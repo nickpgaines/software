@@ -98,7 +98,7 @@ defaults' light-mode overrides — only surfaces:
 
 | Token             | Dark value | Light value                  | Role in light mode                                       |
 | ----------------- | ---------- | ---------------------------- | -------------------------------------------------------- |
-| `--color-canvas`  | `#000000`  | `#f5f5f7`                    | Page background — subtle gray showing behind widgets     |
+| `--color-canvas`  | `#000000`  | `#f9f9fb`                    | Page background — subtle gray showing behind widgets     |
 | `--color-elevated`| `#0a0a0a`  | `#ebebef`                    | Secondary surfaces (search button, range pill track)     |
 | `--color-card`    | `#0f0f12`  | `#ffffff`                    | Widget surface — white                                   |
 | `--color-sidebar` | `var(--color-canvas)` | `var(--color-card)` | Sidebar surface — matches canvas in dark, decoupled to white in light so it reads as a separate panel from the gray page bg |
@@ -224,32 +224,76 @@ with `uppercase font-extrabold`) is retired. The `text-eyebrow` and
 `tailwind.config.ts` for the sidebar group header only; do not pair
 them with `uppercase` anywhere else.
 
-### Sentence-case label scale
+### Label scale
 
-Use these wherever a small gray supporting label used to be uppercase:
+Use these wherever a small gray supporting label used to be uppercase.
 
 - **Page section heading** — `text-[22px] font-extrabold tracking-tight text-fg`.
   No description / subtitle line beneath (see §10 #25).
-- **KPI / stat-card label, card sub-header, table column header, form
-  field label, legend chip, chart-tooltip date, donut-center label,
-  status pill, "X unread" indicator** — `text-xs font-bold text-zinc-500`
-  (use `text-zinc-400` if you need stronger contrast). Sentence case
-  — capitalize the first word only. No `uppercase`, no `tracking-[…]`.
+- **Stat-card / KPI top label** (e.g. "Scheduled", "Close Rate",
+  "Cash Collected", "Total ARR") — `text-xs font-extrabold text-zinc-300`.
+  This is the **emphasized** small line: bolder weight and brighter color
+  than the supporting line beneath the value.
+- **Stat-card / KPI bottom supporting line** (the dollar amount under a
+  count, the one-line description below the value, etc.) — `text-xs
+  font-bold text-zinc-500`. Dimmer than the top label so the eye lands on
+  the top label first.
+- **Card sub-header, table column header, form-field label, legend chip,
+  chart-tooltip date, donut-center label, "X unread" indicator** —
+  `text-xs font-bold text-zinc-500` (use `text-zinc-400` if you need
+  stronger contrast). Never `uppercase`, never `tracking-[…]`.
 - **Inline status pill** (colored bg) — `text-xs font-bold` plus the
-  color tokens (`text-emerald-300 bg-emerald-500/20` etc.), sentence
-  case, `rounded-full px-2 py-0.5`.
+  color tokens (`text-emerald-300 bg-emerald-500/20` etc.), Title Case
+  text, `rounded-full px-2 py-0.5`.
 
-Acceptable narrow exceptions that are not "eyebrow" styling:
-- **2-letter US state code input** (`customers/AddressFields.tsx`) —
-  the CSS `uppercase` transform is data-semantic (state abbreviations
-  are conventionally uppercase), paired with `.toUpperCase()` in JS.
+### Stat-card emphasis ladder
+
+A stat / KPI card has three text lines. Visual weight is ranked
+top-to-bottom in this order:
+
+1. **Top label** — `text-xs font-extrabold text-zinc-300`. Title Case.
+2. **Center value** — the big number / dollar amount. Largest and
+   brightest, white (`text-white`), `font-bold tabular-nums`. Never
+   touch this in stylistic sweeps.
+3. **Bottom supporting line** — `text-xs font-bold text-zinc-500`.
+   Dimmer than the top label. One line only (see §10 #24); a card never
+   has two bottom lines.
+
+The top label must always read **brighter and bolder than the bottom
+supporting line**. If you find a stat card where the bottom line is
+heavier than the top, that's an inversion bug — fix it to the ladder
+above.
+
+### Widget label casing — Title Case
+
+Every widget label uses **Title Case** — capitalize the first letter of
+every word. "Close Rate", not "Close rate". "Jobs Sold", not "Jobs
+sold". "Cash Flow", not "Cash flow". "Top Reps", not "Top reps". "This
+Month", not "This month". Applies to: stat-card top labels, chart card
+titles, section headings, KPI labels, pipeline-stage labels,
+leaderboard card labels, date-range pill titles, status pill text — any
+widget-level label.
+
+- Short connector words in multi-word labels keep lowercase (`vs`, `of`,
+  `to`, `for`, `and`, `or`, `in`, `on`, `the`, `a`, `an`) — e.g.
+  "First-Time vs Repeat". Use sparingly.
+- Sentence-case is reserved for **sentences**, not labels — empty-state
+  prompts ("Nothing on the calendar.", "No recent conversations."),
+  form-field labels ("First name", "Email"), modal section titles inside
+  forms. Those are full sentences / conventional form labels, not widget
+  labels.
+
+Narrow exceptions that are not "eyebrow" styling:
+- **2-letter US state / region code input** (`customers/AddressFields.tsx`,
+  the Settings region field) — the CSS `uppercase` transform is
+  data-semantic (state abbreviations are conventionally uppercase),
+  paired with `.toUpperCase()` in JS.
 - **Naturally-uppercase abbreviations as literal content** (AM / PM,
   USD, MRR, ARR) — fine as written content, but never paired with
   extra `tracking-[…]`.
 
 If you find yourself reaching for `uppercase` + `tracking-[…]` outside
-the sidebar group header, stop and use the sentence-case label scale
-instead.
+the sidebar group header, stop and use the label scale above.
 
 ### Numeric weight scale
 
