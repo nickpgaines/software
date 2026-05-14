@@ -139,7 +139,7 @@ export default function CustomizationsPanel() {
             type="button"
             onClick={save}
             disabled={saving || loading || !dirty || !config}
-            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
+            className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-2 font-bold"
           >
             {saving ? "Saving…" : "Save"}
           </Button>

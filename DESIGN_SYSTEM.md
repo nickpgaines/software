@@ -123,14 +123,78 @@ is the only consumer — `Sidebar.tsx:110` via `PULSE.sidebar`.
 
 ### Accents (signal colors)
 
-| Token                | Hex         | Defined at  | Use                                                                                |
-| -------------------- | ----------- | ----------- | ---------------------------------------------------------------------------------- |
-| `PULSE.violet`       | `#8b5cf6`   | theme.ts:41 | Sidebar `+ New` button; inline `+` buttons; pipeline gradient start; activity dot color |
-| `PULSE.violetSoft`   | `#a78bfa`   | theme.ts:42 | `CardHeaderLink` ("View all →") color; pipeline gradient end                       |
-| `PULSE.violetGlow`   | `rgba(139,92,246,0.35)` | theme.ts:43 | Glow on violet primary buttons (see §7 for the 16px / 12px rule)        |
+| Token                | Hex (default) | Defined at  | Use                                                                                |
+| -------------------- | ------------- | ----------- | ---------------------------------------------------------------------------------- |
+| `PULSE.violet`       | `#ffffff` (dark) / `#0a0a0a` (light) | theme.ts:41 | The **accent surface**. Pipeline-bar gradient, chart line + gradient, hover dot, primary buttons, sidebar `+ New`, inline `+` buttons, `CardHeaderLink`, scorecard headline value, dashboard greeting first name. |
+| `PULSE.violetSoft`   | tracks the accent | theme.ts:42 | Gradient-end variant of the accent. Same color when overridden by the picker.      |
+| `PULSE.violetFgVar`  | `#0a0a0a` (dark) / `#ffffff` (light) | theme.ts | Contrast text/glyph that sits **on top of** an accent surface. Auto-computed by luminance when an override is picked. |
+| `PULSE.violetGlow`   | `rgba(255,255,255,0.18)` (dark) / `rgba(0,0,0,0.18)` (light) | theme.ts:43 | Glow on accent buttons (see §7 for the 16px / 12px rule). Tracks the accent under override. |
 | `PULSE.green`        | `#22c55e`   | theme.ts:44 | Positive delta chip bg/text; LiveBadge dot; first activity item                    |
 | `PULSE.red`          | `#ef4444`   | theme.ts:45 | Negative delta chip bg/text; dashboard's Close rate KPI                            |
 | `PULSE.cyan`         | `#22d3ee`   | theme.ts:46 | Third activity item dot                                                            |
+
+### Accent override rule (mandatory)
+
+**The accent is user-configurable.** Every surface in the table above
+must tint to a single source of truth — `var(--color-violet)` — so a
+user choosing a custom accent in **Settings → Profile → Accent color**
+recolors all of them at once.
+
+Concrete rules every new component must follow:
+
+1. **Painting an accent surface (bg, fill, stroke, gradient stop):**
+   reference `PULSE.violetVar` (or `var(--color-violet)` from CSS).
+   Never use `PULSE.violet` (the bare hex) for live surfaces —
+   that's reserved for opacity concatenation
+   (`${PULSE.violet}1F` → `#ffffff1F`).
+2. **Text/glyphs sitting on top of an accent surface:** use
+   `PULSE.violetFgVar` (`var(--color-violet-foreground)`). Never
+   hard-code `#fff` or `text-white` on an accent surface — it makes
+   the glyph invisible when the accent itself is white (default dark
+   mode) or when the user picks a light accent.
+3. **Primary buttons:** use `bg-primary text-primary-foreground`
+   (shadcn bridge — `--primary` is bound to `--color-violet` and
+   `--primary-foreground` to `--color-violet-foreground`).
+   `bg-slate-900 ... text-white` and `bg-sky-400 ... text-white`
+   patterns from the legacy slate-CTA era have been swept; new code
+   never reintroduces them.
+4. **`CardHeaderLink` and link-style CTAs ("View all →"):** color is
+   `PULSE.violetVar`. They tint with the accent and stay legible on
+   both light and dark surfaces because the default flips between
+   white and near-black.
+5. **Chart lines/strokes/gradients:** set `color: PULSE.violetVar`
+   on the `<svg>` (or the wrapping element) and use `currentColor`
+   on `stroke` and `stopColor` so a single inline style controls
+   line + fill together. See `widgets.tsx:HeroChart` for the
+   canonical pattern.
+6. **Headline numbers tinted with the accent** (scorecard
+   `Nick Gaines $5.9K`, dashboard `Nick.` after the greeting): wrap
+   the value in a `<span style={{ color: PULSE.violetVar }}>`. Don't
+   set the whole heading to the accent color — only the value part.
+7. **Tinted backgrounds with opacity** (`${PULSE.violet}1F`,
+   `${PULSE.violet}33`): keep using the bare-hex `PULSE.violet`.
+   String-concatenated opacity doesn't work with `var(--…)`. These
+   sites accept that the tint stays at the default white (dark) /
+   near-black (light) and don't recolor when a custom accent is
+   picked. That's intentional — those are decorative chips, not
+   accent surfaces.
+
+### Defaults (no override)
+
+| Theme | `--color-violet` | `--color-violet-foreground` |
+| ----- | ---------------- | --------------------------- |
+| Dark (default)  | `#ffffff` | `#0a0a0a` |
+| Light (`data-theme="light"`) | `#0a0a0a` | `#ffffff` |
+
+### Persistence
+
+The chosen accent is stored in `localStorage` under `forge-accent`
+(a 6-digit hex). An inline `<script>` in `app/layout.tsx` reads it
+and writes the four `--color-violet*` CSS variables on
+`document.documentElement.style` **before paint**, so there's no
+flash of the default accent on first load. Foreground and glow are
+auto-computed from the chosen accent by luminance — call sites
+don't pass them explicitly.
 
 **Removed tokens** (`greenSoft`, `pink`, `pinkSoft`, `amber`) were
 defined but had zero call sites across the Pulse surfaces. They were

@@ -441,7 +441,7 @@ function Thread({
             type="submit"
             variant="ghost"
             disabled={sending || !body.trim()}
-            className="bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full w-10 h-10 p-0"
+            className="bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full w-10 h-10 p-0"
             aria-label="Send"
           >
             <svg

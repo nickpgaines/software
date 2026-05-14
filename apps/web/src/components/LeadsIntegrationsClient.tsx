@@ -161,7 +161,7 @@ export default function LeadsIntegrationsClient({
                 variant="ghost"
                 onClick={disconnect}
                 disabled={busy}
-                className="h-auto bg-slate-900 hover:bg-slate-800 text-white text-sm font-bold px-5 py-2.5 rounded-lg"
+                className="h-auto bg-primary hover:opacity-90 text-primary-foreground text-sm font-bold px-5 py-2.5 rounded-lg"
               >
                 Disconnect
               </Button>

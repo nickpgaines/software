@@ -264,7 +264,7 @@ export default function MapDoorKnockSheet({
             variant="ghost"
             onClick={() => save(true)}
             disabled={saving}
-            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-4 py-2 font-bold"
+            className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-4 py-2 font-bold"
           >
             {saving ? "Saving…" : "Create Customer"}
           </Button>

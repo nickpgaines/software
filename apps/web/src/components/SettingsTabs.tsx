@@ -319,7 +319,7 @@ function ProfilePanel({ username }: { username: string }) {
                   type="button"
                   onClick={save}
                   disabled={saving}
-                  className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-4 py-2 font-bold"
+                  className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-4 py-2 font-bold"
                 >
                   {saving ? "Saving…" : "Save photo"}
                 </Button>
@@ -606,7 +606,7 @@ function CompanyPanel() {
           variant="ghost"
           type="submit"
           disabled={saving || loading}
-          className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
+          className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-2 font-bold"
         >
           {saving ? "Saving…" : "Save changes"}
         </Button>
@@ -1126,7 +1126,7 @@ function SubscriptionsPanel() {
           <Button
             variant="ghost"
             onClick={startNew}
-            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 font-bold"
+            className="h-auto text-sm bg-primary hover:opacity-90 text-primary-foreground rounded-full px-4 py-2 font-bold"
           >
             New template
           </Button>
@@ -1274,7 +1274,7 @@ function SubscriptionsPanel() {
               variant="ghost"
               type="submit"
               disabled={saving}
-              className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
+              className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-2 font-bold"
             >
               {saving ? "Saving…" : "Save template"}
             </Button>
@@ -1333,7 +1333,7 @@ function SubscriptionsPanel() {
                     variant="ghost"
                     onClick={() => setActionTpl(t)}
                     disabled={t.active === 0}
-                    className="h-auto text-xs bg-slate-900 hover:bg-slate-800 disabled:bg-line-strong text-white rounded-full px-3 py-1.5 font-bold"
+                    className="h-auto text-xs bg-primary hover:opacity-90 disabled:bg-line-strong text-primary-foreground rounded-full px-3 py-1.5 font-bold"
                   >
                     Send / Accept
                   </Button>
@@ -1846,7 +1846,7 @@ function SendOrAcceptModal({
             variant="ghost"
             onClick={() => submit("send")}
             disabled={submitting}
-            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-4 py-2 font-bold flex-1"
+            className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-4 py-2 font-bold flex-1"
           >
             Send to customer
           </Button>
@@ -1945,7 +1945,7 @@ function CreateTermsModal({
             variant="ghost"
             type="submit"
             disabled={saving}
-            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
+            className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-2 font-bold"
           >
             {saving ? "Saving…" : "Save terms"}
           </Button>
@@ -2595,7 +2595,7 @@ function MessagingPanel() {
                 type="submit"
                 variant="ghost"
                 disabled={saving || loading}
-                className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
+                className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-2 font-bold"
               >
                 {saving
                   ? "Submitting…"
@@ -2903,7 +2903,7 @@ function CallingPanel() {
           variant="ghost"
           type="submit"
           disabled={saving || loading}
-          className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
+          className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-2 font-bold"
         >
           {saving ? "Saving…" : "Save changes"}
         </Button>
@@ -3091,7 +3091,7 @@ function EmailPanel() {
           variant="ghost"
           type="submit"
           disabled={saving || loading}
-          className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
+          className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-2 font-bold"
         >
           {saving ? "Saving…" : "Save changes"}
         </Button>
@@ -3275,7 +3275,7 @@ function AiPanel() {
           variant="ghost"
           type="submit"
           disabled={saving || loading}
-          className="h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold"
+          className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-2 font-bold"
         >
           {saving ? "Saving…" : "Save changes"}
         </Button>

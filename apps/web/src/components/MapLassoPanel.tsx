@@ -152,7 +152,7 @@ export default function MapLassoPanel({
           <Button
             variant="ghost"
             onClick={onClose}
-            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-1.5 font-bold"
+            className="h-auto text-sm bg-primary hover:opacity-90 text-primary-foreground rounded-full px-4 py-1.5 font-bold"
           >
             Done
           </Button>
@@ -283,7 +283,7 @@ export default function MapLassoPanel({
           variant="ghost"
           onClick={send}
           disabled={sending || withPhone.length === 0 || !body.trim()}
-          className="h-auto gap-1.5 text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-4 py-1.5 font-bold"
+          className="h-auto gap-1.5 text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-4 py-1.5 font-bold"
         >
           <Send className="h-3.5 w-3.5" />
           {sending

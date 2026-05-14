@@ -438,7 +438,7 @@ export default function LeaderboardClient({
                       variant="ghost"
                       onClick={() => setCustomOpen(false)}
                       disabled={!customFrom || !customTo}
-                      className="w-full h-auto text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-3 py-1.5 font-bold"
+                      className="w-full h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-3 py-1.5 font-bold"
                     >
                       Apply
                     </Button>

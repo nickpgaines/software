@@ -116,7 +116,7 @@ html[data-theme="light"] {
   --popover-foreground: var(--color-fg);
 
   --primary: var(--color-violet);
-  --primary-foreground: var(--color-canvas);
+  --primary-foreground: var(--color-violet-foreground);
 
   --secondary: var(--color-elevated);
   --secondary-foreground: var(--color-fg);

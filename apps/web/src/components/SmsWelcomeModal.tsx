@@ -68,7 +68,7 @@ function Inner() {
             type="button"
             variant="ghost"
             onClick={dismiss}
-            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-6 py-2.5 font-bold"
+            className="h-auto text-sm bg-primary hover:opacity-90 text-primary-foreground rounded-full px-6 py-2.5 font-bold"
           >
             Proceed →
           </Button>

@@ -74,7 +74,7 @@ export default function PaymentsSection({
             variant="ghost"
             type="button"
             onClick={() => setModalOpen(true)}
-            className="h-auto text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-1.5 font-bold"
+            className="h-auto text-sm bg-primary hover:opacity-90 text-primary-foreground rounded-full px-4 py-1.5 font-bold"
           >
             Record payment
           </Button>
@@ -88,7 +88,7 @@ export default function PaymentsSection({
             variant="ghost"
             type="button"
             onClick={() => setModalOpen(true)}
-            className="h-auto mt-3 text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-2 font-bold"
+            className="h-auto mt-3 text-sm bg-primary hover:opacity-90 text-primary-foreground rounded-full px-4 py-2 font-bold"
           >
             Record payment
           </Button>

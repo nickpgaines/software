@@ -386,7 +386,7 @@ export default function PayrollSettingsModal({
             variant="ghost"
             onClick={save}
             disabled={saving}
-            className="h-auto px-4 py-2 text-sm font-bold text-white tracking-tight bg-slate-900 hover:bg-slate-800 rounded-full"
+            className="h-auto px-4 py-2 text-sm font-bold text-primary-foreground tracking-tight bg-primary hover:opacity-90 rounded-full"
           >
             {saving ? "Saving…" : "Save changes"}
           </Button>

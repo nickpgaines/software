@@ -410,7 +410,7 @@ export default function JobForm({
             type="submit"
             disabled={saving}
             variant="ghost"
-            className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold shadow-sm h-auto"
+            className="text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-2 font-bold shadow-sm h-auto"
           >
             {saving
               ? "Saving…"
@@ -690,7 +690,7 @@ export default function JobForm({
           type="submit"
           disabled={saving}
           variant="ghost"
-          className="text-sm bg-slate-900 hover:bg-slate-800 disabled:bg-slate-400 text-white rounded-full px-5 py-2 font-bold shadow-sm h-auto"
+          className="text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-2 font-bold shadow-sm h-auto"
         >
           {saving
             ? "Saving…"
@@ -943,7 +943,7 @@ function NewCustomerInline({
           onClick={save}
           disabled={saving}
           variant="ghost"
-          className="text-sm bg-slate-900 hover:bg-slate-800 text-white rounded-full px-4 py-1.5 h-auto"
+          className="text-sm bg-primary hover:opacity-90 text-primary-foreground rounded-full px-4 py-1.5 h-auto"
         >
           Save customer
         </Button>
