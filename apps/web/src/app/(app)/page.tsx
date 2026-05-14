@@ -14,6 +14,7 @@ import {
 } from "@/components/pulse/widgets";
 import { PageHeader } from "@/components/pulse/PageHeader";
 import { PulseIcon } from "@/components/pulse/Icon";
+import { PULSE } from "@/components/pulse/theme";
 import { Button } from "@/components/ui/button";
 import { dateLabel, formatCentsShort, greeting } from "@/components/pulse/format";
 
@@ -34,7 +35,12 @@ export default async function DashboardPage() {
     <>
       <PageHeader
         kicker={dateLabel()}
-        title={`${greeting(new Date().getHours())}, ${firstName}.`}
+        title={
+          <>
+            {greeting(new Date().getHours())},{" "}
+            <span style={{ color: PULSE.violetVar }}>{firstName}.</span>
+          </>
+        }
         subtitle={`${jobs.length} jobs today · ${completedCount} completed this month`}
         actions={
           <Button

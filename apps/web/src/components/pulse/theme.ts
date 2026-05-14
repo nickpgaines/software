@@ -48,4 +48,5 @@ export const PULSE = {
   // for sites that need opacity concatenation (`${PULSE.violet}1F`).
   violetVar: "var(--color-violet)",
   violetSoftVar: "var(--color-violet-soft)",
+  violetFgVar: "var(--color-violet-foreground)",
 };
