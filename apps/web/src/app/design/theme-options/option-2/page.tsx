@@ -11,11 +11,10 @@ export default async function Option2Page() {
         label: "Option 2 — Blue + dashes",
         description:
           "Screenshot styling. Blue accent everywhere, accent dash under every section title.",
-        accent: "blue",
-        dashes: true,
+        variant: "blue",
       }}
     >
-      <DashboardContent />
+      <DashboardContent accentName />
     </ThemePreviewShell>
   );
 }

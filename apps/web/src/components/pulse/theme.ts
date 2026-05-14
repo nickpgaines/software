@@ -39,4 +39,13 @@ export const PULSE = {
   green: "#22c55e",
   red: "#ef4444",
   cyan: "#22d3ee",
+
+  // CSS-variable bindings for the violet accent. Resolve to the same hex
+  // values in production, but can be overridden inside a wrapper that sets
+  // `--color-violet` / `--color-violet-soft` (e.g. the dashboard theme
+  // preview routes under /design/theme-options). Use these at call sites
+  // that paint a standalone background/color — keep the hex strings above
+  // for sites that need opacity concatenation (`${PULSE.violet}1F`).
+  violetVar: "var(--color-violet)",
+  violetSoftVar: "var(--color-violet-soft)",
 };

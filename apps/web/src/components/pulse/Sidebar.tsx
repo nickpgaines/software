@@ -129,7 +129,7 @@ export function PulseSidebar() {
           onClick={() => setNewOpen((v) => !v)}
           className="w-full h-10 rounded-xl flex items-center justify-center gap-2 text-[13px] font-extrabold transition-colors shadow-glow-violet"
           style={{
-            background: PULSE.violet,
+            background: PULSE.violetVar,
             color: "#fff",
           }}
         >
