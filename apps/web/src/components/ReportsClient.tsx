@@ -495,24 +495,20 @@ function OverviewPanel({ qs }: { qs: string }) {
             label="Scheduled"
             count={js.scheduled.count}
             amountCents={js.scheduled.revenue_cents}
-            deltaPct={js.scheduled.delta_pct}
           />
           <JobStatCard
             label="Completed"
             count={js.completed.count}
             amountCents={js.completed.revenue_cents}
-            deltaPct={js.completed.delta_pct}
           />
           <JobStatCard
             label="Paid"
             count={js.paid.count}
             amountCents={js.paid.revenue_cents}
-            deltaPct={js.paid.delta_pct}
           />
           <JobStatCard
             label="Avg Job Value"
             amountCents={js.avg_job_value.cents}
-            deltaPct={js.avg_job_value.delta_pct}
           />
         </div>
       </Section>
@@ -576,60 +572,27 @@ function JobStatCard({
   label,
   count,
   amountCents,
-  deltaPct,
 }: {
   label: string;
   count?: number;
   amountCents: number;
-  deltaPct: number | null;
 }) {
   const hasCount = typeof count === "number";
   return (
-    <div className="bg-card border border-line rounded-2xl px-5 py-4 flex flex-col min-h-[140px]">
+    <div className="bg-card border border-line rounded-2xl px-5 py-4">
       <div className="text-[13px] font-bold text-zinc-500">{label}</div>
-      <div className="flex-1 flex items-center">
-        <div className="text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
-          {hasCount ? count : money(amountCents)}
-        </div>
+      <div className="mt-2 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
+        {hasCount ? count : money(amountCents)}
       </div>
-      {hasCount ? (
-        <div className="mt-1.5 flex items-baseline justify-between gap-2">
-          <div className="text-[13px] font-bold text-zinc-400 tabular-nums">
-            {money(amountCents)}
-          </div>
-          <DeltaBadge value={deltaPct} />
-        </div>
-      ) : (
-        <div className="mt-1.5 flex justify-end">
-          <DeltaBadge value={deltaPct} />
+      {hasCount && (
+        <div className="mt-2 text-[13px] font-bold text-zinc-400 tabular-nums">
+          {money(amountCents)}
         </div>
       )}
     </div>
   );
 }
 
-function DeltaBadge({ value }: { value: number | null }) {
-  if (value === null || !Number.isFinite(value)) return null;
-  const pct = value * 100;
-  const rounded = Math.abs(pct) >= 10 ? Math.round(pct) : Math.round(pct * 10) / 10;
-  if (rounded === 0) {
-    return (
-      <div className="text-xs font-bold text-zinc-500 tabular-nums">0%</div>
-    );
-  }
-  const positive = rounded > 0;
-  return (
-    <div
-      className={
-        "text-xs font-bold tabular-nums " +
-        (positive ? "text-emerald-500" : "text-red-500")
-      }
-    >
-      {positive ? "+" : ""}
-      {rounded}%
-    </div>
-  );
-}
 
 function SubscriptionsSummary({
   totalCount,
@@ -789,20 +752,18 @@ function BigStatCard({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="bg-card border border-line rounded-2xl px-5 py-4 flex flex-col min-h-[140px]">
-      <div className="flex items-start justify-between gap-2 mb-1.5">
+    <div className="bg-card border border-line rounded-2xl px-5 py-4">
+      <div className="flex items-start justify-between gap-2">
         <div className="text-[13px] font-bold text-zinc-500">
           {label}
         </div>
         {action}
       </div>
-      <div className="flex-1 flex items-center">
-        <div className="text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
-          {value}
-        </div>
+      <div className="mt-2 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
+        {value}
       </div>
       {sub && (
-        <div className="mt-1.5 text-[13px] font-bold text-zinc-400 tabular-nums truncate">
+        <div className="mt-2 text-[13px] font-bold text-zinc-400 tabular-nums truncate">
           {sub}
         </div>
       )}
@@ -924,25 +885,21 @@ function SalesPanel({ qs }: { qs: string }) {
           <SalesValueCard
             label="Total Revenue Sold"
             value={money(rs.total.cents)}
-            deltaPct={rs.total.delta_pct}
             description="From deals sold in range"
           />
           <SalesValueCard
             label="ARR Sold"
             value={money(rs.arr_sold.cents)}
-            deltaPct={rs.arr_sold.delta_pct}
             description="From new subscriptions"
           />
           <SalesValueCard
             label="One-Time Revenue Sold"
             value={money(rs.one_time.cents)}
-            deltaPct={rs.one_time.delta_pct}
             description="From non-recurring deals"
           />
           <SalesValueCard
             label="Avg Deal Size"
             value={money(rs.avg_deal.cents)}
-            deltaPct={rs.avg_deal.delta_pct}
             description="Per closed deal"
           />
         </div>
@@ -1022,25 +979,21 @@ function SalesPanel({ qs }: { qs: string }) {
           <SalesValueCard
             label="Pins Added"
             value={String(f.pins_added.count)}
-            deltaPct={f.pins_added.delta_pct}
             description="New prospect pins"
           />
           <SalesValueCard
             label="Quote Rate"
             value={pct(f.quote_rate.rate)}
-            deltaPct={f.quote_rate.delta_pct}
             description="Prospects quoted"
           />
           <SalesValueCard
             label="Close Rate"
             value={pct(f.close_rate.rate)}
-            deltaPct={f.close_rate.delta_pct}
             description="Quoted prospects sold"
           />
           <SalesValueCard
             label="Conversion Rate"
             value={pct(f.conversion_rate.rate)}
-            deltaPct={f.conversion_rate.delta_pct}
             description="Pins converted to sales"
           />
         </div>
@@ -1141,24 +1094,19 @@ function SalesPanel({ qs }: { qs: string }) {
 function SalesValueCard({
   label,
   value,
-  deltaPct,
   description,
 }: {
   label: string;
   value: string;
-  deltaPct: number | null;
   description: string;
 }) {
   return (
-    <div className="bg-card border border-line rounded-2xl px-5 py-4 flex flex-col min-h-[160px]">
+    <div className="bg-card border border-line rounded-2xl px-5 py-4">
       <div className="text-[13px] font-bold text-zinc-500">{label}</div>
-      <div className="flex-1 flex items-center">
-        <div className="text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
-          {value}
-        </div>
+      <div className="mt-2 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
+        {value}
       </div>
-      <DeltaBadge value={deltaPct} />
-      <div className="mt-1.5 text-[13px] font-bold text-zinc-400 leading-tight truncate">
+      <div className="mt-2 text-[13px] font-bold text-zinc-400 leading-tight truncate">
         {description}
       </div>
     </div>
@@ -1423,40 +1371,25 @@ function StatCard({
   label,
   value,
   valueClassName,
-  compact,
   description,
 }: {
   label: string;
   value: string;
   valueClassName?: string;
-  compact?: boolean;
   description: string;
 }) {
   return (
-    <div
-      className={
-        "bg-card border border-line rounded-2xl flex flex-col " +
-        (compact ? "px-4 py-3 min-h-[110px]" : "px-5 py-4 min-h-[160px]")
-      }
-    >
+    <div className="bg-card border border-line rounded-2xl px-5 py-4">
       <div className="text-[13px] font-bold text-zinc-500">{label}</div>
-      <div className="flex-1 flex items-center">
-        <div
-          className={
-            (compact ? "text-[24px]" : "text-[28px]") +
-            " font-extrabold tracking-tight leading-none tabular-nums " +
-            (valueClassName || "text-white")
-          }
-        >
-          {value}
-        </div>
-      </div>
       <div
         className={
-          (compact ? "text-[11px]" : "text-[13px]") +
-          " font-bold text-zinc-400 leading-tight mt-1.5 truncate"
+          "mt-2 text-[28px] font-extrabold tracking-tight leading-none tabular-nums " +
+          (valueClassName || "text-white")
         }
       >
+        {value}
+      </div>
+      <div className="mt-2 text-[13px] font-bold text-zinc-400 leading-tight truncate">
         {description}
       </div>
     </div>
@@ -1554,17 +1487,15 @@ function Stats({
       {items.map((it) => (
         <div
           key={it.label}
-          className="bg-card border border-line rounded-2xl px-5 py-4 flex flex-col min-h-[140px]"
+          className="bg-card border border-line rounded-2xl px-5 py-4"
         >
-          <div className="text-[13px] font-bold text-zinc-500 mb-1.5">
+          <div className="text-[13px] font-bold text-zinc-500">
             {it.label}
           </div>
-          <div className="flex-1 flex items-center">
-            <div className="text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
-              {it.value}
-            </div>
+          <div className="mt-2 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
+            {it.value}
           </div>
-          <div className="mt-1.5 text-[13px] font-bold text-zinc-400 leading-tight truncate">
+          <div className="mt-2 text-[13px] font-bold text-zinc-400 leading-tight truncate">
             {it.description}
           </div>
         </div>

@@ -738,7 +738,7 @@ function Stat({
   tone?: "default" | "warn";
 }) {
   return (
-    <Card className="p-4">
+    <Card className="px-5 py-4">
       <p className="text-[13px] font-bold text-zinc-500">
         {label}
       </p>

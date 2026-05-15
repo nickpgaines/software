@@ -592,9 +592,9 @@ export default function LeaderboardClient({
 
 function KpiCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-card border border-line rounded-2xl p-6 min-h-[140px] flex flex-col justify-between shadow-sm">
+    <div className="bg-card border border-line rounded-2xl px-5 py-4">
       <div className="text-[13px] font-bold text-zinc-500">{label}</div>
-      <div className="text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
+      <div className="mt-2 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
         {value}
       </div>
     </div>
