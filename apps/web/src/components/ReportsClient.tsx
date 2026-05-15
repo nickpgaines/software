@@ -2184,7 +2184,7 @@ function PayrollSummary({
       value: money(summary.total_payout_cents),
     },
     {
-      label: "Net Profit",
+      label: "Gross Profit",
       value: money(summary.net_profit_cents),
       emphasis: true,
     }
