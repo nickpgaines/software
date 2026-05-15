@@ -295,7 +295,7 @@ export default function NewEstimateForm() {
                     placeholder="Description (optional)"
                     className="w-full border-line rounded-lg px-3 py-2 text-sm h-auto"
                   />
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
                       <Label className="block text-[10px] font-bold text-zinc-500 mb-1 font-normal">
                         Qty
@@ -327,18 +327,24 @@ export default function NewEstimateForm() {
                         placeholder="0.00"
                       />
                     </div>
-                    <div>
-                      <Label className="block text-[10px] font-bold text-zinc-500 mb-1 font-normal">
-                        Line total
-                      </Label>
-                      <div className="text-sm font-bold text-white tracking-tight px-3 py-2 bg-black rounded-lg">
-                        {formatPrice(lineTotalCents(it))}
-                      </div>
-                    </div>
                   </div>
                 </li>
               ))}
             </ul>
+            <div className="border-t border-line mt-4 pt-4 grid grid-cols-2 gap-3 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-zinc-400">Subtotal</span>
+                <span className="font-bold text-white tracking-tight">
+                  {formatPrice(totalCents)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-zinc-400">Total</span>
+                <span className="text-base font-extrabold text-white tracking-tight">
+                  {formatPrice(totalCents)}
+                </span>
+              </div>
+            </div>
           </Card>
         </div>
       </div>
