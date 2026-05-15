@@ -611,7 +611,7 @@ function SubscriptionsSummary({
 }) {
   return (
     <div className="grid gap-4 lg:grid-cols-3 items-stretch">
-      <div className="grid gap-4 grid-cols-2">
+      <div className="grid gap-4 grid-cols-2 self-start auto-rows-min">
         <StatCard
           label="Total Subscriptions"
           value={String(totalCount)}
