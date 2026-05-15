@@ -10,6 +10,12 @@ import AddressFields, {
   EMPTY_ADDRESS,
   type AddressValue,
 } from "@/components/customers/AddressFields";
+import {
+  LineItemsSection,
+  emptyLineItem,
+  lineItemsSubtotal,
+  type LineItem,
+} from "@/components/LineItemsSection";
 
 type Customer = {
   id: number;
@@ -18,14 +24,6 @@ type Customer = {
   email: string | null;
   address: string | null;
   formatted_address: string | null;
-};
-
-type LineItem = {
-  key: string;
-  title: string;
-  description: string;
-  quantity: string;
-  price: string;
 };
 
 const LEAD_SOURCES = [
@@ -44,33 +42,6 @@ const SERVICE_PRESETS = [
   "Screen Repair",
 ];
 
-function uid() {
-  return Math.random().toString(36).slice(2);
-}
-
-function formatPrice(cents: number) {
-  return `$${(cents / 100).toFixed(2)}`;
-}
-
-function emptyItem(): LineItem {
-  return {
-    key: uid(),
-    title: "",
-    description: "",
-    quantity: "1",
-    price: "",
-  };
-}
-
-function priceCents(p: string) {
-  return Math.max(0, Math.round((parseFloat(p) || 0) * 100));
-}
-
-function lineTotalCents(it: LineItem) {
-  const qty = parseFloat(it.quantity) || 0;
-  return Math.max(0, Math.round(qty * priceCents(it.price)));
-}
-
 export default function NewInvoiceForm() {
   const router = useRouter();
 
@@ -80,7 +51,7 @@ export default function NewInvoiceForm() {
   const [showNewCustomer, setShowNewCustomer] = useState(false);
 
   const [notes, setNotes] = useState("");
-  const [items, setItems] = useState<LineItem[]>([emptyItem()]);
+  const [items, setItems] = useState<LineItem[]>([emptyLineItem()]);
   const [leadSource, setLeadSource] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
@@ -95,10 +66,7 @@ export default function NewInvoiceForm() {
     loadCustomers();
   }, []);
 
-  const totalCents = useMemo(
-    () => items.reduce((sum, it) => sum + lineTotalCents(it), 0),
-    [items]
-  );
+  const totalCents = useMemo(() => lineItemsSubtotal(items), [items]);
 
   function updateItem(key: string, patch: Partial<LineItem>) {
     setItems((prev) =>
@@ -112,8 +80,8 @@ export default function NewInvoiceForm() {
     );
   }
 
-  function addItem(preset?: string) {
-    setItems((prev) => [...prev, { ...emptyItem(), title: preset ?? "" }]);
+  function addItem() {
+    setItems((prev) => [...prev, emptyLineItem()]);
   }
 
   const canSubmit =
@@ -135,8 +103,9 @@ export default function NewInvoiceForm() {
         .map((it) => ({
           title: it.title.trim(),
           description: it.description.trim() || null,
-          quantity: parseFloat(it.quantity) || 1,
-          price_cents: priceCents(it.price),
+          quantity: it.quantity || 1,
+          price_cents: it.price_cents,
+          taxable: it.taxable,
         })),
     };
     const res = await fetch("/api/invoices", {
@@ -209,104 +178,13 @@ export default function NewInvoiceForm() {
           />
         </Card>
 
-        <Card>
-          <CardHeader>
-            <h2 className="text-base font-extrabold text-white tracking-tight">
-              Line Items
-            </h2>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => addItem()}
-              className="h-auto text-xs font-bold text-zinc-500 border-line hover:bg-black rounded-full px-3 py-1.5"
-            >
-              + Add item
-            </Button>
-          </CardHeader>
-
-          <ul className="space-y-3">
-            {items.map((it, idx) => (
-              <li
-                key={it.key}
-                className="rounded-xl border border-line p-3 space-y-2 bg-card"
-              >
-                <div className="flex items-start gap-2">
-                  <TitleWithPresets
-                    value={it.title}
-                    onChange={(v) => updateItem(it.key, { title: v })}
-                  />
-                  {items.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      onClick={() => removeItem(it.key)}
-                      className="h-auto p-0 text-zinc-500 hover:text-rose-600 px-2"
-                      aria-label={`Remove item ${idx + 1}`}
-                    >
-                      ✕
-                    </Button>
-                  )}
-                </div>
-                <Input
-                  type="text"
-                  value={it.description}
-                  onChange={(e) =>
-                    updateItem(it.key, { description: e.target.value })
-                  }
-                  placeholder="Description (optional)"
-                  className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm"
-                />
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <Label className="block text-[10px] font-bold text-zinc-500 mb-1">
-                      Qty
-                    </Label>
-                    <Input
-                      type="number"
-                      step="0.5"
-                      min="0"
-                      value={it.quantity}
-                      onChange={(e) =>
-                        updateItem(it.key, { quantity: e.target.value })
-                      }
-                      className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm"
-                    />
-                  </div>
-                  <div>
-                    <Label className="block text-[10px] font-bold text-zinc-500 mb-1">
-                      Price (USD)
-                    </Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      min="0"
-                      value={it.price}
-                      onChange={(e) =>
-                        updateItem(it.key, { price: e.target.value })
-                      }
-                      className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm"
-                      placeholder="0.00"
-                    />
-                  </div>
-                </div>
-              </li>
-            ))}
-          </ul>
-          <div className="border-t border-line mt-4 pt-4 grid grid-cols-2 gap-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-zinc-400">Subtotal</span>
-              <span className="font-bold text-white tracking-tight">
-                {formatPrice(totalCents)}
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-zinc-400">Total</span>
-              <span className="text-base font-extrabold text-white tracking-tight">
-                {formatPrice(totalCents)}
-              </span>
-            </div>
-          </div>
-        </Card>
+        <LineItemsSection
+          items={items}
+          presets={SERVICE_PRESETS}
+          onAdd={addItem}
+          onChange={updateItem}
+          onRemove={removeItem}
+        />
 
         <Card>
           <CardHeader>
@@ -355,63 +233,6 @@ export default function NewInvoiceForm() {
             setCustomerQuery(c.name);
           }}
         />
-      )}
-    </div>
-  );
-}
-
-function TitleWithPresets({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function onDoc(e: MouseEvent) {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
-
-  const suggestions = SERVICE_PRESETS.filter(
-    (p) => !value || p.toLowerCase().includes(value.toLowerCase())
-  );
-
-  return (
-    <div ref={ref} className="relative flex-1">
-      <Input
-        type="text"
-        value={value}
-        onChange={(e) => {
-          onChange(e.target.value);
-          setOpen(true);
-        }}
-        onFocus={() => setOpen(true)}
-        placeholder="Item title"
-        className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm"
-      />
-      {open && suggestions.length > 0 && (
-        <div className="absolute z-20 left-0 right-0 mt-1 bg-card border border-line rounded-xl shadow-lg overflow-hidden">
-          {suggestions.map((p) => (
-            <Button
-              key={p}
-              type="button"
-              variant="ghost"
-              onClick={() => {
-                onChange(p);
-                setOpen(false);
-              }}
-              className="h-auto w-full text-left px-3 py-2 hover:bg-black text-sm block rounded-none"
-            >
-              {p}
-            </Button>
-          ))}
-        </div>
       )}
     </div>
   );

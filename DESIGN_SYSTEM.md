@@ -1050,6 +1050,53 @@ slots without losing the canonical defaults.
 so the library's structural CSS (grid layout, focus rings) is applied;
 all visual styling is overridden via the `classNames` prop.
 
+### 8.16 `LineItemsSection`
+
+Defined: `components/LineItemsSection.tsx`. The shared "Line Items"
+widget used by every form that lets the user add billable line items —
+`JobForm`, `NewInvoiceForm`, `NewEstimateForm`. Replaces the three
+parallel inline implementations that had drifted apart visually.
+
+**Canonical visual**: outer `Section`-style card (`bg-card border
+border-line rounded-2xl p-5 sm:p-6`) with a `font-extrabold` header,
+optional rose `*` required marker, and a pill `+ Add Item` action
+on the right. Each line item is a `bg-card border border-line
+rounded-2xl p-4` card containing, in order: title `Input`
+(`rounded-full`) with a click-anywhere preset dropdown filtered
+against `presets`; description `Textarea` (`rounded-2xl`) with the
+violet `✦ AI Write` placeholder pill in the top-right corner; a
+two-column grid of `Quantity` / `Price ($)` `Input`s (also
+`rounded-full`); the `Taxable` `Checkbox`; an optional `extraRow`
+slot (used by JobForm to render the conditional `Upsell` checkbox);
+a trash `<svg>` ghost button on the right side; and an `Item total:
+$X.XX` line right-aligned at the bottom. Underneath the list, a
+`border-t border-line mt-4 pt-4` divider with a two-column
+`Subtotal` / `Total` summary (label = `text-xs font-bold
+text-zinc-500`, value = `tabular-nums`, total bold at `text-lg`).
+
+**Props**:
+- `items: LineItem[]` — `{ key, title, description, quantity:
+  number, price_cents: number, taxable: boolean }`. `id?` is carried
+  through for forms that load existing records.
+- `presets: string[]` — service-name suggestions for the title
+  dropdown.
+- `onAdd / onChange / onRemove` — state mutators.
+- `required?: boolean` — toggles the rose `*` next to the heading.
+- `extraRow?: (item) => ReactNode` — host-specific extra controls
+  rendered inline next to the `Taxable` checkbox.
+
+**Helpers** exported alongside the component: `emptyLineItem(title?)`
+(canonical zeroed item with a fresh `key`), `lineTotalCents(item)`,
+`lineItemsSubtotal(items)`, `formatMoney(cents)`. Forms reuse these
+so the math, the empty-state shape, and the formatted display all
+agree across every call site.
+
+**Policy**: this is the only line-items widget. Inline `<input>` /
+`<select>` rebuilds of the same UI (the kind that drifted before
+this primitive landed) are not allowed — go through
+`<LineItemsSection>` and add an `extraRow` if the host has
+form-specific controls.
+
 ---
 
 ## 9. Layout patterns
@@ -1179,6 +1226,7 @@ those pages move onto Pulse primitives.
 | 21  | shadcn/ui primitives generated under `components/ui/`: `Button`, `Input`, `Label`, `Textarea`, `Card`, `Separator`, `Badge`, `Dialog`, `DropdownMenu`, `Tooltip`, `Select`, `Checkbox`, `Tabs`, `Table`. Hand-authored from canonical shadcn templates (the registry was unreachable from the sandbox); adapted to Pulse tokens with the per-primitive overrides documented in §8.15. Global overrides vs. shadcn defaults: `font-medium`/`font-semibold` → `font-bold`/`font-extrabold` per role (§10 #1); form-control `rounded-md` → `rounded-xl` (§6); Card `rounded-xl` → `rounded-2xl` and shadow dropped (§6, §7); Tooltip `bg-primary` pill → `bg-card` border surface (§8.4). Added `tailwindcss-animate` plugin so shadcn data-state animation utilities resolve. `tailwind.config.ts` gains a "shadcn bridge color aliases" block exposing `primary` / `primary-foreground` / `secondary` / `secondary-foreground` / `muted` / `muted-foreground` / `accent` / `accent-foreground` / `destructive` / `destructive-foreground` / `popover` / `popover-foreground` / `input` / `ring` as Tailwind utility classes pointing at the bridge CSS variables defined in `globals.css` — values reference `var(--*)` directly, no `hsl()` wrapper, since our tokens are full color values, not HSL channels. Existing pages not migrated; that's a separate step. | §8.14, §8.15     | `365ee30`, `e5e87b3`, `a04c16e`, `a8dedae` |
 | 22  | `LeadsTabs.tsx` (the `/leads`-routed tab strip with Pipeline / Workflows / Forms / Integrations) intentionally does **not** use the shadcn `Tabs` primitive. The component is a router-link tab strip composed of `<Link>` elements driven by `usePathname()`, not a state-driven controlled tablist. Radix `Tabs` is built around an internal `value`/`onValueChange` model where `Trigger` elements update tab state inside a `Tabs.Root` wrapper. Adapting it to Next.js routing would require either (a) an `asChild` wrapper around each `<Link>` plus a sync layer to mirror `pathname` into Radix's value, or (b) abandoning the primitive's a11y plumbing entirely. Neither pays for the migration cost vs. the existing 30-line hand-rolled component. **Policy for future router-tab strips:** stay hand-rolled. The shadcn `Tabs` primitive is reserved for tab UIs whose state lives in React (panel switchers inside a single page), not URL-driven nav. | §8.14            | `de7f916`  |
 | 24  | `Popover` (§8.15.15) and `Calendar` (§8.15.16) primitives added for the subscription start-date picker. `Popover` is a canonical shadcn adaptation on `@radix-ui/react-popover` with Pulse tokens (`rounded-2xl`, `bg-card`, `shadow-lg`); `Calendar` is hand-authored on `react-day-picker` v9 because the v9 API diverges from v8 enough that the shadcn registry template no longer applies cleanly. New deps: `@radix-ui/react-popover`, `react-day-picker`, `date-fns`. First call site: the start-date field on `/subscriptions/new`, where the previous `<input type="date">` was replaced to satisfy the requirement that the date can only be picked from a calendar (no typing/clearing). | §8.15.15, §8.15.16 | `97403bd` |
+| 25  | `LineItemsSection` (§8.16) extracted as the canonical line-items widget. `JobForm`, `NewInvoiceForm`, and `NewEstimateForm` had three parallel inline implementations that had drifted apart visually (different input radii, different label sizes, no per-item delete on some, "Line total" rendered as a faux-input box on the invoice/estimate variants, missing `Taxable` checkbox on the simplified forms). All three now render the JobForm-style widget. Invoice/Estimate state shape unified onto `{ quantity: number, price_cents: number, taxable: boolean }` to match Job; submit payloads forward `taxable` per item. Helpers (`emptyLineItem`, `lineItemsSubtotal`, `lineTotalCents`, `formatMoney`) live alongside the component so all three forms share the same math. JobForm's job-only `Upsell` checkbox is rendered through the optional `extraRow` prop. Inline `LineItemCard`, `Total`, `money()`, and the per-form `TitleWithPresets` helpers were deleted. | §8.16            | (this commit) |
 | 23  | Existing surfaces migrated onto the §8.14 / §8.15 shadcn primitives across 11 batches. **Files touched (alphabetical):** `app/(app)/customers/page.tsx`, `app/(app)/employees/page.tsx`, `app/invoices/pay/[token]/PayClient.tsx`, `app/login/page.tsx`, `app/signup/page.tsx`, `components/CalendarClient.tsx`, `components/CallsClient.tsx`, `components/customers/AddressFields.tsx`, `components/customers/ImportModal.tsx`, `components/EmailAutomationEditClient.tsx`, `components/EmailComposeClient.tsx`, `components/EmailDetailClient.tsx`, `components/EmailListClient.tsx`, `components/EmployeeForm.tsx`, `components/EmployeeSchedulingModal.tsx`, `components/JobDetailClient.tsx`, `components/JobForm.tsx`, `components/jobs/CustomerCard.tsx`, `components/jobs/PaymentsSection.tsx`, `components/jobs/RecordPaymentModal.tsx`, `components/LeaderboardClient.tsx`, `components/LeadsFormsClient.tsx`, `components/LeadsIntegrationsClient.tsx`, `components/LeadsPipelineClient.tsx`, `components/LeadsWorkflowsClient.tsx`, `components/MapDoorKnockSheet.tsx`, `components/MapFilterPanel.tsx`, `components/MapIconStrip.tsx`, `components/MapLassoPanel.tsx`, `components/MapPinDropModal.tsx`, `components/MapTerritoryListPanel.tsx`, `components/MapTerritoryModal.tsx`, `components/MessagesClient.tsx`, `components/NavBar.tsx`, `components/NewEstimateForm.tsx`, `components/NewInvoiceForm.tsx`, `components/NewMenu.tsx`, `components/NewSprintModal.tsx`, `components/NewSubscriptionForm.tsx`, `components/PayrollSettingsModal.tsx`, `components/PhoneClient.tsx`, `components/ReportsClient.tsx`, `components/SettingsTabs.tsx`, `components/StaffScorecardModal.tsx`. **Scope:** Native `<button>` → `Button`, `<input>` (text/email/tel/password/number/file/date/search) → `Input`, `<input type="checkbox">` → `Checkbox` (with `onChange` → `onCheckedChange` adaptation), `<textarea>` → `Textarea`, `<label>` → `Label`, `<table>`/`<thead>`/`<tbody>`/`<tr>`/`<th>`/`<td>` → `Table`/`TableHeader`/`TableBody`/`TableRow`/`TableHead`/`TableCell`. `NewMenu.tsx`'s hand-rolled `+ New` dropdown rewritten using `DropdownMenu` (the only `DropdownMenu` adoption in the migration). Status chips/pills migrated to `Badge` only on `CallsClient` and `EmailListClient`; other inline status spans left as-is. Toggle-switch buttons (the slider+thumb pattern used in 8+ places) migrated to `Button variant="ghost"` with `bg-X hover:bg-X` to lock active/inactive colors against ghost's default `hover:bg-elevated`. **Cross-cutting deferred items (kept native everywhere with inline comments):** (1) all `<select>` elements — Radix `Select` forbids empty-string item values, which would break the "All" / "Select…" sentinel patterns used for clearable filter state; (2) all `<input type="radio">` — no Radio primitive in `components/ui/` yet; (3) the `Tabs` primitive — underline-style tab nav (Reports/Settings) and router-link tabs (#22) don't fit its pill model, so each tab `<button>` is a `Button variant="ghost"` swap instead; (4) the `Dialog` primitive — every `fixed inset-0` modal wrapper kept hand-rolled, only the controls inside were migrated; (5) MapDoorKnockSheet's bottom-sheet wrapper kept hand-rolled (Dialog is centered-modal only); (6) calendar/scheduling grid cells (`CalendarClient` MonthView day cells, `EmployeeSchedulingModal` per-staff per-day shift cells) kept native with their custom grid styling; (7) Pulse-adjacent dashboard widgets (`TodaySchedule`, `SprintWidget`, `RevenueChart`) and the dashboard `(app)/page.tsx` button skipped — those are domain components or already on spec; (8) `MapClient.tsx` not modified — its only `<button` matches were inside Mapbox popup `innerHTML` strings, not React JSX; (9) `<a>` / `<Link>` elements left as anchors throughout. Auth (login, signup, NavBar) and Stripe-adjacent surfaces (Settings → Payments/Subscriptions/Messaging/Calling/AI, NewInvoiceForm, NewSubscriptionForm, PayClient, PaymentsSection, RecordPaymentModal) migrated as visual-only swaps with zero changes to logic, validation, API call sites, or copy. Per-batch commits: `4196239` (Messages/Calls/Phone), `8502ded` (Email), `3ae032a` (Reports/Leaderboard/Calendar), `de7f916` (Leads), `4b6eaa6` (Map), `fdcaca2` (Customers), `65442d7` (Employees/Payroll), `5f0b787` (Auth/Misc), `d43ab99` (Settings), `7516c4d` (big forms — JobForm/NewEstimate/NewInvoice/NewSubscription/NewSprint), `0587d3a` (Jobs subfolder + JobDetail + NewMenu). | §8.14, §8.15     | (see commits in description) |
 
 ### Ongoing drift policy
