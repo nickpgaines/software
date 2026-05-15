@@ -496,44 +496,42 @@ export default function JobForm({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
         <Section title="Scheduling">
           <div className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Label className="text-xs font-bold text-zinc-500 w-10 shrink-0">
-                Start
-              </Label>
-              <PickerInput
-                type="date"
-                value={startDate}
-                onChange={(e) => applyNewStart(e.target.value, startTime)}
-                disabled={scheduleLater}
-                className="w-[150px]"
-              />
-              <PickerInput
-                type="time"
-                value={startTime}
-                onChange={(e) => applyNewStart(startDate, e.target.value)}
-                disabled={scheduleLater || anytime}
-                className="w-[110px]"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Label className="text-xs font-bold text-zinc-500 w-10 shrink-0">
-                End
-              </Label>
-              <PickerInput
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                disabled={scheduleLater}
-                className="w-[150px]"
-              />
-              <PickerInput
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                disabled={scheduleLater || anytime}
-                className="w-[110px]"
-              />
-            </div>
+            <Field label="Start">
+              <div className="flex items-center gap-2">
+                <PickerInput
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => applyNewStart(e.target.value, startTime)}
+                  disabled={scheduleLater}
+                  className="w-[150px]"
+                />
+                <PickerInput
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => applyNewStart(startDate, e.target.value)}
+                  disabled={scheduleLater || anytime}
+                  className="w-[110px]"
+                />
+              </div>
+            </Field>
+            <Field label="End">
+              <div className="flex items-center gap-2">
+                <PickerInput
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  disabled={scheduleLater}
+                  className="w-[150px]"
+                />
+                <PickerInput
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  disabled={scheduleLater || anytime}
+                  className="w-[110px]"
+                />
+              </div>
+            </Field>
             <div className="flex flex-wrap gap-x-4 gap-y-2 pt-1">
               <Label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">
                 <Checkbox
@@ -748,7 +746,7 @@ export function PickerInput({
           el.showPicker();
         }
       }}
-      className={`input-picker border-line rounded-full px-3 text-sm bg-card disabled:bg-black h-9 ${
+      className={`input-picker border-line rounded-full px-3 text-sm font-bold bg-card disabled:bg-black h-9 ${
         className ?? ""
       }`}
     />
@@ -1038,7 +1036,7 @@ export function StaffMultiPicker({
 
   return (
     <div ref={ref} className="relative">
-      <div className="min-h-9 flex flex-wrap items-center gap-1.5 border border-line rounded-full px-2 py-1 bg-card">
+      <div className="h-9 flex flex-wrap items-center gap-1.5 border border-line rounded-full px-3 bg-card">
         {picked.map((s) => (
           <span
             key={s.id}
@@ -1065,7 +1063,7 @@ export function StaffMultiPicker({
           }}
           onFocus={() => setOpen(true)}
           placeholder={picked.length === 0 ? placeholder : ""}
-          className="flex-1 min-w-[120px] outline-none text-sm bg-transparent px-2 border-0 h-auto"
+          className="flex-1 min-w-[120px] outline-none text-sm font-bold bg-transparent px-0 border-0 h-auto"
         />
       </div>
       {open && suggestions.length > 0 && (
