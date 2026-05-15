@@ -395,7 +395,11 @@ export default function JobForm({
     });
     setSaving(false);
     if (!res.ok) {
-      setError("Could not save job");
+      const detail = await res
+        .json()
+        .then((d) => (d && typeof d.error === "string" ? d.error : null))
+        .catch(() => null);
+      setError(detail ? `Could not save job: ${detail}` : "Could not save job");
       return;
     }
     const data = (await res.json()) as { id?: number };

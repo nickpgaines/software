@@ -110,9 +110,11 @@ export async function POST(req: Request) {
     const id = await createJob(db, body as JobInput, companyId);
     return NextResponse.json({ id }, { status: 201 });
   } catch (e) {
-    if ((e as Error).message === "Customer not found") {
+    const message = e instanceof Error ? e.message : "Create failed";
+    if (message === "Customer not found") {
       return NextResponse.json({ error: "Customer not found" }, { status: 404 });
     }
-    throw e;
+    console.error("POST /api/jobs failed:", e);
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

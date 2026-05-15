@@ -142,7 +142,18 @@ async function syncAssignments(
   }
 }
 
+let _lineItemsHasAddon: boolean | null = null;
+async function lineItemsHasAddon(db: Db): Promise<boolean> {
+  if (_lineItemsHasAddon !== null) return _lineItemsHasAddon;
+  const cols = await db
+    .prepare("PRAGMA table_info(line_items)")
+    .all<{ name: string }>();
+  _lineItemsHasAddon = cols.some((c) => c.name === "is_addon");
+  return _lineItemsHasAddon;
+}
+
 async function syncLineItems(db: Db, jobId: number, items: LineItemInput[]) {
+  const hasAddon = await lineItemsHasAddon(db);
   await db.prepare("DELETE FROM line_items WHERE job_id = ?").run(jobId);
   for (let i = 0; i < items.length; i++) {
     const li = items[i];
@@ -150,23 +161,42 @@ async function syncLineItems(db: Db, jobId: number, items: LineItemInput[]) {
     // Upsell can only be set on add-on items (items added after initial
     // job creation). Original line items always store upsell=0.
     const upsell = isAddon ? toBit(li.upsell) : 0;
-    await db
-      .prepare(
-        `INSERT INTO line_items
-           (job_id, title, description, quantity, price_cents, taxable, upsell, is_addon, position)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .run(
-        jobId,
-        li.title,
-        li.description || null,
-        li.quantity,
-        li.price_cents,
-        toBit(li.taxable),
-        upsell,
-        isAddon,
-        i
-      );
+    if (hasAddon) {
+      await db
+        .prepare(
+          `INSERT INTO line_items
+             (job_id, title, description, quantity, price_cents, taxable, upsell, is_addon, position)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+        .run(
+          jobId,
+          li.title,
+          li.description || null,
+          li.quantity,
+          li.price_cents,
+          toBit(li.taxable),
+          upsell,
+          isAddon,
+          i
+        );
+    } else {
+      await db
+        .prepare(
+          `INSERT INTO line_items
+             (job_id, title, description, quantity, price_cents, taxable, upsell, position)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+        )
+        .run(
+          jobId,
+          li.title,
+          li.description || null,
+          li.quantity,
+          li.price_cents,
+          toBit(li.taxable),
+          upsell,
+          i
+        );
+    }
   }
 }
 
