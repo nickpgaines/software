@@ -401,7 +401,9 @@ export function PulseChartHero({
   }, [range, customStart, customEnd]);
 
   const titleLabel =
-    CHART_RANGES.find((r) => r.key === range)?.title ?? data?.label ?? "Revenue";
+    range === "1m"
+      ? new Date().toLocaleString(undefined, { month: "long", year: "numeric" })
+      : CHART_RANGES.find((r) => r.key === range)?.title ?? data?.label ?? "Revenue";
   const total = data ? data.total_cents : 0;
 
   return (
