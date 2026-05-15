@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import EmployeeSchedulingModal from "./EmployeeSchedulingModal";
 import { Button } from "@/components/ui/button";
 import {
@@ -66,8 +66,13 @@ const VIEW_OPTIONS: { value: View; label: string }[] = [
 
 const DAY_MS = 86_400_000;
 const HOUR_PX = 56;
-const DAY_START_HOUR = 6;
-const DAY_END_HOUR = 21;
+// Show all 24 hours of the day so jobs scheduled outside business hours
+// (early morning, late evening) are reachable. The grid auto-scrolls to
+// DAY_DEFAULT_HOUR on mount so the typical workday is visible without
+// the user having to scroll up first.
+const DAY_START_HOUR = 0;
+const DAY_END_HOUR = 24;
+const DAY_DEFAULT_HOUR = 6;
 const HOURS = Array.from(
   { length: DAY_END_HOUR - DAY_START_HOUR },
   (_, i) => DAY_START_HOUR + i
@@ -149,13 +154,58 @@ export default function CalendarClient() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [staff, setStaff] = useState<StaffLite[]>([]);
   const [me, setMe] = useState<MeLite | null>(null);
+  const [scheduledTechIds, setScheduledTechIds] = useState<Set<number>>(
+    () => new Set()
+  );
   const [now, setNow] = useState<Date>(new Date());
   const [schedulingOpen, setSchedulingOpen] = useState(false);
+  const gridRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 60_000);
     return () => clearInterval(t);
   }, []);
+
+  // Auto-scroll the grid so the typical workday is visible up top
+  // without the user having to scroll past the early-morning hours.
+  useEffect(() => {
+    if (!gridRef.current) return;
+    gridRef.current.scrollTop = DAY_DEFAULT_HOUR * HOUR_PX;
+  }, [view]);
+
+  // Day view shows a column for every technician scheduled to work
+  // that day (via Employee Scheduling) — even on empty days — so a
+  // sales rep can see who's available to book. Refetch when the day
+  // cursor moves or the view enters/leaves "day".
+  useEffect(() => {
+    if (view !== "day") {
+      setScheduledTechIds(new Set());
+      return;
+    }
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const dateIso = `${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}-${pad(
+      cursor.getDate()
+    )}`;
+    const weekday = cursor.getDay();
+    fetch(`/api/schedule/shifts?start=${dateIso}&end=${dateIso}`)
+      .then((r) => r.json())
+      .then(
+        (d: {
+          shifts?: { staff_id: number; work_date: string }[];
+          defaults?: { staff_id: number; weekday: number }[];
+        }) => {
+          const ids = new Set<number>();
+          for (const s of d.shifts ?? []) {
+            if (s.work_date === dateIso) ids.add(s.staff_id);
+          }
+          for (const def of d.defaults ?? []) {
+            if (def.weekday === weekday) ids.add(def.staff_id);
+          }
+          setScheduledTechIds(ids);
+        }
+      )
+      .catch(() => setScheduledTechIds(new Set()));
+  }, [view, cursor.getTime()]);
 
   useEffect(() => {
     fetch("/api/staff")
@@ -380,7 +430,7 @@ export default function CalendarClient() {
         </div>
       </div>
 
-      <div className="flex-1 min-h-0 overflow-auto bg-card">
+      <div ref={gridRef} className="flex-1 min-h-0 overflow-auto bg-card">
         {view === "week" && (
           <WeekView
             start={startOfWeek(cursor)}
@@ -389,7 +439,14 @@ export default function CalendarClient() {
           />
         )}
         {view === "day" && (
-          <DayView day={startOfDay(cursor)} jobs={jobs} staff={staff} me={me} now={now} />
+          <DayView
+            day={startOfDay(cursor)}
+            jobs={jobs}
+            staff={staff}
+            scheduledTechIds={scheduledTechIds}
+            me={me}
+            now={now}
+          />
         )}
         {view === "month" && (
           <MonthView
@@ -698,12 +755,14 @@ function DayView({
   day,
   jobs,
   staff,
+  scheduledTechIds,
   me,
   now,
 }: {
   day: Date;
   jobs: Job[];
   staff: StaffLite[];
+  scheduledTechIds: Set<number>;
   me: MeLite | null;
   now: Date;
 }) {
@@ -712,16 +771,19 @@ function DayView({
   const anytime = dayJobs.filter((j) => j.anytime);
   const isToday = sameDay(day, startOfDay(now));
 
-  // Day view shows one column per technician *assigned* on this day —
-  // never empty tech columns. An Unassigned column appears only when
-  // there are unassigned jobs to place.
+  // Day view shows a column for any technician with a job that day OR
+  // any tech scheduled to work that day via Employee Scheduling — so
+  // sales reps can see open capacity. An Unassigned column appears
+  // only when there are unassigned jobs to place.
   const assignedIds = new Set(
     timed
       .concat(anytime)
       .map((j) => j.technician_id)
       .filter((id): id is number => id != null)
   );
-  let assigned: StaffLite[] = staff.filter((s) => assignedIds.has(s.id));
+  let assigned: StaffLite[] = staff.filter(
+    (s) => assignedIds.has(s.id) || scheduledTechIds.has(s.id)
+  );
   assigned.sort((a, b) => a.name.localeCompare(b.name));
   if (
     me?.permission_level === "field_tech" &&
@@ -894,7 +956,7 @@ function WeekDayColumn({
   now: Date;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const { y, slotMin, setY, handlers } = useHoverSlot(menuOpen);
+  const { y, setY, handlers } = useHoverSlot(menuOpen);
   const lanes = useMemo(() => assignLanes(timed), [timed]);
   return (
     <div
@@ -919,10 +981,9 @@ function WeekDayColumn({
           ))}
         </div>
       )}
-      {y !== null && slotMin !== null && (
+      {y !== null && (
         <HoverAddPopover
           day={day}
-          slotMin={slotMin}
           y={y}
           columnJobs={timed}
           menuOpen={menuOpen}
@@ -1158,21 +1219,19 @@ function useHoverSlot(frozen = false) {
   };
   return {
     y,
-    slotMin: y != null ? Math.round((y / HOUR_PX) * 60) : null,
     setY,
     handlers: { onMouseMove, onMouseLeave },
   };
 }
 
-// Faint 2-hour outline at the snapped hover slot with a "+ New" trigger
-// pinned to its top-right corner. Clicking the trigger opens a dropdown
-// menu offering New Job / New Task and showing the proposed time range.
-// Suppressed when the slot lies inside an existing timed job block so
-// the JobBlock stays the click target — unless the menu is already open
-// (so it doesn't disappear mid-interaction).
+// Faint 2-hour outline centered on the cursor with a "+ New" trigger at
+// its center. Clicking the trigger opens a dropdown menu offering New
+// Job / New Task and showing the proposed time range. Suppressed when
+// the cursor lies inside an existing timed job block so the JobBlock
+// stays the click target — unless the menu is already open (so it
+// doesn't disappear mid-interaction).
 function HoverAddPopover({
   day,
-  slotMin,
   y,
   columnJobs,
   technicianId,
@@ -1180,7 +1239,6 @@ function HoverAddPopover({
   onMenuOpenChange,
 }: {
   day: Date;
-  slotMin: number;
   y: number;
   columnJobs: Job[];
   technicianId?: number | null;
@@ -1200,9 +1258,19 @@ function HoverAddPopover({
     }
   }
 
+  // Center the ghost block vertically on the cursor so the "+ New"
+  // trigger (also at the box center) sits directly under the mouse —
+  // otherwise the box jumps as the user reaches for the trigger and
+  // the trigger ends up un-clickable. Clamp to the column bounds so
+  // the box never spills past midnight.
+  const ghostHeight = (DEFAULT_NEW_JOB_MIN / 60) * HOUR_PX;
+  const totalHeight = HOURS.length * HOUR_PX;
+  const top = Math.max(0, Math.min(y - ghostHeight / 2, totalHeight - ghostHeight));
+  const startMin = Math.round((top / HOUR_PX) * 60);
+
   const start = new Date(day);
   start.setHours(DAY_START_HOUR, 0, 0, 0);
-  start.setMinutes(start.getMinutes() + slotMin);
+  start.setMinutes(start.getMinutes() + startMin);
   const end = new Date(start.getTime() + DEFAULT_NEW_JOB_MIN * 60_000);
 
   const startLabel = timeLabel(start.toISOString());
@@ -1212,7 +1280,6 @@ function HoverAddPopover({
     day: "numeric",
   });
 
-  const ghostHeight = (DEFAULT_NEW_JOB_MIN / 60) * HOUR_PX;
   const href =
     `/schedule/new?start=${encodeURIComponent(start.toISOString())}` +
     (technicianId ? `&tech=${technicianId}` : "");
@@ -1220,7 +1287,7 @@ function HoverAddPopover({
   return (
     <div
       className="absolute left-1 right-1 pointer-events-none"
-      style={{ top: `${y}px`, height: `${ghostHeight}px` }}
+      style={{ top: `${top}px`, height: `${ghostHeight}px` }}
     >
       <div className="absolute inset-0 rounded-md border border-dashed border-zinc-500/60 bg-card/50">
         <div className="px-2 py-1 text-[11px] text-zinc-400">
@@ -1231,7 +1298,7 @@ function HoverAddPopover({
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="absolute top-1.5 right-1.5 bg-card border border-line rounded-full px-2.5 py-0.5 text-xs font-bold text-zinc-200 hover:bg-black shadow-sm pointer-events-auto"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-line rounded-full px-3 py-1 text-xs font-bold text-zinc-200 hover:bg-black shadow-lg pointer-events-auto"
           >
             + New
           </button>
@@ -1311,7 +1378,7 @@ function LaneColumn({
   now: Date;
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
-  const { y, slotMin, setY, handlers } = useHoverSlot(menuOpen);
+  const { y, setY, handlers } = useHoverSlot(menuOpen);
   const lanes = useMemo(() => assignLanes(jobs), [jobs]);
   return (
     <div
@@ -1329,10 +1396,9 @@ function LaneColumn({
           style={{ height: `${HOUR_PX}px` }}
         />
       ))}
-      {y !== null && slotMin !== null && (
+      {y !== null && (
         <HoverAddPopover
           day={day}
-          slotMin={slotMin}
           y={y}
           columnJobs={jobs}
           technicianId={technicianId}
