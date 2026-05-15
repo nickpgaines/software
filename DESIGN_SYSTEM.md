@@ -321,6 +321,7 @@ Use these wherever a small gray supporting label used to be uppercase.
 Every stat / KPI card in the CRM is a top-aligned vertical stack
 inside a single shared wrapper:
 
+<<<<<<< HEAD
 ```jsx
 <div className="bg-card border border-line rounded-2xl px-5 py-4">
   <div className="text-[13px] font-bold text-zinc-500">{label}</div>
@@ -365,6 +366,25 @@ other stat-card variant (Reports `JobStatCard` / `BigStatCard` /
 a delta — they're pure label / value / optional bottom-line stacks.
 If a Reports widget needs to show change, surface it in the bottom
 supporting line as plain text, not a colored pill.
+=======
+1. **Top label** — `text-[13px] font-bold text-zinc-500`. Title Case.
+   Literal Tailwind class — no inline `PULSE.textSubtle` style.
+2. **Center value** — `text-[28px] font-extrabold tracking-tight
+   leading-none tabular-nums text-white`. Same 28 px / weight 800 /
+   white on every stat card in the CRM. The big number is the only
+   line that uses `font-extrabold`; the two small lines both use
+   `font-bold`.
+3. **Bottom supporting line** — `text-[13px] font-bold text-zinc-400`.
+   Same size and weight as the top label, one tone brighter (zinc-400
+   vs zinc-500). Literal Tailwind class — no inline `PULSE.textMuted` /
+   `PULSE.textDim` style. One line only (see §10 #24); a card never has
+   two bottom lines.
+
+All three lines share the same 13 px / `font-bold` baseline on the
+small labels, with the value as the lone visual anchor. The "delta
+pill" (top-right corner of `CompactHeroKpi`) is a separate element —
+not bound by this ladder.
+>>>>>>> origin/main
 
 ### Widget label casing — Title Case
 
