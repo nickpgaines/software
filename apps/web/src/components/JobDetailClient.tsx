@@ -8,6 +8,7 @@ import RecordPaymentModal from "@/components/jobs/RecordPaymentModal";
 import {
   PickerInput,
   StaffMultiPicker,
+  StaffSinglePicker,
   type Staff,
 } from "@/components/JobForm";
 import { Button } from "@/components/ui/button";
@@ -820,13 +821,13 @@ function JobDetailsSection({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <Label className="block text-xs font-bold text-zinc-500 mb-2">
-                Salesperson(s)
+                Lead Source
               </Label>
-              <StaffMultiPicker
+              <StaffSinglePicker
                 staff={staff}
-                ids={salesIds}
-                setIds={setSalesIds}
-                placeholder="Search salespeople…"
+                id={salesIds[0] ?? null}
+                setId={(id) => setSalesIds(id == null ? [] : [id])}
+                placeholder="Select salesperson…"
               />
             </div>
             <div>
@@ -841,41 +842,31 @@ function JobDetailsSection({
               />
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label className="block text-xs font-bold text-zinc-500 mb-2">
-                Lead Source
-              </Label>
-              <div className="flex flex-wrap gap-x-4 gap-y-2">
-                {LEAD_METHODS.map((m) => (
-                  <Label
-                    key={m}
-                    className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold"
-                  >
-                    {/* Native <input type="radio"> kept (no Radio primitive). */}
-                    <input
-                      type="radio"
-                      name="lead-source-method"
-                      value={m}
-                      checked={leadSource === m}
-                      onChange={() => setLeadSource(m)}
-                      className="rounded-full border-line-strong text-white focus:ring-zinc-500"
-                    />
-                    {m}
-                  </Label>
-                ))}
-              </div>
-            </div>
-            <div className="flex items-end">
-              <Label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">
+          <div className="flex flex-wrap gap-x-4 gap-y-2 pt-1">
+            {LEAD_METHODS.map((m) => (
+              <Label
+                key={m}
+                className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold"
+              >
+                {/* Checkbox primitive used as a single-select toggle so the
+                    lead-method row visually matches the Anytime / Schedule
+                    later checkboxes elsewhere. */}
                 <Checkbox
-                  checked={recurring}
-                  onCheckedChange={(c) => setRecurring(c === true)}
+                  checked={leadSource === m}
+                  onCheckedChange={(c) => setLeadSource(c === true ? m : "")}
                   className="rounded border-line-strong text-white focus:ring-zinc-500"
                 />
-                Recurring service
+                {m}
               </Label>
-            </div>
+            ))}
+            <Label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">
+              <Checkbox
+                checked={recurring}
+                onCheckedChange={(c) => setRecurring(c === true)}
+                className="rounded border-line-strong text-white focus:ring-zinc-500"
+              />
+              Recurring service
+            </Label>
           </div>
         </div>
       )}
