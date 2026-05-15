@@ -739,7 +739,7 @@ function Stat({
 }) {
   return (
     <Card className="px-5 py-4">
-      <p className="text-[13px] font-bold text-zinc-500">
+      <p className="text-[14px] font-semibold text-zinc-500">
         {label}
       </p>
       <p
