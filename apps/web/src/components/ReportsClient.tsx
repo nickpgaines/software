@@ -581,11 +581,11 @@ function JobStatCard({
   return (
     <div className="bg-card border border-line rounded-2xl px-5 py-4">
       <div className="text-[14px] font-semibold text-zinc-500">{label}</div>
-      <div className="mt-2 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
+      <div className="mt-2.5 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
         {hasCount ? count : money(amountCents)}
       </div>
       {hasCount && (
-        <div className="mt-2 text-[14px] font-semibold text-zinc-400 tabular-nums">
+        <div className="mt-2.5 text-[14px] font-semibold text-zinc-400 tabular-nums">
           {money(amountCents)}
         </div>
       )}
@@ -759,11 +759,11 @@ function BigStatCard({
         </div>
         {action}
       </div>
-      <div className="mt-2 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
+      <div className="mt-2.5 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
         {value}
       </div>
       {sub && (
-        <div className="mt-2 text-[14px] font-semibold text-zinc-400 tabular-nums truncate">
+        <div className="mt-2.5 text-[14px] font-semibold text-zinc-400 tabular-nums truncate">
           {sub}
         </div>
       )}
@@ -1103,10 +1103,10 @@ function SalesValueCard({
   return (
     <div className="bg-card border border-line rounded-2xl px-5 py-4">
       <div className="text-[14px] font-semibold text-zinc-500">{label}</div>
-      <div className="mt-2 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
+      <div className="mt-2.5 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
         {value}
       </div>
-      <div className="mt-2 text-[14px] font-semibold text-zinc-400 leading-tight truncate">
+      <div className="mt-2.5 text-[14px] font-semibold text-zinc-400 leading-tight truncate">
         {description}
       </div>
     </div>
@@ -1383,13 +1383,13 @@ function StatCard({
       <div className="text-[14px] font-semibold text-zinc-500">{label}</div>
       <div
         className={
-          "mt-2 text-[28px] font-extrabold tracking-tight leading-none tabular-nums " +
+          "mt-2.5 text-[28px] font-extrabold tracking-tight leading-none tabular-nums " +
           (valueClassName || "text-white")
         }
       >
         {value}
       </div>
-      <div className="mt-2 text-[14px] font-semibold text-zinc-400 leading-tight truncate">
+      <div className="mt-2.5 text-[14px] font-semibold text-zinc-400 leading-tight truncate">
         {description}
       </div>
     </div>
@@ -1492,10 +1492,10 @@ function Stats({
           <div className="text-[14px] font-semibold text-zinc-500">
             {it.label}
           </div>
-          <div className="mt-2 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
+          <div className="mt-2.5 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
             {it.value}
           </div>
-          <div className="mt-2 text-[14px] font-semibold text-zinc-400 leading-tight truncate">
+          <div className="mt-2.5 text-[14px] font-semibold text-zinc-400 leading-tight truncate">
             {it.description}
           </div>
         </div>

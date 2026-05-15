@@ -79,11 +79,11 @@ export function CompactHeroKpi({
           {delta}
         </span>
       </div>
-      <div className="mt-2 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
+      <div className="mt-2.5 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
         {value}
       </div>
       {subLabel && (
-        <div className="mt-2 text-[14px] font-semibold text-zinc-400">
+        <div className="mt-2.5 text-[14px] font-semibold text-zinc-400">
           {subLabel}
         </div>
       )}
