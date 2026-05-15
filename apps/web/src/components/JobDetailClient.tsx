@@ -7,6 +7,9 @@ import PaymentsSection from "@/components/jobs/PaymentsSection";
 import RecordPaymentModal from "@/components/jobs/RecordPaymentModal";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 
 type Detail = {
   id: number;
@@ -614,6 +617,11 @@ export default function JobDetailClient({
                 ))}
               </ul>
             )}
+            <AddLineItem
+              existing={job.line_items}
+              jobId={job.id}
+              onAdded={refreshJob}
+            />
             <TotalsPanel
               subtotalCents={subtotal}
               totalCents={job.price_cents}
@@ -664,6 +672,224 @@ export default function JobDetailClient({
         />
       )}
     </div>
+  );
+}
+
+function AddLineItem({
+  existing,
+  jobId,
+  onAdded,
+}: {
+  existing: Detail["line_items"];
+  jobId: number;
+  onAdded: () => Promise<void> | void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [quantity, setQuantity] = useState("1");
+  const [price, setPrice] = useState("");
+  const [taxable, setTaxable] = useState(false);
+  const [upsell, setUpsell] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function reset() {
+    setTitle("");
+    setDescription("");
+    setQuantity("1");
+    setPrice("");
+    setTaxable(false);
+    setUpsell(true);
+    setError(null);
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    const trimmedTitle = title.trim();
+    if (!trimmedTitle) {
+      setError("Title is required.");
+      return;
+    }
+    const qty = Number(quantity);
+    if (!Number.isFinite(qty) || qty <= 0) {
+      setError("Quantity must be greater than 0.");
+      return;
+    }
+    const priceNum = Number(price);
+    if (!Number.isFinite(priceNum) || priceNum < 0) {
+      setError("Price must be 0 or greater.");
+      return;
+    }
+    const priceCents = Math.round(priceNum * 100);
+    const body = {
+      line_items: [
+        ...existing.map((li) => ({
+          title: li.title,
+          description: li.description,
+          quantity: li.quantity,
+          price_cents: li.price_cents,
+          taxable: li.taxable,
+          upsell: li.upsell,
+        })),
+        {
+          title: trimmedTitle,
+          description: description.trim() || null,
+          quantity: qty,
+          price_cents: priceCents,
+          taxable,
+          upsell,
+        },
+      ],
+    };
+    setSaving(true);
+    const res = await fetch(`/api/jobs/${jobId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    setSaving(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setError(
+        typeof data?.error === "string" ? data.error : "Failed to add line item.",
+      );
+      return;
+    }
+    reset();
+    setOpen(false);
+    await onAdded();
+  }
+
+  if (!open) {
+    return (
+      <div className="mt-4">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => setOpen(true)}
+          className="text-sm border border-line bg-card hover:bg-black rounded-full px-4 py-2 h-auto text-zinc-300"
+        >
+          + Add line item
+        </Button>
+      </div>
+    );
+  }
+
+  const itemTotal =
+    Math.round((Number(quantity) || 0) * (Number(price) || 0) * 100) || 0;
+
+  return (
+    <form
+      onSubmit={submit}
+      className="mt-4 border border-line rounded-2xl p-4 space-y-4"
+    >
+      <div>
+        <Label className="block text-xs font-bold text-zinc-500 mb-1 font-normal">
+          Title
+        </Label>
+        <Input
+          type="text"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          placeholder="e.g. Gutter"
+          className="w-full border-line rounded-full px-4 py-2 text-sm h-auto"
+          autoFocus
+          required
+        />
+      </div>
+      <div>
+        <Label className="block text-xs font-bold text-zinc-500 mb-1 font-normal">
+          Description
+        </Label>
+        <Textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={2}
+          placeholder="Item description (optional)"
+          maxLength={500}
+          className="w-full border-line rounded-2xl px-4 py-2 text-sm h-auto"
+        />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label className="block text-xs font-bold text-zinc-500 mb-1 font-normal">
+            Quantity
+          </Label>
+          <Input
+            type="number"
+            min={0}
+            step="1"
+            value={quantity}
+            onChange={(e) => setQuantity(e.target.value)}
+            className="w-full border-line rounded-full px-4 py-2 text-sm h-auto"
+          />
+        </div>
+        <div>
+          <Label className="block text-xs font-bold text-zinc-500 mb-1 font-normal">
+            Price ($)
+          </Label>
+          <Input
+            type="number"
+            min={0}
+            step="0.01"
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
+            placeholder="0.00"
+            className="w-full border-line rounded-full px-4 py-2 text-sm h-auto"
+          />
+        </div>
+      </div>
+      <div className="flex flex-wrap items-center gap-4 text-sm">
+        <Label className="inline-flex items-center gap-2 font-normal">
+          <Checkbox
+            checked={taxable}
+            onCheckedChange={(c) => setTaxable(c === true)}
+            className="rounded border-line-strong text-white focus:ring-zinc-500"
+          />
+          Taxable
+        </Label>
+        <Label className="inline-flex items-center gap-2 font-normal">
+          <Checkbox
+            checked={upsell}
+            onCheckedChange={(c) => setUpsell(c === true)}
+            className="rounded border-line-strong text-white focus:ring-zinc-500"
+          />
+          Upsell
+        </Label>
+        <div className="ml-auto text-sm text-zinc-400 font-bold">
+          Item total:{" "}
+          <span className="font-extrabold text-white tracking-tight ml-1">
+            {money(itemTotal)}
+          </span>
+        </div>
+      </div>
+      {error && (
+        <p className="text-sm text-rose-500 font-bold">{error}</p>
+      )}
+      <div className="flex gap-2 justify-end">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={() => {
+            reset();
+            setOpen(false);
+          }}
+          disabled={saving}
+          className="text-sm border border-line bg-card hover:bg-black rounded-full px-4 py-2 h-auto text-zinc-300"
+        >
+          Cancel
+        </Button>
+        <Button
+          type="submit"
+          disabled={saving}
+          className="text-sm rounded-full px-4 py-2 h-auto"
+        >
+          {saving ? "Adding…" : "Add line item"}
+        </Button>
+      </div>
+    </form>
   );
 }
 
