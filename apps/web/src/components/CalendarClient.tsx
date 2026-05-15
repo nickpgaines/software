@@ -17,6 +17,7 @@ import {
   techSwatchClass,
   FULL_SCHEDULE_PERMISSIONS,
 } from "@/lib/technicianColors";
+import { PulseIcon } from "@/components/pulse/Icon";
 
 type Job = {
   id: number;
@@ -1284,15 +1285,9 @@ function HoverAddPopover({
       className="absolute left-1 right-1 pointer-events-none"
       style={{ top: `${top}px`, height: `${ghostHeight}px` }}
     >
-      {/* Two-layer fill: a solid bg-primary div with opacity-30 sits
-          behind the content. We can't use bg-primary/30 directly
-          because Pulse stores --primary as a hex var (per tailwind.config
-          comment), which Tailwind's slash-opacity doesn't compose with.
-          Splitting opacity onto its own layer keeps the text/border at
-          full opacity while the fill renders as a translucent accent. */}
       <div className="absolute inset-0 rounded-md border border-dashed border-primary overflow-hidden">
         <div className="absolute inset-0 bg-primary opacity-30" />
-        <div className="relative px-2 py-1 text-[11px] font-bold text-primary">
+        <div className="relative px-2 py-1 text-[11px] font-bold text-fg">
           {startLabel} – {endLabel}
         </div>
       </div>
@@ -1300,59 +1295,25 @@ function HoverAddPopover({
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-primary text-primary-foreground border border-primary rounded-full px-5 py-2 text-sm font-bold hover:opacity-90 shadow-lg pointer-events-auto"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card text-fg border border-line rounded-full px-5 py-2 text-sm font-bold hover:opacity-90 shadow-lg pointer-events-auto"
           >
             + New
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" sideOffset={6} className="w-56">
           <DropdownMenuLabel className="flex items-center gap-2">
-            <svg
-              className="w-4 h-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
-            </svg>
+            <PulseIcon name="calendar" />
             <span>Add to {dateLabel}</span>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuItem asChild>
             <Link href={href} className="flex items-center gap-2 cursor-pointer">
-              <svg
-                className="w-4 h-4 text-blue-400"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z" />
-              </svg>
+              <PulseIcon name="wrench" />
               <span>New Job</span>
             </Link>
           </DropdownMenuItem>
           <DropdownMenuItem disabled className="flex items-center gap-2">
-            <svg
-              className="w-4 h-4 text-amber-400"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M9 11l3 3L22 4" />
-              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11" />
-            </svg>
+            <PulseIcon name="task" />
             <span>New Task</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
