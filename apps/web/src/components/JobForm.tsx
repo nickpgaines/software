@@ -501,39 +501,45 @@ export default function JobForm({
 
       <Section title="Scheduling">
         <div className="space-y-3">
-          <div className="grid grid-cols-1 sm:grid-cols-[80px_1fr_1fr] items-center gap-3">
-            <Label className="text-xs font-bold text-zinc-500">Start</Label>
-            <Input
-              type="date"
-              value={startDate}
-              onChange={(e) => applyNewStart(e.target.value, startTime)}
-              disabled={scheduleLater}
-              className="border-line rounded-full px-4 py-2 text-sm bg-card disabled:bg-black h-auto"
-            />
-            <Input
-              type="time"
-              value={startTime}
-              onChange={(e) => applyNewStart(startDate, e.target.value)}
-              disabled={scheduleLater || anytime}
-              className="border-line rounded-full px-4 py-2 text-sm bg-card disabled:bg-black h-auto"
-            />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-[80px_1fr_1fr] items-center gap-3">
-            <Label className="text-xs font-bold text-zinc-500">End</Label>
-            <Input
-              type="date"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              disabled={scheduleLater}
-              className="border-line rounded-full px-4 py-2 text-sm bg-card disabled:bg-black h-auto"
-            />
-            <Input
-              type="time"
-              value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
-              disabled={scheduleLater || anytime}
-              className="border-line rounded-full px-4 py-2 text-sm bg-card disabled:bg-black h-auto"
-            />
+          <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+            <div className="flex items-center gap-2">
+              <Label className="text-xs font-bold text-zinc-500 w-10 shrink-0">
+                Start
+              </Label>
+              <PickerInput
+                type="date"
+                value={startDate}
+                onChange={(e) => applyNewStart(e.target.value, startTime)}
+                disabled={scheduleLater}
+                className="w-[150px]"
+              />
+              <PickerInput
+                type="time"
+                value={startTime}
+                onChange={(e) => applyNewStart(startDate, e.target.value)}
+                disabled={scheduleLater || anytime}
+                className="w-[110px]"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <Label className="text-xs font-bold text-zinc-500 w-8 shrink-0">
+                End
+              </Label>
+              <PickerInput
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                disabled={scheduleLater}
+                className="w-[150px]"
+              />
+              <PickerInput
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                disabled={scheduleLater || anytime}
+                className="w-[110px]"
+              />
+            </div>
           </div>
           <div className="flex flex-wrap gap-4 pt-1">
             <Label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">
@@ -557,13 +563,13 @@ export default function JobForm({
       </Section>
 
       <Section title="Assignment">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           <Field label="Lead Source">
             {/* Native <select> kept: empty-string sentinel value for "Select source…" */}
             <select
               value={leadSource}
               onChange={(e) => setLeadSource(e.target.value)}
-              className="w-full border border-line rounded-full px-4 py-2 text-sm bg-card"
+              className="w-full border border-line rounded-full px-3 py-1.5 text-sm bg-card"
             >
               <option value="">Select source…</option>
               {LEAD_SOURCES.map((s) => (
@@ -720,6 +726,34 @@ export default function JobForm({
         </Button>
       </div>
     </form>
+  );
+}
+
+export function PickerInput({
+  className,
+  ...props
+}: React.InputHTMLAttributes<HTMLInputElement>) {
+  // Click-anywhere date/time input. The native picker only opens via the
+  // (now-hidden) calendar/clock indicator, so we trigger showPicker() on
+  // the whole input. Disabled inputs skip the call.
+  return (
+    <Input
+      {...props}
+      onMouseDown={(e) => {
+        if (props.disabled) return;
+        const el = e.currentTarget as HTMLInputElement & {
+          showPicker?: () => void;
+        };
+        if (typeof el.showPicker === "function") {
+          e.preventDefault();
+          el.focus();
+          el.showPicker();
+        }
+      }}
+      className={`input-picker border-line rounded-full px-3 py-1.5 text-sm bg-card disabled:bg-black h-auto ${
+        className ?? ""
+      }`}
+    />
   );
 }
 
