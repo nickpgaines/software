@@ -487,7 +487,7 @@ export default function JobForm({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
         <Section title="Scheduling">
           <div className="space-y-3">
-            <Field label="Start">
+            <Field label="Start Date & Time">
               <div className="flex items-center gap-2">
                 <PickerInput
                   type="date"
@@ -505,7 +505,7 @@ export default function JobForm({
                 />
               </div>
             </Field>
-            <Field label="End">
+            <Field label="End Date & Time">
               <div className="flex items-center gap-2">
                 <PickerInput
                   type="date"
@@ -547,11 +547,11 @@ export default function JobForm({
         <Section title="Assignment">
           <div className="space-y-3">
             <Field label="Lead Source">
-              <StaffMultiPicker
+              <StaffSinglePicker
                 staff={staff}
-                ids={salesIds}
-                setIds={setSalesIds}
-                placeholder="Search salespeople…"
+                id={salesIds[0] ?? null}
+                setId={(id) => setSalesIds(id == null ? [] : [id])}
+                placeholder="Select salesperson…"
               />
             </Field>
             <Field label="Dispatched To">
@@ -568,14 +568,14 @@ export default function JobForm({
                   key={m}
                   className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold"
                 >
-                  {/* Native <input type="radio"> kept (no Radio primitive). */}
-                  <input
-                    type="radio"
-                    name="lead-source-method"
-                    value={m}
+                  {/* Checkbox primitive used as a single-select toggle so the
+                      lead-method row visually matches the Anytime / Schedule
+                      later checkboxes in the Scheduling widget. Selecting
+                      one clears the others. */}
+                  <Checkbox
                     checked={leadSource === m}
-                    onChange={() => setLeadSource(m)}
-                    className="rounded-full border-line-strong text-white focus:ring-zinc-500"
+                    onCheckedChange={(c) => setLeadSource(c === true ? m : "")}
+                    className="rounded border-line-strong text-white focus:ring-zinc-500"
                   />
                   {m}
                 </Label>
@@ -947,6 +947,104 @@ function NewCustomerInline({
           Save customer
         </Button>
       </div>
+    </div>
+  );
+}
+
+export function StaffSinglePicker({
+  staff,
+  id,
+  setId,
+  placeholder,
+}: {
+  staff: Staff[];
+  id: number | null;
+  setId: (id: number | null) => void;
+  placeholder: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const selected = id == null ? null : staff.find((s) => s.id === id) ?? null;
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="h-9 w-full flex items-center justify-between gap-2 border border-line rounded-full px-3 bg-card text-sm font-bold text-left"
+      >
+        <span className={selected ? "text-white" : "text-zinc-500"}>
+          {selected ? selected.name : placeholder}
+        </span>
+        <span className="flex items-center gap-2 text-zinc-500 shrink-0">
+          {selected && (
+            <span
+              role="button"
+              tabIndex={0}
+              aria-label={`Clear ${selected.name}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setId(null);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setId(null);
+                }
+              }}
+              className="hover:text-white"
+            >
+              ×
+            </span>
+          )}
+          <svg
+            className="w-3 h-3"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="6 9 12 15 18 9" />
+          </svg>
+        </span>
+      </button>
+      {open && staff.length > 0 && (
+        <div className="absolute z-20 left-0 right-0 mt-1 bg-card border border-line rounded-2xl shadow-lg overflow-hidden">
+          {staff.map((s) => (
+            <Button
+              key={s.id}
+              type="button"
+              onClick={() => {
+                setId(s.id);
+                setOpen(false);
+              }}
+              variant="ghost"
+              className="w-full text-left px-4 py-2 hover:bg-black text-sm flex items-center justify-between h-auto rounded-none"
+            >
+              <span className="font-bold text-white tracking-tight">
+                {s.name}
+              </span>
+              {s.role && (
+                <span className="text-xs font-bold text-zinc-500">
+                  {s.role}
+                </span>
+              )}
+            </Button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
