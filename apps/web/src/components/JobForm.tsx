@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import CustomerCard from "@/components/jobs/CustomerCard";
 import AddressFields, {
   EMPTY_ADDRESS,
@@ -161,6 +161,7 @@ export default function JobForm({
   job?: ExistingJob;
 }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -174,8 +175,17 @@ export default function JobForm({
       .then(setStaff);
   }, []);
 
+  // Calendar hover-to-add hands us ?start=<iso>&tech=<id> so the new
+  // job lands in the slot the user clicked. Only consulted on create.
+  const prefillStartIso = !job ? searchParams?.get("start") ?? null : null;
+  const prefillTechId = !job
+    ? Number(searchParams?.get("tech") ?? "") || null
+    : null;
+
   const initialStart = job
     ? { date: toDateInput(job.scheduled_at), time: toTimeInput(job.scheduled_at) }
+    : prefillStartIso
+    ? { date: toDateInput(prefillStartIso), time: toTimeInput(prefillStartIso) }
     : defaultStart();
   const initialEnd = job?.end_time
     ? { date: toDateInput(job.end_time), time: toTimeInput(job.end_time) }
@@ -214,7 +224,7 @@ export default function JobForm({
     job?.sales.map((s) => s.id) ?? []
   );
   const [techIds, setTechIds] = useState<number[]>(
-    job?.techs.map((s) => s.id) ?? []
+    job?.techs.map((s) => s.id) ?? (prefillTechId ? [prefillTechId] : [])
   );
 
   const [items, setItems] = useState<LineItem[]>(
