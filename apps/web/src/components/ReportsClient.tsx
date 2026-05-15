@@ -115,13 +115,15 @@ function CountDonut({
   segments,
   total,
   centerLabel = "Jobs",
+  className = "h-44",
 }: {
   segments: { name: string; value: number; color: string }[];
   total: number;
   centerLabel?: string;
+  className?: string;
 }) {
   return (
-    <div className="relative w-full h-44">
+    <div className={`relative w-full ${className}`}>
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie
@@ -652,7 +654,7 @@ function MonthlyMrrChart({
     is_forecast: m.is_forecast,
   }));
   return (
-    <div className="bg-card border border-line rounded-2xl p-5 shadow-sm">
+    <div className="bg-card border border-line rounded-2xl p-5 shadow-sm flex flex-col">
       <div className="flex items-baseline justify-between gap-3">
         <div>
           <div className="text-sm font-extrabold text-white tracking-tight">
@@ -678,7 +680,7 @@ function MonthlyMrrChart({
           No subscription activity yet.
         </p>
       ) : (
-        <div className="mt-4 w-full h-44">
+        <div className="mt-4 w-full flex-1 min-h-0">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid stroke="#1f1f24" strokeDasharray="3 3" vertical={false} />
@@ -1410,7 +1412,7 @@ function SubscriptionsByTemplateDonut({
       color: SOURCE_COLORS[i % SOURCE_COLORS.length],
     }));
   return (
-    <div className="bg-card border border-line rounded-2xl px-5 py-5">
+    <div className="bg-card border border-line rounded-2xl px-5 py-5 flex flex-col">
       <div className="text-sm font-extrabold text-white tracking-tight mb-3">
         Active Subscriptions by Template
       </div>
@@ -1419,36 +1421,12 @@ function SubscriptionsByTemplateDonut({
           No active subscriptions yet.
         </p>
       ) : (
-        <div className="space-y-4">
-          <CountDonut segments={segments} total={total} centerLabel="Active" />
-          <div className="space-y-2">
-            {segments.map((s) => {
-              const p = total > 0 ? (s.value / total) * 100 : 0;
-              return (
-                <div
-                  key={s.name}
-                  className="flex items-center justify-between gap-3 text-sm"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <span
-                      className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
-                      style={{ background: s.color }}
-                    />
-                    <span className="font-bold text-white truncate">
-                      {s.name}
-                    </span>
-                  </div>
-                  <div className="flex items-baseline gap-2 shrink-0 tabular-nums">
-                    <span className="text-zinc-300 font-bold">{s.value}</span>
-                    <span className="text-xs font-bold text-zinc-500">
-                      {p.toFixed(1)}%
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
+        <CountDonut
+          segments={segments}
+          total={total}
+          centerLabel="Active"
+          className="flex-1 min-h-0"
+        />
       )}
     </div>
   );
