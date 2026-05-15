@@ -488,16 +488,8 @@ function NowLine({ now }: { now: Date }) {
       style={{ top: `${top}px` }}
     >
       <div className="flex items-center">
-        <span className="-ml-12 w-12 text-right pr-2 text-[10px] font-bold text-primary">
-          {now.toLocaleTimeString(undefined, {
-            hour: "numeric",
-            minute: "2-digit",
-          })}
-        </span>
-        <div className="flex-1 flex items-center">
-          <span className="w-2 h-2 rounded-full bg-primary" />
-          <div className="flex-1 h-px bg-primary" />
-        </div>
+        <span className="w-2 h-2 rounded-full bg-primary" />
+        <div className="flex-1 h-px bg-primary" />
       </div>
     </div>
   );
@@ -1292,8 +1284,8 @@ function HoverAddPopover({
       className="absolute left-1 right-1 pointer-events-none"
       style={{ top: `${top}px`, height: `${ghostHeight}px` }}
     >
-      <div className="absolute inset-0 rounded-md border border-dashed border-primary bg-primary/10">
-        <div className="px-2 py-1 text-[11px] font-bold text-primary/90">
+      <div className="absolute inset-0 rounded-md border border-dashed border-primary bg-primary/20">
+        <div className="px-2 py-1 text-[11px] font-bold text-primary">
           {startLabel} – {endLabel}
         </div>
       </div>
