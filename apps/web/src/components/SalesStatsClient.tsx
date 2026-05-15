@@ -378,21 +378,13 @@ function Kpi({
   help?: string;
 }) {
   return (
-    <div
-      className="rounded-2xl px-5 py-4"
-      style={{
-        background: PULSE.card,
-        border: `1px solid ${PULSE.cardBorder}`,
-      }}
-    >
-      <div className="text-[13px] font-bold mb-2 text-zinc-500">
-        {label}
-      </div>
-      <div className="text-[28px] font-extrabold tracking-tight leading-none tabular-nums">
+    <div className="bg-card border border-line rounded-2xl px-5 py-4">
+      <div className="text-[13px] font-bold text-zinc-500">{label}</div>
+      <div className="mt-2 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
         {value}
       </div>
       {help ? (
-        <div className="text-[13px] font-bold mt-2 text-zinc-400">
+        <div className="mt-2 text-[13px] font-bold text-zinc-400">
           {help}
         </div>
       ) : null}

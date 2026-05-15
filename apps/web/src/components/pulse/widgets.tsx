@@ -64,10 +64,7 @@ export function CompactHeroKpi({
   subLabel?: string;
 }) {
   return (
-    <div
-      className="rounded-2xl px-5 py-4"
-      style={{ background: PULSE.card, border: `1px solid ${PULSE.cardBorder}` }}
-    >
+    <div className="bg-card border border-line rounded-2xl px-5 py-4">
       <div className="flex items-start justify-between gap-4">
         <div className="text-[13px] font-bold text-zinc-500">
           {label}
@@ -82,7 +79,7 @@ export function CompactHeroKpi({
           {delta}
         </span>
       </div>
-      <div className="mt-3 text-[28px] font-extrabold tracking-tight leading-none tabular-nums">
+      <div className="mt-2 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
         {value}
       </div>
       {subLabel && (
