@@ -92,13 +92,7 @@ const INTERVAL_PERIOD_LABEL: Record<string, string> = {
   yearly: "annually",
 };
 
-const LEAD_SOURCES = [
-  "Referral",
-  "Online",
-  "Door-to-door",
-  "Repeat customer",
-  "Other",
-];
+const LEAD_METHODS = ["Online", "Direct", "Other"] as const;
 
 type Step = "en_route" | "arrived" | "started" | "completed";
 
@@ -852,19 +846,25 @@ function JobDetailsSection({
               <Label className="block text-xs font-bold text-zinc-500 mb-2">
                 Lead Source
               </Label>
-              {/* Native <select> kept: empty-string sentinel value for "Select source…" */}
-              <select
-                value={leadSource}
-                onChange={(e) => setLeadSource(e.target.value)}
-                className="w-full border border-line rounded-full px-4 py-2 text-sm bg-card"
-              >
-                <option value="">Select source…</option>
-                {LEAD_SOURCES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
+              <div className="flex flex-wrap gap-x-4 gap-y-2">
+                {LEAD_METHODS.map((m) => (
+                  <Label
+                    key={m}
+                    className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold"
+                  >
+                    {/* Native <input type="radio"> kept (no Radio primitive). */}
+                    <input
+                      type="radio"
+                      name="lead-source-method"
+                      value={m}
+                      checked={leadSource === m}
+                      onChange={() => setLeadSource(m)}
+                      className="rounded-full border-line-strong text-white focus:ring-zinc-500"
+                    />
+                    {m}
+                  </Label>
                 ))}
-              </select>
+              </div>
             </div>
             <div className="flex items-end">
               <Label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">

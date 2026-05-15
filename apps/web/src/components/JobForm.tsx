@@ -45,13 +45,7 @@ type ChecklistItem = {
   completed: boolean;
 };
 
-const LEAD_SOURCES = [
-  "Referral",
-  "Online",
-  "Door-to-door",
-  "Repeat customer",
-  "Other",
-];
+const LEAD_METHODS = ["Online", "Direct", "Other"] as const;
 
 const SERVICE_PRESETS = [
   "Window Cleaning",
@@ -564,21 +558,6 @@ export default function JobForm({
         <Section title="Assignment">
           <div className="space-y-3">
             <Field label="Lead Source">
-              {/* Native <select> kept: empty-string sentinel value for "Select source…" */}
-              <select
-                value={leadSource}
-                onChange={(e) => setLeadSource(e.target.value)}
-                className="w-full border border-line rounded-full px-3 py-1.5 text-sm bg-card"
-              >
-                <option value="">Select source…</option>
-                {LEAD_SOURCES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Select Salesperson(s)">
               <StaffMultiPicker
                 staff={staff}
                 ids={salesIds}
@@ -594,6 +573,25 @@ export default function JobForm({
                 placeholder="Search technicians…"
               />
             </Field>
+            <div className="flex flex-wrap gap-x-4 gap-y-2 pt-1">
+              {LEAD_METHODS.map((m) => (
+                <Label
+                  key={m}
+                  className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold"
+                >
+                  {/* Native <input type="radio"> kept (no Radio primitive). */}
+                  <input
+                    type="radio"
+                    name="lead-source-method"
+                    value={m}
+                    checked={leadSource === m}
+                    onChange={() => setLeadSource(m)}
+                    className="rounded-full border-line-strong text-white focus:ring-zinc-500"
+                  />
+                  {m}
+                </Label>
+              ))}
+            </div>
           </div>
         </Section>
       </div>
@@ -750,7 +748,7 @@ export function PickerInput({
           el.showPicker();
         }
       }}
-      className={`input-picker border-line rounded-full px-3 py-1.5 text-sm bg-card disabled:bg-black h-auto ${
+      className={`input-picker border-line rounded-full px-3 text-sm bg-card disabled:bg-black h-9 ${
         className ?? ""
       }`}
     />
@@ -1040,7 +1038,7 @@ export function StaffMultiPicker({
 
   return (
     <div ref={ref} className="relative">
-      <div className="min-h-[42px] flex flex-wrap items-center gap-1.5 border border-line rounded-2xl px-2 py-1.5 bg-card">
+      <div className="min-h-9 flex flex-wrap items-center gap-1.5 border border-line rounded-full px-2 py-1 bg-card">
         {picked.map((s) => (
           <span
             key={s.id}
