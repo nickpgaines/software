@@ -381,3 +381,16 @@ html[data-theme="light"] textarea:-webkit-autofill:active {
   -webkit-text-fill-color: var(--color-fg) !important;
   caret-color: var(--color-fg) !important;
 }
+
+
+/* Date/time inputs styled as click-anywhere "button" pickers.
+   Hides the native calendar/clock indicator so the whole control is the
+   trigger. JS calls input.showPicker() on click. */
+.input-picker::-webkit-calendar-picker-indicator {
+  display: none;
+  -webkit-appearance: none;
+  appearance: none;
+}
+.input-picker {
+  cursor: pointer;
+}

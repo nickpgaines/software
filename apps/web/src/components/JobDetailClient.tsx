@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import PaymentsSection from "@/components/jobs/PaymentsSection";
 import RecordPaymentModal from "@/components/jobs/RecordPaymentModal";
-import { StaffMultiPicker, type Staff } from "@/components/JobForm";
+import {
+  PickerInput,
+  StaffMultiPicker,
+  type Staff,
+} from "@/components/JobForm";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -771,38 +775,44 @@ function JobDetailsSection({
       ) : (
         <div className="space-y-4">
           <div className="space-y-3">
-            <div className="grid grid-cols-1 sm:grid-cols-[80px_1fr_1fr] items-center gap-3">
-              <Label className="text-xs font-bold text-zinc-500">Start</Label>
-              <Input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="border-line rounded-full px-4 py-2 text-sm bg-card h-auto"
-              />
-              <Input
-                type="time"
-                value={startTime}
-                onChange={(e) => setStartTime(e.target.value)}
-                disabled={anytime}
-                className="border-line rounded-full px-4 py-2 text-sm bg-card disabled:bg-black h-auto"
-              />
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-[80px_1fr_1fr] items-center gap-3">
-              <Label className="text-xs font-bold text-zinc-500">End</Label>
-              <Input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                disabled={anytime}
-                className="border-line rounded-full px-4 py-2 text-sm bg-card disabled:bg-black h-auto"
-              />
-              <Input
-                type="time"
-                value={endTime}
-                onChange={(e) => setEndTime(e.target.value)}
-                disabled={anytime}
-                className="border-line rounded-full px-4 py-2 text-sm bg-card disabled:bg-black h-auto"
-              />
+            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+              <div className="flex items-center gap-2">
+                <Label className="text-xs font-bold text-zinc-500 w-10 shrink-0">
+                  Start
+                </Label>
+                <PickerInput
+                  type="date"
+                  value={startDate}
+                  onChange={(e) => setStartDate(e.target.value)}
+                  className="w-[150px]"
+                />
+                <PickerInput
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  disabled={anytime}
+                  className="w-[110px]"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <Label className="text-xs font-bold text-zinc-500 w-8 shrink-0">
+                  End
+                </Label>
+                <PickerInput
+                  type="date"
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  disabled={anytime}
+                  className="w-[150px]"
+                />
+                <PickerInput
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  disabled={anytime}
+                  className="w-[110px]"
+                />
+              </div>
             </div>
             <Label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">
               <Checkbox
