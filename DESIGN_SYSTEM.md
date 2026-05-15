@@ -255,7 +255,7 @@ Every value below is taken from running code. The dashboard does not use
 | **KPI value — Compact**      | `text-[26px] font-black tracking-tight leading-none tabular-nums`                     | 26px / weight 900                                         | `widgets.tsx` CompactHeroKpi                |
 | **KPI value — stat card**    | `text-[32px] font-bold tracking-tight leading-none tabular-nums` (compact: `text-[24px]`) | 32px / weight 700 (compact 24px)                          | `ReportsClient.tsx` JobStatCard, StatCard, SalesValueCard |
 | **KPI value — stat secondary** | `text-[26px] font-bold tracking-tight leading-none tabular-nums`                    | 26px / weight 700                                         | `ReportsClient.tsx` BigStatCard, `Stats` row|
-| **Stat card description**    | `text-[13px] font-bold text-zinc-400 leading-snug` (compact: `text-xs`)               | 13px / weight 700 / lh 1.375                              | `ReportsClient.tsx` JobStatCard, StatCard, SalesValueCard, BigStatCard, `Stats` row description |
+| **Stat card description**    | `text-[14px] font-semibold text-zinc-400 leading-snug` (compact: `text-xs`)               | 13px / weight 700 / lh 1.375                              | `ReportsClient.tsx` JobStatCard, StatCard, SalesValueCard, BigStatCard, `Stats` row description |
 | **Range pill label**         | `text-[11.5px] font-extrabold`                                                        | 11.5px / weight 800                                       | `widgets.tsx:446`                           |
 | **`CardHeaderLink`**         | `text-[11.5px] font-extrabold` (color = `PULSE.violetSoft`)                          | 11.5px / weight 800                                       | `CardHeaderLink` in `widgets.tsx`           |
 | **Sidebar nav row**          | `text-[13.5px] font-bold` (idle) / `font-extrabold` (active)                          | 13.5px                                                    | `Sidebar.tsx:226`                           |
@@ -295,7 +295,7 @@ Use these wherever a small gray supporting label used to be uppercase.
 - **Page section heading** — `text-[22px] font-extrabold tracking-tight text-fg`.
   No description / subtitle line beneath (see §10 #25).
 - **Stat-card / KPI top label** (e.g. "Scheduled", "Close Rate",
-  "Cash Collected", "Total ARR") — `text-[13px] font-bold text-zinc-500`.
+  "Cash Collected", "Total ARR") — `text-[14px] font-semibold text-zinc-500`.
   Always the literal Tailwind class `text-zinc-500` — do not use
   inline `PULSE.textSubtle` style for this token, so every stat card
   in the CRM resolves to exactly the same color value.
@@ -307,7 +307,7 @@ Use these wherever a small gray supporting label used to be uppercase.
   class — never the inline `PULSE.textMuted` / `PULSE.textDim` styles.
 - **Chart-card / dashboard hero eyebrow** (the "Revenue · This Month"
   label above the dashboard hero chart and similar chart-card labels)
-  uses the same top-label scale — `text-[13px] font-bold text-zinc-500`.
+  uses the same top-label scale — `text-[14px] font-semibold text-zinc-500`.
 - **Card sub-header, table column header, form-field label, legend chip,
   chart-tooltip date, donut-center label, "X unread" indicator** —
   `text-xs font-bold text-zinc-500` (use `text-zinc-400` if you need
@@ -324,12 +324,12 @@ inside a single shared wrapper:
 <<<<<<< HEAD
 ```jsx
 <div className="bg-card border border-line rounded-2xl px-5 py-4">
-  <div className="text-[13px] font-bold text-zinc-500">{label}</div>
+  <div className="text-[14px] font-semibold text-zinc-500">{label}</div>
   <div className="mt-2 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
     {value}
   </div>
   {bottom && (
-    <div className="mt-2 text-[13px] font-bold text-zinc-400">
+    <div className="mt-2 text-[14px] font-semibold text-zinc-400">
       {bottom}
     </div>
   )}
@@ -344,7 +344,7 @@ Rules:
    content. **No `flex flex-col` / `flex-1`** wrapper around the value
    — the value is not vertically centered, it sits 8 px below the
    label on a `mt-2`.
-2. **Top label** — `text-[13px] font-bold text-zinc-500`. Title Case.
+2. **Top label** — `text-[14px] font-semibold text-zinc-500`. Title Case.
 3. **Center value** — `text-[28px] font-extrabold tracking-tight
    leading-none tabular-nums text-white`. 8 px gap below the label
    (`mt-2`). 28 px / weight 800 / white on every stat card in the CRM
@@ -367,14 +367,14 @@ a delta — they're pure label / value / optional bottom-line stacks.
 If a Reports widget needs to show change, surface it in the bottom
 supporting line as plain text, not a colored pill.
 =======
-1. **Top label** — `text-[13px] font-bold text-zinc-500`. Title Case.
+1. **Top label** — `text-[14px] font-semibold text-zinc-500`. Title Case.
    Literal Tailwind class — no inline `PULSE.textSubtle` style.
 2. **Center value** — `text-[28px] font-extrabold tracking-tight
    leading-none tabular-nums text-white`. Same 28 px / weight 800 /
    white on every stat card in the CRM. The big number is the only
    line that uses `font-extrabold`; the two small lines both use
    `font-bold`.
-3. **Bottom supporting line** — `text-[13px] font-bold text-zinc-400`.
+3. **Bottom supporting line** — `text-[14px] font-semibold text-zinc-400`.
    Same size and weight as the top label, one tone brighter (zinc-400
    vs zinc-500). Literal Tailwind class — no inline `PULSE.textMuted` /
    `PULSE.textDim` style. One line only (see §10 #24); a card never has

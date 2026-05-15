@@ -159,7 +159,7 @@ function CountDonut({
         </PieChart>
       </ResponsiveContainer>
       <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-        <div className="text-[13px] font-bold text-zinc-500">
+        <div className="text-[14px] font-semibold text-zinc-500">
           {centerLabel}
         </div>
         <div className="text-lg font-black text-white tabular-nums tracking-tight">
@@ -537,7 +537,7 @@ function OverviewPanel({ qs }: { qs: string }) {
               <div className="text-sm font-bold text-white tracking-tight">
                 Top Salespeople
               </div>
-              <div className="text-[13px] font-bold text-zinc-500">Revenue</div>
+              <div className="text-[14px] font-semibold text-zinc-500">Revenue</div>
             </div>
             {(data.top_sales || []).length === 0 ? (
               <p className="py-10 text-sm text-zinc-500 text-center">
@@ -552,7 +552,7 @@ function OverviewPanel({ qs }: { qs: string }) {
               <div className="text-sm font-bold text-white tracking-tight">
                 Top Technicians
               </div>
-              <div className="text-[13px] font-bold text-zinc-500">Revenue</div>
+              <div className="text-[14px] font-semibold text-zinc-500">Revenue</div>
             </div>
             {(data.top_techs || []).length === 0 ? (
               <p className="py-10 text-sm text-zinc-500 text-center">
@@ -580,12 +580,12 @@ function JobStatCard({
   const hasCount = typeof count === "number";
   return (
     <div className="bg-card border border-line rounded-2xl px-5 py-4">
-      <div className="text-[13px] font-bold text-zinc-500">{label}</div>
+      <div className="text-[14px] font-semibold text-zinc-500">{label}</div>
       <div className="mt-2 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
         {hasCount ? count : money(amountCents)}
       </div>
       {hasCount && (
-        <div className="mt-2 text-[13px] font-bold text-zinc-400 tabular-nums">
+        <div className="mt-2 text-[14px] font-semibold text-zinc-400 tabular-nums">
           {money(amountCents)}
         </div>
       )}
@@ -754,7 +754,7 @@ function BigStatCard({
   return (
     <div className="bg-card border border-line rounded-2xl px-5 py-4">
       <div className="flex items-start justify-between gap-2">
-        <div className="text-[13px] font-bold text-zinc-500">
+        <div className="text-[14px] font-semibold text-zinc-500">
           {label}
         </div>
         {action}
@@ -763,7 +763,7 @@ function BigStatCard({
         {value}
       </div>
       {sub && (
-        <div className="mt-2 text-[13px] font-bold text-zinc-400 tabular-nums truncate">
+        <div className="mt-2 text-[14px] font-semibold text-zinc-400 tabular-nums truncate">
           {sub}
         </div>
       )}
@@ -1102,11 +1102,11 @@ function SalesValueCard({
 }) {
   return (
     <div className="bg-card border border-line rounded-2xl px-5 py-4">
-      <div className="text-[13px] font-bold text-zinc-500">{label}</div>
+      <div className="text-[14px] font-semibold text-zinc-500">{label}</div>
       <div className="mt-2 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
         {value}
       </div>
-      <div className="mt-2 text-[13px] font-bold text-zinc-400 leading-tight truncate">
+      <div className="mt-2 text-[14px] font-semibold text-zinc-400 leading-tight truncate">
         {description}
       </div>
     </div>
@@ -1380,7 +1380,7 @@ function StatCard({
 }) {
   return (
     <div className="bg-card border border-line rounded-2xl px-5 py-4">
-      <div className="text-[13px] font-bold text-zinc-500">{label}</div>
+      <div className="text-[14px] font-semibold text-zinc-500">{label}</div>
       <div
         className={
           "mt-2 text-[28px] font-extrabold tracking-tight leading-none tabular-nums " +
@@ -1389,7 +1389,7 @@ function StatCard({
       >
         {value}
       </div>
-      <div className="mt-2 text-[13px] font-bold text-zinc-400 leading-tight truncate">
+      <div className="mt-2 text-[14px] font-semibold text-zinc-400 leading-tight truncate">
         {description}
       </div>
     </div>
@@ -1489,13 +1489,13 @@ function Stats({
           key={it.label}
           className="bg-card border border-line rounded-2xl px-5 py-4"
         >
-          <div className="text-[13px] font-bold text-zinc-500">
+          <div className="text-[14px] font-semibold text-zinc-500">
             {it.label}
           </div>
           <div className="mt-2 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
             {it.value}
           </div>
-          <div className="mt-2 text-[13px] font-bold text-zinc-400 leading-tight truncate">
+          <div className="mt-2 text-[14px] font-semibold text-zinc-400 leading-tight truncate">
             {it.description}
           </div>
         </div>
@@ -1755,7 +1755,7 @@ function ChartCard({
           {title}
         </div>
         {sublabel && (
-          <div className="text-[13px] font-bold text-zinc-500">{sublabel}</div>
+          <div className="text-[14px] font-semibold text-zinc-500">{sublabel}</div>
         )}
       </div>
       {empty ? (
