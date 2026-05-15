@@ -1,30 +1,19 @@
 import { NextResponse } from "next/server";
-import { randomBytes } from "node:crypto";
 import {
   getDb,
   type Invoice,
   type InvoiceItem,
   type InvoiceStatus,
 } from "@/lib/db";
-import { getSessionUser, getSessionContext } from "@/lib/auth";
-import {
-  getCompany,
-  isStripeConfigured,
-  getAppOrigin,
-} from "@/lib/stripe";
+import { getSessionContext } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
-
-function makePayToken() {
-  return randomBytes(24).toString("base64url");
-}
 
 type IncomingItem = {
   title?: string;
   description?: string | null;
   quantity?: number | string;
   price_cents?: number | string;
-  taxable?: boolean | number;
 };
 
 function toInt(v: unknown, fallback = 0): number {
@@ -37,28 +26,14 @@ function toFloat(v: unknown, fallback = 0): number {
   return Number.isFinite(n) ? n : fallback;
 }
 
-function bps(rate: unknown): number {
-  const n = Number(rate);
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(0, Math.round(n * 100));
-}
-
-function computeTotal(items: IncomingItem[], taxRateBps: number): number {
+function computeTotal(items: IncomingItem[]): number {
   let subtotal = 0;
-  let taxable = 0;
   for (const it of items) {
     const qty = toFloat(it.quantity, 1);
     const price = toInt(it.price_cents, 0);
-    const line = Math.max(0, Math.round(qty * price));
-    subtotal += line;
-    if (it.taxable === true || it.taxable === 1) taxable += line;
+    subtotal += Math.max(0, Math.round(qty * price));
   }
-  const tax = Math.round((taxable * taxRateBps) / 10000);
-  return subtotal + tax;
-}
-
-function formatPrice(cents: number) {
-  return `$${(cents / 100).toFixed(2)}`;
+  return subtotal;
 }
 
 export async function GET(req: Request) {
@@ -98,14 +73,9 @@ export async function POST(req: Request) {
   const db = await getDb();
   const body = (await req.json().catch(() => ({}))) as Partial<{
     customer_id: number;
-    job_id: number | null;
-    title: string;
     notes: string;
+    lead_source: string;
     items: IncomingItem[];
-    tax_rate: number;
-    due_date: string;
-    sold_by_id: number | null;
-    action: "draft" | "send" | "paid";
   }>;
 
   const customerId = Number(body.customer_id);
@@ -117,8 +87,8 @@ export async function POST(req: Request) {
   }
 
   const customer = await db
-    .prepare("SELECT id, name FROM customers WHERE id = ? AND company_id = ?")
-    .get<{ id: number; name: string }>(customerId, companyId);
+    .prepare("SELECT id FROM customers WHERE id = ? AND company_id = ?")
+    .get<{ id: number }>(customerId, companyId);
   if (!customer) {
     return NextResponse.json({ error: "customer not found" }, { status: 404 });
   }
@@ -139,76 +109,20 @@ export async function POST(req: Request) {
     }
   }
 
-  const action =
-    body.action === "send" || body.action === "paid" ? body.action : "draft";
-
-  const taxRateBps = bps(body.tax_rate ?? 0);
-  const total = computeTotal(items, taxRateBps);
-  const now = new Date().toISOString();
-  const status: InvoiceStatus =
-    action === "paid" ? "paid" : action === "send" ? "sent" : "draft";
-  const sentAt = action === "send" || action === "paid" ? now : null;
-  const paidAt = action === "paid" ? now : null;
-  const paidCents = action === "paid" ? total : 0;
-  const dueDate =
-    typeof body.due_date === "string" && body.due_date.trim()
-      ? body.due_date.trim()
-      : null;
-  const soldById =
-    body.sold_by_id === undefined || body.sold_by_id === null
-      ? null
-      : Number(body.sold_by_id) || null;
-  const jobId =
-    body.job_id === undefined || body.job_id === null
-      ? null
-      : Number(body.job_id) || null;
-  const title = body.title?.toString().trim() || null;
+  const total = computeTotal(items);
+  const status: InvoiceStatus = "draft";
   const notes = body.notes?.toString().trim() || null;
-
-  // If we're sending and the merchant has Stripe connected, mint a
-  // pay-token now so we can include the pay URL in the message body.
-  let payToken: string | null = null;
-  let payUrl: string | null = null;
-  if (action === "send" && isStripeConfigured()) {
-    try {
-      const company = await getCompany(companyId);
-      if (company.stripe_account_id && company.stripe_charges_enabled) {
-        payToken = makePayToken();
-        payUrl = `${getAppOrigin(req)}/invoices/pay/${payToken}`;
-      }
-    } catch (e) {
-      // If anything goes wrong reading company state, fall back to
-      // sending the invoice without a pay link.
-      console.error("Skipping pay link: failed to read Stripe company state", e);
-    }
-  }
+  const leadSource = body.lead_source?.toString().trim() || null;
 
   const result = await db
     .prepare(
       `INSERT INTO invoices
-         (company_id, customer_id, job_id, title, notes, status,
+         (company_id, customer_id, notes, status,
           total_cents, paid_cents, tax_rate_bps,
-          due_date, sent_at, paid_at,
-          sold_by_id, created_by, stripe_pay_token)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          created_by, lead_source)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
-    .run(
-      companyId,
-      customerId,
-      jobId,
-      title,
-      notes,
-      status,
-      total,
-      paidCents,
-      taxRateBps,
-      dueDate,
-      sentAt,
-      paidAt,
-      soldById,
-      user,
-      payToken
-    );
+    .run(companyId, customerId, notes, status, total, 0, 0, user, leadSource);
   const invoiceId = result.lastInsertRowid;
 
   for (let i = 0; i < items.length; i++) {
@@ -225,26 +139,9 @@ export async function POST(req: Request) {
         it.description ? String(it.description).trim() : null,
         toFloat(it.quantity, 1),
         toInt(it.price_cents, 0),
-        it.taxable === true || it.taxable === 1 ? 1 : 0,
+        0,
         i
       );
-  }
-
-  if (action === "send") {
-    const titleLine = title ? `${title}\n` : "";
-    const payLine = payUrl ? `\nPay online: ${payUrl}` : "";
-    const messageBody =
-      `Hi ${customer.name}! Here's your invoice:\n` +
-      `${titleLine}Amount due: ${formatPrice(total)}` +
-      (dueDate ? `\nDue ${dueDate}` : "") +
-      payLine +
-      `\nReply with any questions.`;
-    await db
-      .prepare(
-        `INSERT INTO messages (company_id, customer_id, body, direction)
-         VALUES (?, ?, ?, 'outbound')`
-      )
-      .run(companyId, customerId, messageBody);
   }
 
   const invoice = (await db

@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -21,18 +20,21 @@ type Customer = {
   formatted_address: string | null;
 };
 
-type Staff = { id: number; name: string; role: string | null };
-
 type LineItem = {
   key: string;
   title: string;
   description: string;
   quantity: string;
   price: string;
-  taxable: boolean;
 };
 
-type Action = "send" | "paid" | "draft";
+const LEAD_SOURCES = [
+  "Referral",
+  "Online",
+  "Door-to-door",
+  "Repeat customer",
+  "Other",
+];
 
 const SERVICE_PRESETS = [
   "Window Cleaning",
@@ -50,23 +52,6 @@ function formatPrice(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
-function pad(n: number) {
-  return String(n).padStart(2, "0");
-}
-
-function todayInput() {
-  const d = new Date();
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-}
-
-function addDaysInput(input: string, days: number) {
-  const [y, m, d] = input.split("-").map(Number);
-  if (!y || !m || !d) return input;
-  const dt = new Date(y, m - 1, d);
-  dt.setDate(dt.getDate() + days);
-  return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}`;
-}
-
 function emptyItem(): LineItem {
   return {
     key: uid(),
@@ -74,7 +59,6 @@ function emptyItem(): LineItem {
     description: "",
     quantity: "1",
     price: "",
-    taxable: false,
   };
 }
 
@@ -91,55 +75,30 @@ export default function NewInvoiceForm() {
   const router = useRouter();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [staff, setStaff] = useState<Staff[]>([]);
-
   const [customerId, setCustomerId] = useState<number | null>(null);
   const [customerQuery, setCustomerQuery] = useState("");
   const [showNewCustomer, setShowNewCustomer] = useState(false);
 
-  const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<LineItem[]>([emptyItem()]);
-  const [taxRate, setTaxRate] = useState("0");
-  const [dueDate, setDueDate] = useState<string>(addDaysInput(todayInput(), 14));
-  const [soldById, setSoldById] = useState<number | "">("");
-  const [action, setAction] = useState<Action>("send");
+  const [leadSource, setLeadSource] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function loadAll() {
-    const [custRes, staffRes] = await Promise.all([
-      fetch("/api/customers"),
-      fetch("/api/staff"),
-    ]);
-    if (custRes.ok) setCustomers(await custRes.json());
-    if (staffRes.ok) setStaff(await staffRes.json());
+  async function loadCustomers() {
+    const res = await fetch("/api/customers");
+    if (res.ok) setCustomers(await res.json());
   }
 
   useEffect(() => {
-    loadAll();
+    loadCustomers();
   }, []);
 
-  const selectedCustomer = useMemo(
-    () => customers.find((c) => c.id === customerId) || null,
-    [customers, customerId]
-  );
-
-  const subtotalCents = useMemo(
+  const totalCents = useMemo(
     () => items.reduce((sum, it) => sum + lineTotalCents(it), 0),
     [items]
   );
-  const taxableCents = useMemo(
-    () =>
-      items
-        .filter((it) => it.taxable)
-        .reduce((sum, it) => sum + lineTotalCents(it), 0),
-    [items]
-  );
-  const taxRateNum = Math.max(0, parseFloat(taxRate) || 0);
-  const taxCents = Math.round((taxableCents * taxRateNum) / 100);
-  const totalCents = subtotalCents + taxCents;
 
   function updateItem(key: string, patch: Partial<LineItem>) {
     setItems((prev) =>
@@ -169,12 +128,8 @@ export default function NewInvoiceForm() {
     setError(null);
     const payload = {
       customer_id: customerId,
-      title: title.trim() || null,
       notes: notes.trim() || null,
-      tax_rate: taxRateNum,
-      due_date: dueDate || null,
-      sold_by_id: soldById || null,
-      action,
+      lead_source: leadSource || null,
       items: items
         .filter((it) => it.title.trim())
         .map((it) => ({
@@ -182,7 +137,6 @@ export default function NewInvoiceForm() {
           description: it.description.trim() || null,
           quantity: parseFloat(it.quantity) || 1,
           price_cents: priceCents(it.price),
-          taxable: it.taxable,
         })),
     };
     const res = await fetch("/api/invoices", {
@@ -196,19 +150,15 @@ export default function NewInvoiceForm() {
       setError(j.error || "Could not create invoice");
       return;
     }
-    router.push("/customers");
+    const created = (await res.json()) as { id: number };
+    router.push(`/invoices/${created.id}`);
   }
 
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
         <div>
-          <h1 className="text-page-title text-white">
-            New Invoice
-          </h1>
-          <p className="text-sm text-zinc-400 mt-3 font-bold">
-            Bill a customer for completed work.
-          </p>
+          <h1 className="text-page-title text-white">New Invoice</h1>
         </div>
         <Button
           type="button"
@@ -218,13 +168,7 @@ export default function NewInvoiceForm() {
           className="h-auto inline-flex items-center gap-1.5 bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-2.5 text-sm font-bold shadow-sm"
         >
           <span aria-hidden>⊕</span>
-          {submitting
-            ? "Saving…"
-            : action === "send"
-              ? "Send Invoice"
-              : action === "paid"
-                ? "Mark Paid"
-                : "Save Draft"}
+          {submitting ? "Saving…" : "Create Invoice"}
         </Button>
       </div>
 
@@ -264,96 +208,42 @@ export default function NewInvoiceForm() {
                 setCustomerQuery("");
               }}
             />
-            {selectedCustomer && (
-              <div className="text-xs text-zinc-400 mt-2">
-                {selectedCustomer.formatted_address ||
-                  selectedCustomer.address ||
-                  "—"}
-                {selectedCustomer.email ? ` · ${selectedCustomer.email}` : ""}
-              </div>
-            )}
           </Card>
 
           <Card>
             <CardHeader>
               <h2 className="text-base font-extrabold text-white tracking-tight">
-                Details
+                Lead Source
               </h2>
             </CardHeader>
-            <Field label="Title (optional)">
-              <Input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                placeholder="April window cleaning"
-                className="h-auto w-full border-line rounded-xl px-4 py-2 text-sm bg-card"
-              />
-            </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Due Date">
-                <Input
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  className="h-auto w-full border-line rounded-xl px-4 py-2 text-sm bg-card"
-                />
-              </Field>
-              <Field label="Sold By">
-                {/* Native <select> kept: deferred per migration policy */}
-                <select
-                  value={soldById}
-                  onChange={(e) =>
-                    setSoldById(e.target.value ? Number(e.target.value) : "")
-                  }
-                  className="w-full border border-line rounded-xl px-4 py-2 text-sm bg-card"
-                >
-                  <option value="">Select salesperson…</option>
-                  {staff.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                      {s.role ? ` · ${s.role}` : ""}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            </div>
-            <Field label="Notes (optional)">
-              <Textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={3}
-                placeholder="Anything the customer should know…"
-                className="w-full border-line rounded-xl px-4 py-2 text-sm bg-card"
-              />
-            </Field>
+            {/* Native <select> kept: empty-string sentinel value for "Select source…" */}
+            <select
+              value={leadSource}
+              onChange={(e) => setLeadSource(e.target.value)}
+              className="w-full border border-line rounded-xl px-4 py-2 text-sm bg-card"
+            >
+              <option value="">Select source…</option>
+              {LEAD_SOURCES.map((s) => (
+                <option key={s} value={s}>
+                  {s}
+                </option>
+              ))}
+            </select>
           </Card>
 
           <Card>
             <CardHeader>
               <h2 className="text-base font-extrabold text-white tracking-tight">
-                Action
+                Private Notes
               </h2>
             </CardHeader>
-            <div className="space-y-3">
-              <RadioOption
-                checked={action === "send"}
-                onChange={() => setAction("send")}
-                title="Send to customer"
-                description="Send the invoice and notify the customer to pay."
-              />
-              <RadioOption
-                checked={action === "paid"}
-                onChange={() => setAction("paid")}
-                title="Mark as paid"
-                description="Record this invoice as already paid (in person, off-platform, etc.)."
-              />
-              <RadioOption
-                checked={action === "draft"}
-                onChange={() => setAction("draft")}
-                title="Save as draft"
-                description="Keep this invoice as a draft to send later."
-              />
-            </div>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              rows={4}
+              placeholder="Write your note here…"
+              className="w-full border-line rounded-xl px-4 py-2 text-sm bg-card"
+            />
           </Card>
         </div>
 
@@ -465,58 +355,9 @@ export default function NewInvoiceForm() {
                       </div>
                     </div>
                   </div>
-                  <Label className="inline-flex items-center gap-2 text-xs font-normal text-zinc-300">
-                    <Checkbox
-                      checked={it.taxable}
-                      onCheckedChange={(c) =>
-                        updateItem(it.key, { taxable: c === true })
-                      }
-                    />
-                    Taxable
-                  </Label>
                 </li>
               ))}
             </ul>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <h2 className="text-base font-extrabold text-white tracking-tight">Total</h2>
-            </CardHeader>
-            <div className="space-y-2 text-sm">
-              <Row label="Subtotal" value={formatPrice(subtotalCents)} />
-              <div className="flex items-center justify-between gap-3">
-                <div className="text-zinc-400">
-                  Tax rate
-                  <Input
-                    type="number"
-                    step="0.01"
-                    min="0"
-                    value={taxRate}
-                    onChange={(e) => setTaxRate(e.target.value)}
-                    className="h-auto ml-2 w-20 border-line rounded-lg px-2 py-1 text-sm"
-                  />
-                  <span className="ml-1 text-zinc-500">%</span>
-                </div>
-                <div className="font-bold text-white tracking-tight">
-                  {formatPrice(taxCents)}
-                </div>
-              </div>
-              <div className="border-t border-line pt-2">
-                <Row
-                  label={
-                    <span className="text-base font-extrabold text-white tracking-tight">
-                      Total
-                    </span>
-                  }
-                  value={
-                    <span className="text-base font-extrabold text-white tracking-tight">
-                      {formatPrice(totalCents)}
-                    </span>
-                  }
-                />
-              </div>
-            </div>
           </Card>
         </div>
       </div>
@@ -526,7 +367,7 @@ export default function NewInvoiceForm() {
           onClose={() => setShowNewCustomer(false)}
           onCreated={async (c) => {
             setShowNewCustomer(false);
-            await loadAll();
+            await loadCustomers();
             setCustomerId(c.id);
             setCustomerQuery(c.name);
           }}
@@ -566,64 +407,6 @@ function Field({
       </Label>
       {children}
     </div>
-  );
-}
-
-function Row({
-  label,
-  value,
-}: {
-  label: React.ReactNode;
-  value: React.ReactNode;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="text-zinc-400">{label}</div>
-      <div className="font-bold text-white tracking-tight">{value}</div>
-    </div>
-  );
-}
-
-function RadioOption({
-  checked,
-  onChange,
-  title,
-  description,
-}: {
-  checked: boolean;
-  onChange: () => void;
-  title: string;
-  description: string;
-}) {
-  return (
-    <Button
-      type="button"
-      variant="ghost"
-      onClick={onChange}
-      className={
-        "h-auto w-full text-left rounded-xl border p-3 block " +
-        (checked
-          ? "border-slate-900 bg-black"
-          : "border-line hover:border-line-strong")
-      }
-    >
-      <div className="flex items-start gap-3">
-        <span
-          className={
-            "mt-0.5 inline-flex h-4 w-4 shrink-0 rounded-full border-2 " +
-            (checked ? "border-fg" : "border-line-strong")
-          }
-        >
-          {checked && (
-            <span className="m-auto h-2 w-2 rounded-full bg-fg" />
-          )}
-        </span>
-        <div>
-          <div className="text-sm font-bold text-white tracking-tight">{title}</div>
-          <div className="text-xs text-zinc-400 mt-0.5">{description}</div>
-        </div>
-      </div>
-    </Button>
   );
 }
 

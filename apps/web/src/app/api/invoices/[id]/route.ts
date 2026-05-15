@@ -61,6 +61,7 @@ export async function PUT(
   const body = (await req.json().catch(() => ({}))) as Partial<{
     status: InvoiceStatus;
     paid_cents: number;
+    payment_method: string;
   }>;
   if (!body.status || !VALID_STATUSES.includes(body.status)) {
     return NextResponse.json({ error: "invalid status" }, { status: 400 });
@@ -77,15 +78,29 @@ export async function PUT(
     body.status === "paid" ? existing.paid_at || now : existing.paid_at;
   const voidedAt =
     body.status === "void" ? existing.voided_at || now : existing.voided_at;
+  const paymentMethod =
+    body.status === "paid"
+      ? typeof body.payment_method === "string" && body.payment_method.trim()
+        ? body.payment_method.trim()
+        : existing.payment_method
+      : existing.payment_method;
 
   await db
     .prepare(
       `UPDATE invoices
          SET status = ?, paid_cents = ?, paid_at = ?, voided_at = ?,
-             updated_at = datetime('now')
+             payment_method = ?, updated_at = datetime('now')
        WHERE id = ? AND company_id = ?`
     )
-    .run(body.status, paidCents, paidAt, voidedAt, id, ctx.companyId);
+    .run(
+      body.status,
+      paidCents,
+      paidAt,
+      voidedAt,
+      paymentMethod,
+      id,
+      ctx.companyId
+    );
   const row = (await db
     .prepare("SELECT * FROM invoices WHERE id = ? AND company_id = ?")
     .get(id, ctx.companyId)) as Invoice;

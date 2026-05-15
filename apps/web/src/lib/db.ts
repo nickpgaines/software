@@ -650,6 +650,8 @@ async function init(): Promise<void> {
       ["stripe_pay_token", "TEXT"],
       ["stripe_checkout_session_id", "TEXT"],
       ["stripe_payment_intent_id", "TEXT"],
+      ["lead_source", "TEXT"],
+      ["payment_method", "TEXT"],
     ];
     for (const [col, def] of invoiceAdds) {
       await alterAddColumn("invoices", col, def, invoiceCols);
@@ -659,6 +661,13 @@ async function init(): Promise<void> {
          ON invoices(stripe_pay_token)
          WHERE stripe_pay_token IS NOT NULL`
     );
+  }
+
+  const estimateCols = await _db
+    .prepare("PRAGMA table_info(estimates)")
+    .all<{ name: string }>();
+  if (estimateCols.length > 0) {
+    await alterAddColumn("estimates", "lead_source", "TEXT", estimateCols);
   }
 
   await _db.exec(`
@@ -1048,6 +1057,7 @@ async function init(): Promise<void> {
       signature_name TEXT,
       signed_at      TEXT,
       sold_by_id     INTEGER REFERENCES staff(id) ON DELETE SET NULL,
+      lead_source    TEXT,
       created_by     TEXT,
       created_at     TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
@@ -1088,6 +1098,8 @@ async function init(): Promise<void> {
       stripe_pay_token             TEXT,
       stripe_checkout_session_id   TEXT,
       stripe_payment_intent_id     TEXT,
+      lead_source                  TEXT,
+      payment_method               TEXT,
       created_at     TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at     TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -2210,6 +2222,7 @@ export type Estimate = {
   signature_name: string | null;
   signed_at: string | null;
   sold_by_id: number | null;
+  lead_source: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;
@@ -2254,6 +2267,8 @@ export type Invoice = {
   stripe_pay_token: string | null;
   stripe_checkout_session_id: string | null;
   stripe_payment_intent_id: string | null;
+  lead_source: string | null;
+  payment_method: string | null;
   created_at: string;
   updated_at: string;
 };
