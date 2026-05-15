@@ -744,7 +744,7 @@ function Stat({
       </p>
       <p
         className={
-          "mt-2 text-[28px] font-extrabold tracking-tight leading-none tabular-nums " +
+          "mt-2.5 text-[28px] font-extrabold tracking-tight leading-none tabular-nums " +
           (tone === "warn" ? "text-amber-300" : "text-white")
         }
       >

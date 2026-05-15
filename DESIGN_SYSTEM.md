@@ -321,15 +321,14 @@ Use these wherever a small gray supporting label used to be uppercase.
 Every stat / KPI card in the CRM is a top-aligned vertical stack
 inside a single shared wrapper:
 
-<<<<<<< HEAD
 ```jsx
 <div className="bg-card border border-line rounded-2xl px-5 py-4">
   <div className="text-[14px] font-semibold text-zinc-500">{label}</div>
-  <div className="mt-2 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
+  <div className="mt-2.5 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
     {value}
   </div>
   {bottom && (
-    <div className="mt-2 text-[14px] font-semibold text-zinc-400">
+    <div className="mt-2.5 text-[14px] font-semibold text-zinc-400">
       {bottom}
     </div>
   )}
@@ -342,15 +341,15 @@ Rules:
    py-4`. Literal Tailwind tokens, no inline `PULSE.card` /
    `PULSE.cardBorder` styles. **No `min-h-*`** — the card hugs its
    content. **No `flex flex-col` / `flex-1`** wrapper around the value
-   — the value is not vertically centered, it sits 8 px below the
-   label on a `mt-2`.
+   — the value is not vertically centered, it sits 10 px below the
+   label on a `mt-2.5`.
 2. **Top label** — `text-[14px] font-semibold text-zinc-500`. Title Case.
 3. **Center value** — `text-[28px] font-extrabold tracking-tight
-   leading-none tabular-nums text-white`. 8 px gap below the label
-   (`mt-2`). 28 px / weight 800 / white on every stat card in the CRM
-   — the big number is the only line that uses `font-extrabold`.
-4. **Bottom supporting line** (optional) — `text-[13px] font-bold
-   text-zinc-400`. 8 px gap below the value (`mt-2`). Same size and
+   leading-none tabular-nums text-white`. 10 px gap below the label
+   (`mt-2.5`). 28 px / weight 800 / white on every stat card in the
+   CRM — the big number is the only line that uses `font-extrabold`.
+4. **Bottom supporting line** (optional) — `text-[14px] font-semibold
+   text-zinc-400`. 10 px gap below the value (`mt-2.5`). Same size and
    weight as the top label, one tone brighter (zinc-400 vs zinc-500).
    Literal Tailwind class — no inline `PULSE.textMuted` /
    `PULSE.textDim` style. One line only (see §10 #24).
@@ -366,25 +365,6 @@ other stat-card variant (Reports `JobStatCard` / `BigStatCard` /
 a delta — they're pure label / value / optional bottom-line stacks.
 If a Reports widget needs to show change, surface it in the bottom
 supporting line as plain text, not a colored pill.
-=======
-1. **Top label** — `text-[14px] font-semibold text-zinc-500`. Title Case.
-   Literal Tailwind class — no inline `PULSE.textSubtle` style.
-2. **Center value** — `text-[28px] font-extrabold tracking-tight
-   leading-none tabular-nums text-white`. Same 28 px / weight 800 /
-   white on every stat card in the CRM. The big number is the only
-   line that uses `font-extrabold`; the two small lines both use
-   `font-bold`.
-3. **Bottom supporting line** — `text-[14px] font-semibold text-zinc-400`.
-   Same size and weight as the top label, one tone brighter (zinc-400
-   vs zinc-500). Literal Tailwind class — no inline `PULSE.textMuted` /
-   `PULSE.textDim` style. One line only (see §10 #24); a card never has
-   two bottom lines.
-
-All three lines share the same 13 px / `font-bold` baseline on the
-small labels, with the value as the lone visual anchor. The "delta
-pill" (top-right corner of `CompactHeroKpi`) is a separate element —
-not bound by this ladder.
->>>>>>> origin/main
 
 ### Widget label casing — Title Case
 
