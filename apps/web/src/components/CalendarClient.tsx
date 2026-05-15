@@ -488,15 +488,15 @@ function NowLine({ now }: { now: Date }) {
       style={{ top: `${top}px` }}
     >
       <div className="flex items-center">
-        <span className="-ml-12 w-12 text-right pr-2 text-[10px] font-medium text-zinc-400">
+        <span className="-ml-12 w-12 text-right pr-2 text-[10px] font-bold text-primary">
           {now.toLocaleTimeString(undefined, {
             hour: "numeric",
             minute: "2-digit",
           })}
         </span>
         <div className="flex-1 flex items-center">
-          <span className="w-2 h-2 rounded-full bg-slate-500" />
-          <div className="flex-1 h-px bg-slate-400" />
+          <span className="w-2 h-2 rounded-full bg-primary" />
+          <div className="flex-1 h-px bg-primary" />
         </div>
       </div>
     </div>
@@ -1209,8 +1209,11 @@ function useHoverSlot(frozen = false) {
       setY(null);
       return;
     }
+    // Snap to 30-minute increments. Tighter (15-min) snaps made the
+    // ghost block jump too easily as the user reached for the "+ New"
+    // trigger, sometimes moving the trigger out from under the cursor.
     const minutes = (raw / HOUR_PX) * 60;
-    const snapped = Math.max(0, Math.round(minutes / 15) * 15);
+    const snapped = Math.max(0, Math.round(minutes / 30) * 30);
     setY((snapped / 60) * HOUR_PX);
   };
   const onMouseLeave = () => {
@@ -1289,8 +1292,8 @@ function HoverAddPopover({
       className="absolute left-1 right-1 pointer-events-none"
       style={{ top: `${top}px`, height: `${ghostHeight}px` }}
     >
-      <div className="absolute inset-0 rounded-md border border-dashed border-zinc-500/60 bg-card/50">
-        <div className="px-2 py-1 text-[11px] text-zinc-400">
+      <div className="absolute inset-0 rounded-md border border-dashed border-primary bg-primary/10">
+        <div className="px-2 py-1 text-[11px] font-bold text-primary/90">
           {startLabel} – {endLabel}
         </div>
       </div>
@@ -1298,7 +1301,7 @@ function HoverAddPopover({
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-card border border-line rounded-full px-3 py-1 text-xs font-bold text-zinc-200 hover:bg-black shadow-lg pointer-events-auto"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-primary text-primary-foreground border border-primary rounded-full px-5 py-2 text-sm font-bold hover:opacity-90 shadow-lg pointer-events-auto"
           >
             + New
           </button>
