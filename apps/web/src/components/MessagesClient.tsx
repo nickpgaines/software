@@ -99,7 +99,7 @@ export default function MessagesClient() {
     conversations.find((c) => c.id === selectedId) || null;
 
   return (
-    <div className="flex bg-card border border-line rounded-2xl overflow-hidden h-[calc(100vh-9rem)] min-h-[480px] shadow-sm">
+    <div className="flex bg-card overflow-hidden h-screen">
       <aside className="w-80 shrink-0 border-r border-line flex flex-col">
         <div className="px-4 pt-4 pb-3 flex items-center justify-between">
           <h2 className="text-lg font-extrabold text-white tracking-tight">Messages</h2>
