@@ -226,8 +226,8 @@ export default function CalendarClient() {
   }, [view, cursor]);
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+    <div className="h-screen flex flex-col overflow-hidden">
+      <div className="px-6 py-4 flex items-center justify-between gap-3 flex-wrap border-b border-line shrink-0">
         <div className="flex items-center gap-2 flex-wrap">
           <Button
             type="button"
@@ -380,7 +380,7 @@ export default function CalendarClient() {
         </div>
       </div>
 
-      <div className="bg-card border border-line rounded-2xl overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-auto bg-card">
         {view === "week" && (
           <WeekView
             start={startOfWeek(cursor)}
