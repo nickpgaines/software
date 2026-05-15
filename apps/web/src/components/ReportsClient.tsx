@@ -1289,17 +1289,22 @@ function SubscriptionsPanel({ qs: rangeQs }: { qs: string }) {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center flex-wrap gap-6 justify-end">
-        <Toggle
-          label="Include Taxes"
-          checked={includeTax}
-          onChange={setIncludeTax}
-        />
-        <Toggle
-          label="Include Paid Cancellations"
-          checked={includeCanceled}
-          onChange={setIncludeCanceled}
-        />
+      <div className="flex items-center flex-wrap gap-6 justify-between">
+        <h2 className="text-[22px] font-extrabold tracking-tight text-fg">
+          Subscriptions
+        </h2>
+        <div className="flex items-center flex-wrap gap-6">
+          <Toggle
+            label="Include Taxes"
+            checked={includeTax}
+            onChange={setIncludeTax}
+          />
+          <Toggle
+            label="Include Paid Cancellations"
+            checked={includeCanceled}
+            onChange={setIncludeCanceled}
+          />
+        </div>
       </div>
 
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 items-stretch">
@@ -1456,17 +1461,22 @@ function SubscriptionsByTemplateDonut({
 
 function Section({
   title,
+  actions,
   children,
 }: {
   title: string;
   description?: string;
+  actions?: React.ReactNode;
   children: React.ReactNode;
 }) {
   return (
     <section className="space-y-4">
-      <h2 className="text-[22px] font-extrabold tracking-tight text-fg">
-        {title}
-      </h2>
+      <div className="flex items-center justify-between gap-4 flex-wrap">
+        <h2 className="text-[22px] font-extrabold tracking-tight text-fg">
+          {title}
+        </h2>
+        {actions}
+      </div>
       {children}
     </section>
   );
@@ -1932,21 +1942,20 @@ function PayrollPanel({
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-end">
-        <Button
-          variant="ghost"
-          onClick={() => setSettingsOpen(true)}
-          className="h-auto gap-2 px-3 py-2 text-sm font-bold text-zinc-300 bg-card border border-line rounded-full hover:bg-black shadow-sm"
-          aria-label="Payroll settings"
-        >
-          <Settings className="w-4 h-4" />
-          <span>Payroll settings</span>
-        </Button>
-      </div>
-
       <PayrollTable
         title="Sales Payroll"
         description="Pay computed for each sales rep this pay period."
+        actions={
+          <Button
+            variant="ghost"
+            onClick={() => setSettingsOpen(true)}
+            className="h-auto gap-2 px-3 py-2 text-sm font-bold text-zinc-300 bg-card border border-line rounded-full hover:bg-black shadow-sm"
+            aria-label="Payroll settings"
+          >
+            <Settings className="w-4 h-4" />
+            <span>Payroll settings</span>
+          </Button>
+        }
         rows={data.sales}
         showTips={false}
         showBonus={!!data.summary.plan_sale_bonus_cents}
@@ -1985,6 +1994,7 @@ function PayrollPanel({
 function PayrollTable({
   title,
   description,
+  actions,
   rows,
   showTips,
   showBonus,
@@ -1995,6 +2005,7 @@ function PayrollTable({
 }: {
   title: string;
   description?: string;
+  actions?: React.ReactNode;
   rows: PayrollRow[];
   showTips: boolean;
   showBonus: boolean;
@@ -2004,7 +2015,7 @@ function PayrollTable({
   onPaidToggle: (staffId: number, paid: boolean) => void;
 }) {
   return (
-    <Section title={title} description={description}>
+    <Section title={title} description={description} actions={actions}>
       <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
         {rows.length === 0 ? (
           <p className="p-8 text-sm text-zinc-500 text-center">
@@ -2200,7 +2211,7 @@ function PayrollSummary({
               "tabular-nums " +
               (it.emphasis
                 ? "text-lg font-bold text-white"
-                : "font-extrabold text-white tracking-tight")
+                : "text-sm font-semibold text-zinc-400")
             }
           >
             {it.value}
