@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { requireCompanyId } from "@/lib/auth";
+import { getSessionContext, requireCompanyId } from "@/lib/auth";
 import { computeJobStatus, createJob, type JobInput } from "@/lib/jobs";
+import { FULL_SCHEDULE_PERMISSIONS } from "@/lib/technicianColors";
 
 export const dynamic = "force-dynamic";
 
@@ -16,11 +17,29 @@ type JobRow = {
 };
 
 export async function GET(req: Request) {
-  const companyId = await requireCompanyId();
+  const ctx = await getSessionContext();
+  if (!ctx) throw new Error("No session");
+  const companyId = ctx.companyId;
   const db = await getDb();
   const url = new URL(req.url);
   const from = url.searchParams.get("from");
   const to = url.searchParams.get("to");
+
+  // Determine the caller's permission level so that field techs and
+  // "own jobs only" salespeople see a filtered schedule. Platform admin
+  // (no staffId) always sees everything.
+  let permissionFilter: "all" | "tech" | "sales_own" = "all";
+  if (!ctx.isPlatformAdmin && ctx.staffId != null) {
+    const me = (await db
+      .prepare(
+        "SELECT permission_level FROM staff WHERE id = ? AND company_id = ?"
+      )
+      .get(ctx.staffId, companyId)) as { permission_level: string | null } | undefined;
+    const perm = me?.permission_level ?? "manager";
+    if (perm === "field_tech") permissionFilter = "tech";
+    else if (perm === "salesperson_own") permissionFilter = "sales_own";
+    else if (!FULL_SCHEDULE_PERMISSIONS.has(perm)) permissionFilter = "tech";
+  }
 
   let sql = `
     SELECT j.*,
@@ -29,6 +48,7 @@ export async function GET(req: Request) {
            c.phone AS customer_phone,
            sp.name AS salesperson_name,
            tc.name AS technician_name,
+           tc.color AS technician_color,
            COALESCE(
              (SELECT SUM(amount_cents) FROM payments p WHERE p.job_id = j.id),
              0
@@ -47,6 +67,13 @@ export async function GET(req: Request) {
   if (to) {
     where.push("j.scheduled_at < ?");
     args.push(to);
+  }
+  if (permissionFilter === "tech" && ctx.staffId != null) {
+    where.push("j.technician_id = ?");
+    args.push(ctx.staffId);
+  } else if (permissionFilter === "sales_own" && ctx.staffId != null) {
+    where.push("(j.salesperson_id = ? OR j.technician_id = ?)");
+    args.push(ctx.staffId, ctx.staffId);
   }
   sql += ` WHERE ${where.join(" AND ")}`;
   sql += " ORDER BY j.scheduled_at ASC";

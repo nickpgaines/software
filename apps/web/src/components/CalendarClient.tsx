@@ -12,6 +12,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  techJobClasses,
+  techSwatchClass,
+  FULL_SCHEDULE_PERMISSIONS,
+} from "@/lib/technicianColors";
 
 type Job = {
   id: number;
@@ -25,6 +30,9 @@ type Job = {
   price_cents: number;
   status: string;
   anytime: number;
+  technician_id: number | null;
+  technician_name: string | null;
+  technician_color: string | null;
   job_status?:
     | "scheduled"
     | "in_progress"
@@ -33,15 +41,38 @@ type Job = {
     | "completed_paid";
 };
 
-type View = "day" | "week" | "month" | "agenda" | "map";
+type StaffLite = {
+  id: number;
+  name: string;
+  color: string | null;
+  permission_level: string | null;
+};
+
+type MeLite = {
+  staff_id: number | null;
+  permission_level: string | null;
+};
+
+type View = "day" | "week" | "lanes" | "month" | "agenda" | "map";
 
 const VIEW_OPTIONS: { value: View; label: string }[] = [
   { value: "day", label: "Day" },
   { value: "week", label: "Week" },
+  { value: "lanes", label: "Lanes" },
   { value: "month", label: "Month" },
   { value: "agenda", label: "Agenda" },
   { value: "map", label: "Map" },
 ];
+
+// Staff with these permission levels get a Lanes column even on days
+// where they have no jobs yet — so sales reps can see open capacity.
+const TECH_PERMISSIONS = new Set([
+  "admin",
+  "manager",
+  "team_lead",
+  "field_tech",
+  "custom",
+]);
 
 const DAY_MS = 86_400_000;
 const HOUR_PX = 56;
@@ -126,6 +157,8 @@ export default function CalendarClient() {
   const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState<Date>(startOfDay(new Date()));
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [staff, setStaff] = useState<StaffLite[]>([]);
+  const [me, setMe] = useState<MeLite | null>(null);
   const [now, setNow] = useState<Date>(new Date());
   const [schedulingOpen, setSchedulingOpen] = useState(false);
 
@@ -134,8 +167,24 @@ export default function CalendarClient() {
     return () => clearInterval(t);
   }, []);
 
+  useEffect(() => {
+    fetch("/api/staff")
+      .then((r) => r.json())
+      .then((rows: StaffLite[]) => setStaff(rows));
+    fetch("/api/me")
+      .then((r) => r.json())
+      .then(
+        (d: { staff: { id: number; permission_level: string | null } | null }) =>
+          setMe({
+            staff_id: d.staff?.id ?? null,
+            permission_level: d.staff?.permission_level ?? null,
+          })
+      )
+      .catch(() => setMe(null));
+  }, []);
+
   const range = useMemo(() => {
-    if (view === "day") {
+    if (view === "day" || view === "lanes") {
       return { start: startOfDay(cursor), end: addDays(startOfDay(cursor), 1) };
     }
     if (view === "month") {
@@ -160,7 +209,7 @@ export default function CalendarClient() {
   }, [range.start.getTime(), range.end.getTime()]);
 
   function navigate(delta: number) {
-    if (view === "day") setCursor(addDays(cursor, delta));
+    if (view === "day" || view === "lanes") setCursor(addDays(cursor, delta));
     else if (view === "month") {
       const next = new Date(cursor);
       next.setMonth(next.getMonth() + delta);
@@ -169,7 +218,7 @@ export default function CalendarClient() {
   }
 
   const navLabel = useMemo(() => {
-    if (view === "day") {
+    if (view === "day" || view === "lanes") {
       return cursor.toLocaleDateString(undefined, {
         weekday: "long",
         month: "long",
@@ -390,6 +439,15 @@ export default function CalendarClient() {
         {view === "day" && (
           <DayView day={startOfDay(cursor)} jobs={jobs} now={now} />
         )}
+        {view === "lanes" && (
+          <LanesView
+            day={startOfDay(cursor)}
+            jobs={jobs}
+            staff={staff}
+            me={me}
+            now={now}
+          />
+        )}
         {view === "month" && (
           <MonthView
             cursor={cursor}
@@ -451,8 +509,12 @@ function jobsByDay(jobs: Job[], days: Date[]) {
   );
 }
 
-// Map the unified job_status (server-computed) to colors. Cancelled
-// is handled separately because it's not a unified-status state.
+// Map the unified job_status (server-computed) to colors. Cancelled is
+// handled separately because it isn't part of the unified-status state
+// machine. "scheduled" (not started) now uses the assigned technician's
+// color so the schedule reads at a glance the way Homebase/Jobber do;
+// completed_paid/unpaid/partial and in_progress keep their fixed status
+// colors so the financial signal stays unambiguous.
 function jobStatusColors(job: Job) {
   if (job.status === "cancelled") {
     return "bg-black border-line text-zinc-400 line-through border-l-4 border-l-slate-400";
@@ -468,7 +530,12 @@ function jobStatusColors(job: Job) {
       return "bg-amber-50 border-amber-200 text-amber-900 border-l-4 border-l-amber-500";
     case "scheduled":
     default:
-      return "bg-black border-line text-zinc-300 border-l-4 border-l-slate-300";
+      if (!job.technician_id) {
+        // Unassigned: keep the legacy slate look but dash the border so
+        // "needs a tech" reads distinctly from a colored block.
+        return "bg-black border-line border-dashed text-zinc-300 border-l-4 border-l-slate-300";
+      }
+      return techJobClasses(job.technician_color);
   }
 }
 
@@ -667,39 +734,15 @@ function WeekView({
             const dayJobs = buckets[i];
             const timed = dayJobs.filter((j) => !j.anytime);
             const anytime = dayJobs.filter((j) => j.anytime);
-            const lanes = assignLanes(timed);
             return (
-              <div
+              <WeekDayColumn
                 key={d.toISOString()}
-                className={
-                  "relative border-r border-line last:border-r-0 " +
-                  (isToday ? "bg-black" : "")
-                }
-                style={{ height: `${HOURS.length * HOUR_PX}px` }}
-              >
-                {HOURS.map((h, hi) => (
-                  <div
-                    key={h}
-                    className="border-b border-line"
-                    style={{ height: `${HOUR_PX}px` }}
-                  />
-                ))}
-                {anytime.length > 0 && (
-                  <div className="absolute top-1 left-1 right-1 z-10">
-                    {anytime.map((j) => (
-                      <AnytimeBlock key={j.id} job={j} />
-                    ))}
-                  </div>
-                )}
-                {timed.map((j) => (
-                  <JobBlock
-                    key={j.id}
-                    job={j}
-                    laneInfo={lanes.get(j.id)}
-                  />
-                ))}
-                {isToday && <NowLine now={now} />}
-              </div>
+                day={d}
+                timed={timed}
+                anytime={anytime}
+                isToday={isToday}
+                now={now}
+              />
             );
           })}
         </div>
@@ -720,8 +763,9 @@ function DayView({
   const dayJobs = jobs.filter((j) => sameDay(new Date(j.scheduled_at), day));
   const timed = dayJobs.filter((j) => !j.anytime);
   const anytime = dayJobs.filter((j) => j.anytime);
-  const lanes = assignLanes(timed);
   const isToday = sameDay(day, startOfDay(now));
+  const { y, slotMin, handlers } = useHoverSlot();
+  const lanes = useMemo(() => assignLanes(timed), [timed]);
   return (
     <div className="grid grid-cols-[80px_1fr]">
       <div className="border-r border-line pt-3">
@@ -738,6 +782,7 @@ function DayView({
       <div
         className={"relative " + (isToday ? "bg-black" : "")}
         style={{ height: `${HOURS.length * HOUR_PX}px` }}
+        {...handlers}
       >
         {HOURS.map((h) => (
           <div
@@ -753,11 +798,68 @@ function DayView({
             ))}
           </div>
         )}
+        {y !== null && slotMin !== null && (
+          <HoverAddBubble
+            day={day}
+            slotMin={slotMin}
+            y={y}
+            columnJobs={timed}
+          />
+        )}
         {timed.map((j) => (
           <JobBlock key={j.id} job={j} laneInfo={lanes.get(j.id)} />
         ))}
         {isToday && <NowLine now={now} />}
       </div>
+    </div>
+  );
+}
+
+function WeekDayColumn({
+  day,
+  timed,
+  anytime,
+  isToday,
+  now,
+}: {
+  day: Date;
+  timed: Job[];
+  anytime: Job[];
+  isToday: boolean;
+  now: Date;
+}) {
+  const { y, slotMin, handlers } = useHoverSlot();
+  const lanes = useMemo(() => assignLanes(timed), [timed]);
+  return (
+    <div
+      className={
+        "relative border-r border-line last:border-r-0 " +
+        (isToday ? "bg-black" : "")
+      }
+      style={{ height: `${HOURS.length * HOUR_PX}px` }}
+      {...handlers}
+    >
+      {HOURS.map((h) => (
+        <div
+          key={h}
+          className="border-b border-line"
+          style={{ height: `${HOUR_PX}px` }}
+        />
+      ))}
+      {anytime.length > 0 && (
+        <div className="absolute top-1 left-1 right-1 z-10">
+          {anytime.map((j) => (
+            <AnytimeBlock key={j.id} job={j} />
+          ))}
+        </div>
+      )}
+      {y !== null && slotMin !== null && (
+        <HoverAddBubble day={day} slotMin={slotMin} y={y} columnJobs={timed} />
+      )}
+      {timed.map((j) => (
+        <JobBlock key={j.id} job={j} laneInfo={lanes.get(j.id)} />
+      ))}
+      {isToday && <NowLine now={now} />}
     </div>
   );
 }
@@ -946,6 +1048,324 @@ function MapView() {
       <div className="text-sm text-zinc-500 mt-1">
         Visualize your jobs on a map — coming soon.
       </div>
+    </div>
+  );
+}
+
+// Tracks where the cursor is inside a column-shaped grid so the
+// hover-to-add bubble can snap to a 15-minute slot. Returns the
+// pixel-Y to render the bubble at and the slot's minute offset
+// from DAY_START_HOUR.
+function useHoverSlot() {
+  const [y, setY] = useState<number | null>(null);
+  const totalHeight = HOURS.length * HOUR_PX;
+  const onMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const raw = e.clientY - rect.top;
+    if (raw < 0 || raw > totalHeight) {
+      setY(null);
+      return;
+    }
+    const minutes = (raw / HOUR_PX) * 60;
+    const snapped = Math.max(0, Math.round(minutes / 15) * 15);
+    setY((snapped / 60) * HOUR_PX);
+  };
+  const onMouseLeave = () => setY(null);
+  return {
+    y,
+    slotMin: y != null ? Math.round((y / HOUR_PX) * 60) : null,
+    handlers: { onMouseMove, onMouseLeave },
+  };
+}
+
+// Bubble that appears at the snapped hover position offering "+ New Job"
+// and "+ New Task". Suppressed when the slot lies inside an existing
+// timed job block so the JobBlock stays the click target.
+function HoverAddBubble({
+  day,
+  slotMin,
+  y,
+  columnJobs,
+  technicianId,
+}: {
+  day: Date;
+  slotMin: number;
+  y: number;
+  columnJobs: Job[];
+  technicianId?: number | null;
+}) {
+  for (const j of columnJobs) {
+    if (j.anytime) continue;
+    const start = new Date(j.scheduled_at);
+    const end = j.end_time
+      ? new Date(j.end_time)
+      : new Date(start.getTime() + (j.duration_minutes || 60) * 60_000);
+    const top = blockTop(start);
+    const bottom = top + blockHeight(start, end);
+    if (y >= top && y <= bottom) return null;
+  }
+
+  const d = new Date(day);
+  d.setHours(DAY_START_HOUR, 0, 0, 0);
+  d.setMinutes(d.getMinutes() + slotMin);
+  const iso = d.toISOString();
+  const href =
+    `/schedule/new?start=${encodeURIComponent(iso)}` +
+    (technicianId ? `&tech=${technicianId}` : "");
+
+  return (
+    <div
+      className="absolute left-0 right-0 pointer-events-none"
+      style={{ top: `${y}px`, transform: "translateY(-50%)" }}
+    >
+      <div className="flex items-center justify-center">
+        <div className="flex items-center gap-1 bg-card border border-line rounded-full shadow-lg px-1 py-1 pointer-events-auto">
+          <Link
+            href={href}
+            className="text-xs font-bold text-zinc-200 hover:bg-black rounded-full px-3 py-1"
+          >
+            + New Job
+          </Link>
+          <span
+            title="Coming soon"
+            aria-disabled
+            className="text-xs font-bold text-zinc-500 rounded-full px-3 py-1 cursor-not-allowed select-none"
+          >
+            + New Task
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LanesView({
+  day,
+  jobs,
+  staff,
+  me,
+  now,
+}: {
+  day: Date;
+  jobs: Job[];
+  staff: StaffLite[];
+  me: MeLite | null;
+  now: Date;
+}) {
+  const dayJobs = jobs.filter((j) => sameDay(new Date(j.scheduled_at), day));
+  const timed = dayJobs.filter((j) => !j.anytime);
+  const anytime = dayJobs.filter((j) => j.anytime);
+  const isToday = sameDay(day, startOfDay(now));
+
+  // Decide which staff get their own column. Anyone with a job that day
+  // is included so the view never hides existing work; on top of that we
+  // include techs/managers without jobs so sales reps can drop new work
+  // into open capacity.
+  const techIdsWithJobs = new Set(
+    timed
+      .map((j) => j.technician_id)
+      .filter((id): id is number => id != null)
+  );
+  let columns: StaffLite[] = staff.filter(
+    (s) =>
+      techIdsWithJobs.has(s.id) ||
+      TECH_PERMISSIONS.has(s.permission_level || "")
+  );
+
+  // Field techs see only their own column even though the server has
+  // already filtered jobs — keeps the UI consistent with their data.
+  if (
+    me?.permission_level === "field_tech" &&
+    me.staff_id != null &&
+    !FULL_SCHEDULE_PERMISSIONS.has(me.permission_level)
+  ) {
+    columns = columns.filter((s) => s.id === me.staff_id);
+  }
+
+  columns.sort((a, b) => a.name.localeCompare(b.name));
+
+  const unassigned = timed.filter((j) => j.technician_id == null);
+  const hasUnassigned = unassigned.length > 0;
+
+  type Lane = { staff: StaffLite | null; jobs: Job[] };
+  const lanes: Lane[] = [];
+  if (hasUnassigned) lanes.push({ staff: null, jobs: unassigned });
+  for (const s of columns) {
+    lanes.push({
+      staff: s,
+      jobs: timed.filter((j) => j.technician_id === s.id),
+    });
+  }
+
+  if (lanes.length === 0) {
+    return (
+      <div className="p-10 text-center text-sm text-zinc-500">
+        No technicians are configured yet. Add an employee under Settings →
+        Employees to start using Lanes view.
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <div className="min-w-[640px]">
+        <div
+          className="grid border-b border-line"
+          style={{
+            gridTemplateColumns: `64px repeat(${lanes.length}, minmax(180px,1fr))`,
+          }}
+        >
+          <div />
+          {lanes.map((lane, i) => {
+            const totalCents = lane.jobs.reduce(
+              (a, j) => a + (j.price_cents || 0),
+              0
+            );
+            const count = lane.jobs.length;
+            const isHere =
+              lane.staff?.id != null && me?.staff_id === lane.staff.id;
+            return (
+              <div
+                key={i}
+                className={
+                  "px-3 py-3 text-left border-l border-line first:border-l-0 " +
+                  (isHere ? "bg-black" : "")
+                }
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={
+                      "inline-block w-3 h-3 rounded-full " +
+                      (lane.staff
+                        ? techSwatchClass(lane.staff.color)
+                        : "bg-slate-500 ring-2 ring-dashed ring-slate-400")
+                    }
+                  />
+                  <span className="text-sm font-extrabold text-white tracking-tight truncate">
+                    {lane.staff ? lane.staff.name : "Unassigned"}
+                  </span>
+                  {isHere && (
+                    <span className="text-[10px] font-bold text-zinc-400">
+                      you
+                    </span>
+                  )}
+                </div>
+                <div className="text-[11px] text-zinc-400 mt-1">
+                  {money(totalCents)} booked · {count}{" "}
+                  {count === 1 ? "job" : "jobs"}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {anytime.length > 0 && (
+          <div
+            className="grid border-b border-line bg-black/40"
+            style={{
+              gridTemplateColumns: `64px repeat(${lanes.length}, minmax(180px,1fr))`,
+            }}
+          >
+            <div className="text-[10px] font-bold text-zinc-500 text-right pr-2 py-2 -translate-y-0">
+              ANYTIME
+            </div>
+            {lanes.map((lane, i) => {
+              const laneAnytime = anytime.filter((j) =>
+                lane.staff
+                  ? j.technician_id === lane.staff.id
+                  : j.technician_id == null
+              );
+              return (
+                <div
+                  key={i}
+                  className="border-l border-line first:border-l-0 px-1 py-1"
+                >
+                  {laneAnytime.map((j) => (
+                    <AnytimeBlock key={j.id} job={j} />
+                  ))}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        <div
+          className="grid"
+          style={{
+            gridTemplateColumns: `64px repeat(${lanes.length}, minmax(180px,1fr))`,
+          }}
+        >
+          <div className="border-r border-line">
+            {HOURS.map((h) => (
+              <div
+                key={h}
+                style={{ height: `${HOUR_PX}px` }}
+                className="text-[10px] text-zinc-500 pr-2 text-right -translate-y-1.5"
+              >
+                {formatHour(h)}
+              </div>
+            ))}
+          </div>
+          {lanes.map((lane, i) => (
+            <LaneColumn
+              key={i}
+              day={day}
+              jobs={lane.jobs}
+              technicianId={lane.staff?.id ?? null}
+              isToday={isToday}
+              now={now}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LaneColumn({
+  day,
+  jobs,
+  technicianId,
+  isToday,
+  now,
+}: {
+  day: Date;
+  jobs: Job[];
+  technicianId: number | null;
+  isToday: boolean;
+  now: Date;
+}) {
+  const { y, slotMin, handlers } = useHoverSlot();
+  const lanes = useMemo(() => assignLanes(jobs), [jobs]);
+  return (
+    <div
+      className={
+        "relative border-l border-line first:border-l-0 " +
+        (isToday ? "bg-black" : "")
+      }
+      style={{ height: `${HOURS.length * HOUR_PX}px` }}
+      {...handlers}
+    >
+      {HOURS.map((h) => (
+        <div
+          key={h}
+          className="border-b border-line"
+          style={{ height: `${HOUR_PX}px` }}
+        />
+      ))}
+      {y !== null && slotMin !== null && (
+        <HoverAddBubble
+          day={day}
+          slotMin={slotMin}
+          y={y}
+          columnJobs={jobs}
+          technicianId={technicianId}
+        />
+      )}
+      {jobs.map((j) => (
+        <JobBlock key={j.id} job={j} laneInfo={lanes.get(j.id)} />
+      ))}
+      {isToday && <NowLine now={now} />}
     </div>
   );
 }
