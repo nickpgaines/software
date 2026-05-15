@@ -499,9 +499,9 @@ export default function JobForm({
         )}
       </Section>
 
-      <Section title="Scheduling">
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
+        <Section title="Scheduling">
+          <div className="space-y-3">
             <div className="flex items-center gap-2">
               <Label className="text-xs font-bold text-zinc-500 w-10 shrink-0">
                 Start
@@ -522,7 +522,7 @@ export default function JobForm({
               />
             </div>
             <div className="flex items-center gap-2">
-              <Label className="text-xs font-bold text-zinc-500 w-8 shrink-0">
+              <Label className="text-xs font-bold text-zinc-500 w-10 shrink-0">
                 End
               </Label>
               <PickerInput
@@ -540,63 +540,63 @@ export default function JobForm({
                 className="w-[110px]"
               />
             </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-2 pt-1">
+              <Label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">
+                <Checkbox
+                  checked={anytime}
+                  onCheckedChange={(c) => setAnytime(c === true)}
+                  className="rounded border-line-strong text-white focus:ring-zinc-500"
+                />
+                Anytime (no specific time of day)
+              </Label>
+              <Label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">
+                <Checkbox
+                  checked={scheduleLater}
+                  onCheckedChange={(c) => setScheduleLater(c === true)}
+                  className="rounded border-line-strong text-white focus:ring-zinc-500"
+                />
+                Schedule later
+              </Label>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-4 pt-1">
-            <Label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">
-              <Checkbox
-                checked={anytime}
-                onCheckedChange={(c) => setAnytime(c === true)}
-                className="rounded border-line-strong text-white focus:ring-zinc-500"
-              />
-              Anytime (no specific time of day)
-            </Label>
-            <Label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">
-              <Checkbox
-                checked={scheduleLater}
-                onCheckedChange={(c) => setScheduleLater(c === true)}
-                className="rounded border-line-strong text-white focus:ring-zinc-500"
-              />
-              Schedule later
-            </Label>
-          </div>
-        </div>
-      </Section>
+        </Section>
 
-      <Section title="Assignment">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          <Field label="Lead Source">
-            {/* Native <select> kept: empty-string sentinel value for "Select source…" */}
-            <select
-              value={leadSource}
-              onChange={(e) => setLeadSource(e.target.value)}
-              className="w-full border border-line rounded-full px-3 py-1.5 text-sm bg-card"
-            >
-              <option value="">Select source…</option>
-              {LEAD_SOURCES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Select Salesperson(s)">
-            <StaffMultiPicker
-              staff={staff}
-              ids={salesIds}
-              setIds={setSalesIds}
-              placeholder="Search salespeople…"
-            />
-          </Field>
-          <Field label="Dispatched To">
-            <StaffMultiPicker
-              staff={staff}
-              ids={techIds}
-              setIds={setTechIds}
-              placeholder="Search technicians…"
-            />
-          </Field>
-        </div>
-      </Section>
+        <Section title="Assignment">
+          <div className="space-y-3">
+            <Field label="Lead Source">
+              {/* Native <select> kept: empty-string sentinel value for "Select source…" */}
+              <select
+                value={leadSource}
+                onChange={(e) => setLeadSource(e.target.value)}
+                className="w-full border border-line rounded-full px-3 py-1.5 text-sm bg-card"
+              >
+                <option value="">Select source…</option>
+                {LEAD_SOURCES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Select Salesperson(s)">
+              <StaffMultiPicker
+                staff={staff}
+                ids={salesIds}
+                setIds={setSalesIds}
+                placeholder="Search salespeople…"
+              />
+            </Field>
+            <Field label="Dispatched To">
+              <StaffMultiPicker
+                staff={staff}
+                ids={techIds}
+                setIds={setTechIds}
+                placeholder="Search technicians…"
+              />
+            </Field>
+          </div>
+        </Section>
+      </div>
 
       <Section
         title={
