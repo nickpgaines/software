@@ -1284,7 +1284,17 @@ function HoverAddPopover({
       className="absolute left-1 right-1 pointer-events-none"
       style={{ top: `${top}px`, height: `${ghostHeight}px` }}
     >
-      <div className="absolute inset-0 rounded-md border border-dashed border-primary bg-primary/20">
+      {/* Pulse tokens are stored as full color values (hex), so
+          Tailwind's `bg-primary/20` slash-opacity doesn't compose with
+          var(--primary). color-mix() is the established codebase pattern
+          for translucent accents (see Sidebar.tsx). */}
+      <div
+        className="absolute inset-0 rounded-md border border-dashed border-primary"
+        style={{
+          backgroundColor:
+            "color-mix(in srgb, var(--primary) 22%, transparent)",
+        }}
+      >
         <div className="px-2 py-1 text-[11px] font-bold text-primary">
           {startLabel} – {endLabel}
         </div>
