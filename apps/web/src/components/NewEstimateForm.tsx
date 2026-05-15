@@ -263,20 +263,6 @@ export default function NewEstimateForm() {
               </Button>
             </CardHeader>
 
-            <div className="flex flex-wrap gap-2 mb-3">
-              {SERVICE_PRESETS.map((p) => (
-                <Button
-                  key={p}
-                  type="button"
-                  variant="ghost"
-                  onClick={() => addItem(p)}
-                  className="text-xs bg-black hover:bg-line text-zinc-300 rounded-full px-3 py-1 h-auto"
-                >
-                  + {p}
-                </Button>
-              ))}
-            </div>
-
             <ul className="space-y-3">
               {items.map((it, idx) => (
                 <li
@@ -284,14 +270,9 @@ export default function NewEstimateForm() {
                   className="rounded-xl border border-line p-3 space-y-2 bg-card"
                 >
                   <div className="flex items-start gap-2">
-                    <Input
-                      type="text"
+                    <TitleWithPresets
                       value={it.title}
-                      onChange={(e) =>
-                        updateItem(it.key, { title: e.target.value })
-                      }
-                      placeholder="Item title"
-                      className="flex-1 border-line rounded-lg px-3 py-2 text-sm h-auto"
+                      onChange={(v) => updateItem(it.key, { title: v })}
                     />
                     {items.length > 1 && (
                       <Button
@@ -372,6 +353,63 @@ export default function NewEstimateForm() {
             setCustomerQuery(c.name);
           }}
         />
+      )}
+    </div>
+  );
+}
+
+function TitleWithPresets({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (!ref.current?.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  const suggestions = SERVICE_PRESETS.filter(
+    (p) => !value || p.toLowerCase().includes(value.toLowerCase())
+  );
+
+  return (
+    <div ref={ref} className="relative flex-1">
+      <Input
+        type="text"
+        value={value}
+        onChange={(e) => {
+          onChange(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+        placeholder="Item title"
+        className="w-full border-line rounded-lg px-3 py-2 text-sm h-auto"
+      />
+      {open && suggestions.length > 0 && (
+        <div className="absolute z-20 left-0 right-0 mt-1 bg-card border border-line rounded-xl shadow-lg overflow-hidden">
+          {suggestions.map((p) => (
+            <Button
+              key={p}
+              type="button"
+              variant="ghost"
+              onClick={() => {
+                onChange(p);
+                setOpen(false);
+              }}
+              className="w-full text-left px-3 py-2 hover:bg-black text-sm h-auto block rounded-none"
+            >
+              {p}
+            </Button>
+          ))}
+        </div>
       )}
     </div>
   );
