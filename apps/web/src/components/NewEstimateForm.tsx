@@ -178,175 +178,171 @@ export default function NewEstimateForm() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <h2 className="text-base font-extrabold text-white tracking-tight">
-                Customer
-              </h2>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => setShowNewCustomer(true)}
-                className="text-xs font-bold text-zinc-500 border-line hover:bg-black rounded-full px-3 py-1.5 h-auto"
-              >
-                + Create New Customer
-              </Button>
-            </CardHeader>
-            <CustomerPicker
-              customers={customers}
-              selectedId={customerId}
-              query={customerQuery}
-              setQuery={setCustomerQuery}
-              onPick={(c) => {
-                setCustomerId(c.id);
-                setCustomerQuery(c.name);
-              }}
-              onClear={() => {
-                setCustomerId(null);
-                setCustomerQuery("");
-              }}
-            />
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <h2 className="text-base font-extrabold text-white tracking-tight">
-                Lead Source
-              </h2>
-            </CardHeader>
-            {/* Native <select> kept: empty-string sentinel value for "Select source…" */}
-            <select
-              value={leadSource}
-              onChange={(e) => setLeadSource(e.target.value)}
-              className="w-full border border-line rounded-xl px-4 py-2 text-sm bg-card"
+      <div className="space-y-4">
+        <Card>
+          <CardHeader>
+            <h2 className="text-base font-extrabold text-white tracking-tight">
+              Customer
+            </h2>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setShowNewCustomer(true)}
+              className="text-xs font-bold text-zinc-500 border-line hover:bg-black rounded-full px-3 py-1.5 h-auto"
             >
-              <option value="">Select source…</option>
-              {LEAD_SOURCES.map((s) => (
-                <option key={s} value={s}>
-                  {s}
-                </option>
-              ))}
-            </select>
-          </Card>
+              + Create New Customer
+            </Button>
+          </CardHeader>
+          <CustomerPicker
+            customers={customers}
+            selectedId={customerId}
+            query={customerQuery}
+            setQuery={setCustomerQuery}
+            onPick={(c) => {
+              setCustomerId(c.id);
+              setCustomerQuery(c.name);
+            }}
+            onClear={() => {
+              setCustomerId(null);
+              setCustomerQuery("");
+            }}
+          />
+        </Card>
 
-          <Card>
-            <CardHeader>
-              <h2 className="text-base font-extrabold text-white tracking-tight">
-                Private Notes
-              </h2>
-            </CardHeader>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={4}
-              placeholder="Write your note here…"
-              className="w-full border-line rounded-xl px-4 py-2 text-sm bg-card"
-            />
-          </Card>
-        </div>
+        <Card>
+          <CardHeader>
+            <h2 className="text-base font-extrabold text-white tracking-tight">
+              Line Items
+            </h2>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => addItem()}
+              className="text-xs font-bold text-zinc-500 border-line hover:bg-black rounded-full px-3 py-1.5 h-auto"
+            >
+              + Add item
+            </Button>
+          </CardHeader>
 
-        <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <h2 className="text-base font-extrabold text-white tracking-tight">
-                Line Items
-              </h2>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => addItem()}
-                className="text-xs font-bold text-zinc-500 border-line hover:bg-black rounded-full px-3 py-1.5 h-auto"
+          <ul className="space-y-3">
+            {items.map((it, idx) => (
+              <li
+                key={it.key}
+                className="rounded-xl border border-line p-3 space-y-2 bg-card"
               >
-                + Add item
-              </Button>
-            </CardHeader>
-
-            <ul className="space-y-3">
-              {items.map((it, idx) => (
-                <li
-                  key={it.key}
-                  className="rounded-xl border border-line p-3 space-y-2 bg-card"
-                >
-                  <div className="flex items-start gap-2">
-                    <TitleWithPresets
-                      value={it.title}
-                      onChange={(v) => updateItem(it.key, { title: v })}
-                    />
-                    {items.length > 1 && (
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        onClick={() => removeItem(it.key)}
-                        className="text-zinc-500 hover:text-rose-600 px-2 h-auto"
-                        aria-label={`Remove item ${idx + 1}`}
-                      >
-                        ✕
-                      </Button>
-                    )}
-                  </div>
-                  <Input
-                    type="text"
-                    value={it.description}
-                    onChange={(e) =>
-                      updateItem(it.key, { description: e.target.value })
-                    }
-                    placeholder="Description (optional)"
-                    className="w-full border-line rounded-lg px-3 py-2 text-sm h-auto"
+                <div className="flex items-start gap-2">
+                  <TitleWithPresets
+                    value={it.title}
+                    onChange={(v) => updateItem(it.key, { title: v })}
                   />
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <Label className="block text-[10px] font-bold text-zinc-500 mb-1 font-normal">
-                        Qty
-                      </Label>
-                      <Input
-                        type="number"
-                        step="0.5"
-                        min="0"
-                        value={it.quantity}
-                        onChange={(e) =>
-                          updateItem(it.key, { quantity: e.target.value })
-                        }
-                        className="w-full border-line rounded-lg px-3 py-2 text-sm h-auto"
-                      />
-                    </div>
-                    <div>
-                      <Label className="block text-[10px] font-bold text-zinc-500 mb-1 font-normal">
-                        Price (USD)
-                      </Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={it.price}
-                        onChange={(e) =>
-                          updateItem(it.key, { price: e.target.value })
-                        }
-                        className="w-full border-line rounded-lg px-3 py-2 text-sm h-auto"
-                        placeholder="0.00"
-                      />
-                    </div>
+                  {items.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={() => removeItem(it.key)}
+                      className="text-zinc-500 hover:text-rose-600 px-2 h-auto"
+                      aria-label={`Remove item ${idx + 1}`}
+                    >
+                      ✕
+                    </Button>
+                  )}
+                </div>
+                <Input
+                  type="text"
+                  value={it.description}
+                  onChange={(e) =>
+                    updateItem(it.key, { description: e.target.value })
+                  }
+                  placeholder="Description (optional)"
+                  className="w-full border-line rounded-lg px-3 py-2 text-sm h-auto"
+                />
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <Label className="block text-[10px] font-bold text-zinc-500 mb-1 font-normal">
+                      Qty
+                    </Label>
+                    <Input
+                      type="number"
+                      step="0.5"
+                      min="0"
+                      value={it.quantity}
+                      onChange={(e) =>
+                        updateItem(it.key, { quantity: e.target.value })
+                      }
+                      className="w-full border-line rounded-lg px-3 py-2 text-sm h-auto"
+                    />
                   </div>
-                </li>
-              ))}
-            </ul>
-            <div className="border-t border-line mt-4 pt-4 grid grid-cols-2 gap-3 text-sm">
-              <div className="flex items-center justify-between">
-                <span className="text-zinc-400">Subtotal</span>
-                <span className="font-bold text-white tracking-tight">
-                  {formatPrice(totalCents)}
-                </span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-zinc-400">Total</span>
-                <span className="text-base font-extrabold text-white tracking-tight">
-                  {formatPrice(totalCents)}
-                </span>
-              </div>
+                  <div>
+                    <Label className="block text-[10px] font-bold text-zinc-500 mb-1 font-normal">
+                      Price (USD)
+                    </Label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      value={it.price}
+                      onChange={(e) =>
+                        updateItem(it.key, { price: e.target.value })
+                      }
+                      className="w-full border-line rounded-lg px-3 py-2 text-sm h-auto"
+                      placeholder="0.00"
+                    />
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+          <div className="border-t border-line mt-4 pt-4 grid grid-cols-2 gap-3 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-zinc-400">Subtotal</span>
+              <span className="font-bold text-white tracking-tight">
+                {formatPrice(totalCents)}
+              </span>
             </div>
-          </Card>
-        </div>
+            <div className="flex items-center justify-between">
+              <span className="text-zinc-400">Total</span>
+              <span className="text-base font-extrabold text-white tracking-tight">
+                {formatPrice(totalCents)}
+              </span>
+            </div>
+          </div>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <h2 className="text-base font-extrabold text-white tracking-tight">
+              Lead Source
+            </h2>
+          </CardHeader>
+          {/* Native <select> kept: empty-string sentinel value for "Select source…" */}
+          <select
+            value={leadSource}
+            onChange={(e) => setLeadSource(e.target.value)}
+            className="w-full border border-line rounded-xl px-4 py-2 text-sm bg-card"
+          >
+            <option value="">Select source…</option>
+            {LEAD_SOURCES.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <h2 className="text-base font-extrabold text-white tracking-tight">
+              Private Notes
+            </h2>
+          </CardHeader>
+          <Textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={4}
+            placeholder="Write your note here…"
+            className="w-full border-line rounded-xl px-4 py-2 text-sm bg-card"
+          />
+        </Card>
       </div>
 
       {showNewCustomer && (
