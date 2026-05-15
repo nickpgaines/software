@@ -24,7 +24,7 @@ type Customer = {
   latitude?: number | null;
   longitude?: number | null;
 };
-type Staff = { id: number; name: string; role: string | null };
+export type Staff = { id: number; name: string; role: string | null };
 
 type LineItem = {
   key: string;
@@ -35,6 +35,7 @@ type LineItem = {
   price_cents: number;
   taxable: boolean;
   upsell: boolean;
+  is_addon: boolean;
 };
 
 type ChecklistItem = {
@@ -147,6 +148,7 @@ type ExistingJob = {
     price_cents: number;
     taxable: number;
     upsell: number;
+    is_addon: number;
   }[];
   checklist_items: { id: number; text: string; completed: number }[];
   sales: { id: number; name: string; role: string | null }[];
@@ -238,6 +240,7 @@ export default function JobForm({
           price_cents: li.price_cents,
           taxable: !!li.taxable,
           upsell: !!li.upsell,
+          is_addon: !!li.is_addon,
         }))
       : [
           {
@@ -248,6 +251,7 @@ export default function JobForm({
             price_cents: 0,
             taxable: true,
             upsell: false,
+            is_addon: false,
           },
         ]
   );
@@ -303,6 +307,7 @@ export default function JobForm({
         price_cents: 0,
         taxable: true,
         upsell: false,
+        is_addon: mode === "edit",
       },
     ]);
   }
@@ -373,6 +378,7 @@ export default function JobForm({
         price_cents: Math.round(li.price_cents),
         taxable: li.taxable,
         upsell: li.upsell,
+        is_addon: li.is_addon,
       })),
       checklist_items: checklist
         .filter((c) => c.text.trim())
@@ -962,7 +968,7 @@ function NewCustomerInline({
   );
 }
 
-function StaffMultiPicker({
+export function StaffMultiPicker({
   staff,
   ids,
   setIds,
@@ -1166,14 +1172,16 @@ function LineItemCard({
               />
               Taxable
             </Label>
-            <Label className="inline-flex items-center gap-2 font-normal">
-              <Checkbox
-                checked={item.upsell}
-                onCheckedChange={(c) => onChange({ upsell: c === true })}
-                className="rounded border-line-strong text-white focus:ring-zinc-500"
-              />
-              Upsell
-            </Label>
+            {item.is_addon && (
+              <Label className="inline-flex items-center gap-2 font-normal">
+                <Checkbox
+                  checked={item.upsell}
+                  onCheckedChange={(c) => onChange({ upsell: c === true })}
+                  className="rounded border-line-strong text-white focus:ring-zinc-500"
+                />
+                Upsell
+              </Label>
+            )}
           </div>
         </div>
         <Button

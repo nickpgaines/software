@@ -2,11 +2,26 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import PaymentsSection from "@/components/jobs/PaymentsSection";
 import RecordPaymentModal from "@/components/jobs/RecordPaymentModal";
+import { StaffMultiPicker, type Staff } from "@/components/JobForm";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+
+type LineItemDetail = {
+  id: number;
+  title: string;
+  description: string | null;
+  quantity: number;
+  price_cents: number;
+  taxable: number;
+  upsell: number;
+  is_addon: number;
+};
 
 type Detail = {
   id: number;
@@ -29,15 +44,7 @@ type Detail = {
   arrived_at: string | null;
   started_at: string | null;
   completed_at: string | null;
-  line_items: {
-    id: number;
-    title: string;
-    description: string | null;
-    quantity: number;
-    price_cents: number;
-    taxable: number;
-    upsell: number;
-  }[];
+  line_items: LineItemDetail[];
   checklist_items: { id: number; text: string; completed: number }[];
   sales: { id: number; name: string; role: string | null }[];
   techs: { id: number; name: string; role: string | null }[];
@@ -80,6 +87,14 @@ const INTERVAL_PERIOD_LABEL: Record<string, string> = {
   semiannually: "every 6 months",
   yearly: "annually",
 };
+
+const LEAD_SOURCES = [
+  "Referral",
+  "Online",
+  "Door-to-door",
+  "Repeat customer",
+  "Other",
+];
 
 type Step = "en_route" | "arrived" | "started" | "completed";
 
@@ -186,6 +201,25 @@ function money(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
 }
 
+function pad(n: number) {
+  return String(n).padStart(2, "0");
+}
+function toDateInput(iso: string) {
+  const d = new Date(iso);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+function toTimeInput(iso: string) {
+  const d = new Date(iso);
+  return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+function combineLocal(date: string, time: string) {
+  return new Date(`${date}T${time || "08:00"}`).toISOString();
+}
+
+function uid() {
+  return Math.random().toString(36).slice(2);
+}
+
 export default function JobDetailClient({
   initialJob,
   initialSubscription = null,
@@ -197,17 +231,19 @@ export default function JobDetailClient({
   const [job, setJob] = useState<Detail>(initialJob);
   const [busy, setBusy] = useState<Step | null>(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [staff, setStaff] = useState<Staff[]>([]);
   const subscription = initialSubscription;
 
-  // Sync local job state with initialJob whenever the server-provided
-  // record changes. Without this, useState(initialJob) only seeds on
-  // the first render — so freshly-fetched timestamps (e.g. step
-  // logs persisted on a previous visit, auto-completed steps from a
-  // payment, or any router refresh) won't appear in the buttons until
-  // the next click triggers a setJob().
   useEffect(() => {
     setJob(initialJob);
   }, [initialJob]);
+
+  useEffect(() => {
+    fetch("/api/staff")
+      .then((r) => r.json())
+      .then(setStaff)
+      .catch(() => {});
+  }, []);
 
   async function refreshJob() {
     const res = await fetch(`/api/jobs/${job.id}`);
@@ -215,9 +251,22 @@ export default function JobDetailClient({
       const updated = (await res.json()) as Detail;
       setJob(updated);
     }
-    // Bust the router's client-side cache so the next navigation back
-    // to this URL re-renders the server component with fresh data.
     router.refresh();
+  }
+
+  async function patchJob(body: Record<string, unknown>) {
+    const res = await fetch(`/api/jobs/${job.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (res.ok) {
+      const updated = (await res.json()) as Detail;
+      setJob(updated);
+      router.refresh();
+      return true;
+    }
+    return false;
   }
 
   async function toggleStep(step: Step) {
@@ -233,10 +282,6 @@ export default function JobDetailClient({
     if (res.ok) {
       const updated = (await res.json()) as Detail;
       setJob(updated);
-      // Bust the router cache. Without this, navigating away and back
-      // to /schedule/[id] serves the previously-rendered tree (with
-      // pre-click timestamps), making the step buttons appear unlogged
-      // even though the DB has them.
       router.refresh();
     }
   }
@@ -283,12 +328,6 @@ export default function JobDetailClient({
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Link
-            href={`/schedule/${job.id}/edit`}
-            className="text-sm border border-line bg-card hover:bg-black rounded-full px-4 py-2 text-zinc-300"
-          >
-            Edit
-          </Link>
           <Button
             variant="ghost"
             onClick={deleteJob}
@@ -492,135 +531,13 @@ export default function JobDetailClient({
         </div>
 
         <div className="space-y-6">
-          <section className="bg-card border border-line rounded-2xl p-5">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="font-extrabold text-white tracking-tight">Job Details</h2>
-              <Link
-                href={`/schedule/${job.id}/edit`}
-                className="text-sm text-zinc-300 font-bold hover:text-white hover:underline"
-              >
-                Edit
-              </Link>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <div className="text-xs font-bold text-zinc-500">
-                  Scheduled
-                </div>
-                <div className="font-bold text-white tracking-tight">
-                  {dayStamp(job.scheduled_at)}
-                </div>
-                <div className="text-zinc-400">
-                  {job.anytime
-                    ? "Anytime"
-                    : `${timeStamp(job.scheduled_at)}${
-                        end ? ` – ${timeStamp(end.toISOString())}` : ""
-                      }`}
-                </div>
-              </div>
-              <div>
-                <div className="text-xs font-bold text-zinc-500">
-                  Duration
-                </div>
-                <div className="font-bold text-white tracking-tight">
-                  {job.duration_minutes} min
-                </div>
-              </div>
-              <div>
-                <div className="text-xs font-bold text-zinc-500">
-                  Salesperson
-                </div>
-                <div className="font-bold text-white tracking-tight">
-                  {job.sales.length === 0
-                    ? "—"
-                    : job.sales.map((s) => s.name).join(", ")}
-                </div>
-              </div>
-              <div>
-                <div className="text-xs font-bold text-zinc-500">
-                  Dispatched To
-                </div>
-                <div className="font-bold text-white tracking-tight">
-                  {job.techs.length === 0
-                    ? "—"
-                    : job.techs.map((s) => s.name).join(", ")}
-                </div>
-              </div>
-              {job.lead_source && (
-                <div>
-                  <div className="text-xs font-bold text-zinc-500">
-                    Lead Source
-                  </div>
-                  <div className="font-bold text-white tracking-tight">
-                    {job.lead_source}
-                  </div>
-                </div>
-              )}
-              {job.recurring ? (
-                <div>
-                  <div className="text-xs font-bold text-zinc-500">
-                    Recurring
-                  </div>
-                  <div className="font-bold text-white tracking-tight">Yes</div>
-                </div>
-              ) : null}
-            </div>
-            {job.notes && (
-              <div className="mt-4">
-                <div className="text-xs font-bold text-zinc-500">
-                  Notes
-                </div>
-                <p className="text-sm text-zinc-300 font-bold mt-1 whitespace-pre-wrap">
-                  {job.notes}
-                </p>
-              </div>
-            )}
-          </section>
+          <JobDetailsSection job={job} staff={staff} onSave={patchJob} />
 
-          <section className="bg-card border border-line rounded-2xl p-5">
-            <h2 className="font-extrabold text-white tracking-tight mb-4">Line Items</h2>
-            {job.line_items.length === 0 ? (
-              <p className="text-sm text-zinc-500">No line items.</p>
-            ) : (
-              <ul className="divide-y divide-line">
-                {job.line_items.map((li) => (
-                  <li
-                    key={li.id}
-                    className="py-3 flex items-start justify-between gap-4"
-                  >
-                    <div>
-                      <div className="font-bold text-white tracking-tight">{li.title}</div>
-                      {li.description && (
-                        <div className="text-sm text-zinc-400 mt-2 font-bold">
-                          {li.description}
-                        </div>
-                      )}
-                      <div className="text-xs font-bold text-zinc-500 mt-2 flex gap-2 flex-wrap">
-                        <span>
-                          Qty {li.quantity} · {money(li.price_cents)} ea
-                        </span>
-                        {li.taxable ? (
-                          <span className="text-emerald-600">Taxable</span>
-                        ) : null}
-                        {li.upsell ? (
-                          <span className="text-violet-600">Upsell</span>
-                        ) : null}
-                      </div>
-                    </div>
-                    <div className="text-sm font-extrabold text-white tracking-tight tabular-nums whitespace-nowrap">
-                      {money(Math.round(li.quantity * li.price_cents))}
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-            <TotalsPanel
-              subtotalCents={subtotal}
-              totalCents={job.price_cents}
-              paidTotalCents={job.paid_total_cents}
-              tipTotalCents={job.tip_total_cents}
-            />
-          </section>
+          <LineItemsSection
+            job={job}
+            subtotalCents={subtotal}
+            onSave={patchJob}
+          />
 
           <PaymentsSection
             jobId={job.id}
@@ -632,20 +549,16 @@ export default function JobDetailClient({
             onChanged={refreshJob}
           />
 
-          <section className="bg-card border border-line rounded-2xl p-5">
-            <h2 className="font-extrabold text-white tracking-tight mb-4">Checklist</h2>
-            {job.checklist_items.length === 0 ? (
-              <p className="text-sm text-zinc-500">No tasks selected.</p>
-            ) : (
-              <ChecklistView
-                jobId={job.id}
-                items={job.checklist_items}
-                onChange={(items) =>
-                  setJob((j) => ({ ...j, checklist_items: items }))
-                }
-              />
-            )}
-          </section>
+          <NotesSection notes={job.notes} onSave={patchJob} />
+
+          <ChecklistSection
+            jobId={job.id}
+            items={job.checklist_items}
+            onLocalChange={(items) =>
+              setJob((j) => ({ ...j, checklist_items: items }))
+            }
+            onSave={patchJob}
+          />
         </div>
       </div>
 
@@ -664,6 +577,923 @@ export default function JobDetailClient({
         />
       )}
     </div>
+  );
+}
+
+function SectionEditButton({
+  label = "Edit",
+  onClick,
+}: {
+  label?: string;
+  onClick: () => void;
+}) {
+  return (
+    <Button
+      type="button"
+      variant="ghost"
+      onClick={onClick}
+      className="text-sm border border-line bg-card hover:bg-black rounded-full px-3 py-1.5 text-zinc-300 h-auto"
+    >
+      {label}
+    </Button>
+  );
+}
+
+function SectionSaveCancel({
+  saving,
+  onSave,
+  onCancel,
+}: {
+  saving: boolean;
+  onSave: () => void;
+  onCancel: () => void;
+}) {
+  return (
+    <div className="flex gap-2">
+      <Button
+        type="button"
+        variant="ghost"
+        onClick={onCancel}
+        disabled={saving}
+        className="text-sm border border-line bg-card hover:bg-black rounded-full px-3 py-1.5 text-zinc-300 h-auto"
+      >
+        Cancel
+      </Button>
+      <Button
+        type="button"
+        variant="ghost"
+        onClick={onSave}
+        disabled={saving}
+        className="text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-3 py-1.5 font-bold h-auto"
+      >
+        {saving ? "Saving…" : "Save"}
+      </Button>
+    </div>
+  );
+}
+
+function JobDetailsSection({
+  job,
+  staff,
+  onSave,
+}: {
+  job: Detail;
+  staff: Staff[];
+  onSave: (body: Record<string, unknown>) => Promise<boolean>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const [startDate, setStartDate] = useState(toDateInput(job.scheduled_at));
+  const [startTime, setStartTime] = useState(toTimeInput(job.scheduled_at));
+  const [endDate, setEndDate] = useState(
+    job.end_time ? toDateInput(job.end_time) : toDateInput(job.scheduled_at)
+  );
+  const [endTime, setEndTime] = useState(
+    job.end_time ? toTimeInput(job.end_time) : toTimeInput(job.scheduled_at)
+  );
+  const [anytime, setAnytime] = useState(!!job.anytime);
+  const [salesIds, setSalesIds] = useState<number[]>(
+    job.sales.map((s) => s.id)
+  );
+  const [techIds, setTechIds] = useState<number[]>(
+    job.techs.map((s) => s.id)
+  );
+  const [leadSource, setLeadSource] = useState(job.lead_source ?? "");
+  const [recurring, setRecurring] = useState(!!job.recurring);
+
+  function resetFromJob() {
+    setStartDate(toDateInput(job.scheduled_at));
+    setStartTime(toTimeInput(job.scheduled_at));
+    setEndDate(
+      job.end_time ? toDateInput(job.end_time) : toDateInput(job.scheduled_at)
+    );
+    setEndTime(
+      job.end_time ? toTimeInput(job.end_time) : toTimeInput(job.scheduled_at)
+    );
+    setAnytime(!!job.anytime);
+    setSalesIds(job.sales.map((s) => s.id));
+    setTechIds(job.techs.map((s) => s.id));
+    setLeadSource(job.lead_source ?? "");
+    setRecurring(!!job.recurring);
+  }
+
+  async function save() {
+    setSaving(true);
+    const ok = await onSave({
+      start_time: combineLocal(startDate, anytime ? "00:00" : startTime),
+      end_time: anytime
+        ? null
+        : combineLocal(endDate || startDate, endTime || startTime),
+      anytime,
+      sales_ids: salesIds,
+      tech_ids: techIds,
+      lead_source: leadSource || null,
+      recurring,
+    });
+    setSaving(false);
+    if (ok) setEditing(false);
+  }
+
+  function startEdit() {
+    resetFromJob();
+    setEditing(true);
+  }
+
+  const end = job.end_time ? new Date(job.end_time) : null;
+
+  return (
+    <section className="bg-card border border-line rounded-2xl p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-extrabold text-white tracking-tight">Job Details</h2>
+        {editing ? (
+          <SectionSaveCancel
+            saving={saving}
+            onSave={save}
+            onCancel={() => setEditing(false)}
+          />
+        ) : (
+          <SectionEditButton onClick={startEdit} />
+        )}
+      </div>
+      {!editing ? (
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <div className="text-xs font-bold text-zinc-500">Scheduled</div>
+            <div className="font-bold text-white tracking-tight">
+              {dayStamp(job.scheduled_at)}
+            </div>
+            <div className="text-zinc-400">
+              {job.anytime
+                ? "Anytime"
+                : `${timeStamp(job.scheduled_at)}${
+                    end ? ` – ${timeStamp(end.toISOString())}` : ""
+                  }`}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs font-bold text-zinc-500">Duration</div>
+            <div className="font-bold text-white tracking-tight">
+              {job.duration_minutes} min
+            </div>
+          </div>
+          <div>
+            <div className="text-xs font-bold text-zinc-500">Salesperson</div>
+            <div className="font-bold text-white tracking-tight">
+              {job.sales.length === 0
+                ? "—"
+                : job.sales.map((s) => s.name).join(", ")}
+            </div>
+          </div>
+          <div>
+            <div className="text-xs font-bold text-zinc-500">Dispatched To</div>
+            <div className="font-bold text-white tracking-tight">
+              {job.techs.length === 0
+                ? "—"
+                : job.techs.map((s) => s.name).join(", ")}
+            </div>
+          </div>
+          {job.lead_source && (
+            <div>
+              <div className="text-xs font-bold text-zinc-500">Lead Source</div>
+              <div className="font-bold text-white tracking-tight">
+                {job.lead_source}
+              </div>
+            </div>
+          )}
+          {job.recurring ? (
+            <div>
+              <div className="text-xs font-bold text-zinc-500">Recurring</div>
+              <div className="font-bold text-white tracking-tight">Yes</div>
+            </div>
+          ) : null}
+        </div>
+      ) : (
+        <div className="space-y-4">
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-[80px_1fr_1fr] items-center gap-3">
+              <Label className="text-xs font-bold text-zinc-500">Start</Label>
+              <Input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="border-line rounded-full px-4 py-2 text-sm bg-card h-auto"
+              />
+              <Input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                disabled={anytime}
+                className="border-line rounded-full px-4 py-2 text-sm bg-card disabled:bg-black h-auto"
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-[80px_1fr_1fr] items-center gap-3">
+              <Label className="text-xs font-bold text-zinc-500">End</Label>
+              <Input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                disabled={anytime}
+                className="border-line rounded-full px-4 py-2 text-sm bg-card disabled:bg-black h-auto"
+              />
+              <Input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                disabled={anytime}
+                className="border-line rounded-full px-4 py-2 text-sm bg-card disabled:bg-black h-auto"
+              />
+            </div>
+            <Label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">
+              <Checkbox
+                checked={anytime}
+                onCheckedChange={(c) => setAnytime(c === true)}
+                className="rounded border-line-strong text-white focus:ring-zinc-500"
+              />
+              Anytime (no specific time of day)
+            </Label>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label className="block text-xs font-bold text-zinc-500 mb-2">
+                Salesperson(s)
+              </Label>
+              <StaffMultiPicker
+                staff={staff}
+                ids={salesIds}
+                setIds={setSalesIds}
+                placeholder="Search salespeople…"
+              />
+            </div>
+            <div>
+              <Label className="block text-xs font-bold text-zinc-500 mb-2">
+                Dispatched To
+              </Label>
+              <StaffMultiPicker
+                staff={staff}
+                ids={techIds}
+                setIds={setTechIds}
+                placeholder="Search technicians…"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label className="block text-xs font-bold text-zinc-500 mb-2">
+                Lead Source
+              </Label>
+              {/* Native <select> kept: empty-string sentinel value for "Select source…" */}
+              <select
+                value={leadSource}
+                onChange={(e) => setLeadSource(e.target.value)}
+                className="w-full border border-line rounded-full px-4 py-2 text-sm bg-card"
+              >
+                <option value="">Select source…</option>
+                {LEAD_SOURCES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-end">
+              <Label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">
+                <Checkbox
+                  checked={recurring}
+                  onCheckedChange={(c) => setRecurring(c === true)}
+                  className="rounded border-line-strong text-white focus:ring-zinc-500"
+                />
+                Recurring service
+              </Label>
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+type LineItemDraft = {
+  key: string;
+  id?: number;
+  title: string;
+  description: string;
+  quantity: number;
+  price_cents: number;
+  taxable: boolean;
+  upsell: boolean;
+  is_addon: boolean;
+};
+
+function fromDetail(li: LineItemDetail): LineItemDraft {
+  return {
+    key: uid(),
+    id: li.id,
+    title: li.title,
+    description: li.description ?? "",
+    quantity: li.quantity,
+    price_cents: li.price_cents,
+    taxable: !!li.taxable,
+    upsell: !!li.upsell,
+    is_addon: !!li.is_addon,
+  };
+}
+
+function LineItemsSection({
+  job,
+  subtotalCents,
+  onSave,
+}: {
+  job: Detail;
+  subtotalCents: number;
+  onSave: (body: Record<string, unknown>) => Promise<boolean>;
+}) {
+  const [mode, setMode] = useState<"view" | "edit" | "add">("view");
+  const [saving, setSaving] = useState(false);
+  const [existing, setExisting] = useState<LineItemDraft[]>(
+    job.line_items.map(fromDetail)
+  );
+  const [additions, setAdditions] = useState<LineItemDraft[]>([]);
+
+  useEffect(() => {
+    setExisting(job.line_items.map(fromDetail));
+  }, [job.line_items]);
+
+  function startEdit() {
+    setExisting(job.line_items.map(fromDetail));
+    setMode("edit");
+  }
+  function startAdd() {
+    setAdditions([
+      {
+        key: uid(),
+        title: "",
+        description: "",
+        quantity: 1,
+        price_cents: 0,
+        taxable: true,
+        upsell: false,
+        is_addon: true,
+      },
+    ]);
+    setMode("add");
+  }
+  function cancel() {
+    setExisting(job.line_items.map(fromDetail));
+    setAdditions([]);
+    setMode("view");
+  }
+
+  async function saveEdit() {
+    setSaving(true);
+    const ok = await onSave({
+      line_items: existing.map((li) => ({
+        title: li.title.trim(),
+        description: li.description || null,
+        quantity: li.quantity || 1,
+        price_cents: Math.round(li.price_cents),
+        taxable: li.taxable,
+        upsell: li.is_addon ? li.upsell : false,
+        is_addon: li.is_addon,
+      })),
+    });
+    setSaving(false);
+    if (ok) setMode("view");
+  }
+
+  async function saveAdd() {
+    const filtered = additions.filter((li) => li.title.trim());
+    if (filtered.length === 0) {
+      setAdditions([]);
+      setMode("view");
+      return;
+    }
+    setSaving(true);
+    const combined = [
+      ...job.line_items.map((li) => ({
+        title: li.title,
+        description: li.description,
+        quantity: li.quantity,
+        price_cents: li.price_cents,
+        taxable: !!li.taxable,
+        upsell: !!li.upsell,
+        is_addon: !!li.is_addon,
+      })),
+      ...filtered.map((li) => ({
+        title: li.title.trim(),
+        description: li.description || null,
+        quantity: li.quantity || 1,
+        price_cents: Math.round(li.price_cents),
+        taxable: li.taxable,
+        upsell: li.upsell,
+        is_addon: true,
+      })),
+    ];
+    const ok = await onSave({ line_items: combined });
+    setSaving(false);
+    if (ok) {
+      setAdditions([]);
+      setMode("view");
+    }
+  }
+
+  function updateExisting(key: string, patch: Partial<LineItemDraft>) {
+    setExisting((arr) =>
+      arr.map((li) => (li.key === key ? { ...li, ...patch } : li))
+    );
+  }
+  function removeExisting(key: string) {
+    setExisting((arr) => arr.filter((li) => li.key !== key));
+  }
+  function updateAddition(key: string, patch: Partial<LineItemDraft>) {
+    setAdditions((arr) =>
+      arr.map((li) => (li.key === key ? { ...li, ...patch } : li))
+    );
+  }
+  function removeAddition(key: string) {
+    setAdditions((arr) => arr.filter((li) => li.key !== key));
+  }
+  function appendAddition() {
+    setAdditions((arr) => [
+      ...arr,
+      {
+        key: uid(),
+        title: "",
+        description: "",
+        quantity: 1,
+        price_cents: 0,
+        taxable: true,
+        upsell: false,
+        is_addon: true,
+      },
+    ]);
+  }
+
+  return (
+    <section className="bg-card border border-line rounded-2xl p-5">
+      <div className="flex items-center justify-between mb-4 gap-2 flex-wrap">
+        <h2 className="font-extrabold text-white tracking-tight">Line Items</h2>
+        {mode === "view" && (
+          <div className="flex gap-2">
+            <SectionEditButton onClick={startEdit} />
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={startAdd}
+              className="text-sm bg-primary hover:opacity-90 text-primary-foreground rounded-full px-3 py-1.5 font-bold h-auto"
+            >
+              + Add
+            </Button>
+          </div>
+        )}
+        {mode === "edit" && (
+          <SectionSaveCancel
+            saving={saving}
+            onSave={saveEdit}
+            onCancel={cancel}
+          />
+        )}
+        {mode === "add" && (
+          <SectionSaveCancel
+            saving={saving}
+            onSave={saveAdd}
+            onCancel={cancel}
+          />
+        )}
+      </div>
+
+      {mode === "view" && (
+        <>
+          {job.line_items.length === 0 ? (
+            <p className="text-sm text-zinc-500">No line items.</p>
+          ) : (
+            <ul className="divide-y divide-line">
+              {job.line_items.map((li) => (
+                <li
+                  key={li.id}
+                  className="py-3 flex items-start justify-between gap-4"
+                >
+                  <div>
+                    <div className="font-bold text-white tracking-tight">
+                      {li.title}
+                    </div>
+                    {li.description && (
+                      <div className="text-sm text-zinc-400 mt-2 font-bold">
+                        {li.description}
+                      </div>
+                    )}
+                    <div className="text-xs font-bold text-zinc-500 mt-2 flex gap-2 flex-wrap">
+                      <span>
+                        Qty {li.quantity} · {money(li.price_cents)} ea
+                      </span>
+                      {li.taxable ? (
+                        <span className="text-emerald-600">Taxable</span>
+                      ) : null}
+                      {li.upsell ? (
+                        <span className="text-violet-600">Upsell</span>
+                      ) : null}
+                    </div>
+                  </div>
+                  <div className="text-sm font-extrabold text-white tracking-tight tabular-nums whitespace-nowrap">
+                    {money(Math.round(li.quantity * li.price_cents))}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          <TotalsPanel
+            subtotalCents={subtotalCents}
+            totalCents={job.price_cents}
+            paidTotalCents={job.paid_total_cents}
+            tipTotalCents={job.tip_total_cents}
+          />
+        </>
+      )}
+
+      {mode === "edit" && (
+        <div className="space-y-3">
+          {existing.length === 0 ? (
+            <p className="text-sm text-zinc-500">
+              No line items. Use Add to create one.
+            </p>
+          ) : (
+            existing.map((li) => (
+              <LineItemEditor
+                key={li.key}
+                item={li}
+                allowUpsell={li.is_addon}
+                onChange={(patch) => updateExisting(li.key, patch)}
+                onRemove={() => removeExisting(li.key)}
+              />
+            ))
+          )}
+        </div>
+      )}
+
+      {mode === "add" && (
+        <div className="space-y-3">
+          {additions.map((li) => (
+            <LineItemEditor
+              key={li.key}
+              item={li}
+              allowUpsell
+              onChange={(patch) => updateAddition(li.key, patch)}
+              onRemove={() => removeAddition(li.key)}
+            />
+          ))}
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={appendAddition}
+            className="text-sm border border-line bg-card hover:bg-black rounded-full px-3 py-1.5 text-zinc-300 h-auto"
+          >
+            + Another item
+          </Button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function LineItemEditor({
+  item,
+  allowUpsell,
+  onChange,
+  onRemove,
+}: {
+  item: LineItemDraft;
+  allowUpsell: boolean;
+  onChange: (patch: Partial<LineItemDraft>) => void;
+  onRemove: () => void;
+}) {
+  const lineTotal = Math.round(item.quantity * item.price_cents);
+  return (
+    <div className="border border-line rounded-2xl p-4 space-y-3 bg-card">
+      <div className="flex items-start gap-3">
+        <div className="flex-1 space-y-3">
+          <Input
+            type="text"
+            value={item.title}
+            onChange={(e) => onChange({ title: e.target.value })}
+            placeholder="Service title"
+            className="w-full border-line rounded-full px-4 py-2 text-sm h-auto"
+          />
+          <Textarea
+            value={item.description}
+            onChange={(e) => onChange({ description: e.target.value })}
+            rows={2}
+            placeholder="Description (optional)"
+            className="w-full border-line rounded-2xl px-4 py-2 text-sm h-auto"
+          />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="block text-xs font-bold text-zinc-500 mb-2">
+                Quantity
+              </Label>
+              <Input
+                type="number"
+                min={0}
+                step="1"
+                value={item.quantity}
+                onChange={(e) =>
+                  onChange({ quantity: Number(e.target.value) || 0 })
+                }
+                className="w-full border-line rounded-full px-4 py-2 text-sm h-auto"
+              />
+            </div>
+            <div>
+              <Label className="block text-xs font-bold text-zinc-500 mb-2">
+                Price ($)
+              </Label>
+              <Input
+                type="number"
+                min={0}
+                step="0.01"
+                value={(item.price_cents / 100).toString()}
+                onChange={(e) =>
+                  onChange({
+                    price_cents:
+                      Math.round(Number(e.target.value) * 100) || 0,
+                  })
+                }
+                className="w-full border-line rounded-full px-4 py-2 text-sm h-auto"
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-4 text-sm">
+            <Label className="inline-flex items-center gap-2 font-normal">
+              <Checkbox
+                checked={item.taxable}
+                onCheckedChange={(c) => onChange({ taxable: c === true })}
+                className="rounded border-line-strong text-white focus:ring-zinc-500"
+              />
+              Taxable
+            </Label>
+            {allowUpsell && (
+              <Label className="inline-flex items-center gap-2 font-normal">
+                <Checkbox
+                  checked={item.upsell}
+                  onCheckedChange={(c) => onChange({ upsell: c === true })}
+                  className="rounded border-line-strong text-white focus:ring-zinc-500"
+                />
+                Upsell
+              </Label>
+            )}
+          </div>
+        </div>
+        <Button
+          type="button"
+          onClick={onRemove}
+          variant="ghost"
+          className="text-zinc-500 hover:text-rose-500 p-1 h-auto"
+          aria-label="Remove item"
+        >
+          <svg
+            className="w-5 h-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6" />
+            <path d="M10 11v6" />
+            <path d="M14 11v6" />
+          </svg>
+        </Button>
+      </div>
+      <div className="flex justify-end text-sm text-zinc-400 font-bold">
+        Item total:{" "}
+        <span className="font-extrabold text-white tracking-tight ml-1">
+          {money(lineTotal)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function NotesSection({
+  notes,
+  onSave,
+}: {
+  notes: string | null;
+  onSave: (body: Record<string, unknown>) => Promise<boolean>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState(notes ?? "");
+
+  useEffect(() => {
+    setDraft(notes ?? "");
+  }, [notes]);
+
+  async function save() {
+    setSaving(true);
+    const ok = await onSave({ notes: draft.trim() ? draft : null });
+    setSaving(false);
+    if (ok) setEditing(false);
+  }
+
+  return (
+    <section className="bg-card border border-line rounded-2xl p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-extrabold text-white tracking-tight">Notes</h2>
+        {editing ? (
+          <SectionSaveCancel
+            saving={saving}
+            onSave={save}
+            onCancel={() => {
+              setDraft(notes ?? "");
+              setEditing(false);
+            }}
+          />
+        ) : (
+          <SectionEditButton onClick={() => setEditing(true)} />
+        )}
+      </div>
+      {!editing ? (
+        notes ? (
+          <p className="text-sm text-zinc-300 font-bold whitespace-pre-wrap">
+            {notes}
+          </p>
+        ) : (
+          <p className="text-sm text-zinc-500">No notes.</p>
+        )
+      ) : (
+        <Textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          rows={4}
+          placeholder="Add any additional notes…"
+          className="w-full border-line rounded-2xl px-4 py-3 text-sm bg-card h-auto"
+        />
+      )}
+    </section>
+  );
+}
+
+function ChecklistSection({
+  jobId,
+  items,
+  onLocalChange,
+  onSave,
+}: {
+  jobId: number;
+  items: { id: number; text: string; completed: number }[];
+  onLocalChange: (
+    items: { id: number; text: string; completed: number }[]
+  ) => void;
+  onSave: (body: Record<string, unknown>) => Promise<boolean>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [draft, setDraft] = useState<
+    { key: string; text: string; completed: boolean }[]
+  >(items.map((c) => ({ key: uid(), text: c.text, completed: !!c.completed })));
+
+  useEffect(() => {
+    if (!editing) {
+      setDraft(
+        items.map((c) => ({
+          key: uid(),
+          text: c.text,
+          completed: !!c.completed,
+        }))
+      );
+    }
+  }, [items, editing]);
+
+  async function toggle(idx: number) {
+    const next = items.map((c, i) =>
+      i === idx ? { ...c, completed: c.completed ? 0 : 1 } : c
+    );
+    onLocalChange(next);
+    await fetch(`/api/jobs/${jobId}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        checklist_items: next.map((c) => ({
+          text: c.text,
+          completed: c.completed,
+        })),
+      }),
+    });
+  }
+
+  async function save() {
+    setSaving(true);
+    const ok = await onSave({
+      checklist_items: draft
+        .filter((c) => c.text.trim())
+        .map((c) => ({ text: c.text.trim(), completed: c.completed })),
+    });
+    setSaving(false);
+    if (ok) setEditing(false);
+  }
+
+  function update(key: string, patch: Partial<{ text: string; completed: boolean }>) {
+    setDraft((arr) =>
+      arr.map((c) => (c.key === key ? { ...c, ...patch } : c))
+    );
+  }
+  function remove(key: string) {
+    setDraft((arr) => arr.filter((c) => c.key !== key));
+  }
+  function append() {
+    setDraft((arr) => [...arr, { key: uid(), text: "", completed: false }]);
+  }
+
+  return (
+    <section className="bg-card border border-line rounded-2xl p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-extrabold text-white tracking-tight">Checklist</h2>
+        {editing ? (
+          <SectionSaveCancel
+            saving={saving}
+            onSave={save}
+            onCancel={() => {
+              setDraft(
+                items.map((c) => ({
+                  key: uid(),
+                  text: c.text,
+                  completed: !!c.completed,
+                }))
+              );
+              setEditing(false);
+            }}
+          />
+        ) : (
+          <SectionEditButton onClick={() => setEditing(true)} />
+        )}
+      </div>
+      {!editing ? (
+        items.length === 0 ? (
+          <p className="text-sm text-zinc-500">No tasks selected.</p>
+        ) : (
+          <ul className="space-y-2">
+            {items.map((c, i) => (
+              <li key={c.id} className="flex items-center gap-2">
+                <Checkbox
+                  checked={!!c.completed}
+                  onCheckedChange={() => toggle(i)}
+                  className="rounded border-line-strong text-white focus:ring-zinc-500"
+                />
+                <span
+                  className={
+                    "text-sm " +
+                    (c.completed
+                      ? "text-zinc-500 line-through"
+                      : "text-zinc-300")
+                  }
+                >
+                  {c.text}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )
+      ) : (
+        <div className="space-y-2">
+          {draft.map((c) => (
+            <div key={c.key} className="flex items-center gap-2">
+              <Checkbox
+                checked={c.completed}
+                onCheckedChange={(ch) =>
+                  update(c.key, { completed: ch === true })
+                }
+                className="rounded border-line-strong text-white focus:ring-zinc-500"
+              />
+              <Input
+                type="text"
+                value={c.text}
+                onChange={(e) => update(c.key, { text: e.target.value })}
+                placeholder="Task description"
+                className="flex-1 border-line rounded-full px-4 py-2 text-sm h-auto"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => remove(c.key)}
+                className="text-zinc-500 hover:text-rose-500 px-2 h-auto"
+                aria-label="Remove task"
+              >
+                ×
+              </Button>
+            </div>
+          ))}
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={append}
+            className="text-sm border border-line bg-card hover:bg-black rounded-full px-3 py-1.5 text-zinc-300 h-auto"
+          >
+            + Add task
+          </Button>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -765,10 +1595,6 @@ function Divider() {
   return <div className="border-t border-line my-1.5" />;
 }
 
-// Step button reads its "logged" state directly from the timestamp
-// prop on every render — no local React state, no useEffect-only
-// sync. If the parent's `job.en_route_at` is a string, the button is
-// rendered as logged. Period.
 function StepButton({
   index,
   label,
@@ -873,55 +1699,5 @@ function JobStatusBadge({ status }: { status: UnifiedStatus }) {
       <span className={"w-1.5 h-1.5 rounded-full " + v.dot} />
       {v.label}
     </span>
-  );
-}
-
-function ChecklistView({
-  jobId,
-  items,
-  onChange,
-}: {
-  jobId: number;
-  items: { id: number; text: string; completed: number }[];
-  onChange: (
-    items: { id: number; text: string; completed: number }[]
-  ) => void;
-}) {
-  async function toggle(idx: number) {
-    const next = items.map((c, i) =>
-      i === idx ? { ...c, completed: c.completed ? 0 : 1 } : c
-    );
-    onChange(next);
-    await fetch(`/api/jobs/${jobId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        checklist_items: next.map((c) => ({
-          text: c.text,
-          completed: c.completed,
-        })),
-      }),
-    });
-  }
-  return (
-    <ul className="space-y-2">
-      {items.map((c, i) => (
-        <li key={c.id} className="flex items-center gap-2">
-          <Checkbox
-            checked={!!c.completed}
-            onCheckedChange={() => toggle(i)}
-            className="rounded border-line-strong text-white focus:ring-zinc-500"
-          />
-          <span
-            className={
-              "text-sm " +
-              (c.completed ? "text-zinc-500 line-through" : "text-zinc-300")
-            }
-          >
-            {c.text}
-          </span>
-        </li>
-      ))}
-    </ul>
   );
 }

@@ -540,6 +540,18 @@ async function init(): Promise<void> {
     }
   }
 
+  const lineItemCols = await _db
+    .prepare("PRAGMA table_info(line_items)")
+    .all<{ name: string }>();
+  if (lineItemCols.length > 0) {
+    await alterAddColumn(
+      "line_items",
+      "is_addon",
+      "INTEGER NOT NULL DEFAULT 0",
+      lineItemCols
+    );
+  }
+
   const paymentCols = await _db
     .prepare("PRAGMA table_info(payments)")
     .all<{ name: string }>();
@@ -687,6 +699,7 @@ async function init(): Promise<void> {
       price_cents INTEGER NOT NULL DEFAULT 0,
       taxable INTEGER NOT NULL DEFAULT 0,
       upsell INTEGER NOT NULL DEFAULT 0,
+      is_addon INTEGER NOT NULL DEFAULT 0,
       position INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -1790,6 +1803,7 @@ export type LineItem = {
   price_cents: number;
   taxable: number;
   upsell: number;
+  is_addon: number;
   position: number;
   created_at: string;
 };
