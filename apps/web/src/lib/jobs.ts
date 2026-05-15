@@ -15,6 +15,7 @@ export type LineItemInput = {
   price_cents: number;
   taxable?: boolean | number;
   upsell?: boolean | number;
+  is_addon?: boolean | number;
 };
 
 export type ChecklistInput = {
@@ -145,11 +146,15 @@ async function syncLineItems(db: Db, jobId: number, items: LineItemInput[]) {
   await db.prepare("DELETE FROM line_items WHERE job_id = ?").run(jobId);
   for (let i = 0; i < items.length; i++) {
     const li = items[i];
+    const isAddon = toBit(li.is_addon);
+    // Upsell can only be set on add-on items (items added after initial
+    // job creation). Original line items always store upsell=0.
+    const upsell = isAddon ? toBit(li.upsell) : 0;
     await db
       .prepare(
         `INSERT INTO line_items
-           (job_id, title, description, quantity, price_cents, taxable, upsell, position)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+           (job_id, title, description, quantity, price_cents, taxable, upsell, is_addon, position)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         jobId,
@@ -158,7 +163,8 @@ async function syncLineItems(db: Db, jobId: number, items: LineItemInput[]) {
         li.quantity,
         li.price_cents,
         toBit(li.taxable),
-        toBit(li.upsell),
+        upsell,
+        isAddon,
         i
       );
   }
