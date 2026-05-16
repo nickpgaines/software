@@ -1,6 +1,8 @@
 import type { Db, SubscriptionInterval } from "./db";
 
-const ROLLING_WINDOW = 4;
+// All recurring scheduling (subscriptions + recurring jobs) shows a rolling
+// one-year window of future visits at any time. Top up daily via cron.
+export const SCHEDULE_HORIZON_DAYS = 365;
 
 function intervalDays(i: SubscriptionInterval): number {
   switch (i) {
@@ -45,15 +47,19 @@ export type SeedVisitsArgs = {
   technicianId: number | null;
 };
 
-// Ensure the subscription has at least ROLLING_WINDOW future scheduled visits
-// on the schedule. Idempotent: if some already exist, only fills up the gap.
-// Past/completed visits are left alone.
+// Ensure the subscription has future scheduled visits covering the rolling
+// one-year horizon. Idempotent: only inserts visits to fill the gap. Past or
+// completed visits are left alone. Same framework is used by `job_recurrences`
+// (see lib/recurrence-schedule.ts) — change the horizon constant in one place.
 export async function ensureRollingVisits(
   db: Db,
   args: SeedVisitsArgs
 ): Promise<void> {
   const days = intervalDays(args.serviceInterval);
-  const nowIso = new Date().toISOString();
+  const now = new Date();
+  const horizonIso = new Date(
+    now.getTime() + SCHEDULE_HORIZON_DAYS * 24 * 60 * 60 * 1000
+  ).toISOString();
 
   const existing = (await db
     .prepare(
@@ -69,34 +75,26 @@ export async function ensureRollingVisits(
     status: string;
   }[];
 
-  const futureScheduled = existing.filter(
-    (r) => r.scheduled_at >= nowIso && r.status !== "cancelled"
-  );
-  const need = ROLLING_WINDOW - futureScheduled.length;
-  if (need <= 0) return;
-
   const maxIdx = existing.reduce(
     (m, r) => Math.max(m, r.subscription_visit_index || 0),
     0
   );
+  const latestIso = existing.reduce(
+    (latest, r) => (r.scheduled_at > latest ? r.scheduled_at : latest),
+    ""
+  );
 
+  let nextIso: string;
   let nextIdx = maxIdx + 1;
-  let baseIso: string;
-  if (existing.length === 0) {
-    baseIso = args.startDateIso;
+  if (!latestIso) {
+    nextIso = args.startDateIso;
+    nextIdx = 1;
   } else {
-    const lastIso = existing.reduce(
-      (latest, r) =>
-        r.scheduled_at > latest ? r.scheduled_at : latest,
-      args.startDateIso
-    );
-    baseIso = addDaysIso(lastIso, days);
+    nextIso = addDaysIso(latestIso, days);
   }
 
-  for (let i = 0; i < need; i++) {
-    const visitIso = i === 0 ? baseIso : addDaysIso(baseIso, days * i);
-    const endIso = addDaysIso(visitIso, 0);
-    const endDt = new Date(endIso);
+  while (nextIso <= horizonIso) {
+    const endDt = new Date(nextIso);
     endDt.setUTCMinutes(endDt.getUTCMinutes() + 120);
     const endIsoStr = endDt.toISOString();
 
@@ -116,7 +114,7 @@ export async function ensureRollingVisits(
       .run(
         args.companyId,
         args.customerId,
-        visitIso,
+        nextIso,
         endIsoStr,
         120,
         args.pricePerVisitCents,
@@ -144,6 +142,7 @@ export async function ensureRollingVisits(
         );
     }
     nextIdx += 1;
+    nextIso = addDaysIso(nextIso, days);
   }
 }
 

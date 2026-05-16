@@ -411,6 +411,8 @@ async function init(): Promise<void> {
     ["recurring", "INTEGER NOT NULL DEFAULT 0"],
     ["subscription_id", "INTEGER REFERENCES customer_subscriptions(id) ON DELETE SET NULL"],
     ["subscription_visit_index", "INTEGER"],
+    ["recurrence_id", "INTEGER"],
+    ["recurrence_visit_index", "INTEGER"],
   ];
   for (const [col, def] of jobAdds) {
     await alterAddColumn("jobs", col, def, jobsCols);
@@ -1040,6 +1042,42 @@ async function init(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_customer_subscriptions_status
       ON customer_subscriptions(status);
 
+    CREATE TABLE IF NOT EXISTS job_recurrences (
+      id                    INTEGER PRIMARY KEY AUTOINCREMENT,
+      source_job_id         INTEGER REFERENCES jobs(id) ON DELETE SET NULL,
+      customer_id           INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      frequency             TEXT NOT NULL
+                              CHECK (frequency IN ('quarterly','biannually','annually','custom')),
+      custom_interval_n     INTEGER,
+      custom_interval_unit  TEXT CHECK (custom_interval_unit IN ('week','month','year')),
+      anchor_mode           TEXT NOT NULL DEFAULT 'same_date'
+                              CHECK (anchor_mode IN ('same_date','nth_weekday')),
+      anchor_date           TEXT NOT NULL,
+      time_of_day           TEXT,
+      duration_minutes      INTEGER NOT NULL DEFAULT 120,
+      price_cents           INTEGER NOT NULL DEFAULT 0,
+      technician_id         INTEGER REFERENCES staff(id) ON DELETE SET NULL,
+      salesperson_id        INTEGER REFERENCES staff(id) ON DELETE SET NULL,
+      title                 TEXT NOT NULL DEFAULT 'Recurring service',
+      notes                 TEXT,
+      end_mode              TEXT NOT NULL DEFAULT 'never'
+                              CHECK (end_mode IN ('never','after_n_visits','on_date','years')),
+      end_after_visits      INTEGER,
+      end_on_date           TEXT,
+      end_years             INTEGER,
+      status                TEXT NOT NULL DEFAULT 'active'
+                              CHECK (status IN ('active','canceled')),
+      next_visit_index      INTEGER NOT NULL DEFAULT 1,
+      canceled_at           TEXT,
+      created_at            TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_job_recurrences_customer
+      ON job_recurrences(customer_id);
+    CREATE INDEX IF NOT EXISTS idx_job_recurrences_status
+      ON job_recurrences(status);
+    CREATE INDEX IF NOT EXISTS idx_jobs_recurrence_id
+      ON jobs(recurrence_id);
+
     CREATE TABLE IF NOT EXISTS estimates (
       id             INTEGER PRIMARY KEY AUTOINCREMENT,
       customer_id    INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
@@ -1505,6 +1543,7 @@ async function init(): Promise<void> {
     "subscription_terms",
     "subscription_templates",
     "customer_subscriptions",
+    "job_recurrences",
     "estimates",
     "invoices",
     "map_pins",
@@ -2194,6 +2233,51 @@ export type CustomerSubscription = {
   sold_by_id: number | null;
   tax_rate_bps: number;
   accept_token: string | null;
+  created_at: string;
+};
+
+export type JobRecurrenceFrequency =
+  | "quarterly"
+  | "biannually"
+  | "annually"
+  | "custom";
+
+export type JobRecurrenceUnit = "week" | "month" | "year";
+
+export type JobRecurrenceAnchorMode = "same_date" | "nth_weekday";
+
+export type JobRecurrenceEndMode =
+  | "never"
+  | "after_n_visits"
+  | "on_date"
+  | "years";
+
+export type JobRecurrenceStatus = "active" | "canceled";
+
+export type JobRecurrence = {
+  id: number;
+  company_id: number;
+  source_job_id: number | null;
+  customer_id: number;
+  frequency: JobRecurrenceFrequency;
+  custom_interval_n: number | null;
+  custom_interval_unit: JobRecurrenceUnit | null;
+  anchor_mode: JobRecurrenceAnchorMode;
+  anchor_date: string;
+  time_of_day: string | null;
+  duration_minutes: number;
+  price_cents: number;
+  technician_id: number | null;
+  salesperson_id: number | null;
+  title: string;
+  notes: string | null;
+  end_mode: JobRecurrenceEndMode;
+  end_after_visits: number | null;
+  end_on_date: string | null;
+  end_years: number | null;
+  status: JobRecurrenceStatus;
+  next_visit_index: number;
+  canceled_at: string | null;
   created_at: string;
 };
 

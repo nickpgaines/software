@@ -265,6 +265,56 @@ export default function JobForm({
   const [notes, setNotes] = useState(job?.notes ?? "");
   const [recurring, setRecurring] = useState(!!job?.recurring);
 
+  type Frequency = "quarterly" | "biannually" | "annually" | "custom";
+  type AnchorMode = "same_date" | "nth_weekday";
+  type EndMode = "never" | "after_n_visits" | "on_date" | "years";
+  type CustomUnit = "week" | "month" | "year";
+  const [frequency, setFrequency] = useState<Frequency>("quarterly");
+  const [customN, setCustomN] = useState(1);
+  const [customUnit, setCustomUnit] = useState<CustomUnit>("month");
+  const [anchorMode, setAnchorMode] = useState<AnchorMode>("same_date");
+  const [endMode, setEndMode] = useState<EndMode>("never");
+  const [endAfterVisits, setEndAfterVisits] = useState(10);
+  const [endOnDate, setEndOnDate] = useState("");
+  const [endYears, setEndYears] = useState(1);
+
+  // The nth-weekday option pulls its ordinal from the start date the user
+  // already picked, so the label "3rd Saturday" stays in sync without a
+  // separate calendar widget.
+  const sameDateLabel = useMemo(() => {
+    const d = parseLocal(startDate, startTime || "08:00");
+    if (!d) return "";
+    const n = d.getDate();
+    const suffix =
+      n >= 11 && n <= 13
+        ? "th"
+        : n % 10 === 1
+        ? "st"
+        : n % 10 === 2
+        ? "nd"
+        : n % 10 === 3
+        ? "rd"
+        : "th";
+    return `the ${n}${suffix}`;
+  }, [startDate, startTime]);
+
+  const nthWeekdayLabel = useMemo(() => {
+    const d = parseLocal(startDate, startTime || "08:00");
+    if (!d) return "Same weekday of the month";
+    const weekdays = [
+      "Sunday",
+      "Monday",
+      "Tuesday",
+      "Wednesday",
+      "Thursday",
+      "Friday",
+      "Saturday",
+    ];
+    const ordinals = ["1st", "2nd", "3rd", "4th", "5th"];
+    const ord = ordinals[Math.min(4, Math.ceil(d.getDate() / 7) - 1)];
+    return `The ${ord} ${weekdays[d.getDay()]} of the month`;
+  }, [startDate, startTime]);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -345,6 +395,45 @@ export default function JobForm({
       ? null
       : combine(endDate || startDate, endTime || startTime);
 
+    let recurrencePayload: {
+      frequency: Frequency;
+      custom_interval_n?: number | null;
+      custom_interval_unit?: CustomUnit | null;
+      anchor_mode: AnchorMode;
+      end_mode: EndMode;
+      end_after_visits?: number | null;
+      end_on_date?: string | null;
+      end_years?: number | null;
+    } | null = null;
+    if (recurring && mode === "create") {
+      if (frequency === "custom" && (!customN || customN < 1)) {
+        setError("Repeat every must be at least 1");
+        return;
+      }
+      if (endMode === "after_n_visits" && (!endAfterVisits || endAfterVisits < 1)) {
+        setError("Number of visits must be at least 1");
+        return;
+      }
+      if (endMode === "on_date" && !endOnDate) {
+        setError("Pick an end date");
+        return;
+      }
+      if (endMode === "years" && (!endYears || endYears < 1)) {
+        setError("Number of years must be at least 1");
+        return;
+      }
+      recurrencePayload = {
+        frequency,
+        custom_interval_n: frequency === "custom" ? customN : null,
+        custom_interval_unit: frequency === "custom" ? customUnit : null,
+        anchor_mode: anchorMode,
+        end_mode: endMode,
+        end_after_visits: endMode === "after_n_visits" ? endAfterVisits : null,
+        end_on_date: endMode === "on_date" ? endOnDate : null,
+        end_years: endMode === "years" ? endYears : null,
+      };
+    }
+
     const payload = {
       customer_id: customerId,
       start_time: startIso,
@@ -356,6 +445,7 @@ export default function JobForm({
       tech_ids: techIds,
       notes: notes || null,
       recurring,
+      recurrence: recurrencePayload,
       line_items: items.map((li) => ({
         title: li.title.trim(),
         description: li.description || null,
@@ -679,6 +769,158 @@ export default function JobForm({
           />
           Make this a recurring service
         </Label>
+
+        {recurring && mode === "create" && (
+          <div className="mt-4 space-y-4 border-t border-line pt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field label="Frequency">
+                <select
+                  value={frequency}
+                  onChange={(e) => setFrequency(e.target.value as Frequency)}
+                  className="h-9 w-full border border-line rounded-full px-3 bg-card text-sm font-bold text-white"
+                >
+                  <option value="quarterly">Quarterly (every 3 months)</option>
+                  <option value="biannually">Biannually (every 6 months)</option>
+                  <option value="annually">Annually</option>
+                  <option value="custom">Custom…</option>
+                </select>
+              </Field>
+              {frequency === "custom" && (
+                <Field label="Repeat every">
+                  <div className="flex items-center gap-2">
+                    <Input
+                      type="number"
+                      min={1}
+                      value={customN}
+                      onChange={(e) =>
+                        setCustomN(Math.max(1, Number(e.target.value) || 1))
+                      }
+                      className="w-20 border-line rounded-full px-3 py-2 text-sm bg-card text-center h-9"
+                    />
+                    <select
+                      value={customUnit}
+                      onChange={(e) => setCustomUnit(e.target.value as CustomUnit)}
+                      className="h-9 flex-1 border border-line rounded-full px-3 bg-card text-sm font-bold text-white"
+                    >
+                      <option value="week">{customN === 1 ? "Week" : "Weeks"}</option>
+                      <option value="month">{customN === 1 ? "Month" : "Months"}</option>
+                      <option value="year">{customN === 1 ? "Year" : "Years"}</option>
+                    </select>
+                  </div>
+                </Field>
+              )}
+            </div>
+
+            <Field label="Schedule on">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-sm text-zinc-300 font-normal">
+                  {/* Native radio kept: no Radio primitive in the design system. */}
+                  <input
+                    type="radio"
+                    name="recurrence-anchor"
+                    checked={anchorMode === "same_date"}
+                    onChange={() => setAnchorMode("same_date")}
+                  />
+                  Same calendar date
+                  {sameDateLabel && (
+                    <span className="text-zinc-500">({sameDateLabel})</span>
+                  )}
+                </Label>
+                <Label className="flex items-center gap-2 text-sm text-zinc-300 font-normal">
+                  <input
+                    type="radio"
+                    name="recurrence-anchor"
+                    checked={anchorMode === "nth_weekday"}
+                    onChange={() => setAnchorMode("nth_weekday")}
+                  />
+                  {nthWeekdayLabel}
+                </Label>
+              </div>
+            </Field>
+
+            <Field label="Ends">
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2 text-sm text-zinc-300 font-normal">
+                  <input
+                    type="radio"
+                    name="recurrence-end"
+                    checked={endMode === "never"}
+                    onChange={() => setEndMode("never")}
+                  />
+                  Never (until canceled)
+                </Label>
+                <Label className="flex items-center gap-2 text-sm text-zinc-300 font-normal">
+                  <input
+                    type="radio"
+                    name="recurrence-end"
+                    checked={endMode === "after_n_visits"}
+                    onChange={() => setEndMode("after_n_visits")}
+                  />
+                  After
+                  <Input
+                    type="number"
+                    min={1}
+                    value={endAfterVisits}
+                    onChange={(e) =>
+                      setEndAfterVisits(Math.max(1, Number(e.target.value) || 1))
+                    }
+                    onFocus={() => setEndMode("after_n_visits")}
+                    className="w-20 border-line rounded-full px-3 py-1 text-sm bg-card text-center h-8"
+                  />
+                  visits
+                </Label>
+                <Label className="flex items-center gap-2 text-sm text-zinc-300 font-normal">
+                  <input
+                    type="radio"
+                    name="recurrence-end"
+                    checked={endMode === "years"}
+                    onChange={() => setEndMode("years")}
+                  />
+                  After
+                  <Input
+                    type="number"
+                    min={1}
+                    value={endYears}
+                    onChange={(e) =>
+                      setEndYears(Math.max(1, Number(e.target.value) || 1))
+                    }
+                    onFocus={() => setEndMode("years")}
+                    className="w-20 border-line rounded-full px-3 py-1 text-sm bg-card text-center h-8"
+                  />
+                  {endYears === 1 ? "year" : "years"}
+                </Label>
+                <Label className="flex items-center gap-2 text-sm text-zinc-300 font-normal">
+                  <input
+                    type="radio"
+                    name="recurrence-end"
+                    checked={endMode === "on_date"}
+                    onChange={() => setEndMode("on_date")}
+                  />
+                  On
+                  <PickerInput
+                    type="date"
+                    value={endOnDate}
+                    onChange={(e) => {
+                      setEndOnDate(e.target.value);
+                      setEndMode("on_date");
+                    }}
+                    className="w-[150px]"
+                  />
+                </Label>
+              </div>
+            </Field>
+
+            <p className="text-xs text-zinc-500">
+              Only the next year of visits is placed on the schedule at any
+              time. New visits are added automatically as time rolls forward.
+            </p>
+          </div>
+        )}
+        {recurring && mode === "edit" && (
+          <p className="mt-3 text-xs text-zinc-500">
+            Existing recurrence settings can&apos;t be edited here yet.
+          </p>
+        )}
       </Section>
 
       <div className="flex justify-end gap-2">
