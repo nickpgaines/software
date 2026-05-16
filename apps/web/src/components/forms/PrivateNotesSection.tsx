@@ -239,34 +239,51 @@ export function PrivateNotesSection({
           {attachments.map((a) => (
             <li
               key={a.key}
-              className="flex items-center gap-3 border border-line rounded-xl px-3 py-2 bg-black/30"
+              className="border border-line rounded-xl px-3 py-2 bg-black/30"
             >
-              <span className="text-zinc-400 shrink-0">
-                {a.kind === "image" ? (
-                  <ImageIcon />
-                ) : a.kind === "audio" ? (
-                  <MicIcon />
-                ) : (
-                  <FileIcon />
-                )}
-              </span>
-              <div className="min-w-0 flex-1">
-                <div className="text-sm font-bold text-white tracking-tight truncate">
-                  {a.filename}
+              <div className="flex items-center gap-3">
+                <span className="text-zinc-400 shrink-0">
+                  {a.kind === "image" ? (
+                    <ImageIcon />
+                  ) : a.kind === "audio" ? (
+                    <MicIcon />
+                  ) : (
+                    <FileIcon />
+                  )}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-bold text-white tracking-tight truncate">
+                    {a.filename}
+                  </div>
+                  <div className="text-xs text-zinc-500 font-bold">
+                    {formatBytes(a.size)}
+                  </div>
                 </div>
-                <div className="text-xs text-zinc-500 font-bold">
-                  {formatBytes(a.size)}
-                </div>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  aria-label={`Remove ${a.filename}`}
+                  onClick={() => removeAttachment(a.key)}
+                  className="h-auto p-1 text-zinc-500 hover:text-white"
+                >
+                  ×
+                </Button>
               </div>
-              <Button
-                type="button"
-                variant="ghost"
-                aria-label={`Remove ${a.filename}`}
-                onClick={() => removeAttachment(a.key)}
-                className="h-auto p-1 text-zinc-500 hover:text-white"
-              >
-                ×
-              </Button>
+              {a.kind === "image" && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={a.content}
+                  alt={a.filename}
+                  className="mt-2 max-h-40 rounded-lg border border-line"
+                />
+              )}
+              {a.kind === "audio" && (
+                <audio
+                  controls
+                  src={a.content}
+                  className="mt-2 w-full max-w-sm"
+                />
+              )}
             </li>
           ))}
         </ul>
