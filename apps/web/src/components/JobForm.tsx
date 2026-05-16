@@ -438,20 +438,52 @@ export default function JobForm({
     const data = (await res.json()) as { id?: number };
     const jobId = mode === "edit" && job ? job.id : data.id;
     if (jobId && attachments.length > 0) {
-      await Promise.all(
-        attachments.map((a) =>
-          fetch(`/api/jobs/${jobId}/attachments`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              kind: a.kind,
-              filename: a.filename,
-              mime_type: a.mime_type,
-              content: a.content,
-            }),
-          })
-        )
+      const results = await Promise.all(
+        attachments.map(async (a) => {
+          try {
+            const r = await fetch(`/api/jobs/${jobId}/attachments`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                kind: a.kind,
+                filename: a.filename,
+                mime_type: a.mime_type,
+                content: a.content,
+              }),
+            });
+            if (!r.ok) {
+              const detail = await r
+                .json()
+                .then((d) => (d && typeof d.error === "string" ? d.error : null))
+                .catch(() => null);
+              return {
+                ok: false as const,
+                filename: a.filename,
+                detail: detail || `HTTP ${r.status}`,
+              };
+            }
+            return { ok: true as const };
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : "network error";
+            return { ok: false as const, filename: a.filename, detail: msg };
+          }
+        })
       );
+      const failed = results.filter(
+        (r): r is { ok: false; filename: string; detail: string } => !r.ok
+      );
+      if (failed.length > 0) {
+        const summary = failed
+          .map((f) => `${f.filename}: ${f.detail}`)
+          .join("; ");
+        setError(
+          `Job saved, but ${failed.length} attachment${
+            failed.length === 1 ? "" : "s"
+          } failed to upload — ${summary}`
+        );
+        setSaving(false);
+        return;
+      }
     }
     router.push(jobId ? `/schedule/${jobId}` : "/schedule");
     router.refresh();

@@ -15,7 +15,9 @@ export type AttachmentDraft = {
   size: number;
 };
 
-const MAX_BYTES = 5 * 1024 * 1024;
+const MAX_BYTES = 3 * 1024 * 1024;
+const MAX_IMAGE_DIMENSION = 1920;
+const IMAGE_QUALITY = 0.82;
 
 function uid() {
   return Math.random().toString(36).slice(2);
@@ -40,6 +42,41 @@ async function fileToDataUrl(file: Blob): Promise<string> {
     reader.onerror = () => reject(reader.error);
     reader.readAsDataURL(file);
   });
+}
+
+// Resize + recompress to JPEG so phone photos (often 4-8 MB) fit comfortably
+// under Vercel's 4.5 MB serverless request body cap when base64-encoded.
+async function compressImage(
+  file: File
+): Promise<{ blob: Blob; mime: string }> {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = new Image();
+    img.src = url;
+    await new Promise<void>((res, rej) => {
+      img.onload = () => res();
+      img.onerror = () => rej(new Error("image load failed"));
+    });
+    let { naturalWidth: width, naturalHeight: height } = img;
+    if (width > MAX_IMAGE_DIMENSION || height > MAX_IMAGE_DIMENSION) {
+      const scale = MAX_IMAGE_DIMENSION / Math.max(width, height);
+      width = Math.round(width * scale);
+      height = Math.round(height * scale);
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) throw new Error("canvas 2d context unavailable");
+    ctx.drawImage(img, 0, 0, width, height);
+    const blob = await new Promise<Blob | null>((res) =>
+      canvas.toBlob(res, "image/jpeg", IMAGE_QUALITY)
+    );
+    if (!blob) throw new Error("canvas toBlob returned null");
+    return { blob, mime: "image/jpeg" };
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }
 
 export function PrivateNotesSection({
@@ -74,21 +111,46 @@ export function PrivateNotesSection({
     if (!files) return;
     const next: AttachmentDraft[] = [];
     for (const file of Array.from(files)) {
-      if (file.size > MAX_BYTES) {
-        setRecordError(
-          `${file.name} is too large (max ${formatBytes(MAX_BYTES)})`
-        );
-        continue;
+      try {
+        if (kind === "image" && file.type.startsWith("image/")) {
+          const { blob, mime } = await compressImage(file);
+          if (blob.size > MAX_BYTES) {
+            setRecordError(
+              `${file.name} is too large after compression (${formatBytes(blob.size)})`
+            );
+            continue;
+          }
+          const content = await fileToDataUrl(blob);
+          const stem = file.name.replace(/\.[^.]+$/, "");
+          next.push({
+            key: uid(),
+            kind,
+            filename: `${stem}.jpg`,
+            mime_type: mime,
+            content,
+            size: blob.size,
+          });
+          continue;
+        }
+        if (file.size > MAX_BYTES) {
+          setRecordError(
+            `${file.name} is too large (max ${formatBytes(MAX_BYTES)})`
+          );
+          continue;
+        }
+        const content = await fileToDataUrl(file);
+        next.push({
+          key: uid(),
+          kind,
+          filename: file.name,
+          mime_type: file.type || "application/octet-stream",
+          content,
+          size: file.size,
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "upload prep failed";
+        setRecordError(`Could not attach ${file.name}: ${msg}`);
       }
-      const content = await fileToDataUrl(file);
-      next.push({
-        key: uid(),
-        kind,
-        filename: file.name,
-        mime_type: file.type || "application/octet-stream",
-        content,
-        size: file.size,
-      });
     }
     if (next.length) setAttachments([...attachments, ...next]);
   }

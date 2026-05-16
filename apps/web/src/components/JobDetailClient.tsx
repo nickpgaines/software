@@ -1743,6 +1743,40 @@ function AttachmentsSection({ jobId }: { jobId: number }) {
     });
   }
 
+  async function compressImage(
+    file: File
+  ): Promise<{ blob: Blob; mime: string }> {
+    const url = URL.createObjectURL(file);
+    try {
+      const img = new Image();
+      img.src = url;
+      await new Promise<void>((res, rej) => {
+        img.onload = () => res();
+        img.onerror = () => rej(new Error("image load failed"));
+      });
+      let { naturalWidth: width, naturalHeight: height } = img;
+      const MAX = 1920;
+      if (width > MAX || height > MAX) {
+        const scale = MAX / Math.max(width, height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) throw new Error("canvas 2d context unavailable");
+      ctx.drawImage(img, 0, 0, width, height);
+      const blob = await new Promise<Blob | null>((res) =>
+        canvas.toBlob(res, "image/jpeg", 0.82)
+      );
+      if (!blob) throw new Error("canvas toBlob returned null");
+      return { blob, mime: "image/jpeg" };
+    } finally {
+      URL.revokeObjectURL(url);
+    }
+  }
+
   async function upload(
     kind: JobAttachmentKind,
     filename: string,
@@ -1769,9 +1803,22 @@ function AttachmentsSection({ jobId }: { jobId: number }) {
     if (!files) return;
     for (const file of Array.from(files)) {
       const isImage = file.type.startsWith("image/");
+      try {
+        if (isImage) {
+          const { blob, mime } = await compressImage(file);
+          const content = await fileToDataUrl(blob);
+          const stem = file.name.replace(/\.[^.]+$/, "");
+          await upload("image", `${stem}.jpg`, mime, content);
+          continue;
+        }
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : "compression failed";
+        setRecordError(`Could not attach ${file.name}: ${msg}`);
+        continue;
+      }
       const content = await fileToDataUrl(file);
       await upload(
-        isImage ? "image" : "file",
+        "file",
         file.name,
         file.type || "application/octet-stream",
         content
