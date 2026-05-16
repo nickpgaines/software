@@ -14,8 +14,19 @@ export default async function JobDetailPage({
   const companyId = await requireCompanyId();
   const db = await getDb();
   const id = Number(params.id);
+  if (!Number.isFinite(id) || id <= 0) {
+    console.warn(
+      `JobDetailPage: invalid id param "${params.id}" (company ${companyId})`
+    );
+    notFound();
+  }
   const job = await getJobDetail(db, id, companyId);
-  if (!job) notFound();
+  if (!job) {
+    console.warn(
+      `JobDetailPage: job ${id} not found for company ${companyId}`
+    );
+    notFound();
+  }
 
   let subscription: CustomerSubscription | null = null;
   if (job.subscription_id) {
