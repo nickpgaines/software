@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 // max-width container with horizontal/vertical padding; a small set
 // of pages (currently just /schedule) opt out so they can fill the
 // viewport edge-to-edge next to the sidebar, the same way /map does.
-const FULL_BLEED_PATHS = new Set<string>(["/schedule"]);
+const FULL_BLEED_PATHS = new Set<string>(["/schedule", "/messages"]);
 
 export function AppFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
