@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { PULSE } from "./theme";
 import { PulseIcon } from "./Icon";
 import ThemeToggle from "@/components/ThemeToggle";
+import { useMobileNav } from "@/components/MobileNavShell";
 
 type Me = {
   identity: string;
@@ -67,6 +68,7 @@ export function PulseSidebar() {
   const [me, setMe] = useState<Me | null>(null);
   const [newOpen, setNewOpen] = useState(false);
   const newRef = useRef<HTMLDivElement>(null);
+  const { open: mobileOpen } = useMobileNav();
 
   useEffect(() => {
     let cancelled = false;
@@ -106,7 +108,9 @@ export function PulseSidebar() {
 
   return (
     <aside
-      className="fixed left-0 top-0 bottom-0 w-60 z-40 flex flex-col px-3 py-4"
+      className={`fixed left-0 top-0 bottom-0 w-60 z-40 flex flex-col px-3 py-4 transition-transform duration-200 ease-out md:translate-x-0 ${
+        mobileOpen ? "translate-x-0" : "-translate-x-full"
+      }`}
       style={{ background: PULSE.sidebar, borderRight: `1px solid ${PULSE.divider}` }}
     >
       {/* Brand */}
