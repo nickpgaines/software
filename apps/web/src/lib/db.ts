@@ -1063,33 +1063,25 @@ async function init(): Promise<void> {
       ON customer_subscriptions(status);
 
     CREATE TABLE IF NOT EXISTS job_recurrences (
-      id                    INTEGER PRIMARY KEY AUTOINCREMENT,
-      source_job_id         INTEGER REFERENCES jobs(id) ON DELETE SET NULL,
-      customer_id           INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
-      frequency             TEXT NOT NULL
-                              CHECK (frequency IN ('quarterly','biannually','annually','custom')),
-      custom_interval_n     INTEGER,
-      custom_interval_unit  TEXT CHECK (custom_interval_unit IN ('week','month','year')),
-      anchor_mode           TEXT NOT NULL DEFAULT 'same_date'
-                              CHECK (anchor_mode IN ('same_date','nth_weekday')),
-      anchor_date           TEXT NOT NULL,
-      time_of_day           TEXT,
-      duration_minutes      INTEGER NOT NULL DEFAULT 120,
-      price_cents           INTEGER NOT NULL DEFAULT 0,
-      technician_id         INTEGER REFERENCES staff(id) ON DELETE SET NULL,
-      salesperson_id        INTEGER REFERENCES staff(id) ON DELETE SET NULL,
-      title                 TEXT NOT NULL DEFAULT 'Recurring service',
-      notes                 TEXT,
-      end_mode              TEXT NOT NULL DEFAULT 'never'
-                              CHECK (end_mode IN ('never','after_n_visits','on_date','years')),
-      end_after_visits      INTEGER,
-      end_on_date           TEXT,
-      end_years             INTEGER,
-      status                TEXT NOT NULL DEFAULT 'active'
-                              CHECK (status IN ('active','canceled')),
-      next_visit_index      INTEGER NOT NULL DEFAULT 1,
-      canceled_at           TEXT,
-      created_at            TEXT NOT NULL DEFAULT (datetime('now'))
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      source_job_id     INTEGER REFERENCES jobs(id) ON DELETE SET NULL,
+      customer_id       INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      interval_n        INTEGER NOT NULL,
+      interval_unit     TEXT NOT NULL CHECK (interval_unit IN ('week','month','year')),
+      anchor_date       TEXT NOT NULL,
+      duration_minutes  INTEGER NOT NULL DEFAULT 120,
+      price_cents       INTEGER NOT NULL DEFAULT 0,
+      technician_id     INTEGER REFERENCES staff(id) ON DELETE SET NULL,
+      salesperson_id    INTEGER REFERENCES staff(id) ON DELETE SET NULL,
+      title             TEXT NOT NULL DEFAULT 'Recurring service',
+      notes             TEXT,
+      end_mode          TEXT NOT NULL DEFAULT 'never'
+                          CHECK (end_mode IN ('never','years')),
+      end_years         INTEGER,
+      status            TEXT NOT NULL DEFAULT 'active'
+                          CHECK (status IN ('active','canceled')),
+      canceled_at       TEXT,
+      created_at        TEXT NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_job_recurrences_customer
       ON job_recurrences(customer_id);
@@ -1759,6 +1751,54 @@ async function init(): Promise<void> {
       .run();
   }
 
+  // job_recurrences: an earlier deploy created this table with a
+  // frequency/anchor_mode/custom_interval split and CHECK constraints that
+  // forbid the new preset list (Every 2 weeks … Every year). Rebuild it on
+  // any DB still carrying that shape — the table was empty at the time of
+  // the rename, so a DROP is safe.
+  const recurCols = await _db
+    .prepare(`PRAGMA table_info(job_recurrences)`)
+    .all<{ name: string }>();
+  if (recurCols.some((c) => c.name === "frequency")) {
+    await _db.exec(`DROP TABLE IF EXISTS job_recurrences`);
+    await _db.exec(`
+      CREATE TABLE job_recurrences (
+        id                INTEGER PRIMARY KEY AUTOINCREMENT,
+        source_job_id     INTEGER REFERENCES jobs(id) ON DELETE SET NULL,
+        customer_id       INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+        company_id        INTEGER REFERENCES company(id) ON DELETE CASCADE,
+        interval_n        INTEGER NOT NULL,
+        interval_unit     TEXT NOT NULL CHECK (interval_unit IN ('week','month','year')),
+        anchor_date       TEXT NOT NULL,
+        duration_minutes  INTEGER NOT NULL DEFAULT 120,
+        price_cents       INTEGER NOT NULL DEFAULT 0,
+        technician_id     INTEGER REFERENCES staff(id) ON DELETE SET NULL,
+        salesperson_id    INTEGER REFERENCES staff(id) ON DELETE SET NULL,
+        title             TEXT NOT NULL DEFAULT 'Recurring service',
+        notes             TEXT,
+        end_mode          TEXT NOT NULL DEFAULT 'never'
+                            CHECK (end_mode IN ('never','years')),
+        end_years         INTEGER,
+        status            TEXT NOT NULL DEFAULT 'active'
+                            CHECK (status IN ('active','canceled')),
+        canceled_at       TEXT,
+        created_at        TEXT NOT NULL DEFAULT (datetime('now'))
+      );
+    `);
+    await _db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_job_recurrences_customer
+         ON job_recurrences(customer_id)`
+    );
+    await _db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_job_recurrences_status
+         ON job_recurrences(status)`
+    );
+    await _db.exec(
+      `CREATE INDEX IF NOT EXISTS idx_job_recurrences_company_id
+         ON job_recurrences(company_id)`
+    );
+  }
+
   // Stamp the schema version so subsequent cold starts hit the fast-path
   // at the top of init().
   await _db.exec(
@@ -2256,21 +2296,9 @@ export type CustomerSubscription = {
   created_at: string;
 };
 
-export type JobRecurrenceFrequency =
-  | "quarterly"
-  | "biannually"
-  | "annually"
-  | "custom";
-
 export type JobRecurrenceUnit = "week" | "month" | "year";
 
-export type JobRecurrenceAnchorMode = "same_date" | "nth_weekday";
-
-export type JobRecurrenceEndMode =
-  | "never"
-  | "after_n_visits"
-  | "on_date"
-  | "years";
+export type JobRecurrenceEndMode = "never" | "years";
 
 export type JobRecurrenceStatus = "active" | "canceled";
 
@@ -2279,12 +2307,9 @@ export type JobRecurrence = {
   company_id: number;
   source_job_id: number | null;
   customer_id: number;
-  frequency: JobRecurrenceFrequency;
-  custom_interval_n: number | null;
-  custom_interval_unit: JobRecurrenceUnit | null;
-  anchor_mode: JobRecurrenceAnchorMode;
+  interval_n: number;
+  interval_unit: JobRecurrenceUnit;
   anchor_date: string;
-  time_of_day: string | null;
   duration_minutes: number;
   price_cents: number;
   technician_id: number | null;
@@ -2292,11 +2317,8 @@ export type JobRecurrence = {
   title: string;
   notes: string | null;
   end_mode: JobRecurrenceEndMode;
-  end_after_visits: number | null;
-  end_on_date: string | null;
   end_years: number | null;
   status: JobRecurrenceStatus;
-  next_visit_index: number;
   canceled_at: string | null;
   created_at: string;
 };

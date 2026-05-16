@@ -278,30 +278,22 @@ export async function createJob(
       const ruleResult = await tx
         .prepare(
           `INSERT INTO job_recurrences
-             (company_id, source_job_id, customer_id, frequency,
-              custom_interval_n, custom_interval_unit,
-              anchor_mode, anchor_date,
-              time_of_day, duration_minutes, price_cents,
+             (company_id, source_job_id, customer_id,
+              interval_n, interval_unit, anchor_date,
+              duration_minutes, price_cents,
               technician_id, salesperson_id,
               title, notes,
-              end_mode, end_after_visits, end_on_date, end_years,
-              status, next_visit_index)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 2)`
+              end_mode, end_years,
+              status)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active')`
         )
         .run(
           companyId,
           id,
           input.customer_id,
-          recurrence.frequency,
-          recurrence.frequency === "custom"
-            ? recurrence.custom_interval_n ?? null
-            : null,
-          recurrence.frequency === "custom"
-            ? recurrence.custom_interval_unit ?? null
-            : null,
-          recurrence.anchor_mode,
+          recurrence.interval_n,
+          recurrence.interval_unit,
           input.start_time,
-          null,
           dur,
           total,
           techs[0] || null,
@@ -309,15 +301,7 @@ export async function createJob(
           title,
           input.notes || null,
           recurrence.end_mode,
-          recurrence.end_mode === "after_n_visits"
-            ? recurrence.end_after_visits ?? null
-            : null,
-          recurrence.end_mode === "on_date"
-            ? recurrence.end_on_date ?? null
-            : null,
-          recurrence.end_mode === "years"
-            ? recurrence.end_years ?? null
-            : null
+          recurrence.end_mode === "years" ? recurrence.end_years ?? null : null
         );
       const ruleId = Number(ruleResult.lastInsertRowid);
 
