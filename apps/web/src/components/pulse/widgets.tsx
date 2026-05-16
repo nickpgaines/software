@@ -408,7 +408,7 @@ export function PulseChartHero({
 
   return (
     <section
-      className="rounded-2xl p-7"
+      className="rounded-2xl p-4 md:p-7"
       style={{ background: PULSE.card, border: `1px solid ${PULSE.cardBorder}` }}
     >
       <div className="flex items-baseline justify-between mb-5 flex-wrap gap-3">
@@ -417,7 +417,7 @@ export function PulseChartHero({
             Revenue · {titleLabel}
           </div>
           <div className="flex items-baseline gap-3">
-            <span className="text-[52px] font-black tracking-tight leading-none">
+            <span className="text-[36px] md:text-[52px] font-black tracking-tight leading-none">
               {data ? formatCentsShort(total) : "—"}
             </span>
           </div>

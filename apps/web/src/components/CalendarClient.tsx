@@ -2,6 +2,22 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
+
+// Track whether the viewport matches the mobile breakpoint (< md). Used by
+// the calendar to compress the day-view tech columns and pick the right
+// default view on first render.
+function useIsMobile() {
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 767px)");
+    setIsMobile(mq.matches);
+    const onChange = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return isMobile;
+}
 import EmployeeSchedulingModal from "./EmployeeSchedulingModal";
 import { Button } from "@/components/ui/button";
 import {
@@ -177,8 +193,20 @@ function blockHeight(start: Date, end: Date) {
 }
 
 export default function CalendarClient() {
+  const isMobile = useIsMobile();
   const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState<Date>(startOfDay(new Date()));
+  // On mobile, default to day view (week/month grids don't fit phone width
+  // without horizontal scrolling, which we explicitly avoid here). Only
+  // runs once on first detection so the user can still switch views later.
+  const didInitView = useRef(false);
+  useEffect(() => {
+    if (didInitView.current) return;
+    if (isMobile) {
+      setView("day");
+      didInitView.current = true;
+    }
+  }, [isMobile]);
   // null = not yet loaded for the first time. The day view in particular
   // used to render partial columns while these three fetches were still
   // in flight, which is why the user saw missing color swatches and a
@@ -795,9 +823,9 @@ function WeekView({
   const today = startOfDay(now);
   const buckets = jobsByDay(jobs, days);
   return (
-    <div className="overflow-x-auto">
-      <div className="min-w-[760px]">
-        <div className="grid grid-cols-[64px_repeat(7,1fr)] border-b border-line">
+    <div className="md:overflow-x-auto">
+      <div className="md:min-w-[760px]">
+        <div className="grid grid-cols-[40px_repeat(7,1fr)] md:grid-cols-[64px_repeat(7,1fr)] border-b border-line">
           <div />
           {days.map((d) => {
             const isToday = sameDay(d, today);
@@ -824,7 +852,7 @@ function WeekView({
             );
           })}
         </div>
-        <div className="grid grid-cols-[64px_repeat(7,1fr)] grid-rows-1">
+        <div className="grid grid-cols-[40px_repeat(7,1fr)] md:grid-cols-[64px_repeat(7,1fr)] grid-rows-1">
           <div className="border-r border-line">
             {HOURS.map((h) => (
               <div
@@ -933,11 +961,16 @@ function DayView({
     day: "numeric",
   });
   const hasAnytimeRow = lanes.some((l) => l.anytime.length > 0);
-  const gridCols = `64px repeat(${lanes.length}, minmax(180px,1fr))`;
+  // Mobile: shrink the time gutter, drop the per-tech min-width so multiple
+  // techs compress to fit the screen (no horizontal scroll on phones).
+  const isMobile = useIsMobile();
+  const gridCols = isMobile
+    ? `40px repeat(${lanes.length}, minmax(0,1fr))`
+    : `64px repeat(${lanes.length}, minmax(180px,1fr))`;
 
   return (
-    <div className="overflow-x-auto">
-      <div className="min-w-[640px]">
+    <div className="md:overflow-x-auto">
+      <div className="md:min-w-[640px]">
         <div
           className={
             "px-4 py-3 text-center text-sm font-extrabold tracking-tight border-b border-line " +
