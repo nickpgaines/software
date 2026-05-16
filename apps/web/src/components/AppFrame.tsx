@@ -12,11 +12,13 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isFullBleed = pathname != null && FULL_BLEED_PATHS.has(pathname);
   if (isFullBleed) {
-    return <main className="ml-60">{children}</main>;
+    return <main className="md:ml-60">{children}</main>;
   }
   return (
-    <main className="ml-60">
-      <div className="max-w-app mx-auto px-10 py-10">{children}</div>
+    <main className="md:ml-60">
+      <div className="max-w-app mx-auto px-4 pt-20 pb-8 md:px-10 md:py-10">
+        {children}
+      </div>
     </main>
   );
 }

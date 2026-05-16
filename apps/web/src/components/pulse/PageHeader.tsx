@@ -13,7 +13,7 @@ export function PageHeader({
 }) {
   return (
     <div className="flex items-end justify-between gap-4 flex-wrap mb-7">
-      <div>
+      <div className="min-w-0 flex-1">
         {kicker && (
           <div
             className="text-sm font-bold mb-3"
@@ -22,7 +22,7 @@ export function PageHeader({
             {kicker}
           </div>
         )}
-        <h1 className="text-[48px] font-extrabold tracking-tight leading-none">
+        <h1 className="text-[32px] md:text-[48px] font-extrabold tracking-tight leading-[1.05] md:leading-none">
           {title}
         </h1>
         {subtitle && (
@@ -31,7 +31,9 @@ export function PageHeader({
           </p>
         )}
       </div>
-      {actions && <div className="flex items-center gap-2">{actions}</div>}
+      {actions && (
+        <div className="hidden md:flex items-center gap-2">{actions}</div>
+      )}
     </div>
   );
 }

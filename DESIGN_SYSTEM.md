@@ -1197,6 +1197,49 @@ need the same combo (e.g., subscriptions, leads) compose
 `<PrivateNotesSection>` rather than rebuilding the textarea + file
 buttons inline.
 
+### 8.20 `MobileNavShell` + `MobileMenuButton`
+
+Defined: `components/MobileNavShell.tsx`. Used: `(app)/layout.tsx`.
+
+The mobile-responsive shell that turns `PulseSidebar` into a slide-out
+drawer at viewports narrower than `md` (768px). Desktop behavior is
+unchanged — at `md:` and up, the sidebar is fixed-visible exactly as
+documented in §8.1 and the menu button is hidden.
+
+**Components:**
+
+1. `MobileNavShell` — context provider that owns `{ open, setOpen }`.
+   Wraps the entire app shell. Auto-closes on `pathname` change and
+   locks `document.body.style.overflow` while open so the page behind
+   doesn't scroll. Renders the dim backdrop (`bg-black/60`, z-30,
+   `md:hidden`) when open; tapping the backdrop closes the drawer.
+
+2. `MobileMenuButton` — floating round button, `top-4 left-4`, z-50,
+   `w-11 h-11`, `bg-card border border-line`, three-line hamburger
+   icon. `md:hidden`. Toggles the shell state.
+
+**Sidebar transform** — `PulseSidebar` reads `useMobileNav()` and
+applies `-translate-x-full` by default plus `md:translate-x-0`
+(unconditionally on desktop). When `open` is true, the mobile class
+flips to `translate-x-0` and the sidebar slides in over the page. All
+nav links remain `<Link href>`s; route change closes the drawer via the
+context's pathname effect.
+
+**AppFrame margin** — drops the `ml-60` on mobile (`md:ml-60`), so the
+main content fills the screen when the sidebar is off-canvas. Centered
+container padding shrinks too: `px-4 pt-20 pb-8 md:px-10 md:py-10`. The
+`pt-20` reserves space for the floating menu button.
+
+**`PageHeader` responsive treatment** — title is `text-[32px]` on
+mobile, `text-[48px]` at `md:` and up. The `actions` slot is
+`hidden md:flex` since most action buttons (e.g., the dashboard's
+288px-wide search bar) don't fit on a phone. Pages that need a
+primary mobile action should render it inline in the page body.
+
+**Full-bleed pages** (`/schedule`, `/messages`, `/map`) — these still
+opt out of `AppFrame`'s container padding. They are responsible for
+adding their own mobile top padding to avoid the floating menu button.
+
 ---
 
 ## 9. Layout patterns
