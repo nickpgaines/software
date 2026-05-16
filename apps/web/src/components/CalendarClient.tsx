@@ -67,6 +67,33 @@ const VIEW_OPTIONS: { value: View; label: string }[] = [
 
 const DAY_MS = 86_400_000;
 const HOUR_PX = 56;
+
+// Fetch JSON with retry on transient failure. The schedule fetches were
+// previously silently swallowing any non-OK response or invalid JSON, which
+// left jobs/staff empty and produced "missing tech column" + "job doesn't
+// show up" bugs that only cleared after refreshing several times.
+async function fetchJsonWithRetry<T>(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+  retries = 2
+): Promise<T> {
+  let lastErr: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const r = await fetch(input, init);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return (await r.json()) as T;
+    } catch (e) {
+      lastErr = e;
+      if (attempt < retries) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, 200 * (attempt + 1))
+        );
+      }
+    }
+  }
+  throw lastErr;
+}
 // Show all 24 hours of the day so jobs scheduled outside business hours
 // (early morning, late evening) are reachable. The grid auto-scrolls to
 // DAY_DEFAULT_HOUR on mount so the typical workday is visible without
@@ -188,41 +215,67 @@ export default function CalendarClient() {
       cursor.getDate()
     )}`;
     const weekday = cursor.getDay();
-    fetch(`/api/schedule/shifts?start=${dateIso}&end=${dateIso}`)
-      .then((r) => r.json())
-      .then(
-        (d: {
-          shifts?: { staff_id: number; work_date: string }[];
-          defaults?: { staff_id: number; weekday: number }[];
-        }) => {
-          const ids = new Set<number>();
-          for (const s of d.shifts ?? []) {
-            if (s.work_date === dateIso) ids.add(s.staff_id);
-          }
-          for (const def of d.defaults ?? []) {
-            if (def.weekday === weekday) ids.add(def.staff_id);
-          }
-          setScheduledTechIds(ids);
+    let cancelled = false;
+    fetchJsonWithRetry<{
+      shifts?: { staff_id: number; work_date: string }[];
+      defaults?: { staff_id: number; weekday: number }[];
+    }>(`/api/schedule/shifts?start=${dateIso}&end=${dateIso}`)
+      .then((d) => {
+        if (cancelled) return;
+        const ids = new Set<number>();
+        for (const s of d.shifts ?? []) {
+          if (s.work_date === dateIso) ids.add(s.staff_id);
         }
-      )
-      .catch(() => setScheduledTechIds(new Set()));
+        for (const def of d.defaults ?? []) {
+          if (def.weekday === weekday) ids.add(def.staff_id);
+        }
+        setScheduledTechIds(ids);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("Failed to load scheduled shifts:", err);
+        setScheduledTechIds(new Set());
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [view, cursor.getTime()]);
 
+  // Staff + me are needed before DayView can pick the right columns. A
+  // failure here used to silently leave `staff` empty, which made the
+  // day view collapse to a single placeholder column.
+  const [staffLoadTick, setStaffLoadTick] = useState(0);
   useEffect(() => {
-    fetch("/api/staff")
-      .then((r) => r.json())
-      .then((rows: StaffLite[]) => setStaff(rows));
-    fetch("/api/me")
-      .then((r) => r.json())
-      .then(
-        (d: { staff: { id: number; permission_level: string | null } | null }) =>
-          setMe({
-            staff_id: d.staff?.id ?? null,
-            permission_level: d.staff?.permission_level ?? null,
-          })
-      )
-      .catch(() => setMe(null));
-  }, []);
+    let cancelled = false;
+    fetchJsonWithRetry<StaffLite[]>("/api/staff")
+      .then((rows) => {
+        if (cancelled) return;
+        if (Array.isArray(rows)) setStaff(rows);
+        else console.error("/api/staff returned non-array:", rows);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("Failed to load staff:", err);
+      });
+    fetchJsonWithRetry<{
+      staff: { id: number; permission_level: string | null } | null;
+    }>("/api/me")
+      .then((d) => {
+        if (cancelled) return;
+        setMe({
+          staff_id: d.staff?.id ?? null,
+          permission_level: d.staff?.permission_level ?? null,
+        });
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("Failed to load me:", err);
+        setMe(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [staffLoadTick]);
 
   const range = useMemo(() => {
     if (view === "day") {
@@ -239,15 +292,47 @@ export default function CalendarClient() {
     return { start, end: addDays(start, 7) };
   }, [view, cursor]);
 
+  const [jobsLoadTick, setJobsLoadTick] = useState(0);
   useEffect(() => {
     const params = new URLSearchParams({
       from: range.start.toISOString(),
       to: range.end.toISOString(),
     });
-    fetch(`/api/jobs?${params}`)
-      .then((r) => r.json())
-      .then((js: Job[]) => setJobs(js));
-  }, [range.start.getTime(), range.end.getTime()]);
+    let cancelled = false;
+    fetchJsonWithRetry<Job[]>(`/api/jobs?${params}`)
+      .then((js) => {
+        if (cancelled) return;
+        if (Array.isArray(js)) setJobs(js);
+        else console.error("/api/jobs returned non-array:", js);
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        console.error("Failed to load jobs:", err);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [range.start.getTime(), range.end.getTime(), jobsLoadTick]);
+
+  // Refetch when the tab regains focus. The previous implementation had
+  // no recovery path for a transient failure: once a fetch silently
+  // failed, the schedule stayed broken until a hard refresh. Now coming
+  // back to the tab (or returning to the window) re-pulls the data.
+  useEffect(() => {
+    function onFocus() {
+      setJobsLoadTick((n) => n + 1);
+      setStaffLoadTick((n) => n + 1);
+    }
+    function onVisibility() {
+      if (document.visibilityState === "visible") onFocus();
+    }
+    window.addEventListener("focus", onFocus);
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.removeEventListener("focus", onFocus);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, []);
 
   function navigate(delta: number) {
     if (view === "day") setCursor(addDays(cursor, delta));
