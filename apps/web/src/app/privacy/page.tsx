@@ -6,7 +6,7 @@ export const metadata = {
     "How the NG Ventures messaging platform (operated by NG Ventures LLC) collects, uses, and protects your information.",
 };
 
-const EFFECTIVE_DATE = "May 13, 2026";
+const EFFECTIVE_DATE = "May 16, 2026";
 
 export default function PrivacyPolicyPage() {
   return (
@@ -98,7 +98,61 @@ export default function PrivacyPolicyPage() {
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
-            4. How we share information
+            4. Meta / Facebook integration
+          </h2>
+          <p>
+            Customers may connect their Facebook Page and Meta Business
+            accounts to the Service via Facebook Login. When a Customer
+            connects, we receive information from Meta using the following
+            permissions: <strong className="text-white">pages_show_list</strong>,{" "}
+            <strong className="text-white">pages_read_engagement</strong>,{" "}
+            <strong className="text-white">pages_manage_metadata</strong>,{" "}
+            <strong className="text-white">leads_retrieval</strong>, and{" "}
+            <strong className="text-white">ads_management</strong>.
+          </p>
+          <p>
+            Specifically, we may receive: (a) the Customer&rsquo;s Facebook
+            user ID and basic profile information used to authenticate the
+            connection; (b) the list of Facebook Pages the Customer
+            administers and Page metadata (name, ID, category, access
+            tokens); (c) Lead Ads form submissions from those Pages,
+            including the End User&rsquo;s name, phone number, email
+            address, and any custom form fields the Customer configured;
+            and (d) ads, ad-set, and campaign metadata associated with the
+            Customer&rsquo;s ad accounts.
+          </p>
+          <p>
+            <strong className="text-white">How we use Meta data:</strong> Lead Ads submissions are
+            ingested into the connected Customer&rsquo;s CRM so they can
+            contact and serve those leads. Page and ads metadata are used
+            to display the Customer&rsquo;s connected assets in the Service
+            and to attribute leads to their source campaign. We do not use
+            Meta-derived data to build advertising profiles, we do not
+            re-sell it, and we do not share it with third parties for their
+            own marketing.
+          </p>
+          <p>
+            <strong className="text-white">Retention and deletion:</strong> Meta-derived data is
+            retained while the Customer&rsquo;s Meta connection is active.
+            When a Customer disconnects Meta in the Service, removes our
+            app from their Facebook account, or deletes their NG Ventures
+            account, we delete the stored Meta access tokens and Page
+            access tokens, and we delete or anonymize Lead Ads
+            submissions associated with that connection within 30 days,
+            except where retention is required to comply with law, resolve
+            disputes, or enforce our Terms. End Users may also request
+            deletion at any time &mdash; see{" "}
+            <Link
+              href="/data-deletion"
+              className="text-violet-400 hover:text-violet-300 font-extrabold"
+            >
+              Data Deletion Instructions
+            </Link>
+            .
+          </p>
+
+          <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
+            5. How we share information
           </h2>
           <p>
             We share information only as needed to operate the Service:
@@ -128,7 +182,7 @@ export default function PrivacyPolicyPage() {
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
-            5. Data retention
+            6. Data retention
           </h2>
           <p>
             We retain information for as long as the Customer&rsquo;s account is
@@ -138,7 +192,7 @@ export default function PrivacyPolicyPage() {
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
-            6. Security
+            7. Security
           </h2>
           <p>
             We use industry-standard administrative, technical, and physical
@@ -148,7 +202,7 @@ export default function PrivacyPolicyPage() {
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
-            7. Your choices and rights
+            8. Your choices and rights
           </h2>
           <p>
             End Users can opt out of SMS by replying STOP. Customers can update
@@ -159,7 +213,7 @@ export default function PrivacyPolicyPage() {
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
-            8. Children
+            9. Children
           </h2>
           <p>
             The Service is not directed to children under 13, and we do not
@@ -167,7 +221,7 @@ export default function PrivacyPolicyPage() {
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
-            9. Changes to this policy
+            10. Changes to this policy
           </h2>
           <p>
             We may update this Privacy Policy from time to time. Material
@@ -176,7 +230,7 @@ export default function PrivacyPolicyPage() {
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
-            10. Contact
+            11. Contact
           </h2>
           <p>
             Questions about this policy or your information can be sent to:

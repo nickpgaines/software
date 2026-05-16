@@ -6,7 +6,7 @@ export const metadata = {
     "Terms of Service for the NG Ventures messaging platform, operated by NG Ventures LLC.",
 };
 
-const EFFECTIVE_DATE = "May 13, 2026";
+const EFFECTIVE_DATE = "May 16, 2026";
 
 export default function TermsOfServicePage() {
   return (
@@ -94,7 +94,59 @@ export default function TermsOfServicePage() {
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
-            3. Customer accounts
+            3. Meta / Facebook integration
+          </h2>
+          <p>
+            The Service includes an optional integration with Meta
+            Platforms (Facebook, Instagram) that lets Customers connect
+            their Facebook Pages and Meta Business accounts in order to
+            receive Facebook Lead Ads submissions and view connected Page
+            and ads metadata inside the Service.
+          </p>
+          <p>
+            Customers who connect Meta agree to comply with the{" "}
+            <a
+              href="https://developers.facebook.com/terms/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-violet-400 hover:text-violet-300 font-extrabold"
+            >
+              Meta Platform Terms
+            </a>
+            , the{" "}
+            <a
+              href="https://www.facebook.com/legal/terms"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-violet-400 hover:text-violet-300 font-extrabold"
+            >
+              Facebook Terms of Service
+            </a>
+            , and all applicable advertising and lead-generation policies.
+            Customers are solely responsible for the lawful collection,
+            handling, and use of any End-User information they receive
+            from Meta through the Service, including obtaining required
+            consents and honoring opt-out requests. Our handling of
+            Meta-derived data is described in our{" "}
+            <Link
+              href="/privacy"
+              className="text-violet-400 hover:text-violet-300 font-extrabold"
+            >
+              Privacy Policy
+            </Link>
+            , and End Users may request deletion of their data at any time
+            via our{" "}
+            <Link
+              href="/data-deletion"
+              className="text-violet-400 hover:text-violet-300 font-extrabold"
+            >
+              Data Deletion Instructions
+            </Link>
+            .
+          </p>
+
+          <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
+            4. Customer accounts
           </h2>
           <p>
             Customers are responsible for the accuracy of information provided
@@ -112,7 +164,7 @@ export default function TermsOfServicePage() {
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
-            4. Acceptable use
+            5. Acceptable use
           </h2>
           <p>You may not use the Service to:</p>
           <ul className="list-disc pl-6 space-y-2">
@@ -141,7 +193,7 @@ export default function TermsOfServicePage() {
           </ul>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
-            5. Fees and payment
+            6. Fees and payment
           </h2>
           <p>
             Fees and payment terms are described at signup or in a separate
@@ -150,7 +202,7 @@ export default function TermsOfServicePage() {
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
-            6. Privacy
+            7. Privacy
           </h2>
           <p>
             Our collection and use of information is described in our{" "}
@@ -164,7 +216,7 @@ export default function TermsOfServicePage() {
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
-            7. Termination
+            8. Termination
           </h2>
           <p>
             Either party may terminate the Service at any time. We may suspend
@@ -176,7 +228,7 @@ export default function TermsOfServicePage() {
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
-            8. Disclaimers
+            9. Disclaimers
           </h2>
           <p>
             The Service is provided &ldquo;as is&rdquo; and &ldquo;as
@@ -188,7 +240,7 @@ export default function TermsOfServicePage() {
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
-            9. Limitation of liability
+            10. Limitation of liability
           </h2>
           <p>
             To the maximum extent permitted by law, our total aggregate
@@ -200,7 +252,7 @@ export default function TermsOfServicePage() {
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
-            10. Indemnification
+            11. Indemnification
           </h2>
           <p>
             Customers will indemnify and hold us harmless from any claim,
@@ -210,7 +262,7 @@ export default function TermsOfServicePage() {
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
-            11. Changes
+            12. Changes
           </h2>
           <p>
             We may update these Terms from time to time. Material changes will
@@ -219,7 +271,7 @@ export default function TermsOfServicePage() {
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
-            12. Governing law
+            13. Governing law
           </h2>
           <p>
             These Terms are governed by the laws of the State of South
@@ -229,7 +281,7 @@ export default function TermsOfServicePage() {
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
-            13. Contact
+            14. Contact
           </h2>
           <p>
             NG Ventures LLC
