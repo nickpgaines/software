@@ -179,11 +179,15 @@ function blockHeight(start: Date, end: Date) {
 export default function CalendarClient() {
   const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState<Date>(startOfDay(new Date()));
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [staff, setStaff] = useState<StaffLite[]>([]);
+  // null = not yet loaded for the first time. The day view in particular
+  // used to render partial columns while these three fetches were still
+  // in flight, which is why the user saw missing color swatches and a
+  // tech column flickering in and out on first paint.
+  const [jobs, setJobs] = useState<Job[] | null>(null);
+  const [staff, setStaff] = useState<StaffLite[] | null>(null);
   const [me, setMe] = useState<MeLite | null>(null);
-  const [scheduledTechIds, setScheduledTechIds] = useState<Set<number>>(
-    () => new Set()
+  const [scheduledTechIds, setScheduledTechIds] = useState<Set<number> | null>(
+    null
   );
   const [now, setNow] = useState<Date>(new Date());
   const [schedulingOpen, setSchedulingOpen] = useState(false);
@@ -205,12 +209,12 @@ export default function CalendarClient() {
   // Day view shows a column for every technician scheduled to work
   // that day (via Employee Scheduling) — even on empty days — so a
   // sales rep can see who's available to book. Refetch when the day
-  // cursor moves or the view enters/leaves "day".
+  // cursor moves or the view enters/leaves "day". We deliberately do
+  // not reset to an empty Set on leaving day view: that used to leave
+  // the day view rendering with no scheduled techs for a frame after
+  // re-entering, which made Nick's column disappear momentarily.
   useEffect(() => {
-    if (view !== "day") {
-      setScheduledTechIds(new Set());
-      return;
-    }
+    if (view !== "day") return;
     const pad = (n: number) => String(n).padStart(2, "0");
     const dateIso = `${cursor.getFullYear()}-${pad(cursor.getMonth() + 1)}-${pad(
       cursor.getDate()
@@ -344,6 +348,16 @@ export default function CalendarClient() {
       setCursor(startOfMonth(next));
     } else setCursor(addDays(cursor, delta * 7));
   }
+
+  // Don't render any view until the data it depends on has finished its
+  // first fetch. The day view in particular reads from all three sources
+  // (jobs, staff, shifts) to build columns and color swatches; rendering
+  // partial data is what produced the "Jo Johnson with no color circle"
+  // and "Nick disappears on click-out" flicker.
+  const dataReady =
+    jobs !== null &&
+    staff !== null &&
+    (view !== "day" || scheduledTechIds !== null);
 
   const navLabel = useMemo(() => {
     if (view === "day") {
@@ -519,37 +533,49 @@ export default function CalendarClient() {
       </div>
 
       <div ref={gridRef} className="flex-1 min-h-0 overflow-auto bg-card">
-        {view === "week" && (
-          <WeekView
-            start={startOfWeek(cursor)}
-            jobs={jobs}
-            now={now}
-          />
+        {!dataReady ? (
+          <div className="flex items-center justify-center h-full text-sm text-zinc-500">
+            Loading schedule…
+          </div>
+        ) : (
+          <>
+            {view === "week" && (
+              <WeekView
+                start={startOfWeek(cursor)}
+                jobs={jobs ?? []}
+                now={now}
+              />
+            )}
+            {view === "day" && (
+              <DayView
+                day={startOfDay(cursor)}
+                jobs={jobs ?? []}
+                staff={staff ?? []}
+                scheduledTechIds={scheduledTechIds ?? new Set()}
+                me={me}
+                now={now}
+              />
+            )}
+            {view === "month" && (
+              <MonthView
+                cursor={cursor}
+                jobs={jobs ?? []}
+                onPickDay={(d) => {
+                  setCursor(d);
+                  setView("day");
+                }}
+              />
+            )}
+            {view === "agenda" && (
+              <AgendaView
+                jobs={jobs ?? []}
+                rangeStart={range.start}
+                rangeEnd={range.end}
+              />
+            )}
+            {view === "map" && <MapView />}
+          </>
         )}
-        {view === "day" && (
-          <DayView
-            day={startOfDay(cursor)}
-            jobs={jobs}
-            staff={staff}
-            scheduledTechIds={scheduledTechIds}
-            me={me}
-            now={now}
-          />
-        )}
-        {view === "month" && (
-          <MonthView
-            cursor={cursor}
-            jobs={jobs}
-            onPickDay={(d) => {
-              setCursor(d);
-              setView("day");
-            }}
-          />
-        )}
-        {view === "agenda" && (
-          <AgendaView jobs={jobs} rangeStart={range.start} rangeEnd={range.end} />
-        )}
-        {view === "map" && <MapView />}
       </div>
 
       <EmployeeSchedulingModal
