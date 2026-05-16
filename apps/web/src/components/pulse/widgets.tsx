@@ -124,23 +124,47 @@ export function HeroChart({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  // Track container width so the SVG viewBox can match it 1:1 (otherwise the
+  // fixed 1000-wide viewBox gets squished horizontally on phones and peaks
+  // look like exaggerated tall thin spikes).
+  const [containerWidth, setContainerWidth] = useState(1000);
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 767px)");
+    setIsMobile(mq.matches);
+    const onMq = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", onMq);
+    return () => mq.removeEventListener("change", onMq);
+  }, []);
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const ro = new ResizeObserver((entries) => {
+      const w = entries[0]?.contentRect.width;
+      if (w && w > 0) setContainerWidth(w);
+    });
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
   // Stable across SSR + hydration so the gradient ref isn't broken on hydrate.
   const reactId = useId();
   const id = `hero-${reactId.replace(/:/g, "")}`;
+
+  // Mobile: shorter chart so it doesn't dominate the dashboard.
+  const h = isMobile ? 200 : height;
 
   if (days.length === 0) {
     return (
       <div
         className="flex items-center justify-center text-[13px] font-extrabold"
-        style={{ height, color: PULSE.textDim }}
+        style={{ height: h, color: PULSE.textDim }}
       >
         No data yet.
       </div>
     );
   }
-  const w = 1000;
-  const h = height;
-  const padL = 44;
+  const w = Math.max(1, Math.round(containerWidth));
+  const padL = isMobile ? 30 : 44;
   const padR = 8;
   const padT = 12;
   const padB = 28;
@@ -167,23 +191,32 @@ export function HeroChart({
   const padLPct = (padL / w) * 100;
   const padRPct = (padR / w) * 100;
 
-  function onMove(e: React.MouseEvent<HTMLDivElement>) {
+  function idxFromClientX(clientX: number): number | null {
     const node = containerRef.current;
-    if (!node || days.length === 0) return;
+    if (!node || days.length === 0) return null;
     const rect = node.getBoundingClientRect();
-    // Plot area is between padL/w and (w-padR)/w of the container width.
     const plotLeft = (padL / w) * rect.width;
     const plotRight = ((w - padR) / w) * rect.width;
-    const localX = e.clientX - rect.left;
-    if (localX < plotLeft || localX > plotRight) {
-      setHoverIdx(null);
-      return;
-    }
+    const localX = clientX - rect.left;
+    if (localX < plotLeft || localX > plotRight) return null;
     const ratio = (localX - plotLeft) / (plotRight - plotLeft);
     let idx = Math.round(ratio * (days.length - 1));
     if (idx < 0) idx = 0;
     if (idx > days.length - 1) idx = days.length - 1;
-    setHoverIdx(idx);
+    return idx;
+  }
+
+  function onMove(e: React.MouseEvent<HTMLDivElement>) {
+    setHoverIdx(idxFromClientX(e.clientX));
+  }
+
+  // Touch: tap or drag to inspect a day. We deliberately don't clear on
+  // touchend so the user can see the value after lifting their finger;
+  // tapping anywhere outside the plot clears it.
+  function onTouch(e: React.TouchEvent<HTMLDivElement>) {
+    const t = e.touches[0];
+    if (!t) return;
+    setHoverIdx(idxFromClientX(t.clientX));
   }
 
   const hovered = hoverIdx !== null ? days[hoverIdx] : null;
@@ -193,10 +226,12 @@ export function HeroChart({
   return (
     <div
       ref={containerRef}
-      className="relative w-full cursor-crosshair"
-      style={{ height }}
+      className="relative w-full cursor-crosshair touch-none"
+      style={{ height: h }}
       onMouseMove={onMove}
       onMouseLeave={() => setHoverIdx(null)}
+      onTouchStart={onTouch}
+      onTouchMove={onTouch}
     >
       <svg
         viewBox={`0 0 ${w} ${h}`}
