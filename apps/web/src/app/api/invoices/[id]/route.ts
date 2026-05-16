@@ -39,7 +39,14 @@ export async function GET(
       "SELECT * FROM invoice_items WHERE invoice_id = ? ORDER BY position ASC, id ASC"
     )
     .all(id)) as InvoiceItem[];
-  return NextResponse.json({ ...invoice, items });
+  let sold_by_name: string | null = null;
+  if (invoice.sold_by_id != null) {
+    const s = await db
+      .prepare("SELECT name FROM staff WHERE id = ?")
+      .get<{ name: string }>(invoice.sold_by_id);
+    sold_by_name = s?.name ?? null;
+  }
+  return NextResponse.json({ ...invoice, items, sold_by_name });
 }
 
 export async function PUT(

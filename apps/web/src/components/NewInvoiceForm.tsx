@@ -16,6 +16,8 @@ import {
   lineItemsSubtotal,
   type LineItem,
 } from "@/components/LineItemsSection";
+import { LeadSourceField } from "@/components/forms/LeadSourceField";
+import type { Staff } from "@/components/forms/StaffPickers";
 
 type Customer = {
   id: number;
@@ -25,14 +27,6 @@ type Customer = {
   address: string | null;
   formatted_address: string | null;
 };
-
-const LEAD_SOURCES = [
-  "Referral",
-  "Online",
-  "Door-to-door",
-  "Repeat customer",
-  "Other",
-];
 
 const SERVICE_PRESETS = [
   "Window Cleaning",
@@ -46,12 +40,14 @@ export default function NewInvoiceForm() {
   const router = useRouter();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [staff, setStaff] = useState<Staff[]>([]);
   const [customerId, setCustomerId] = useState<number | null>(null);
   const [customerQuery, setCustomerQuery] = useState("");
   const [showNewCustomer, setShowNewCustomer] = useState(false);
 
   const [notes, setNotes] = useState("");
   const [items, setItems] = useState<LineItem[]>([emptyLineItem()]);
+  const [salesId, setSalesId] = useState<number | null>(null);
   const [leadSource, setLeadSource] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
@@ -64,6 +60,10 @@ export default function NewInvoiceForm() {
 
   useEffect(() => {
     loadCustomers();
+    fetch("/api/staff")
+      .then((r) => (r.ok ? r.json() : []))
+      .then(setStaff)
+      .catch(() => setStaff([]));
   }, []);
 
   const totalCents = useMemo(() => lineItemsSubtotal(items), [items]);
@@ -98,6 +98,7 @@ export default function NewInvoiceForm() {
       customer_id: customerId,
       notes: notes.trim() || null,
       lead_source: leadSource || null,
+      sold_by_id: salesId,
       items: items
         .filter((it) => it.title.trim())
         .map((it) => ({
@@ -187,24 +188,13 @@ export default function NewInvoiceForm() {
         />
 
         <Card>
-          <CardHeader>
-            <h2 className="text-base font-extrabold text-white tracking-tight">
-              Lead Source
-            </h2>
-          </CardHeader>
-          {/* Native <select> kept: empty-string sentinel value for "Select source…" */}
-          <select
-            value={leadSource}
-            onChange={(e) => setLeadSource(e.target.value)}
-            className="w-full border border-line rounded-xl px-4 py-2 text-sm bg-card"
-          >
-            <option value="">Select source…</option>
-            {LEAD_SOURCES.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
+          <LeadSourceField
+            staff={staff}
+            salesId={salesId}
+            setSalesId={setSalesId}
+            leadMethod={leadSource}
+            setLeadMethod={setLeadSource}
+          />
         </Card>
 
         <Card>

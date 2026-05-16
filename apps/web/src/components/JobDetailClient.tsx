@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import PaymentsSection from "@/components/jobs/PaymentsSection";
 import RecordPaymentModal from "@/components/jobs/RecordPaymentModal";
 import {
@@ -11,6 +11,8 @@ import {
   StaffSinglePicker,
   type Staff,
 } from "@/components/JobForm";
+import type { JobAttachment, JobAttachmentKind } from "@/lib/db";
+import { LEAD_METHODS } from "@/components/forms/LeadSourceField";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -92,8 +94,6 @@ const INTERVAL_PERIOD_LABEL: Record<string, string> = {
   semiannually: "every 6 months",
   yearly: "annually",
 };
-
-const LEAD_METHODS = ["Online", "Direct", "Other"] as const;
 
 type Step = "en_route" | "arrived" | "started" | "completed";
 
@@ -549,6 +549,7 @@ export default function JobDetailClient({
           />
 
           <NotesSection notes={job.notes} onSave={patchJob} />
+          <AttachmentsSection jobId={job.id} />
 
           <ChecklistSection
             jobId={job.id}
@@ -1300,7 +1301,7 @@ function NotesSection({
   return (
     <section className="bg-card border border-line rounded-2xl p-5">
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-extrabold text-white tracking-tight">Notes</h2>
+        <h2 className="font-extrabold text-white tracking-tight">Private Notes</h2>
         {editing ? (
           <SectionSaveCancel
             saving={saving}
@@ -1700,5 +1701,274 @@ function JobStatusBadge({ status }: { status: UnifiedStatus }) {
       <span className={"w-1.5 h-1.5 rounded-full " + v.dot} />
       {v.label}
     </span>
+  );
+}
+
+function AttachmentsSection({ jobId }: { jobId: number }) {
+  const [items, setItems] = useState<JobAttachment[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [recording, setRecording] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [recordError, setRecordError] = useState<string | null>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<BlobPart[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  async function load() {
+    setLoading(true);
+    const res = await fetch(`/api/jobs/${jobId}/attachments`);
+    if (res.ok) setItems(await res.json());
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    load();
+    return () => {
+      recorderRef.current?.stop();
+      streamRef.current?.getTracks().forEach((t) => t.stop());
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [jobId]);
+
+  async function fileToDataUrl(file: Blob): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = () => reject(reader.error);
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function upload(
+    kind: JobAttachmentKind,
+    filename: string,
+    mime_type: string,
+    content: string
+  ) {
+    setAdding(true);
+    const res = await fetch(`/api/jobs/${jobId}/attachments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ kind, filename, mime_type, content }),
+    });
+    setAdding(false);
+    if (res.ok) {
+      const row = (await res.json()) as JobAttachment;
+      setItems((arr) => [...arr, row]);
+    } else {
+      const j = await res.json().catch(() => ({}));
+      setRecordError(j.error || "Could not upload attachment");
+    }
+  }
+
+  async function handleFiles(files: FileList | null) {
+    if (!files) return;
+    for (const file of Array.from(files)) {
+      const isImage = file.type.startsWith("image/");
+      const content = await fileToDataUrl(file);
+      await upload(
+        isImage ? "image" : "file",
+        file.name,
+        file.type || "application/octet-stream",
+        content
+      );
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function startRecording() {
+    setRecordError(null);
+    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+      setRecordError("Voice recording isn't supported in this browser.");
+      return;
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+      chunksRef.current = [];
+      const mime = MediaRecorder.isTypeSupported("audio/webm")
+        ? "audio/webm"
+        : "";
+      const recorder = mime
+        ? new MediaRecorder(stream, { mimeType: mime })
+        : new MediaRecorder(stream);
+      recorderRef.current = recorder;
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = async () => {
+        const blob = new Blob(chunksRef.current, {
+          type: recorder.mimeType || "audio/webm",
+        });
+        streamRef.current?.getTracks().forEach((t) => t.stop());
+        streamRef.current = null;
+        if (timerRef.current) {
+          clearInterval(timerRef.current);
+          timerRef.current = null;
+        }
+        const content = await fileToDataUrl(blob);
+        const ext = (recorder.mimeType || "audio/webm").includes("mp4")
+          ? "mp4"
+          : "webm";
+        const filename = `voice-memo-${new Date()
+          .toISOString()
+          .slice(0, 19)
+          .replace(/[:T]/g, "-")}.${ext}`;
+        setRecording(false);
+        setElapsed(0);
+        await upload("audio", filename, recorder.mimeType || "audio/webm", content);
+      };
+      recorder.start();
+      setRecording(true);
+      setElapsed(0);
+      timerRef.current = setInterval(() => setElapsed((s) => s + 1), 1000);
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Could not start recording";
+      setRecordError(`Microphone access denied: ${msg}`);
+    }
+  }
+
+  function stopRecording() {
+    recorderRef.current?.stop();
+    recorderRef.current = null;
+  }
+
+  async function removeAttachment(id: number) {
+    if (!confirm("Remove this attachment?")) return;
+    const res = await fetch(`/api/jobs/${jobId}/attachments/${id}`, {
+      method: "DELETE",
+    });
+    if (res.ok) setItems((arr) => arr.filter((a) => a.id !== id));
+  }
+
+  function formatBytes(n: number) {
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${(n / 1024).toFixed(1)} KB`;
+    return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function formatDuration(seconds: number) {
+    const m = Math.floor(seconds / 60);
+    const s = Math.floor(seconds % 60);
+    return `${m}:${String(s).padStart(2, "0")}`;
+  }
+
+  return (
+    <section className="bg-card border border-line rounded-2xl p-5">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-extrabold text-white tracking-tight">
+          Attachments
+        </h2>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          className="hidden"
+          accept="image/*,application/pdf,.doc,.docx,.txt"
+          onChange={(e) => handleFiles(e.target.files)}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={adding}
+          onClick={() => fileInputRef.current?.click()}
+          className="h-auto inline-flex items-center gap-2 border border-dashed border-line bg-transparent hover:bg-black rounded-xl px-3 py-2 text-sm font-bold text-zinc-200 disabled:opacity-50"
+        >
+          Add Attachment
+        </Button>
+        {recording ? (
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={stopRecording}
+            className="h-auto inline-flex items-center gap-2 border border-dashed border-rose-500/60 bg-transparent hover:bg-black rounded-xl px-3 py-2 text-sm font-bold text-rose-300"
+          >
+            <span className="inline-block h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+            Stop · {formatDuration(elapsed)}
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={adding}
+            onClick={startRecording}
+            className="h-auto inline-flex items-center gap-2 border border-dashed border-line bg-transparent hover:bg-black rounded-xl px-3 py-2 text-sm font-bold text-zinc-200 disabled:opacity-50"
+          >
+            Add Voice Memo
+          </Button>
+        )}
+      </div>
+      {recordError && (
+        <p className="mt-2 text-xs text-rose-400 font-bold">{recordError}</p>
+      )}
+      {loading ? (
+        <p className="mt-4 text-sm text-zinc-500">Loading…</p>
+      ) : items.length === 0 ? (
+        <p className="mt-4 text-sm text-zinc-500">No attachments.</p>
+      ) : (
+        <ul className="mt-4 space-y-2">
+          {items.map((a) => (
+            <li
+              key={a.id}
+              className="flex items-center gap-3 border border-line rounded-xl px-3 py-2 bg-black/30"
+            >
+              <div className="min-w-0 flex-1">
+                <div className="text-sm font-bold text-white tracking-tight truncate">
+                  {a.filename}
+                </div>
+                <div className="text-xs text-zinc-500 font-bold">
+                  {a.kind} · {formatBytes(a.size_bytes)}
+                </div>
+                {a.kind === "audio" && (
+                  <audio
+                    controls
+                    src={a.content}
+                    className="mt-2 w-full max-w-sm"
+                  />
+                )}
+                {a.kind === "image" && (
+                  <a
+                    href={a.content}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <img
+                      src={a.content}
+                      alt={a.filename}
+                      className="mt-2 max-h-40 rounded-lg border border-line"
+                    />
+                  </a>
+                )}
+                {a.kind === "file" && (
+                  <a
+                    href={a.content}
+                    download={a.filename}
+                    className="mt-1 inline-block text-xs text-zinc-300 hover:text-white underline"
+                  >
+                    Download
+                  </a>
+                )}
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                aria-label={`Remove ${a.filename}`}
+                onClick={() => removeAttachment(a.id)}
+                className="h-auto p-1 text-zinc-500 hover:text-white"
+              >
+                ×
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

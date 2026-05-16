@@ -39,7 +39,14 @@ export async function GET(
       "SELECT * FROM estimate_items WHERE estimate_id = ? ORDER BY position ASC, id ASC"
     )
     .all(id)) as EstimateItem[];
-  return NextResponse.json({ ...estimate, items });
+  let sold_by_name: string | null = null;
+  if (estimate.sold_by_id != null) {
+    const s = await db
+      .prepare("SELECT name FROM staff WHERE id = ?")
+      .get<{ name: string }>(estimate.sold_by_id);
+    sold_by_name = s?.name ?? null;
+  }
+  return NextResponse.json({ ...estimate, items, sold_by_name });
 }
 
 export async function PUT(

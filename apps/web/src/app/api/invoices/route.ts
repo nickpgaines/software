@@ -75,6 +75,7 @@ export async function POST(req: Request) {
     customer_id: number;
     notes: string;
     lead_source: string;
+    sold_by_id: number | null;
     items: IncomingItem[];
   }>;
 
@@ -113,16 +114,29 @@ export async function POST(req: Request) {
   const status: InvoiceStatus = "draft";
   const notes = body.notes?.toString().trim() || null;
   const leadSource = body.lead_source?.toString().trim() || null;
+  const soldById =
+    body.sold_by_id == null ? null : Number(body.sold_by_id) || null;
 
   const result = await db
     .prepare(
       `INSERT INTO invoices
          (company_id, customer_id, notes, status,
           total_cents, paid_cents, tax_rate_bps,
-          created_by, lead_source)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          created_by, lead_source, sold_by_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
-    .run(companyId, customerId, notes, status, total, 0, 0, user, leadSource);
+    .run(
+      companyId,
+      customerId,
+      notes,
+      status,
+      total,
+      0,
+      0,
+      user,
+      leadSource,
+      soldById
+    );
   const invoiceId = result.lastInsertRowid;
 
   for (let i = 0; i < items.length; i++) {

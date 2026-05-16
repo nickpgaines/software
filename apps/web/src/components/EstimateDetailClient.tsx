@@ -18,6 +18,8 @@ type Estimate = {
   status: string;
   total_cents: number;
   lead_source: string | null;
+  sold_by_id: number | null;
+  sold_by_name: string | null;
   sent_at: string | null;
   accepted_at: string | null;
   items: {
@@ -164,15 +166,24 @@ export default function EstimateDetailClient({ id }: { id: number }) {
             )}
           </Card>
 
-          {estimate.lead_source && (
+          {(estimate.sold_by_name || estimate.lead_source) && (
             <Card>
               <CardHeader>
                 <h2 className="text-base font-extrabold text-white tracking-tight">
                   Lead Source
                 </h2>
               </CardHeader>
-              <div className="text-sm text-zinc-200 font-bold">
-                {estimate.lead_source}
+              <div className="space-y-1 text-sm">
+                {estimate.sold_by_name && (
+                  <div className="text-zinc-200 font-bold">
+                    {estimate.sold_by_name}
+                  </div>
+                )}
+                {estimate.lead_source && (
+                  <div className="text-zinc-400 font-bold">
+                    {estimate.lead_source}
+                  </div>
+                )}
               </div>
             </Card>
           )}
