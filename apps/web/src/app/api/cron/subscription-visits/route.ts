@@ -4,12 +4,13 @@ import {
   ensureRollingVisits,
   startDateToIso,
 } from "@/lib/subscription-schedule";
+import { ensureRecurrenceWindow } from "@/lib/recurrence-schedule";
 
 export const dynamic = "force-dynamic";
 
-// Tops up the rolling visit window for every active subscription.
-// Intended to run on a schedule (e.g. daily). Idempotent: only inserts new
-// visits when fewer than the window's worth of future visits exist.
+// Tops up the rolling one-year visit window for every active subscription and
+// every active job recurrence. Intended to run daily. Idempotent: only
+// inserts visits to fill the gap between what already exists and the horizon.
 export async function POST(req: Request) {
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret) {
@@ -43,7 +44,23 @@ export async function POST(req: Request) {
     touched += 1;
   }
 
-  return NextResponse.json({ ok: true, subscriptions_topped_up: touched });
+  const recs = (await db
+    .prepare(
+      `SELECT id, company_id FROM job_recurrences WHERE status = 'active'`
+    )
+    .all()) as { id: number; company_id: number }[];
+
+  let recurrencesTopped = 0;
+  for (const r of recs) {
+    await ensureRecurrenceWindow(db, r.id, r.company_id);
+    recurrencesTopped += 1;
+  }
+
+  return NextResponse.json({
+    ok: true,
+    subscriptions_topped_up: touched,
+    recurrences_topped_up: recurrencesTopped,
+  });
 }
 
 export async function GET(req: Request) {

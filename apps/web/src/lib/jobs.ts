@@ -6,6 +6,11 @@ import type {
   JobAssignment,
   Payment,
 } from "./db";
+import {
+  ensureRecurrenceWindow,
+  validateRecurrence,
+  type RecurrenceInput,
+} from "./recurrence-schedule";
 
 export type LineItemInput = {
   id?: number;
@@ -34,6 +39,7 @@ export type JobInput = {
   status?: string;
   notes?: string | null;
   recurring?: boolean | number;
+  recurrence?: RecurrenceInput | null;
   sales_ids?: number[];
   tech_ids?: number[];
   line_items?: LineItemInput[];
@@ -217,7 +223,13 @@ export async function createJob(
   input: JobInput,
   companyId: number
 ): Promise<number> {
-  return db.transaction(async (tx) => {
+  const recurrence = input.recurring && input.recurrence ? input.recurrence : null;
+  if (recurrence) {
+    const err = validateRecurrence(recurrence);
+    if (err) throw new Error(err);
+  }
+
+  const newJobId = await db.transaction(async (tx) => {
     const lineItems = input.line_items || [];
     const total = totalCents(lineItems);
     const dur = durationMinutes(input.start_time, input.end_time);
@@ -261,8 +273,77 @@ export async function createJob(
     await syncLineItems(tx, id, lineItems);
     await syncChecklist(tx, id, input.checklist_items || []);
 
-    return id;
+    if (recurrence) {
+      const title = lineItems[0]?.title?.trim() || "Recurring service";
+      const ruleResult = await tx
+        .prepare(
+          `INSERT INTO job_recurrences
+             (company_id, source_job_id, customer_id, frequency,
+              custom_interval_n, custom_interval_unit,
+              anchor_mode, anchor_date,
+              time_of_day, duration_minutes, price_cents,
+              technician_id, salesperson_id,
+              title, notes,
+              end_mode, end_after_visits, end_on_date, end_years,
+              status, next_visit_index)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 2)`
+        )
+        .run(
+          companyId,
+          id,
+          input.customer_id,
+          recurrence.frequency,
+          recurrence.frequency === "custom"
+            ? recurrence.custom_interval_n ?? null
+            : null,
+          recurrence.frequency === "custom"
+            ? recurrence.custom_interval_unit ?? null
+            : null,
+          recurrence.anchor_mode,
+          input.start_time,
+          null,
+          dur,
+          total,
+          techs[0] || null,
+          sales[0] || null,
+          title,
+          input.notes || null,
+          recurrence.end_mode,
+          recurrence.end_mode === "after_n_visits"
+            ? recurrence.end_after_visits ?? null
+            : null,
+          recurrence.end_mode === "on_date"
+            ? recurrence.end_on_date ?? null
+            : null,
+          recurrence.end_mode === "years"
+            ? recurrence.end_years ?? null
+            : null
+        );
+      const ruleId = Number(ruleResult.lastInsertRowid);
+
+      // The source job IS visit #1 of the series. Link it so the schedule
+      // view can group/highlight it with its siblings.
+      await tx
+        .prepare(
+          `UPDATE jobs
+             SET recurrence_id = ?, recurrence_visit_index = 1
+           WHERE id = ? AND company_id = ?`
+        )
+        .run(ruleId, id, companyId);
+
+      return { jobId: id, ruleId };
+    }
+
+    return { jobId: id, ruleId: null as number | null };
   });
+
+  if (newJobId.ruleId) {
+    // Seed the rolling year-long window outside the transaction so the
+    // generator can re-query its own inserts cleanly.
+    await ensureRecurrenceWindow(db, newJobId.ruleId, companyId);
+  }
+
+  return newJobId.jobId;
 }
 
 export async function updateJob(
