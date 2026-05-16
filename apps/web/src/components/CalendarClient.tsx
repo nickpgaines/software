@@ -187,6 +187,7 @@ export default function CalendarClient() {
   );
   const [now, setNow] = useState<Date>(new Date());
   const [schedulingOpen, setSchedulingOpen] = useState(false);
+  const [shiftsLoadTick, setShiftsLoadTick] = useState(0);
   const gridRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -239,7 +240,7 @@ export default function CalendarClient() {
     return () => {
       cancelled = true;
     };
-  }, [view, cursor.getTime()]);
+  }, [view, cursor.getTime(), shiftsLoadTick]);
 
   // Staff + me are needed before DayView can pick the right columns. A
   // failure here used to silently leave `staff` empty, which made the
@@ -322,6 +323,7 @@ export default function CalendarClient() {
     function onFocus() {
       setJobsLoadTick((n) => n + 1);
       setStaffLoadTick((n) => n + 1);
+      setShiftsLoadTick((n) => n + 1);
     }
     function onVisibility() {
       if (document.visibilityState === "visible") onFocus();
@@ -482,7 +484,7 @@ export default function CalendarClient() {
                 type="button"
                 variant="ghost"
                 aria-label="Schedule settings"
-                className="h-auto w-9 p-0 border border-line bg-card hover:bg-black rounded-full text-sm text-zinc-300"
+                className="h-auto border border-line bg-card hover:bg-black rounded-full px-3 py-2 text-sm text-zinc-300"
               >
                 <svg
                   className="w-4 h-4"
@@ -554,6 +556,7 @@ export default function CalendarClient() {
         open={schedulingOpen}
         onClose={() => setSchedulingOpen(false)}
         initialDate={cursor}
+        onSaved={() => setShiftsLoadTick((n) => n + 1)}
       />
     </div>
   );

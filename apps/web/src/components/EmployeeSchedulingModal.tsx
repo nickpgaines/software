@@ -238,12 +238,26 @@ export default function EmployeeSchedulingModal({
 
   function toggleCell(staffId: number, date: Date) {
     const key = `${staffId}:${isoDate(date)}`;
+    const wasSelected = selected.has(key);
     setSelected((prev) => {
       const next = new Set(prev);
       if (next.has(key)) next.delete(key);
       else next.add(key);
       return next;
     });
+    // When the user selects a previously empty cell, immediately draft a
+    // shift for the current bulk hours. Otherwise the cell stays empty
+    // and pressing "Apply to Schedule" sends no upserts — the shift
+    // appears to save but nothing is actually written.
+    if (!wasSelected) {
+      const cur = effectiveShift(staffId, date);
+      if (!cur) {
+        setDrafts((prev) => ({
+          ...prev,
+          [key]: { start_minutes: bulkStart, end_minutes: bulkEnd },
+        }));
+      }
+    }
   }
 
   function toggleStaffRow(staffId: number) {
@@ -365,6 +379,25 @@ export default function EmployeeSchedulingModal({
   async function save() {
     setSaving(true);
     setError(null);
+    // Treat any currently-selected cell that has no draft yet as a new
+    // shift at the current bulk hours. Without this, bulk-select actions
+    // like "Select Mon–Fri" followed by Save would silently send nothing.
+    const finalDrafts: Record<
+      string,
+      { start_minutes: number; end_minutes: number } | null
+    > = { ...drafts };
+    for (const key of selected) {
+      if (key in finalDrafts) continue;
+      const [staffStr, dateIso] = key.split(":");
+      const [y, m, d] = dateIso.split("-").map(Number);
+      const cur = effectiveShift(Number(staffStr), new Date(y, m - 1, d));
+      if (!cur) {
+        finalDrafts[key] = {
+          start_minutes: bulkStart,
+          end_minutes: bulkEnd,
+        };
+      }
+    }
     const upserts: {
       staff_id: number;
       work_date: string;
@@ -372,7 +405,7 @@ export default function EmployeeSchedulingModal({
       end_minutes: number;
     }[] = [];
     const removals: { staff_id: number; work_date: string }[] = [];
-    for (const [key, value] of Object.entries(drafts)) {
+    for (const [key, value] of Object.entries(finalDrafts)) {
       const [staffStr, work_date] = key.split(":");
       const staff_id = Number(staffStr);
       if (value === null) {
