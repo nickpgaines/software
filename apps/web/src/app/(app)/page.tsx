@@ -53,7 +53,7 @@ export default async function DashboardPage() {
         }
       />
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+      <div className="hidden md:grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
         <CompactHeroKpi
           label="Close Rate"
           value={`${(closeRate * 100).toFixed(0)}%`}
