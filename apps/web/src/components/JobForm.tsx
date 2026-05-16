@@ -734,36 +734,15 @@ export default function JobForm({
             </Field>
 
             <Field label="Ends">
-              <div className="space-y-2">
-                {/* Native radio kept: no Radio primitive in the design system. */}
-                <Label className="flex items-center gap-2 text-sm text-zinc-300 font-normal">
-                  <input
-                    type="radio"
-                    name="recurrence-end"
-                    checked={endMode === "never"}
-                    onChange={() => setEndMode("never")}
-                  />
-                  Never (until canceled)
-                </Label>
-                <Label className="flex items-center gap-2 text-sm text-zinc-300 font-normal">
-                  <input
-                    type="radio"
-                    name="recurrence-end"
-                    checked={endMode === "1y"}
-                    onChange={() => setEndMode("1y")}
-                  />
-                  After 1 year
-                </Label>
-                <Label className="flex items-center gap-2 text-sm text-zinc-300 font-normal">
-                  <input
-                    type="radio"
-                    name="recurrence-end"
-                    checked={endMode === "2y"}
-                    onChange={() => setEndMode("2y")}
-                  />
-                  After 2 years
-                </Label>
-              </div>
+              <select
+                value={endMode}
+                onChange={(e) => setEndMode(e.target.value as EndMode)}
+                className="h-9 w-full sm:w-72 border border-line rounded-full px-3 bg-card text-sm font-bold text-white"
+              >
+                <option value="never">Never (until canceled)</option>
+                <option value="1y">After 1 year</option>
+                <option value="2y">After 2 years</option>
+              </select>
             </Field>
 
             <p className="text-xs text-zinc-500">
