@@ -21,6 +21,8 @@ type Invoice = {
   total_cents: number;
   paid_cents: number;
   lead_source: string | null;
+  sold_by_id: number | null;
+  sold_by_name: string | null;
   payment_method: string | null;
   sent_at: string | null;
   paid_at: string | null;
@@ -169,15 +171,24 @@ export default function InvoiceDetailClient({ id }: { id: number }) {
             )}
           </Card>
 
-          {invoice.lead_source && (
+          {(invoice.sold_by_name || invoice.lead_source) && (
             <Card>
               <CardHeader>
                 <h2 className="text-base font-extrabold text-white tracking-tight">
                   Lead Source
                 </h2>
               </CardHeader>
-              <div className="text-sm text-zinc-200 font-bold">
-                {invoice.lead_source}
+              <div className="space-y-1 text-sm">
+                {invoice.sold_by_name && (
+                  <div className="text-zinc-200 font-bold">
+                    {invoice.sold_by_name}
+                  </div>
+                )}
+                {invoice.lead_source && (
+                  <div className="text-zinc-400 font-bold">
+                    {invoice.lead_source}
+                  </div>
+                )}
               </div>
             </Card>
           )}

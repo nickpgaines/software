@@ -12,8 +12,17 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { LineItemsSection } from "@/components/LineItemsSection";
+import {
+  StaffSinglePicker,
+  StaffMultiPicker,
+  type Staff,
+} from "@/components/forms/StaffPickers";
+import { LeadSourceField } from "@/components/forms/LeadSourceField";
+import { PrivateNotesSection } from "@/components/forms/PrivateNotesSection";
+import type { AttachmentDraft } from "@/components/forms/PrivateNotesSection";
+
+export { StaffSinglePicker, StaffMultiPicker, type Staff };
 
 type Customer = {
   id: number;
@@ -25,8 +34,6 @@ type Customer = {
   latitude?: number | null;
   longitude?: number | null;
 };
-export type Staff = { id: number; name: string; role: string | null };
-
 type LineItem = {
   key: string;
   id?: number;
@@ -45,8 +52,6 @@ type ChecklistItem = {
   text: string;
   completed: boolean;
 };
-
-const LEAD_METHODS = ["Online", "Direct", "Other"] as const;
 
 const SERVICE_PRESETS = [
   "Window Cleaning",
@@ -263,6 +268,7 @@ export default function JobForm({
   );
 
   const [notes, setNotes] = useState(job?.notes ?? "");
+  const [attachments, setAttachments] = useState<AttachmentDraft[]>([]);
   const [recurring, setRecurring] = useState(!!job?.recurring);
 
   type Frequency = "quarterly" | "biannually" | "annually" | "custom";
@@ -479,6 +485,22 @@ export default function JobForm({
     }
     const data = (await res.json()) as { id?: number };
     const jobId = mode === "edit" && job ? job.id : data.id;
+    if (jobId && attachments.length > 0) {
+      await Promise.all(
+        attachments.map((a) =>
+          fetch(`/api/jobs/${jobId}/attachments`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              kind: a.kind,
+              filename: a.filename,
+              mime_type: a.mime_type,
+              content: a.content,
+            }),
+          })
+        )
+      );
+    }
     router.push(jobId ? `/schedule/${jobId}` : "/schedule");
     router.refresh();
   }
@@ -636,14 +658,13 @@ export default function JobForm({
 
         <Section title="Assignment">
           <div className="space-y-3">
-            <Field label="Lead Source">
-              <StaffSinglePicker
-                staff={staff}
-                id={salesIds[0] ?? null}
-                setId={(id) => setSalesIds(id == null ? [] : [id])}
-                placeholder="Select salesperson…"
-              />
-            </Field>
+            <LeadSourceField
+              staff={staff}
+              salesId={salesIds[0] ?? null}
+              setSalesId={(id) => setSalesIds(id == null ? [] : [id])}
+              leadMethod={leadSource}
+              setLeadMethod={setLeadSource}
+            />
             <Field label="Dispatched To">
               <StaffMultiPicker
                 staff={staff}
@@ -652,25 +673,6 @@ export default function JobForm({
                 placeholder="Search technicians…"
               />
             </Field>
-            <div className="flex flex-wrap gap-x-4 gap-y-2 pt-1">
-              {LEAD_METHODS.map((m) => (
-                <Label
-                  key={m}
-                  className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold"
-                >
-                  {/* Checkbox primitive used as a single-select toggle so the
-                      lead-method row visually matches the Anytime / Schedule
-                      later checkboxes in the Scheduling widget. Selecting
-                      one clears the others. */}
-                  <Checkbox
-                    checked={leadSource === m}
-                    onCheckedChange={(c) => setLeadSource(c === true ? m : "")}
-                    className="rounded border-line-strong text-white focus:ring-zinc-500"
-                  />
-                  {m}
-                </Label>
-              ))}
-            </div>
           </div>
         </Section>
       </div>
@@ -746,19 +748,12 @@ export default function JobForm({
         )}
       </Section>
 
-      <Section title="Notes">
-        <Textarea
-          value={notes}
-          onChange={(e) => setNotes(e.target.value)}
-          rows={3}
-          placeholder="Add any additional notes..."
-          className="w-full border-line rounded-2xl px-4 py-3 text-sm bg-card h-auto"
-        />
-      </Section>
-
-      <Section title="Attachments">
-        <Dropzone />
-      </Section>
+      <PrivateNotesSection
+        notes={notes}
+        setNotes={setNotes}
+        attachments={attachments}
+        setAttachments={setAttachments}
+      />
 
       <Section title="Recurring Service">
         <Label className="inline-flex items-center gap-2 text-sm text-zinc-300 font-bold">
@@ -1193,219 +1188,3 @@ function NewCustomerInline({
   );
 }
 
-export function StaffSinglePicker({
-  staff,
-  id,
-  setId,
-  placeholder,
-}: {
-  staff: Staff[];
-  id: number | null;
-  setId: (id: number | null) => void;
-  placeholder: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function onDoc(e: MouseEvent) {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
-
-  const selected = id == null ? null : staff.find((s) => s.id === id) ?? null;
-
-  return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="h-9 w-full flex items-center justify-between gap-2 border border-line rounded-full px-3 bg-card text-sm font-bold text-left"
-      >
-        <span className={selected ? "text-white" : "text-zinc-500"}>
-          {selected ? selected.name : placeholder}
-        </span>
-        <span className="flex items-center gap-2 text-zinc-500 shrink-0">
-          {selected && (
-            <span
-              role="button"
-              tabIndex={0}
-              aria-label={`Clear ${selected.name}`}
-              onClick={(e) => {
-                e.stopPropagation();
-                setId(null);
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" || e.key === " ") {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setId(null);
-                }
-              }}
-              className="hover:text-white"
-            >
-              ×
-            </span>
-          )}
-          <svg
-            className="w-3 h-3"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            <polyline points="6 9 12 15 18 9" />
-          </svg>
-        </span>
-      </button>
-      {open && staff.length > 0 && (
-        <div className="absolute z-20 left-0 right-0 mt-1 bg-card border border-line rounded-2xl shadow-lg overflow-hidden">
-          {staff.map((s) => (
-            <Button
-              key={s.id}
-              type="button"
-              onClick={() => {
-                setId(s.id);
-                setOpen(false);
-              }}
-              variant="ghost"
-              className="w-full text-left px-4 py-2 hover:bg-black text-sm flex items-center justify-between h-auto rounded-none"
-            >
-              <span className="font-bold text-white tracking-tight">
-                {s.name}
-              </span>
-              {s.role && (
-                <span className="text-xs font-bold text-zinc-500">
-                  {s.role}
-                </span>
-              )}
-            </Button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-export function StaffMultiPicker({
-  staff,
-  ids,
-  setIds,
-  placeholder,
-}: {
-  staff: Staff[];
-  ids: number[];
-  setIds: (ids: number[]) => void;
-  placeholder: string;
-}) {
-  const [query, setQuery] = useState("");
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function onDoc(e: MouseEvent) {
-      if (!ref.current?.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", onDoc);
-    return () => document.removeEventListener("mousedown", onDoc);
-  }, []);
-
-  const picked = staff.filter((s) => ids.includes(s.id));
-  const suggestions = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return staff
-      .filter((s) => !ids.includes(s.id))
-      .filter((s) => !q || s.name.toLowerCase().includes(q))
-      .slice(0, 6);
-  }, [staff, ids, query]);
-
-  return (
-    <div ref={ref} className="relative">
-      <div className="h-9 flex flex-wrap items-center gap-1.5 border border-line rounded-full px-3 bg-card">
-        {picked.map((s) => (
-          <span
-            key={s.id}
-            className="inline-flex items-center gap-1 bg-black text-zinc-300 rounded-full px-2.5 py-0.5 text-xs"
-          >
-            {s.name}
-            <Button
-              type="button"
-              onClick={() => setIds(ids.filter((id) => id !== s.id))}
-              variant="ghost"
-              className="text-zinc-400 hover:text-white h-auto p-0"
-              aria-label={`Remove ${s.name}`}
-            >
-              ×
-            </Button>
-          </span>
-        ))}
-        <Input
-          type="text"
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setOpen(true);
-          }}
-          onFocus={() => setOpen(true)}
-          placeholder={picked.length === 0 ? placeholder : ""}
-          className="flex-1 min-w-[120px] outline-none text-sm font-bold bg-transparent px-0 border-0 h-auto"
-        />
-      </div>
-      {open && suggestions.length > 0 && (
-        <div className="absolute z-20 left-0 right-0 mt-1 bg-card border border-line rounded-2xl shadow-lg overflow-hidden">
-          {suggestions.map((s) => (
-            <Button
-              key={s.id}
-              type="button"
-              onClick={() => {
-                setIds([...ids, s.id]);
-                setQuery("");
-              }}
-              variant="ghost"
-              className="w-full text-left px-4 py-2 hover:bg-black text-sm flex items-center justify-between h-auto rounded-none"
-            >
-              <span className="font-bold text-white tracking-tight">{s.name}</span>
-              {s.role && (
-                <span className="text-xs font-bold text-zinc-500">{s.role}</span>
-              )}
-            </Button>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-
-function Dropzone() {
-  const [isOver, setIsOver] = useState(false);
-  return (
-    <div
-      onDragOver={(e) => {
-        e.preventDefault();
-        setIsOver(true);
-      }}
-      onDragLeave={() => setIsOver(false)}
-      onDrop={(e) => {
-        e.preventDefault();
-        setIsOver(false);
-      }}
-      className={
-        "border-2 border-dashed rounded-2xl py-10 text-center transition " +
-        (isOver
-          ? "border-slate-400 bg-black"
-          : "border-line bg-black/40")
-      }
-    >
-      <div className="text-3xl text-zinc-500">⤴</div>
-      <p className="mt-2 text-xs font-bold text-zinc-500">
-        Click to upload or drag and drop
-      </p>
-      <p className="text-xs font-bold text-zinc-500">PNG, JPG, GIF up to 5MB</p>
-    </div>
-  );
-}

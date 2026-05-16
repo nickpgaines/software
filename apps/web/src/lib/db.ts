@@ -654,6 +654,7 @@ async function init(): Promise<void> {
       ["stripe_payment_intent_id", "TEXT"],
       ["lead_source", "TEXT"],
       ["payment_method", "TEXT"],
+      ["sold_by_id", "INTEGER REFERENCES staff(id) ON DELETE SET NULL"],
     ];
     for (const [col, def] of invoiceAdds) {
       await alterAddColumn("invoices", col, def, invoiceCols);
@@ -670,6 +671,12 @@ async function init(): Promise<void> {
     .all<{ name: string }>();
   if (estimateCols.length > 0) {
     await alterAddColumn("estimates", "lead_source", "TEXT", estimateCols);
+    await alterAddColumn(
+      "estimates",
+      "sold_by_id",
+      "INTEGER REFERENCES staff(id) ON DELETE SET NULL",
+      estimateCols
+    );
   }
 
   await _db.exec(`
@@ -734,6 +741,19 @@ async function init(): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS idx_job_assignments_job_id ON job_assignments(job_id);
     CREATE INDEX IF NOT EXISTS idx_job_assignments_staff_id ON job_assignments(staff_id);
+
+    CREATE TABLE IF NOT EXISTS job_attachments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+      kind TEXT NOT NULL CHECK (kind IN ('image', 'file', 'audio')),
+      filename TEXT NOT NULL,
+      mime_type TEXT NOT NULL,
+      size_bytes INTEGER NOT NULL DEFAULT 0,
+      content TEXT NOT NULL,
+      created_by TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_job_attachments_job_id ON job_attachments(job_id);
 
     CREATE TABLE IF NOT EXISTS map_pins (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2366,6 +2386,20 @@ export type InvoiceItem = {
   price_cents: number;
   taxable: number;
   position: number;
+};
+
+export type JobAttachmentKind = "image" | "file" | "audio";
+
+export type JobAttachment = {
+  id: number;
+  job_id: number;
+  kind: JobAttachmentKind;
+  filename: string;
+  mime_type: string;
+  size_bytes: number;
+  content: string;
+  created_by: string | null;
+  created_at: string;
 };
 
 export type LeadStage = "new" | "contacted" | "responded" | "estimate_sent";
