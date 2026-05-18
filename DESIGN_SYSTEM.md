@@ -1323,6 +1323,65 @@ Both the label row (X-axis category — month, name, etc.) and the item row (Y v
 
 Reference call sites: `components/ReportsClient.tsx:72-91` (bar chart), `components/ReportsClient.tsx:138-160` (donut), `components/ReportsClient.tsx:738-770` (MRR bar chart with forecast).
 
+### 9.6 Mobile viewport lock + tab strips
+
+**Viewport.** The root layout (`apps/web/src/app/layout.tsx`) exports a
+`Viewport` with `initialScale: 1, maximumScale: 1, minimumScale: 1,
+userScalable: false`. Pinch-zoom is disabled app-wide so every screen
+stays sized-to-fit on mobile. Per-page `viewport` exports are not
+needed and should not be added.
+
+**Page-level horizontal scroll is forbidden.** The shared `<main>` in
+`components/AppFrame.tsx` carries `overflow-x-hidden`. No content may
+escape the viewport horizontally; the whole page never side-scrolls.
+
+**Multi-tab navs use a locally-scrollable strip — never wrap, never
+clip, never collapse to a dropdown.** When a tab strip is wider than
+the device, the strip itself scrolls horizontally inside its row while
+the page stays put. The pattern is identical for both tab styles
+documented elsewhere in §8 / §9:
+
+- **Underline tabs** (Reports, Settings — `nav` with `border-b-2`
+  buttons):
+
+  ```tsx
+  <nav className="-mb-px flex gap-6 overflow-x-auto scrollbar-none">
+    {/* whitespace-nowrap on each tab button */}
+  </nav>
+  ```
+
+- **Pill tabs** (Leads, Workflows, Calendar, Leaderboard, dashboard
+  RevenueChart, Reports `RangePills` — `rounded-full p-1` capsule
+  bars): wrap the capsule in a scrollable layer and switch the inner
+  flex to `inline-flex` so the capsule keeps its natural width:
+
+  ```tsx
+  <div className="overflow-x-auto scrollbar-none max-w-full">
+    <div className="bg-black rounded-full p-1 inline-flex items-center text-sm">
+      {/* whitespace-nowrap on each pill */}
+    </div>
+  </div>
+  ```
+
+The `scrollbar-none` utility is defined once in `globals.css`
+(`scrollbar-width: none` + `::-webkit-scrollbar { display: none }`) so
+the scrolled tab strip has no visible scrollbar gutter — the edge-cut
+trailing tab is the discovery cue, matching the native mobile pattern
+(iOS Mail, Twitter, Homebase 360). Tab buttons themselves must carry
+`whitespace-nowrap` so labels never wrap inside the scroll container.
+
+**Rule for new multi-tab navs.** Any new page with more tabs than fit
+on a 375px viewport uses one of the two snippets above. No dropdowns,
+no `flex-wrap` to a second row of tabs, no `<select>` substitutes.
+RangePills-style filter rows (e.g. `1W / 1M / 3M / YTD / Custom`) get
+the pill-tab treatment too.
+
+Reference call sites: `components/ReportsClient.tsx` (underline
+tabs + `RangePills`), `components/SettingsTabs.tsx` (underline),
+`components/LeadsTabs.tsx`, `components/LeadsWorkflowsClient.tsx`,
+`components/CalendarClient.tsx`, `components/LeaderboardClient.tsx`,
+`components/RevenueChart.tsx` (all pill).
+
 ---
 
 ## 10. Inconsistencies (resolved)
@@ -1371,6 +1430,7 @@ those pages move onto Pulse primitives.
 | 24  | `Popover` (§8.15.15) and `Calendar` (§8.15.16) primitives added for the subscription start-date picker. `Popover` is a canonical shadcn adaptation on `@radix-ui/react-popover` with Pulse tokens (`rounded-2xl`, `bg-card`, `shadow-lg`); `Calendar` is hand-authored on `react-day-picker` v9 because the v9 API diverges from v8 enough that the shadcn registry template no longer applies cleanly. New deps: `@radix-ui/react-popover`, `react-day-picker`, `date-fns`. First call site: the start-date field on `/subscriptions/new`, where the previous `<input type="date">` was replaced to satisfy the requirement that the date can only be picked from a calendar (no typing/clearing). | §8.15.15, §8.15.16 | `97403bd` |
 | 25  | `LineItemsSection` (§8.16) extracted as the canonical line-items widget. `JobForm`, `NewInvoiceForm`, and `NewEstimateForm` had three parallel inline implementations that had drifted apart visually (different input radii, different label sizes, no per-item delete on some, "Line total" rendered as a faux-input box on the invoice/estimate variants, missing `Taxable` checkbox on the simplified forms). All three now render the JobForm-style widget. Invoice/Estimate state shape unified onto `{ quantity: number, price_cents: number, taxable: boolean }` to match Job; submit payloads forward `taxable` per item. Helpers (`emptyLineItem`, `lineItemsSubtotal`, `lineTotalCents`, `formatMoney`) live alongside the component so all three forms share the same math. JobForm's job-only `Upsell` checkbox is rendered through the optional `extraRow` prop. Inline `LineItemCard`, `Total`, `money()`, and the per-form `TitleWithPresets` helpers were deleted. | §8.16            | (this commit) |
 | 26  | `LeadSourceField` (§8.18) extracted as the canonical Lead Source control. `JobForm` rendered the sales-rep `StaffSinglePicker` plus an `Online`/`Direct`/`Other` checkbox toggle group; `NewInvoiceForm` and `NewEstimateForm` instead rendered a native `<select>` with a longer, drifted list of strings ("Referral", "Door-to-door", "Repeat customer", plus an overlapping "Online" / "Other"). All three now render the JobForm-style widget through `<LeadSourceField>`. The longer invoice/estimate `LEAD_SOURCES` array has been retired in favor of the three-value `LEAD_METHODS` constant exported from the primitive; the sales rep itself is now captured via `salesId` and persisted to `invoices.sold_by_id` / `estimates.sold_by_id` (the columns already existed in the schema; an `alterAddColumn` was added so existing DBs gain them). The `StaffSinglePicker` and `StaffMultiPicker` components were moved out of `JobForm.tsx` into `components/forms/StaffPickers.tsx` (§8.17) so the primitive can import them without a circular dep; `JobForm.tsx` re-exports both plus the `Staff` type for the existing `JobDetailClient` import path. | §8.17, §8.18      | (this commit) |
+| 28  | Mobile viewport locked and multi-tab navs migrated to a locally-scrollable strip (§9.6). The root `Viewport` export adds `maximumScale: 1, minimumScale: 1, userScalable: false` so pinch-zoom is disabled app-wide; the shared `<main>` in `components/AppFrame.tsx` carries `overflow-x-hidden` so no page can side-scroll. A `.scrollbar-none` utility was added to `globals.css`. Every multi-tab nav was migrated to the new pattern (underline: `nav` gets `overflow-x-auto scrollbar-none` + each tab `whitespace-nowrap`; pill: the capsule is wrapped in `overflow-x-auto scrollbar-none max-w-full` and the inner `flex` becomes `inline-flex` so the capsule keeps its natural width). Call sites: `ReportsClient.tsx` (Overview/Sales/Jobs/Subscriptions/Employees/Payroll tabs + `RangePills`), `SettingsTabs.tsx` (10-section underline strip), `LeadsTabs.tsx` (router-link pills), `LeadsWorkflowsClient.tsx` (Workflows/Logs pills), `CalendarClient.tsx` (Day/Week/Month/Agenda/Map view picker), `LeaderboardClient.tsx` (Sales/Tech pills), `RevenueChart.tsx` (dashboard range pills). Recommendation Homebase-style over Flyra-style dropdown: one-tap switching, edge-cut tab as discovery cue, no new primitive needed. The per-`/reports` page-level `Viewport` export added in the earlier scorecard PR was removed since the root now covers it. | §9.6             | (this commit) |
 | 27  | `PrivateNotesSection` (§8.19) extracted as the canonical "notes + attachments" widget on the Jobs create form. The form previously rendered two adjacent `Section`s: a "Notes" `Textarea` and a separate "Attachments" `Section` whose `Dropzone` was a UI placeholder with no upload backend. The two are now a single "Private Notes" card matching the invoice/estimate Private Notes naming, with the `Textarea` on top and a dashed-border `Add Attachment` / `Add Voice Memo` button row beneath. `Add Voice Memo` records via the browser `MediaRecorder` API; attachments and recordings are uploaded to a new `/api/jobs/[id]/attachments` endpoint after the parent job is created. Storage is interim: data URLs land in a new `job_attachments` libSQL table (5 MB cap per attachment, enforced both client- and server-side); the agreed migration to Vercel Blob will swap the column for a remote URL without changing the component's contract. The retired `Dropzone` placeholder was deleted. The Jobs detail page gained an `AttachmentsSection` that lists previously uploaded attachments inline (with native `<audio controls>` playback for voice memos and image thumbnails for screenshots) and exposes the same upload + record buttons for ad-hoc additions. | §8.19            | (this commit) |
 | 23  | Existing surfaces migrated onto the §8.14 / §8.15 shadcn primitives across 11 batches. **Files touched (alphabetical):** `app/(app)/customers/page.tsx`, `app/(app)/employees/page.tsx`, `app/invoices/pay/[token]/PayClient.tsx`, `app/login/page.tsx`, `app/signup/page.tsx`, `components/CalendarClient.tsx`, `components/CallsClient.tsx`, `components/customers/AddressFields.tsx`, `components/customers/ImportModal.tsx`, `components/EmailAutomationEditClient.tsx`, `components/EmailComposeClient.tsx`, `components/EmailDetailClient.tsx`, `components/EmailListClient.tsx`, `components/EmployeeForm.tsx`, `components/EmployeeSchedulingModal.tsx`, `components/JobDetailClient.tsx`, `components/JobForm.tsx`, `components/jobs/CustomerCard.tsx`, `components/jobs/PaymentsSection.tsx`, `components/jobs/RecordPaymentModal.tsx`, `components/LeaderboardClient.tsx`, `components/LeadsFormsClient.tsx`, `components/LeadsIntegrationsClient.tsx`, `components/LeadsPipelineClient.tsx`, `components/LeadsWorkflowsClient.tsx`, `components/MapDoorKnockSheet.tsx`, `components/MapFilterPanel.tsx`, `components/MapIconStrip.tsx`, `components/MapLassoPanel.tsx`, `components/MapPinDropModal.tsx`, `components/MapTerritoryListPanel.tsx`, `components/MapTerritoryModal.tsx`, `components/MessagesClient.tsx`, `components/NavBar.tsx`, `components/NewEstimateForm.tsx`, `components/NewInvoiceForm.tsx`, `components/NewMenu.tsx`, `components/NewSprintModal.tsx`, `components/NewSubscriptionForm.tsx`, `components/PayrollSettingsModal.tsx`, `components/PhoneClient.tsx`, `components/ReportsClient.tsx`, `components/SettingsTabs.tsx`, `components/StaffScorecardModal.tsx`. **Scope:** Native `<button>` → `Button`, `<input>` (text/email/tel/password/number/file/date/search) → `Input`, `<input type="checkbox">` → `Checkbox` (with `onChange` → `onCheckedChange` adaptation), `<textarea>` → `Textarea`, `<label>` → `Label`, `<table>`/`<thead>`/`<tbody>`/`<tr>`/`<th>`/`<td>` → `Table`/`TableHeader`/`TableBody`/`TableRow`/`TableHead`/`TableCell`. `NewMenu.tsx`'s hand-rolled `+ New` dropdown rewritten using `DropdownMenu` (the only `DropdownMenu` adoption in the migration). Status chips/pills migrated to `Badge` only on `CallsClient` and `EmailListClient`; other inline status spans left as-is. Toggle-switch buttons (the slider+thumb pattern used in 8+ places) migrated to `Button variant="ghost"` with `bg-X hover:bg-X` to lock active/inactive colors against ghost's default `hover:bg-elevated`. **Cross-cutting deferred items (kept native everywhere with inline comments):** (1) all `<select>` elements — Radix `Select` forbids empty-string item values, which would break the "All" / "Select…" sentinel patterns used for clearable filter state; (2) all `<input type="radio">` — no Radio primitive in `components/ui/` yet; (3) the `Tabs` primitive — underline-style tab nav (Reports/Settings) and router-link tabs (#22) don't fit its pill model, so each tab `<button>` is a `Button variant="ghost"` swap instead; (4) the `Dialog` primitive — every `fixed inset-0` modal wrapper kept hand-rolled, only the controls inside were migrated; (5) MapDoorKnockSheet's bottom-sheet wrapper kept hand-rolled (Dialog is centered-modal only); (6) calendar/scheduling grid cells (`CalendarClient` MonthView day cells, `EmployeeSchedulingModal` per-staff per-day shift cells) kept native with their custom grid styling; (7) Pulse-adjacent dashboard widgets (`TodaySchedule`, `SprintWidget`, `RevenueChart`) and the dashboard `(app)/page.tsx` button skipped — those are domain components or already on spec; (8) `MapClient.tsx` not modified — its only `<button` matches were inside Mapbox popup `innerHTML` strings, not React JSX; (9) `<a>` / `<Link>` elements left as anchors throughout. Auth (login, signup, NavBar) and Stripe-adjacent surfaces (Settings → Payments/Subscriptions/Messaging/Calling/AI, NewInvoiceForm, NewSubscriptionForm, PayClient, PaymentsSection, RecordPaymentModal) migrated as visual-only swaps with zero changes to logic, validation, API call sites, or copy. Per-batch commits: `4196239` (Messages/Calls/Phone), `8502ded` (Email), `3ae032a` (Reports/Leaderboard/Calendar), `de7f916` (Leads), `4b6eaa6` (Map), `fdcaca2` (Customers), `65442d7` (Employees/Payroll), `5f0b787` (Auth/Misc), `d43ab99` (Settings), `7516c4d` (big forms — JobForm/NewEstimate/NewInvoice/NewSubscription/NewSprint), `0587d3a` (Jobs subfolder + JobDetail + NewMenu). | §8.14, §8.15     | (see commits in description) |
 

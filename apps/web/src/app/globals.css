@@ -407,3 +407,15 @@ html[data-theme="light"] textarea:-webkit-autofill:active {
 .mapboxgl-ctrl-top-right {
   top: env(safe-area-inset-top, 0px) !important;
 }
+
+/* Horizontally-scrollable mobile tab strip (DESIGN_SYSTEM §9.6).
+   Used on every multi-tab nav (Reports, Settings, Leads, Workflows,
+   Calendar, Leaderboard) so overflowing tabs scroll locally inside
+   the strip instead of forcing the whole page to side-scroll. */
+.scrollbar-none {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}

@@ -264,7 +264,7 @@ export default function ReportsClient() {
   return (
     <div className="space-y-6">
       <div className="flex items-end justify-between gap-4 flex-wrap border-b border-line">
-        <nav className="-mb-px flex gap-6">
+        <nav className="-mb-px flex gap-6 overflow-x-auto scrollbar-none w-full sm:w-auto">
           {TABS.map((t) => {
             const active = tab === t.key;
             return (
@@ -320,8 +320,9 @@ function RangePills({
   setCustomEnd: (s: string) => void;
 }) {
   return (
-    <div className="flex flex-col items-end gap-2 mb-3">
-      <div className="flex items-center gap-1 bg-black rounded-full p-1 text-sm">
+    <div className="flex flex-col items-end gap-2 mb-3 max-w-full">
+      <div className="overflow-x-auto scrollbar-none max-w-full">
+      <div className="inline-flex items-center gap-1 bg-black rounded-full p-1 text-sm">
         {RANGES.map((r) => (
           <Button
             key={r.key}
@@ -337,6 +338,7 @@ function RangePills({
             {r.label}
           </Button>
         ))}
+      </div>
       </div>
       {range === "custom" && (
         <div className="flex items-center gap-2 text-xs">

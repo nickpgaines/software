@@ -71,7 +71,7 @@ function SettingsTabsInner({ username }: { username: string }) {
   return (
     <div className="space-y-6">
       <div className="border-b border-line">
-        <nav className="-mb-px flex gap-6 overflow-x-auto">
+        <nav className="-mb-px flex gap-6 overflow-x-auto scrollbar-none">
           {TABS.map((t) => {
             const active = tab === t.key;
             return (
