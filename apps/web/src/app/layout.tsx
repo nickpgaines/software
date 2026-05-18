@@ -32,6 +32,9 @@ export const metadata: Metadata = {
 
 // Status bar color follows the device's system light/dark preference.
 // Splash screen background is set in manifest.json and stays dark.
+// Pinch-zoom and side-scroll are disabled app-wide so every screen
+// stays sized-to-fit on mobile (multi-tab pages get a locally-scrollable
+// tab strip per DESIGN_SYSTEM §9.6).
 export const viewport: Viewport = {
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f9f9fb" },
@@ -39,6 +42,9 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
+  maximumScale: 1,
+  minimumScale: 1,
+  userScalable: false,
   viewportFit: "cover",
 };
 

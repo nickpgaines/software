@@ -373,14 +373,15 @@ export default function RevenueChart() {
             {data ? money(data.total_cents) : "—"}
           </div>
         </div>
-        <div className="flex flex-col items-end gap-2">
-          <div className="flex items-center gap-1 bg-black rounded-full p-1 text-sm">
+        <div className="flex flex-col items-end gap-2 max-w-full">
+          <div className="overflow-x-auto scrollbar-none max-w-full">
+          <div className="inline-flex items-center gap-1 bg-black rounded-full p-1 text-sm">
             {RANGES.map((r) => (
               <button
                 key={r.key}
                 onClick={() => setRange(r.key)}
                 className={
-                  "px-3 py-1.5 rounded-full transition " +
+                  "whitespace-nowrap px-3 py-1.5 rounded-full transition " +
                   (range === r.key
                     ? "bg-card text-white shadow-sm"
                     : "text-zinc-400 hover:text-white")
@@ -392,6 +393,7 @@ export default function RevenueChart() {
             <div className="px-3 py-1.5 text-zinc-400 text-xs whitespace-nowrap">
               {data ? formatRangeLabel(data.start, data.end, data.range) : "—"}
             </div>
+          </div>
           </div>
           {range === "custom" && (
             <div className="flex items-center gap-2 text-xs">

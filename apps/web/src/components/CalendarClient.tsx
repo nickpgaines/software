@@ -455,6 +455,7 @@ export default function CalendarClient() {
         </div>
 
         <div className="flex items-center gap-2 flex-wrap">
+          <div className="overflow-x-auto scrollbar-none max-w-full">
           <div className="inline-flex items-center gap-1 bg-black border border-line rounded-full p-1 text-sm">
             {VIEW_OPTIONS.map((v) => (
               <Button
@@ -485,6 +486,7 @@ export default function CalendarClient() {
                 {v.label}
               </Button>
             ))}
+          </div>
           </div>
 
           <DropdownMenu>

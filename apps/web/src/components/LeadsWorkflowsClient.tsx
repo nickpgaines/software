@@ -83,14 +83,14 @@ export default function LeadsWorkflowsClient({
         </Button>
       </div>
 
-      <div className="flex justify-center">
-        <div className="bg-black rounded-full p-1 flex items-center text-sm">
+      <div className="overflow-x-auto scrollbar-none flex justify-center">
+        <div className="bg-black rounded-full p-1 inline-flex items-center text-sm">
           <Button
             type="button"
             variant="ghost"
             onClick={() => setTab("workflows")}
             className={
-              "h-auto px-4 py-1.5 rounded-full hover:bg-transparent " +
+              "h-auto whitespace-nowrap px-4 py-1.5 rounded-full hover:bg-transparent " +
               (tab === "workflows"
                 ? "bg-card text-white shadow-sm font-bold"
                 : "text-zinc-400 font-bold")
@@ -103,7 +103,7 @@ export default function LeadsWorkflowsClient({
             variant="ghost"
             onClick={() => setTab("logs")}
             className={
-              "h-auto px-4 py-1.5 rounded-full hover:bg-transparent " +
+              "h-auto whitespace-nowrap px-4 py-1.5 rounded-full hover:bg-transparent " +
               (tab === "logs"
                 ? "bg-card text-white shadow-sm font-bold"
                 : "text-zinc-400 font-bold")

@@ -232,12 +232,13 @@ export default function LeaderboardClient({
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4 flex-wrap">
         <h1 className="text-page-title text-white">{title}</h1>
-        <div className="flex items-center gap-1 bg-black rounded-full p-1 text-sm">
+        <div className="overflow-x-auto scrollbar-none max-w-full">
+        <div className="inline-flex items-center gap-1 bg-black rounded-full p-1 text-sm">
           <Button
             variant="ghost"
             onClick={() => setView("sales")}
             className={
-              "h-auto px-4 py-1.5 rounded-full font-bold hover:bg-transparent " +
+              "h-auto whitespace-nowrap px-4 py-1.5 rounded-full font-bold hover:bg-transparent " +
               (view === "sales"
                 ? "bg-card text-white shadow-sm"
                 : "text-zinc-400 hover:text-white")
@@ -249,7 +250,7 @@ export default function LeaderboardClient({
             variant="ghost"
             onClick={() => setView("tech")}
             className={
-              "h-auto px-4 py-1.5 rounded-full font-bold hover:bg-transparent " +
+              "h-auto whitespace-nowrap px-4 py-1.5 rounded-full font-bold hover:bg-transparent " +
               (view === "tech"
                 ? "bg-card text-white shadow-sm"
                 : "text-zinc-400 hover:text-white")
@@ -257,6 +258,7 @@ export default function LeaderboardClient({
           >
             Technicians
           </Button>
+        </div>
         </div>
       </div>
 
