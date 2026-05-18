@@ -724,7 +724,10 @@ export default function MapClient() {
       container: containerRef.current,
       style: SATELLITE_STYLE,
       center: [-98.5795, 39.8283],
-      zoom: 3.5,
+      // Lower zoom on mobile so the same geographic area fits a narrow
+      // viewport — zoom is independent of viewport, so 3.5 (designed for
+      // a wide desktop) looks much closer-in on a phone.
+      zoom: window.matchMedia("(max-width: 767px)").matches ? 2.5 : 3.5,
     });
     mapRef.current = map;
 
@@ -979,7 +982,9 @@ export default function MapClient() {
           top: 0,
           left: isMobile ? 0 : "240px",
           right: 0,
-          bottom: 0,
+          // Sit above the iOS home indicator / Android gesture area so the
+          // mapbox attribution badge isn't partially hidden behind it.
+          bottom: "env(safe-area-inset-bottom, 0px)",
         }}
       />
       <MapIconStrip
