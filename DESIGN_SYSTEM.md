@@ -1365,6 +1365,26 @@ userScalable: false`. Pinch-zoom is disabled app-wide so every screen
 stays sized-to-fit on mobile. Per-page `viewport` exports are not
 needed and should not be added.
 
+iOS Safari ignores the `user-scalable=no` / `maximum-scale=1` meta-tag
+hints since iOS 10, so the meta-tag alone is not enough. Two
+reinforcements live alongside it:
+
+- `<MobileZoomLock />` (mounted in the root `<body>` from
+  `components/MobileZoomLock.tsx`) attaches document-level
+  `gesturestart` / `gesturechange` / `gestureend` listeners and a
+  multi-touch `touchmove` listener that all call `preventDefault()` —
+  this blocks the iOS-specific pinch gesture that the meta tag can't.
+  Single-finger touchmove is left alone so page scrolling still works,
+  and Mapbox handles pinch-to-zoom programmatically on its own canvas
+  so map zoom is unaffected.
+- `touch-action: manipulation` on the `html` element in `globals.css`
+  blocks double-tap-to-zoom.
+
+When adding a future surface that legitimately needs internal pinch
+(e.g. an image viewer, another map), the surface's own JS should
+process the touch events and Mapbox-style programmatically zoom its
+internal view — do not remove `<MobileZoomLock />`.
+
 **Page-level horizontal scroll is forbidden.** The shared `<main>` in
 `components/AppFrame.tsx` carries `overflow-x-hidden`. No content may
 escape the viewport horizontally; the whole page never side-scrolls.

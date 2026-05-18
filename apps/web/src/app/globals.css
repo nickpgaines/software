@@ -155,6 +155,10 @@ html, body {
    same color as the dashboard instead of the default white. */
 html {
   background-color: var(--color-canvas);
+  /* Blocks double-tap-zoom on iOS Safari (which ignores the viewport
+     `user-scalable=no` lock in `app/layout.tsx`). Pinch-zoom is blocked
+     in JS by `<MobileZoomLock />`. Together they enforce DESIGN_SYSTEM §9.6. */
+  touch-action: manipulation;
 }
 
 body {
