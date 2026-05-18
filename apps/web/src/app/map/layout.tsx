@@ -1,5 +1,9 @@
 import { PulseSidebar } from "@/components/pulse/Sidebar";
 import { PULSE } from "@/components/pulse/theme";
+import {
+  MobileMenuButton,
+  MobileNavShell,
+} from "@/components/MobileNavShell";
 
 export default function MapLayout({
   children,
@@ -7,14 +11,18 @@ export default function MapLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div
-      className="min-h-screen"
-      style={{ background: PULSE.bg, color: PULSE.text }}
-    >
-      <PulseSidebar />
-      {/* Map is full-bleed (no max-width container) so it can fill the
-          viewport beside the sidebar. */}
-      <main className="ml-60">{children}</main>
-    </div>
+    <MobileNavShell>
+      <div
+        className="min-h-screen"
+        style={{ background: PULSE.bg, color: PULSE.text }}
+      >
+        <PulseSidebar />
+        <MobileMenuButton />
+        {/* Map is full-bleed (no max-width container) so it can fill the
+            viewport beside the sidebar on desktop and fill the screen on
+            mobile. */}
+        <main className="md:ml-60">{children}</main>
+      </div>
+    </MobileNavShell>
   );
 }
