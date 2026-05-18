@@ -39,6 +39,15 @@
   --layout-sidebar-width: 15rem;   /* 240px */
   --layout-app-max-width: 1440px;
 
+  /* Mobile safe-area bottom inset. Combines the iOS home-indicator
+     `env(safe-area-inset-bottom)` (~34px on notched iPhones, 0 on
+     flat-bottom phones) with a 16px floor so bottom-stuck UI never
+     hugs the very bottom of the screen on any device. Apply additively
+     on top of an element's own bottom padding via `pb-[var(--safe-bottom)]`
+     or the `pb-safe-b` / `bottom-safe-b` Tailwind aliases.
+     See DESIGN_SYSTEM.md §5 "Mobile safe-area bottom". */
+  --safe-bottom: max(env(safe-area-inset-bottom), 1rem);
+
   /* Font family ------------------------------------------------------------- */
   --font-sans: ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji",
     "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
