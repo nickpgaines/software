@@ -99,14 +99,14 @@ export default function MessagesClient() {
     conversations.find((c) => c.id === selectedId) || null;
 
   return (
-    <div className="flex bg-card overflow-hidden h-screen">
+    <div className="flex bg-card overflow-hidden h-[100dvh]">
       <aside
         className={
           "w-full md:w-80 shrink-0 border-r border-line flex-col " +
           (selected ? "hidden md:flex" : "flex")
         }
       >
-        <div className="px-4 pt-4 pb-3 flex items-center justify-between">
+        <div className="pl-16 pr-4 pt-4 pb-3 flex items-center justify-between md:pl-4">
           <h2 className="text-lg font-extrabold text-white tracking-tight">Messages</h2>
           <Button
             type="button"
@@ -229,7 +229,7 @@ export default function MessagesClient() {
 
       <main
         className={
-          "flex-1 flex-col min-w-0 " +
+          "flex-1 flex-col min-w-0 overflow-hidden " +
           (selected ? "flex" : "hidden md:flex")
         }
       >
@@ -333,7 +333,7 @@ function Thread({
 
   return (
     <>
-      <header className="px-5 py-3 border-b border-line flex items-center gap-3">
+      <header className="pl-16 pr-5 py-3 border-b border-line flex items-center gap-3 md:pl-5">
         <Button
           type="button"
           variant="ghost"
@@ -385,10 +385,10 @@ function Thread({
                   key={m.id}
                   className={"flex " + (out ? "justify-end" : "justify-start")}
                 >
-                  <div className="max-w-[75%] flex flex-col items-end gap-1">
+                  <div className="max-w-[75%] min-w-0 flex flex-col items-end gap-1">
                     <div
                       className={
-                        "rounded-2xl px-3 py-2 text-sm break-words " +
+                        "rounded-2xl px-3 py-2 text-sm [overflow-wrap:anywhere] " +
                         (out
                           ? failed
                             ? "bg-rose-100 border border-rose-200 text-rose-900 rounded-br-sm"
