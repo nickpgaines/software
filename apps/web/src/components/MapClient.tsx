@@ -948,10 +948,10 @@ export default function MapClient() {
   }
 
   return (
-    <div style={{ position: "relative", height: "100vh", marginLeft: "240px" }}>
+    <div className="relative h-screen ml-0 md:ml-60">
       <div
         ref={containerRef}
-        style={{ position: "fixed", top: 0, left: "240px", right: 0, bottom: 0 }}
+        className="fixed top-0 right-0 bottom-0 left-0 md:left-60"
       />
       <MapIconStrip
         styleMode={styleMode}
