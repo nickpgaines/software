@@ -490,7 +490,7 @@ function OverviewPanel({ qs }: { qs: string }) {
         title="Jobs"
         description="Job activity and value in this date range."
       >
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
           <JobStatCard
             label="Scheduled"
             count={js.scheduled.count}
@@ -579,13 +579,13 @@ function JobStatCard({
 }) {
   const hasCount = typeof count === "number";
   return (
-    <div className="bg-card border border-line rounded-2xl px-5 py-4">
-      <div className="text-[14px] font-semibold text-zinc-500">{label}</div>
-      <div className="mt-2.5 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
+    <div className="bg-card border border-line rounded-2xl px-4 py-3 sm:px-5 sm:py-4 min-w-0">
+      <div className="text-[13px] sm:text-[14px] font-semibold text-zinc-500 truncate">{label}</div>
+      <div className="mt-2 sm:mt-2.5 text-[22px] sm:text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white truncate">
         {hasCount ? count : money(amountCents)}
       </div>
       {hasCount && (
-        <div className="mt-2.5 text-[14px] font-semibold text-zinc-400 tabular-nums">
+        <div className="mt-2 sm:mt-2.5 text-[13px] sm:text-[14px] font-semibold text-zinc-400 tabular-nums truncate">
           {money(amountCents)}
         </div>
       )}
@@ -610,8 +610,8 @@ function SubscriptionsSummary({
   monthly: SubscriptionsReport["monthly"];
 }) {
   return (
-    <div className="grid gap-4 lg:grid-cols-3 items-stretch">
-      <div className="grid gap-4 grid-cols-2">
+    <div className="grid gap-3 lg:grid-cols-3 items-stretch">
+      <div className="grid gap-3 grid-cols-2">
         <StatCard
           label="Total Subscriptions"
           value={String(totalCount)}
@@ -752,18 +752,18 @@ function BigStatCard({
   action?: React.ReactNode;
 }) {
   return (
-    <div className="bg-card border border-line rounded-2xl px-5 py-4">
+    <div className="bg-card border border-line rounded-2xl px-4 py-3 sm:px-5 sm:py-4 min-w-0">
       <div className="flex items-start justify-between gap-2">
-        <div className="text-[14px] font-semibold text-zinc-500">
+        <div className="text-[13px] sm:text-[14px] font-semibold text-zinc-500 truncate">
           {label}
         </div>
         {action}
       </div>
-      <div className="mt-2.5 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
+      <div className="mt-2 sm:mt-2.5 text-[22px] sm:text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white truncate">
         {value}
       </div>
       {sub && (
-        <div className="mt-2.5 text-[14px] font-semibold text-zinc-400 tabular-nums truncate">
+        <div className="mt-2 sm:mt-2.5 text-[13px] sm:text-[14px] font-semibold text-zinc-400 tabular-nums truncate">
           {sub}
         </div>
       )}
@@ -881,7 +881,7 @@ function SalesPanel({ qs }: { qs: string }) {
         title="Revenue Sold"
         description="Dollars and ARR sold across the team in this date range."
       >
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
           <SalesValueCard
             label="Total Revenue Sold"
             value={money(rs.total.cents)}
@@ -975,7 +975,7 @@ function SalesPanel({ qs }: { qs: string }) {
         title="Sales Funnel"
         description="Pins, sales, and conversion across the door-knock funnel."
       >
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
           <SalesValueCard
             label="Pins Added"
             value={String(f.pins_added.count)}
@@ -1101,12 +1101,12 @@ function SalesValueCard({
   description: string;
 }) {
   return (
-    <div className="bg-card border border-line rounded-2xl px-5 py-4">
-      <div className="text-[14px] font-semibold text-zinc-500">{label}</div>
-      <div className="mt-2.5 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
+    <div className="bg-card border border-line rounded-2xl px-4 py-3 sm:px-5 sm:py-4 min-w-0">
+      <div className="text-[13px] sm:text-[14px] font-semibold text-zinc-500 truncate">{label}</div>
+      <div className="mt-2 sm:mt-2.5 text-[22px] sm:text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white truncate">
         {value}
       </div>
-      <div className="mt-2.5 text-[14px] font-semibold text-zinc-400 leading-tight truncate">
+      <div className="mt-2 sm:mt-2.5 text-[13px] sm:text-[14px] font-semibold text-zinc-400 leading-tight truncate">
         {description}
       </div>
     </div>
@@ -1307,7 +1307,7 @@ function SubscriptionsPanel({ qs: rangeQs }: { qs: string }) {
         </div>
       </div>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 items-stretch">
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4 items-stretch">
         <StatCard
           label="Total Subscriptions"
           value={String(data.totals.total)}
@@ -1384,17 +1384,17 @@ function StatCard({
   description: string;
 }) {
   return (
-    <div className="bg-card border border-line rounded-2xl px-5 py-4">
-      <div className="text-[14px] font-semibold text-zinc-500">{label}</div>
+    <div className="bg-card border border-line rounded-2xl px-4 py-3 sm:px-5 sm:py-4 min-w-0">
+      <div className="text-[13px] sm:text-[14px] font-semibold text-zinc-500 truncate">{label}</div>
       <div
         className={
-          "mt-2.5 text-[28px] font-extrabold tracking-tight leading-none tabular-nums " +
+          "mt-2 sm:mt-2.5 text-[22px] sm:text-[28px] font-extrabold tracking-tight leading-none tabular-nums truncate " +
           (valueClassName || "text-white")
         }
       >
         {value}
       </div>
-      <div className="mt-2.5 text-[14px] font-semibold text-zinc-400 leading-tight truncate">
+      <div className="mt-2 sm:mt-2.5 text-[13px] sm:text-[14px] font-semibold text-zinc-400 leading-tight truncate">
         {description}
       </div>
     </div>
@@ -1488,24 +1488,19 @@ function Stats({
   items: { label: string; value: string; description: string }[];
 }) {
   return (
-    <div
-      className="grid gap-4"
-      style={{
-        gridTemplateColumns: `repeat(auto-fit, minmax(200px, 1fr))`,
-      }}
-    >
+    <div className="grid gap-3 grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(200px,1fr))]">
       {items.map((it) => (
         <div
           key={it.label}
-          className="bg-card border border-line rounded-2xl px-5 py-4"
+          className="bg-card border border-line rounded-2xl px-4 py-3 sm:px-5 sm:py-4 min-w-0"
         >
-          <div className="text-[14px] font-semibold text-zinc-500">
+          <div className="text-[13px] sm:text-[14px] font-semibold text-zinc-500 truncate">
             {it.label}
           </div>
-          <div className="mt-2.5 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
+          <div className="mt-2 sm:mt-2.5 text-[22px] sm:text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white truncate">
             {it.value}
           </div>
-          <div className="mt-2.5 text-[14px] font-semibold text-zinc-400 leading-tight truncate">
+          <div className="mt-2 sm:mt-2.5 text-[13px] sm:text-[14px] font-semibold text-zinc-400 leading-tight truncate">
             {it.description}
           </div>
         </div>
@@ -2312,7 +2307,7 @@ function JobsPanel({ qs }: { qs: string }) {
         title="Cash Flow"
         description="Receipts, time to first payment, and customer mix."
       >
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-3">
           <BigStatCard
             label="Cash Collected"
             value={money(data.cash_collected_cents)}
