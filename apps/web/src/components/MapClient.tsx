@@ -727,7 +727,12 @@ export default function MapClient() {
       // Lower zoom on mobile so the same geographic area fits a narrow
       // viewport — zoom is independent of viewport, so 3.5 (designed for
       // a wide desktop) looks much closer-in on a phone.
-      zoom: window.matchMedia("(max-width: 767px)").matches ? 2.5 : 3.5,
+      zoom: window.matchMedia("(max-width: 767px)").matches ? 3 : 3.5,
+      // Flat (mercator) projection so map tiles fill the viewport edge to
+      // edge at every zoom. Mapbox-gl v3 defaults to a 3D globe, which
+      // surrounds the planet with "space" (black) at low zoom — visually
+      // reads as a black strip at the bottom of the phone screen.
+      projection: { name: "mercator" },
     });
     mapRef.current = map;
 
@@ -982,9 +987,7 @@ export default function MapClient() {
           top: 0,
           left: isMobile ? 0 : "240px",
           right: 0,
-          // Sit above the iOS home indicator / Android gesture area so the
-          // mapbox attribution badge isn't partially hidden behind it.
-          bottom: "env(safe-area-inset-bottom, 0px)",
+          bottom: 0,
         }}
       />
       <MapIconStrip
