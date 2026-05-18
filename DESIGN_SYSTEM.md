@@ -462,6 +462,40 @@ Three tiers, intentional:
 | `p-6`            | Schedule, Pipeline, Inbox, Tasks, Activity | `widgets.tsx:562, 613, 692, 716, 784` |
 | `p-7`            | Chart hero       | `widgets.tsx:419`                   |
 
+### Mobile safe-area bottom
+
+iOS PWAs and mobile browsers reserve a strip at the bottom of the
+viewport for the home indicator (~34px on notched iPhones). Content
+that hugs the bottom edge — message input bars, modal action rows,
+fixed docks, page content under `AppFrame` — gets clipped or feels
+cramped against the indicator if no inset is reserved. Even on
+flat-bottom Android, sitting flush with the screen edge looks rushed.
+
+The token `--safe-bottom` in `globals.css` resolves to
+`max(env(safe-area-inset-bottom), 1rem)` — the iOS inset (≈34px on
+notched devices, 0 elsewhere) with a 16px floor so flat-bottom phones
+still get breathing room.
+
+Apply additively on top of an element's own bottom padding:
+
+| Where                              | Padding-bottom                                         |
+| ---------------------------------- | ------------------------------------------------------ |
+| `AppFrame` inner container (mobile) | `pb-[calc(1rem+var(--safe-bottom))]` — overridden by `md:py-10` on desktop |
+| Messages thread input bar          | `pb-[calc(0.75rem+var(--safe-bottom))] md:pb-3`        |
+| Floating `PhoneClient` dock        | `bottom-[calc(1.5rem+env(safe-area-inset-bottom))]` (raw inset — no mobile floor needed since the dock has shadow + radius) |
+| Tailwind spacing alias             | `safe-b` → `var(--safe-bottom)` (use as `pb-safe-b`, `mb-safe-b`, `bottom-safe-b`) |
+
+**Rule.** Any new mobile surface with content stuck to the bottom edge
+must reserve `var(--safe-bottom)` of padding-bottom (added to its own
+internal padding) so the content sits comfortably above the home
+indicator. Desktop (`md:` and up) keeps its existing spacing — override
+with `md:pb-*` if the mobile-additive padding doesn't suit desktop.
+
+For full-bleed pages (`/messages`, `/schedule`, `/map`) the rule applies
+to whichever element is bottom-stuck inside the page. For non-full-bleed
+pages, `AppFrame` already reserves the inset on every page that routes
+through it.
+
 ### Sidebar internal spacing
 
 | Value          | Where                  |

@@ -16,7 +16,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
   }
   return (
     <main className="md:ml-60 overflow-x-hidden">
-      <div className="max-w-app mx-auto px-4 pt-20 pb-8 md:px-10 md:py-10">
+      <div className="max-w-app mx-auto px-4 pt-20 pb-[calc(1rem+var(--safe-bottom))] md:px-10 md:py-10">
         {children}
       </div>
     </main>

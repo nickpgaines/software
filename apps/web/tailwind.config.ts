@@ -126,6 +126,11 @@ export default {
       },
       spacing: {
         sidebar: "var(--layout-sidebar-width)",
+        // Mobile safe-area bottom inset. See globals.css for the value and
+        // DESIGN_SYSTEM.md §5 for the policy. Use with `pb-safe-b` to give
+        // bottom-stuck UI (message input, modal action bars, fixed docks)
+        // breathing room above the iOS home indicator.
+        "safe-b": "var(--safe-bottom)",
       },
       maxWidth: {
         app: "var(--layout-app-max-width)",

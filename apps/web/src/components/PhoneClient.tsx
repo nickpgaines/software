@@ -265,7 +265,7 @@ function CallWidget() {
       : formatDuration(elapsed);
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-72 bg-card text-fg rounded-2xl shadow-menu p-4">
+    <div className="fixed bottom-[calc(1.5rem+env(safe-area-inset-bottom))] right-6 z-50 w-72 bg-card text-fg rounded-2xl shadow-menu p-4">
       <div className="flex items-center gap-3">
         <div
           className="w-10 h-10 rounded-full flex items-center justify-center"

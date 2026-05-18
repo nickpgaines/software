@@ -439,7 +439,7 @@ function Thread({
         )}
         <form
           onSubmit={send}
-          className="px-4 py-3 flex items-center gap-2"
+          className="px-4 pt-3 pb-[calc(0.75rem+var(--safe-bottom))] md:pb-3 flex items-center gap-2"
         >
           <Button
             type="button"
