@@ -121,8 +121,8 @@ export default function LeadsIntegrationsClient({
 
       <div className="border border-line rounded-2xl overflow-hidden">
         <div className="p-6 flex items-start gap-5">
-          <div className="w-16 h-16 rounded-2xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-            <MetaLogo />
+          <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shrink-0">
+            <MetaLogo className="w-10 h-7" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -202,8 +202,8 @@ export default function LeadsIntegrationsClient({
 
           {pages.length === 0 ? (
             <div className="border border-dashed border-line rounded-xl p-12 flex flex-col items-center text-center">
-              <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                <MetaLogo />
+              <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center">
+                <MetaLogo className="w-7 h-5" />
               </div>
               <p className="mt-3 font-extrabold text-white tracking-tight">
                 No pages connected yet
@@ -269,19 +269,52 @@ export default function LeadsIntegrationsClient({
   );
 }
 
-function MetaLogo() {
+function MetaLogo({ className = "w-10 h-7" }: { className?: string }) {
   return (
     <svg
-      viewBox="0 0 36 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="3.2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      className="w-9 h-7"
-      aria-hidden="true"
+      viewBox="0 0 287.56 191"
+      className={className}
+      aria-label="Meta"
+      role="img"
     >
-      <path d="M2 12c0-4.4 2.6-8 6.4-8 3 0 5.2 2 7.4 5.4l2.2 3.6 2.2 3.6C22.4 20 24.6 22 27.6 22c3.8 0 6.4-3.6 6.4-8s-2.6-8-6.4-8c-3 0-5.2 2-7.4 5.4l-2.2 3.6-2.2 3.6C13.6 22 11.4 22 8.4 22 4.6 22 2 18.4 2 12z" />
+      <defs>
+        <linearGradient
+          id="meta-logo-a"
+          x1="62.34"
+          y1="101.45"
+          x2="260.34"
+          y2="91.45"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0" stopColor="#0064e1" />
+          <stop offset="0.4" stopColor="#0064e1" />
+          <stop offset="0.83" stopColor="#0073ee" />
+          <stop offset="1" stopColor="#0082fb" />
+        </linearGradient>
+        <linearGradient
+          id="meta-logo-b"
+          x1="41.42"
+          y1="53"
+          x2="41.42"
+          y2="126"
+          gradientUnits="userSpaceOnUse"
+        >
+          <stop offset="0" stopColor="#0082fb" />
+          <stop offset="1" stopColor="#0064e0" />
+        </linearGradient>
+      </defs>
+      <path
+        fill="#0081fb"
+        d="M31.06,126c0,11,2.41,19.41,5.56,24.51A19,19,0,0,0,53.19,160c8.1,0,15.51-2,29.79-21.76,11.44-15.83,24.92-38,34-52l15.36-23.6c10.67-16.39,23-34.61,37.18-47C181.07,5.6,193.54,0,206.09,0c21.07,0,41.14,12.21,56.5,35.11,16.81,25.08,25,56.67,25,89.27,0,19.38-3.82,33.62-10.32,44.87C271,180.13,258.72,191,238.13,191V160c17.63,0,22-16.2,22-34.74,0-26.42-6.16-55.74-19.73-76.69-9.63-14.86-22.11-23.94-35.84-23.94-14.85,0-26.8,11.2-40.23,31.17-7.14,10.61-14.47,23.54-22.7,38.13L120.79,77S114.21,86,108,93.13C97.39,105.4,89.7,116.49,71.93,134.81c-21.94,22.78-39.94,30.19-66.31,30.19V134c11.81,0,16.78-4.43,16.78-12.31a15.21,15.21,0,0,0-.34-3.69Z"
+      />
+      <path
+        fill="url(#meta-logo-a)"
+        d="M24.49,37.3C38.73,15.35,59.28,0,82.85,0c13.65,0,27.22,4,41.39,15.61C139.74,28.25,156.11,49.05,176.55,83.32l7.31,12.17c17.69,29.46,27.76,44.61,33.66,51.75,7.59,9.17,12.92,11.93,19.83,11.93,17.63,0,22-16.2,22-34.74L287.56,126c0,21.18-8.56,40.84-22.55,52.36C249.55,189.51,231.36,191,209.94,191c-19.32,0-33.66-6.43-46.27-25.18-15-22.2-28.6-46.43-41.94-69.7-9.34-16.31-17.71-32.66-24.45-44.55C90.39,40.95,82.41,29.66,71.4,29.66,55.62,29.66,42.85,38.5,33.13,53.34Z"
+      />
+      <path
+        fill="url(#meta-logo-b)"
+        d="M82.4,29.66c-11,0-20.39,8.84-30.11,23.68-13.71,21-22.11,52.24-22.11,82.21,0,12.39-2.72,21.92-6.32,28.51L24.49,37.3C34.51,21.49,51.51,8.4,82.85,8.4Z"
+      />
     </svg>
   );
 }
