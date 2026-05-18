@@ -276,6 +276,23 @@ export default function MapClient() {
   const pinsVisibleRef = useRef(true);
   const [showCustomerPins, setShowCustomerPins] = useState(true);
   const showCustomerPinsRef = useRef(true);
+  // Track the mobile breakpoint at runtime so the map container can use
+  // inline styles (which beat mapbox-gl.css's own `.mapboxgl-map`
+  // `position: relative` via specificity) while still being responsive.
+  const [isMobile, setIsMobile] = useState(false);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const mq = window.matchMedia("(max-width: 767px)");
+    setIsMobile(mq.matches);
+    const onMq = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mq.addEventListener("change", onMq);
+    return () => mq.removeEventListener("change", onMq);
+  }, []);
+  // After the container width changes (e.g., crossing the md breakpoint on
+  // resize), Mapbox doesn't reflow its canvas on its own — call resize.
+  useEffect(() => {
+    mapRef.current?.resize();
+  }, [isMobile]);
   const [staff, setStaff] = useState<TerritoryStaff[]>([]);
   const [drawingTerritory, setDrawingTerritory] = useState(false);
   const [drawingLasso, setDrawingLasso] = useState(false);
@@ -948,10 +965,22 @@ export default function MapClient() {
   }
 
   return (
-    <div className="relative h-screen ml-0 md:ml-60">
+    <div
+      style={{
+        position: "relative",
+        height: "100vh",
+        marginLeft: isMobile ? 0 : "240px",
+      }}
+    >
       <div
         ref={containerRef}
-        className="fixed top-0 right-0 bottom-0 left-0 md:left-60"
+        style={{
+          position: "fixed",
+          top: 0,
+          left: isMobile ? 0 : "240px",
+          right: 0,
+          bottom: 0,
+        }}
       />
       <MapIconStrip
         styleMode={styleMode}
