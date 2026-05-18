@@ -982,9 +982,7 @@ export default function MapClient() {
           top: 0,
           left: isMobile ? 0 : "240px",
           right: 0,
-          // Sit above the iOS home indicator / Android gesture area so the
-          // mapbox attribution badge isn't partially hidden behind it.
-          bottom: "env(safe-area-inset-bottom, 0px)",
+          bottom: 0,
         }}
       />
       <MapIconStrip

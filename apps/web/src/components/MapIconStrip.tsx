@@ -55,7 +55,10 @@ export default function MapIconStrip({
     "text-zinc-300 hover:bg-black hover:text-white";
 
   return (
-    <div className="absolute top-4 right-4 z-10 flex w-12 flex-col items-center gap-2 rounded-lg border border-line bg-card p-1 shadow-md">
+    <div
+      className="absolute right-4 z-10 flex w-12 flex-col items-center gap-2 rounded-lg border border-line bg-card p-1 shadow-md"
+      style={{ top: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}
+    >
       <Button
         variant="ghost"
         type="button"

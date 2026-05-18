@@ -62,7 +62,8 @@ export function MobileMenuButton() {
       onClick={() => setOpen(!open)}
       aria-label={open ? "Close menu" : "Open menu"}
       aria-expanded={open}
-      className="md:hidden fixed top-4 left-4 z-50 w-11 h-11 rounded-full flex items-center justify-center bg-card border border-line text-fg"
+      className="md:hidden fixed left-4 z-50 w-11 h-11 rounded-full flex items-center justify-center bg-card border border-line text-fg"
+      style={{ top: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}
     >
       <svg
         width="20"

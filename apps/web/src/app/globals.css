@@ -394,3 +394,16 @@ html[data-theme="light"] textarea:-webkit-autofill:active {
 .input-picker {
   cursor: pointer;
 }
+
+/* Mapbox controls — keep above iOS home indicator + below status bar on
+   phones in PWA mode (with viewport-fit=cover the map tiles fill the
+   entire screen, but the controls would otherwise sit behind the system
+   gesture areas). */
+.mapboxgl-ctrl-bottom-left,
+.mapboxgl-ctrl-bottom-right {
+  bottom: env(safe-area-inset-bottom, 0px) !important;
+}
+.mapboxgl-ctrl-top-left,
+.mapboxgl-ctrl-top-right {
+  top: env(safe-area-inset-top, 0px) !important;
+}
