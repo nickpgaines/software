@@ -100,7 +100,12 @@ export default function MessagesClient() {
 
   return (
     <div className="flex bg-card overflow-hidden h-screen">
-      <aside className="w-80 shrink-0 border-r border-line flex flex-col">
+      <aside
+        className={
+          "w-full md:w-80 shrink-0 border-r border-line flex-col " +
+          (selected ? "hidden md:flex" : "flex")
+        }
+      >
         <div className="px-4 pt-4 pb-3 flex items-center justify-between">
           <h2 className="text-lg font-extrabold text-white tracking-tight">Messages</h2>
           <Button
@@ -222,7 +227,12 @@ export default function MessagesClient() {
         </div>
       </aside>
 
-      <main className="flex-1 flex flex-col min-w-0">
+      <main
+        className={
+          "flex-1 flex-col min-w-0 " +
+          (selected ? "flex" : "hidden md:flex")
+        }
+      >
         {!selected ? (
           <div className="flex-1 flex items-center justify-center text-sm text-zinc-500">
             Select a conversation
@@ -231,6 +241,7 @@ export default function MessagesClient() {
           <Thread
             conversation={selected}
             mounted={mounted}
+            onBack={() => setSelectedId(null)}
             onMessageSent={() => loadConversations()}
           />
         )}
@@ -242,10 +253,12 @@ export default function MessagesClient() {
 function Thread({
   conversation,
   mounted,
+  onBack,
   onMessageSent,
 }: {
   conversation: Conversation;
   mounted: boolean;
+  onBack: () => void;
   onMessageSent: () => void;
 }) {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -321,6 +334,26 @@ function Thread({
   return (
     <>
       <header className="px-5 py-3 border-b border-line flex items-center gap-3">
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={onBack}
+          aria-label="Back to conversations"
+          className="md:hidden w-8 h-8 p-0 rounded-full text-zinc-400 hover:bg-black shrink-0"
+        >
+          <svg
+            className="w-5 h-5"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M19 12H5" />
+            <path d="M12 19l-7-7 7-7" />
+          </svg>
+        </Button>
         <div className="w-9 h-9 rounded-full bg-line text-zinc-300 flex items-center justify-center text-xs font-semibold">
           {initials(conversation.name)}
         </div>
