@@ -100,7 +100,7 @@ export default function MessagesClient() {
     conversations.find((c) => c.id === selectedId) || null;
 
   return (
-    <div className="flex bg-card overflow-hidden h-[calc(100dvh-4.5rem-env(safe-area-inset-bottom))] md:h-[100dvh]">
+    <div className="flex bg-card overflow-hidden h-[calc(100dvh-4.5rem-env(safe-area-inset-bottom))] md:h-[100dvh] pt-[env(safe-area-inset-top)] md:pt-0">
       <aside
         className={
           "w-full md:w-80 shrink-0 border-r border-line flex-col " +
