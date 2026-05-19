@@ -338,7 +338,7 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
 // Bump when init() gains migrations that must run on existing deploys.
 // First call after deploy runs the full init; subsequent cold starts hit
 // the fast-path below (one SELECT) and skip the ~150 DDL statements.
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 
 async function init(): Promise<void> {
   // Fast path: if the schema is already at the current version, skip the
@@ -615,6 +615,12 @@ async function init(): Promise<void> {
     ["sms_dedicated_number_sid", "TEXT"],
     // Twilio A2P 10DLC resource SIDs accumulated during registration.
     // Each is set as the corresponding Twilio resource is created.
+    // Per Twilio ISV guidance, each tenant gets its own Twilio subaccount;
+    // every per-tenant Trust Hub / Messaging resource is created inside
+    // that subaccount with its own Auth Token. The trial pool stays on
+    // the master account.
+    ["twilio_subaccount_sid", "TEXT"],
+    ["twilio_subaccount_auth_token", "TEXT"],
     ["twilio_customer_profile_sid", "TEXT"],
     ["twilio_trust_product_sid", "TEXT"],
     ["twilio_brand_sid", "TEXT"],

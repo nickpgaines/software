@@ -1,5 +1,58 @@
 import twilio from "twilio";
 import { getDb, type Company } from "@/lib/db";
+import { createSubaccount, type TwilioCreds } from "@/lib/twilio-trust-hub";
+
+// Resolve the master-account credentials. Returns null if env vars are
+// unset; callers should treat that as a configuration error.
+export function getMasterCreds(): TwilioCreds | null {
+  const cfg = getPlatformConfig();
+  if (!cfg) return null;
+  return {
+    accountSid: cfg.masterAccountSid,
+    authToken: cfg.masterAuthToken,
+  };
+}
+
+// Idempotently ensure a Twilio subaccount exists for this tenant and return
+// its credentials. The subaccount Auth Token is only returned by Twilio at
+// creation time — we capture it and store it on the company row. The trial
+// pool stays on the master account; only per-tenant resources run inside the
+// subaccount container.
+export async function ensureTenantSubaccount(args: {
+  companyId: number;
+  friendlyName: string;
+}): Promise<TwilioCreds> {
+  const master = getMasterCreds();
+  if (!master) throw new Error("Platform Twilio is not configured");
+
+  const db = await getDb();
+  const company = await db
+    .prepare("SELECT * FROM company WHERE id = ? LIMIT 1")
+    .get<Company>(args.companyId);
+  if (!company) throw new Error(`Company ${args.companyId} not found`);
+
+  if (company.twilio_subaccount_sid && company.twilio_subaccount_auth_token) {
+    return {
+      accountSid: company.twilio_subaccount_sid,
+      authToken: company.twilio_subaccount_auth_token,
+    };
+  }
+
+  const sub = await createSubaccount({
+    masterCreds: master,
+    friendlyName: `nick360 tenant ${args.companyId} (${args.friendlyName})`,
+  });
+  await db
+    .prepare(
+      `UPDATE company
+          SET twilio_subaccount_sid = ?,
+              twilio_subaccount_auth_token = ?,
+              updated_at = datetime('now')
+        WHERE id = ?`
+    )
+    .run(sub.sid, sub.auth_token, args.companyId);
+  return { accountSid: sub.sid, authToken: sub.auth_token };
+}
 
 // Platform-managed Twilio. The platform owns a single master account
 // (TWILIO_MASTER_ACCOUNT_SID / TWILIO_MASTER_AUTH_TOKEN) and a single
@@ -246,8 +299,8 @@ export async function sendTrialPoolSms(args: {
     };
   }
   return postTwilioMessage({
-    masterAccountSid: cfg.masterAccountSid,
-    masterAuthToken: cfg.masterAuthToken,
+    accountSid: cfg.masterAccountSid,
+    authToken: cfg.masterAuthToken,
     to: args.to,
     body: args.body,
     from: null,
@@ -255,27 +308,39 @@ export async function sendTrialPoolSms(args: {
   });
 }
 
-// Send through a tenant's own approved Messaging Service. Used once their
-// 10DLC chain reaches campaign_approved and they have a dedicated number.
+// Send through a tenant's own approved Messaging Service. The Messaging
+// Service lives inside the tenant's subaccount, so we sign the request
+// with subaccount credentials; the master account doesn't see the message
+// at all beyond the consolidated bill.
 export async function sendDedicatedSms(args: {
   company: Pick<
     Company,
-    "twilio_messaging_service_sid" | "sms_dedicated_number"
+    | "twilio_messaging_service_sid"
+    | "sms_dedicated_number"
+    | "twilio_subaccount_sid"
+    | "twilio_subaccount_auth_token"
   >;
   to: string;
   body: string;
 }): Promise<PlatformSmsResult> {
-  const cfg = getPlatformConfig();
-  if (!cfg) return { ok: false, error: "Platform Twilio is not configured" };
   if (!args.company.twilio_messaging_service_sid) {
     return {
       ok: false,
       error: "Tenant has no Messaging Service provisioned",
     };
   }
+  if (
+    !args.company.twilio_subaccount_sid ||
+    !args.company.twilio_subaccount_auth_token
+  ) {
+    return {
+      ok: false,
+      error: "Tenant has no Twilio subaccount provisioned",
+    };
+  }
   return postTwilioMessage({
-    masterAccountSid: cfg.masterAccountSid,
-    masterAuthToken: cfg.masterAuthToken,
+    accountSid: args.company.twilio_subaccount_sid,
+    authToken: args.company.twilio_subaccount_auth_token,
     to: args.to,
     body: args.body,
     from: args.company.sms_dedicated_number ?? null,
@@ -284,8 +349,8 @@ export async function sendDedicatedSms(args: {
 }
 
 async function postTwilioMessage(args: {
-  masterAccountSid: string;
-  masterAuthToken: string;
+  accountSid: string;
+  authToken: string;
   to: string;
   body: string;
   from: string | null;
@@ -298,14 +363,14 @@ async function postTwilioMessage(args: {
   if (args.from) form.set("From", args.from);
 
   const auth = Buffer.from(
-    `${args.masterAccountSid}:${args.masterAuthToken}`
+    `${args.accountSid}:${args.authToken}`
   ).toString("base64");
 
   let res: Response;
   try {
     res = await fetch(
       `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(
-        args.masterAccountSid
+        args.accountSid
       )}/Messages.json`,
       {
         method: "POST",

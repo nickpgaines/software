@@ -20,7 +20,11 @@ import {
   type Company,
   type SmsBrandRegistration,
 } from "@/lib/db";
-import { getPlatformConfig } from "@/lib/twilio-platform";
+import {
+  ensureTenantSubaccount,
+  getPlatformConfig,
+} from "@/lib/twilio-platform";
+import type { TwilioCreds } from "@/lib/twilio-trust-hub";
 import {
   attachA2pProfileInfoEndUser,
   attachNumberToMessagingService,
@@ -238,12 +242,36 @@ async function step(companyId: number): Promise<{
     "/api/twilio/webhooks/customer-profile-status"
   );
 
+  // 0. Ensure the tenant's Twilio subaccount exists. Every per-tenant
+  // Trust Hub / Messaging API call below runs as that subaccount; the
+  // trial pool stays on the master account and is handled elsewhere.
+  let creds: TwilioCreds;
+  try {
+    creds = await ensureTenantSubaccount({
+      companyId,
+      friendlyName: registration.legal_company_name,
+    });
+  } catch (e) {
+    const msg = (e as Error).message;
+    await persistState(
+      companyId,
+      state === "not_started" ? "customer_profile_failed" : state,
+      msg
+    );
+    return {
+      state: state === "not_started" ? "customer_profile_failed" : state,
+      error: msg,
+      recurse: false,
+    };
+  }
+
   // 1. Create Secondary Customer Profile (+ EndUsers + Address + submit)
   if (state === "not_started" || state === "customer_profile_failed") {
     try {
       let cpSid = company.twilio_customer_profile_sid;
       if (!cpSid) {
         const cp = await createSecondaryCustomerProfile({
+        creds,
           friendlyName: `nick360 tenant ${companyId} customer profile`,
           email: registration.business_email,
           statusCallback: cpCallback,
@@ -255,6 +283,7 @@ async function step(companyId: number): Promise<{
       }
 
       const bi = await createBusinessInformationEndUser({
+        creds,
         friendlyName: `tenant-${companyId}-business-info`,
         legalCompanyName: registration.legal_company_name,
         ein: registration.ein,
@@ -264,6 +293,7 @@ async function step(companyId: number): Promise<{
         description: registration.business_description,
       });
       await attachToCustomerProfile({
+        creds,
         customerProfileSid: cpSid,
         objectSid: bi.sid,
       });
@@ -271,6 +301,7 @@ async function step(companyId: number): Promise<{
       const [firstName, ...lastParts] = registration.auth_rep_name.split(/\s+/);
       const lastName = lastParts.join(" ") || firstName;
       const rep = await createAuthorizedRepEndUser({
+        creds,
         friendlyName: `tenant-${companyId}-auth-rep`,
         firstName,
         lastName,
@@ -280,11 +311,13 @@ async function step(companyId: number): Promise<{
         businessTitle: registration.auth_rep_title,
       });
       await attachToCustomerProfile({
+        creds,
         customerProfileSid: cpSid,
         objectSid: rep.sid,
       });
 
       const addr = await createAddress({
+        creds,
         customerName: registration.legal_company_name,
         street: registration.address_line1,
         street2: registration.address_line2,
@@ -294,11 +327,12 @@ async function step(companyId: number): Promise<{
         isoCountry: registration.iso_country,
       });
       await attachToCustomerProfile({
+        creds,
         customerProfileSid: cpSid,
         objectSid: addr.sid,
       });
 
-      await submitCustomerProfile(cpSid);
+      await submitCustomerProfile({ creds, sid: cpSid });
       return { state: "customer_profile_pending", error: null, recurse: false };
     } catch (e) {
       const msg = (e as Error).message;
@@ -314,7 +348,7 @@ async function step(companyId: number): Promise<{
       return { state: "not_started", error: null, recurse: true };
     }
     try {
-      const cp = await fetchCustomerProfile(company.twilio_customer_profile_sid);
+      const cp = await fetchCustomerProfile({ creds, sid: company.twilio_customer_profile_sid });
       if (isApproved(cp.status)) {
         await persistState(companyId, "customer_profile_approved", null);
         return { state: "customer_profile_approved", error: null, recurse: true };
@@ -354,6 +388,7 @@ async function step(companyId: number): Promise<{
       let tpSid = company.twilio_trust_product_sid;
       if (!tpSid) {
         const tp = await createA2pTrustProduct({
+        creds,
           friendlyName: `nick360 tenant ${companyId} A2P trust product`,
           email: registration.business_email,
           statusCallback: cpCallback,
@@ -364,16 +399,18 @@ async function step(companyId: number): Promise<{
         });
       }
       await attachToTrustProduct({
+        creds,
         trustProductSid: tpSid,
         objectSid: company.twilio_customer_profile_sid!,
       });
       await attachA2pProfileInfoEndUser({
+        creds,
         trustProductSid: tpSid,
         companyType,
         stockExchange: null,
         stockTicker: null,
       });
-      await submitTrustProduct(tpSid);
+      await submitTrustProduct({ creds, sid: tpSid });
       return { state: "trust_product_pending", error: null, recurse: false };
     } catch (e) {
       const msg = (e as Error).message;
@@ -389,7 +426,7 @@ async function step(companyId: number): Promise<{
       return { state: "customer_profile_approved", error: null, recurse: true };
     }
     try {
-      const tp = await fetchTrustProduct(company.twilio_trust_product_sid);
+      const tp = await fetchTrustProduct({ creds, sid: company.twilio_trust_product_sid });
       if (isApproved(tp.status)) {
         await persistState(companyId, "trust_product_approved", null);
         return { state: "trust_product_approved", error: null, recurse: true };
@@ -415,6 +452,7 @@ async function step(companyId: number): Promise<{
       let brandSid = company.twilio_brand_sid;
       if (!brandSid) {
         const brand = await createBrandRegistration({
+        creds,
           customerProfileSid: company.twilio_customer_profile_sid!,
           trustProductSid: company.twilio_trust_product_sid!,
           brandType,
@@ -442,7 +480,7 @@ async function step(companyId: number): Promise<{
       return { state: "trust_product_approved", error: null, recurse: true };
     }
     try {
-      const brand = await fetchBrandRegistration(company.twilio_brand_sid);
+      const brand = await fetchBrandRegistration({ creds, sid: company.twilio_brand_sid });
       if (isApproved(brand.status)) {
         await persistState(companyId, "brand_approved", null);
         return { state: "brand_approved", error: null, recurse: true };
@@ -474,6 +512,7 @@ async function step(companyId: number): Promise<{
           "/api/twilio/webhooks/campaign-status"
         );
         const ms = await createMessagingService({
+        creds,
           friendlyName:
             `nick360 tenant ${companyId} (${registration.legal_company_name})`.slice(
               0,
@@ -491,6 +530,7 @@ async function step(companyId: number): Promise<{
       let campaignSid = company.twilio_campaign_sid;
       if (!campaignSid) {
         const campaign = await createCampaign({
+        creds,
           messagingServiceSid: msSid,
           brandRegistrationSid: company.twilio_brand_sid!,
           description: buildCampaignDescription(registration.legal_company_name),
@@ -531,6 +571,7 @@ async function step(companyId: number): Promise<{
     }
     try {
       const campaign = await fetchCampaign({
+        creds,
         messagingServiceSid: company.twilio_messaging_service_sid,
         campaignSid: company.twilio_campaign_sid,
       });
@@ -561,7 +602,7 @@ async function step(companyId: number): Promise<{
       const areaCode =
         (registration.business_phone.replace(/\D/g, "").match(/\d{10}$/)?.[0] ?? "")
           .slice(0, 3) || "843";
-      const number = await findAvailableLocalNumber({ areaCode });
+      const number = await findAvailableLocalNumber({ creds, areaCode });
       if (!number) {
         const msg = `No numbers available in area code ${areaCode}`;
         await persistState(companyId, "campaign_failed", msg);
@@ -570,12 +611,14 @@ async function step(companyId: number): Promise<{
       const inboundUrl = buildWebhookUrl("/api/messages/webhook");
       const voiceUrl = buildWebhookUrl("/api/voice/outbound");
       const purchased = await purchasePhoneNumber({
+        creds,
         phoneNumber: number,
         friendlyName: `nick360:${companyId}:${registration.legal_company_name}`,
         smsUrl: inboundUrl,
         voiceUrl,
       });
       await attachNumberToMessagingService({
+        creds,
         messagingServiceSid: company.twilio_messaging_service_sid!,
         phoneNumberSid: purchased.sid,
       });
