@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { usePhone } from "@/components/PhoneClient";
+import InboxTabs from "@/components/InboxTabs";
 import { Badge } from "@/components/ui/badge";
 import {
   Table,
@@ -97,22 +98,18 @@ export default function CallsClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-baseline justify-between">
-        <div>
-          <h1 className="text-page-title text-white">Calls</h1>
-          <p className="text-sm text-zinc-400 mt-3 font-bold">
-            All calls made and received through your business number.
-          </p>
-        </div>
-        {!phone.configured && (
-          <Badge
-            variant="outline"
-            className="text-xs text-zinc-400 bg-black border border-line rounded-full px-3 py-1 font-normal"
-          >
-            Calling not configured. Connect Twilio Voice in Settings → Calling.
-          </Badge>
-        )}
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <h1 className="text-page-title text-white">Inbox</h1>
+        <InboxTabs />
       </div>
+      {!phone.configured && (
+        <Badge
+          variant="outline"
+          className="text-xs text-zinc-400 bg-black border border-line rounded-full px-3 py-1 font-normal"
+        >
+          Calling not configured. Connect Twilio Voice in Settings → Calling.
+        </Badge>
+      )}
 
       <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
         {loading ? (

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import InboxTabs from "@/components/InboxTabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -173,19 +174,17 @@ export default function EmailListClient() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-baseline justify-between">
-        <div>
-          <h1 className="text-page-title text-white">Email</h1>
-          <p className="text-sm text-zinc-400 mt-3 font-bold">
-            Send one-off blasts or turn on automated emails that go out on their own.
-          </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <h1 className="text-page-title text-white">Inbox</h1>
+        <div className="flex items-center gap-3 flex-wrap">
+          <InboxTabs />
+          <Link
+            href="/email/new"
+            className="text-sm bg-primary hover:opacity-90 text-primary-foreground rounded-full px-4 py-2 font-bold"
+          >
+            New blast
+          </Link>
         </div>
-        <Link
-          href="/email/new"
-          className="text-sm bg-primary hover:opacity-90 text-primary-foreground rounded-full px-4 py-2 font-bold"
-        >
-          New blast
-        </Link>
       </div>
 
       {error && (

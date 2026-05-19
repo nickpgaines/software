@@ -25,19 +25,23 @@ type NavItem = {
   icon: string;
   href: string;
   section: string;
+  // Optional extra path prefixes that should also mark this row active.
+  // Inbox uses this so /messages, /calls, /email all highlight the row.
+  matchPrefixes?: string[];
 };
 
 const NAV: NavItem[] = [
   { name: "Dashboard", icon: "home", href: "/", section: "Workspace" },
   { name: "Schedule", icon: "calendar", href: "/schedule", section: "Workspace" },
+  {
+    name: "Inbox",
+    icon: "message",
+    href: "/messages",
+    section: "Workspace",
+    matchPrefixes: ["/calls", "/email"],
+  },
   { name: "Map", icon: "map", href: "/map", section: "Workspace" },
-  { name: "Leads", icon: "inbox", href: "/leads", section: "Pipeline" },
-  { name: "Estimates", icon: "doc", href: "/estimates/new", section: "Pipeline" },
-  { name: "Invoices", icon: "wallet", href: "/invoices/new", section: "Pipeline" },
-  { name: "Subscriptions", icon: "cart", href: "/subscriptions/new", section: "Pipeline" },
-  { name: "Messages", icon: "message", href: "/messages", section: "Inbox" },
-  { name: "Calls", icon: "phone", href: "/calls", section: "Inbox" },
-  { name: "Email", icon: "mail", href: "/email", section: "Inbox" },
+  { name: "Leads", icon: "inbox", href: "/leads", section: "Workspace" },
   { name: "Reports", icon: "chart", href: "/reports", section: "Insights" },
   { name: "Leaderboard", icon: "trophy", href: "/leaderboard", section: "Insights" },
   { name: "Customers", icon: "user", href: "/customers", section: "Team" },
@@ -53,7 +57,7 @@ const NEW_ITEMS = [
   { key: "customer", label: "Customer", href: "/customers?new=1" },
 ];
 
-const SECTIONS = ["Workspace", "Pipeline", "Inbox", "Insights", "Team"];
+const SECTIONS = ["Workspace", "Insights", "Team"];
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/);
@@ -234,7 +238,10 @@ function PulseNavRow({
   pathname: string | null;
 }) {
   const active =
-    item.href === "/" ? pathname === "/" : pathname?.startsWith(item.href) ?? false;
+    item.href === "/"
+      ? pathname === "/"
+      : (pathname?.startsWith(item.href) ?? false) ||
+        (item.matchPrefixes?.some((p) => pathname?.startsWith(p)) ?? false);
   const baseRow =
     "flex items-center gap-3 px-3 py-2 rounded-lg text-[13.5px] transition-colors";
 

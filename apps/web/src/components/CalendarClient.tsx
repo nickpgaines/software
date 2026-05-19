@@ -406,7 +406,7 @@ export default function CalendarClient() {
   }, [view, cursor]);
 
   return (
-    <div className="h-[100dvh] flex flex-col overflow-hidden">
+    <div className="h-[calc(100dvh-4.5rem-env(safe-area-inset-bottom))] md:h-[100dvh] flex flex-col overflow-hidden">
       <div className="px-6 py-4 flex items-center justify-between gap-3 flex-wrap border-b border-line shrink-0">
         <div className="flex items-center gap-2 flex-wrap">
           <Button

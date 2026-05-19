@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import InboxTabs from "@/components/InboxTabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -99,20 +100,20 @@ export default function MessagesClient() {
     conversations.find((c) => c.id === selectedId) || null;
 
   return (
-    <div className="flex bg-card overflow-hidden h-[100dvh]">
+    <div className="flex bg-card overflow-hidden h-[calc(100dvh-4.5rem-env(safe-area-inset-bottom))] md:h-[100dvh]">
       <aside
         className={
           "w-full md:w-80 shrink-0 border-r border-line flex-col " +
           (selected ? "hidden md:flex" : "flex")
         }
       >
-        <div className="pl-16 pr-4 pt-4 pb-3 flex items-center justify-between md:pl-4">
-          <h2 className="text-lg font-extrabold text-white tracking-tight">Messages</h2>
+        <div className="px-4 pt-4 pb-3 flex items-center justify-between gap-2">
+          <InboxTabs />
           <Button
             type="button"
             variant="ghost"
             title="Compose"
-            className="w-8 h-8 p-0 rounded-full hover:bg-black text-zinc-400"
+            className="w-8 h-8 p-0 rounded-full hover:bg-black text-zinc-400 shrink-0"
           >
             <svg
               className="w-4 h-4"
@@ -333,7 +334,7 @@ function Thread({
 
   return (
     <>
-      <header className="pl-16 pr-5 py-3 border-b border-line flex items-center gap-3 md:pl-5">
+      <header className="px-5 py-3 border-b border-line flex items-center gap-3">
         <Button
           type="button"
           variant="ghost"
@@ -439,7 +440,7 @@ function Thread({
         )}
         <form
           onSubmit={send}
-          className="px-4 pt-3 pb-[calc(0.75rem+var(--safe-bottom))] md:pb-3 flex items-center gap-2"
+          className="px-4 pt-3 pb-3 flex items-center gap-2"
         >
           <Button
             type="button"

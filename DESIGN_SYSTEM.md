@@ -576,7 +576,7 @@ Defined: `Sidebar.tsx:63-235`. Used: `(app)/layout.tsx:12`.
 
 1. Brand row — `Sidebar.tsx:110-120` — `px-2 mb-1`, 9×9 placeholder square + 15px font-extrabold `Forge CRM` text
 2. `+ New` button — `Sidebar.tsx:122-159` — full width, h-10, violet bg with violet glow, dropdown menu of `NEW_ITEMS` (`Sidebar.tsx:46-52`)
-3. Nav list — `Sidebar.tsx:162-182` — sectioned (`Workspace`, `Pipeline`, `Inbox`, `Insights`, `Team`); each section header is `Sidebar.tsx:168-173`, each row is `PulseNavRow` (`Sidebar.tsx:222-263`)
+3. Nav list — `Sidebar.tsx:162-182` — sectioned (`Workspace`, `Insights`, `Team`); each section header is `Sidebar.tsx:168-173`, each row is `PulseNavRow` (`Sidebar.tsx:222-263`). The **Inbox** row uses an optional `matchPrefixes` array to also highlight on `/calls` and `/email` since those are sub-tabs inside the unified Inbox surface (see `InboxTabs`). Create-button shortcuts (Estimates, Invoices, Subscriptions) intentionally do **not** appear in the sidebar — they're accessible only via the `+ Create` dropdown, since the sidebar entries used to be pure duplicates of the Create flow.
 4. Profile + sign out — `Sidebar.tsx:185-218` — top-bordered (1px `PULSE.divider`); 7×7 avatar with photo or initials (`Sidebar.tsx:187-201`); name (`Sidebar.tsx:202-207`); sign-out button (`Sidebar.tsx:209-217`)
 
 **Active nav row** — `Sidebar.tsx:241-253`:
@@ -1231,14 +1231,17 @@ need the same combo (e.g., subscriptions, leads) compose
 `<PrivateNotesSection>` rather than rebuilding the textarea + file
 buttons inline.
 
-### 8.20 `MobileNavShell` + `MobileMenuButton`
+### 8.20 `MobileNavShell` + `MobileBottomNav`
 
-Defined: `components/MobileNavShell.tsx`. Used: `(app)/layout.tsx`.
+Defined: `components/MobileNavShell.tsx`, `components/MobileBottomNav.tsx`.
+Used: `(app)/layout.tsx`, `app/map/layout.tsx`.
 
-The mobile-responsive shell that turns `PulseSidebar` into a slide-out
-drawer at viewports narrower than `md` (768px). Desktop behavior is
-unchanged — at `md:` and up, the sidebar is fixed-visible exactly as
-documented in §8.1 and the menu button is hidden.
+The mobile-responsive shell. On viewports narrower than `md` (768px),
+`PulseSidebar` becomes a slide-out drawer triggered by the "More" tab on
+`MobileBottomNav`; the five most-used destinations sit in the bottom
+nav. Desktop behavior is unchanged — at `md:` and up, the sidebar is
+fixed-visible exactly as documented in §8.1 and the bottom nav is
+hidden.
 
 **Components:**
 
@@ -1248,21 +1251,29 @@ documented in §8.1 and the menu button is hidden.
    doesn't scroll. Renders the dim backdrop (`bg-black/60`, z-30,
    `md:hidden`) when open; tapping the backdrop closes the drawer.
 
-2. `MobileMenuButton` — floating round button, `top-4 left-4`, z-50,
-   `w-11 h-11`, `bg-card border border-line`, three-line hamburger
-   icon. `md:hidden`. Toggles the shell state.
+2. `MobileBottomNav` — fixed-bottom tab bar, `md:hidden`, z-30,
+   `bg-sidebar` with `border-t border-divider` and bottom padding of
+   `env(safe-area-inset-bottom)` so it clears the iOS home indicator.
+   Five evenly-spaced tabs: **Home** (`/`), **Schedule** (`/schedule`),
+   **Inbox** (`/messages` — also active on `/calls` and `/email`),
+   **Map** (`/map`), and **More**. Each tab is `PulseIcon` (w-5 h-5)
+   stacked over a 10px label. The "More" tab is a `<button>` (not a
+   link) that toggles the drawer via `useMobileNav()`; the other four
+   are `<Link>`s that close the drawer on tap. Active state pulls
+   `PULSE.text` (white in dark mode); idle pulls `PULSE.textMuted`.
 
 **Sidebar transform** — `PulseSidebar` reads `useMobileNav()` and
 applies `-translate-x-full` by default plus `md:translate-x-0`
-(unconditionally on desktop). When `open` is true, the mobile class
-flips to `translate-x-0` and the sidebar slides in over the page. All
-nav links remain `<Link href>`s; route change closes the drawer via the
-context's pathname effect.
+(unconditionally on desktop). When `open` is true (the "More" tab is
+tapped) the mobile class flips to `translate-x-0` and the sidebar
+slides in over the page. All nav links remain `<Link href>`s; route
+change closes the drawer via the context's pathname effect.
 
 **AppFrame margin** — drops the `ml-60` on mobile (`md:ml-60`), so the
-main content fills the screen when the sidebar is off-canvas. Centered
-container padding shrinks too: `px-4 pt-20 pb-8 md:px-10 md:py-10`. The
-`pt-20` reserves space for the floating menu button.
+main content fills the screen on phones. Centered container padding:
+`px-4 pt-6 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:px-10
+md:py-10`. The mobile bottom padding clears the bottom nav (~72px + safe
+area); desktop reverts to `md:py-10`.
 
 **`PageHeader` responsive treatment** — title is `text-[32px]` on
 mobile, `text-[48px]` at `md:` and up. The `actions` slot is
@@ -1270,9 +1281,14 @@ mobile, `text-[48px]` at `md:` and up. The `actions` slot is
 288px-wide search bar) don't fit on a phone. Pages that need a
 primary mobile action should render it inline in the page body.
 
-**Full-bleed pages** (`/schedule`, `/messages`, `/map`) — these still
-opt out of `AppFrame`'s container padding. They are responsible for
-adding their own mobile top padding to avoid the floating menu button.
+**Full-bleed pages** (`/schedule`, `/messages`, `/map`) — these opt out
+of `AppFrame`'s container padding. To clear the bottom nav, the two
+`h-[100dvh]` surfaces (`CalendarClient`, `MessagesClient`) shrink
+their height on mobile via
+`h-[calc(100dvh-4.5rem-env(safe-area-inset-bottom))] md:h-[100dvh]`.
+The map page lets its full-bleed map slide under the nav (the bottom
+nav floats over the map surface; this matches Apple Maps / Google Maps
+mobile behavior).
 
 ---
 
@@ -1486,6 +1502,7 @@ those pages move onto Pulse primitives.
 | 26  | `LeadSourceField` (§8.18) extracted as the canonical Lead Source control. `JobForm` rendered the sales-rep `StaffSinglePicker` plus an `Online`/`Direct`/`Other` checkbox toggle group; `NewInvoiceForm` and `NewEstimateForm` instead rendered a native `<select>` with a longer, drifted list of strings ("Referral", "Door-to-door", "Repeat customer", plus an overlapping "Online" / "Other"). All three now render the JobForm-style widget through `<LeadSourceField>`. The longer invoice/estimate `LEAD_SOURCES` array has been retired in favor of the three-value `LEAD_METHODS` constant exported from the primitive; the sales rep itself is now captured via `salesId` and persisted to `invoices.sold_by_id` / `estimates.sold_by_id` (the columns already existed in the schema; an `alterAddColumn` was added so existing DBs gain them). The `StaffSinglePicker` and `StaffMultiPicker` components were moved out of `JobForm.tsx` into `components/forms/StaffPickers.tsx` (§8.17) so the primitive can import them without a circular dep; `JobForm.tsx` re-exports both plus the `Staff` type for the existing `JobDetailClient` import path. | §8.17, §8.18      | (this commit) |
 | 28  | Mobile viewport locked and multi-tab navs migrated to a locally-scrollable strip (§9.6). The root `Viewport` export adds `maximumScale: 1, minimumScale: 1, userScalable: false` so pinch-zoom is disabled app-wide; the shared `<main>` in `components/AppFrame.tsx` carries `overflow-x-hidden` so no page can side-scroll. A `.scrollbar-none` utility was added to `globals.css`. Every multi-tab nav was migrated to the new pattern (underline: `nav` gets `overflow-x-auto scrollbar-none` + each tab `whitespace-nowrap`; pill: the capsule is wrapped in `overflow-x-auto scrollbar-none max-w-full` and the inner `flex` becomes `inline-flex` so the capsule keeps its natural width). Call sites: `ReportsClient.tsx` (Overview/Sales/Jobs/Subscriptions/Employees/Payroll tabs + `RangePills`), `SettingsTabs.tsx` (10-section underline strip), `LeadsTabs.tsx` (router-link pills), `LeadsWorkflowsClient.tsx` (Workflows/Logs pills), `CalendarClient.tsx` (Day/Week/Month/Agenda/Map view picker), `LeaderboardClient.tsx` (Sales/Tech pills), `RevenueChart.tsx` (dashboard range pills). Recommendation Homebase-style over Flyra-style dropdown: one-tap switching, edge-cut tab as discovery cue, no new primitive needed. The per-`/reports` page-level `Viewport` export added in the earlier scorecard PR was removed since the root now covers it. | §9.6             | (this commit) |
 | 27  | `PrivateNotesSection` (§8.19) extracted as the canonical "notes + attachments" widget on the Jobs create form. The form previously rendered two adjacent `Section`s: a "Notes" `Textarea` and a separate "Attachments" `Section` whose `Dropzone` was a UI placeholder with no upload backend. The two are now a single "Private Notes" card matching the invoice/estimate Private Notes naming, with the `Textarea` on top and a dashed-border `Add Attachment` / `Add Voice Memo` button row beneath. `Add Voice Memo` records via the browser `MediaRecorder` API; attachments and recordings are uploaded to a new `/api/jobs/[id]/attachments` endpoint after the parent job is created. Storage is interim: data URLs land in a new `job_attachments` libSQL table (5 MB cap per attachment, enforced both client- and server-side); the agreed migration to Vercel Blob will swap the column for a remote URL without changing the component's contract. The retired `Dropzone` placeholder was deleted. The Jobs detail page gained an `AttachmentsSection` that lists previously uploaded attachments inline (with native `<audio controls>` playback for voice memos and image thumbnails for screenshots) and exposes the same upload + record buttons for ad-hoc additions. | §8.19            | (this commit) |
+| 29  | Mobile navigation switched from a floating hamburger (`MobileMenuButton`) to a fixed bottom tab bar (`MobileBottomNav`, §8.20). The hamburger overlapped page titles at the top of every mobile screen; the bottom bar removes that overlap and matches the iOS/Android native pattern. **Five tabs**, mirrored 1:1 between mobile (bottom bar) and desktop (sidebar Workspace section): Home / Schedule / Inbox / Map / More. The "More" tab opens the existing `PulseSidebar` drawer (everything in §8.1 still lives there). Messages / Calls / Email collapsed into a single **Inbox** surface routed via `InboxTabs` — a router-link pill strip matching the §10 #22 pattern, with `/messages` as the default tab. `InboxTabs` is composed inline into `MessagesClient`, `CallsClient`, and `EmailListClient` (each page's own h1/h2 swapped for an "Inbox" title + tab strip). Sidebar entries for Estimates, Invoices, and Subscriptions were removed — they were pure shortcuts to the `+ Create` dropdown, not management surfaces, so the duplication was cut; `NEW_ITEMS` in `Sidebar.tsx` still exposes all three under Create. `MobileMenuButton` was deleted from `MobileNavShell.tsx`. `AppFrame` mobile padding changed from `pt-20 pb-[calc(1rem+var(--safe-bottom))]` (top space for hamburger, safe-area bottom) to `pt-6 pb-[calc(4.5rem+env(safe-area-inset-bottom))]` (no hamburger; bottom-nav clearance). Two full-bleed surfaces (`CalendarClient`, `MessagesClient`) shrink their `h-[100dvh]` to `h-[calc(100dvh-4.5rem-env(safe-area-inset-bottom))] md:h-[100dvh]` so their content sits above the bottom nav; the map page lets its full-bleed map slide under the nav. | §8.1, §8.20      | (this commit) |
 | 23  | Existing surfaces migrated onto the §8.14 / §8.15 shadcn primitives across 11 batches. **Files touched (alphabetical):** `app/(app)/customers/page.tsx`, `app/(app)/employees/page.tsx`, `app/invoices/pay/[token]/PayClient.tsx`, `app/login/page.tsx`, `app/signup/page.tsx`, `components/CalendarClient.tsx`, `components/CallsClient.tsx`, `components/customers/AddressFields.tsx`, `components/customers/ImportModal.tsx`, `components/EmailAutomationEditClient.tsx`, `components/EmailComposeClient.tsx`, `components/EmailDetailClient.tsx`, `components/EmailListClient.tsx`, `components/EmployeeForm.tsx`, `components/EmployeeSchedulingModal.tsx`, `components/JobDetailClient.tsx`, `components/JobForm.tsx`, `components/jobs/CustomerCard.tsx`, `components/jobs/PaymentsSection.tsx`, `components/jobs/RecordPaymentModal.tsx`, `components/LeaderboardClient.tsx`, `components/LeadsFormsClient.tsx`, `components/LeadsIntegrationsClient.tsx`, `components/LeadsPipelineClient.tsx`, `components/LeadsWorkflowsClient.tsx`, `components/MapDoorKnockSheet.tsx`, `components/MapFilterPanel.tsx`, `components/MapIconStrip.tsx`, `components/MapLassoPanel.tsx`, `components/MapPinDropModal.tsx`, `components/MapTerritoryListPanel.tsx`, `components/MapTerritoryModal.tsx`, `components/MessagesClient.tsx`, `components/NavBar.tsx`, `components/NewEstimateForm.tsx`, `components/NewInvoiceForm.tsx`, `components/NewMenu.tsx`, `components/NewSprintModal.tsx`, `components/NewSubscriptionForm.tsx`, `components/PayrollSettingsModal.tsx`, `components/PhoneClient.tsx`, `components/ReportsClient.tsx`, `components/SettingsTabs.tsx`, `components/StaffScorecardModal.tsx`. **Scope:** Native `<button>` → `Button`, `<input>` (text/email/tel/password/number/file/date/search) → `Input`, `<input type="checkbox">` → `Checkbox` (with `onChange` → `onCheckedChange` adaptation), `<textarea>` → `Textarea`, `<label>` → `Label`, `<table>`/`<thead>`/`<tbody>`/`<tr>`/`<th>`/`<td>` → `Table`/`TableHeader`/`TableBody`/`TableRow`/`TableHead`/`TableCell`. `NewMenu.tsx`'s hand-rolled `+ New` dropdown rewritten using `DropdownMenu` (the only `DropdownMenu` adoption in the migration). Status chips/pills migrated to `Badge` only on `CallsClient` and `EmailListClient`; other inline status spans left as-is. Toggle-switch buttons (the slider+thumb pattern used in 8+ places) migrated to `Button variant="ghost"` with `bg-X hover:bg-X` to lock active/inactive colors against ghost's default `hover:bg-elevated`. **Cross-cutting deferred items (kept native everywhere with inline comments):** (1) all `<select>` elements — Radix `Select` forbids empty-string item values, which would break the "All" / "Select…" sentinel patterns used for clearable filter state; (2) all `<input type="radio">` — no Radio primitive in `components/ui/` yet; (3) the `Tabs` primitive — underline-style tab nav (Reports/Settings) and router-link tabs (#22) don't fit its pill model, so each tab `<button>` is a `Button variant="ghost"` swap instead; (4) the `Dialog` primitive — every `fixed inset-0` modal wrapper kept hand-rolled, only the controls inside were migrated; (5) MapDoorKnockSheet's bottom-sheet wrapper kept hand-rolled (Dialog is centered-modal only); (6) calendar/scheduling grid cells (`CalendarClient` MonthView day cells, `EmployeeSchedulingModal` per-staff per-day shift cells) kept native with their custom grid styling; (7) Pulse-adjacent dashboard widgets (`TodaySchedule`, `SprintWidget`, `RevenueChart`) and the dashboard `(app)/page.tsx` button skipped — those are domain components or already on spec; (8) `MapClient.tsx` not modified — its only `<button` matches were inside Mapbox popup `innerHTML` strings, not React JSX; (9) `<a>` / `<Link>` elements left as anchors throughout. Auth (login, signup, NavBar) and Stripe-adjacent surfaces (Settings → Payments/Subscriptions/Messaging/Calling/AI, NewInvoiceForm, NewSubscriptionForm, PayClient, PaymentsSection, RecordPaymentModal) migrated as visual-only swaps with zero changes to logic, validation, API call sites, or copy. Per-batch commits: `4196239` (Messages/Calls/Phone), `8502ded` (Email), `3ae032a` (Reports/Leaderboard/Calendar), `de7f916` (Leads), `4b6eaa6` (Map), `fdcaca2` (Customers), `65442d7` (Employees/Payroll), `5f0b787` (Auth/Misc), `d43ab99` (Settings), `7516c4d` (big forms — JobForm/NewEstimate/NewInvoice/NewSubscription/NewSprint), `0587d3a` (Jobs subfolder + JobDetail + NewMenu). | §8.14, §8.15     | (see commits in description) |
 
 ### Ongoing drift policy
