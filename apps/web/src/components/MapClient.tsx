@@ -26,11 +26,10 @@ const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 const SATELLITE_STYLE = "mapbox://styles/mapbox/satellite-streets-v12";
 const STREETS_STYLE = "mapbox://styles/mapbox/streets-v12";
 
-// Long-press to drop a pin: ~750ms feels intentional without being sluggish.
-// OS defaults are ~500ms (iOS/Android) but those fire on top of native
-// scroll/zoom suppression — on a map canvas we need a longer threshold so
-// pan/zoom gestures don't race the timer.
-const HOLD_MS = 750;
+// 500ms matches iOS/Android/Google Maps/Apple Maps long-press defaults.
+// Safe at this duration because every map gesture (drag, wheel/pinch zoom,
+// rotate, pitch, multi-touch) cancels the timer below.
+const HOLD_MS = 500;
 // Touch fingers wiggle; 5px was firing during normal taps. 12px matches the
 // slop most native gesture recognizers use to distinguish a press from a drag.
 const MOVE_THRESHOLD_PX = 12;
