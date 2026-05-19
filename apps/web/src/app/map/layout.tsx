@@ -1,9 +1,7 @@
 import { PulseSidebar } from "@/components/pulse/Sidebar";
 import { PULSE } from "@/components/pulse/theme";
-import {
-  MobileMenuButton,
-  MobileNavShell,
-} from "@/components/MobileNavShell";
+import MobileBottomNav from "@/components/MobileBottomNav";
+import { MobileNavShell } from "@/components/MobileNavShell";
 
 export default function MapLayout({
   children,
@@ -17,11 +15,11 @@ export default function MapLayout({
         style={{ background: PULSE.bg, color: PULSE.text }}
       >
         <PulseSidebar />
-        <MobileMenuButton />
         {/* Map is full-bleed (no max-width container) so it can fill the
             viewport beside the sidebar on desktop and fill the screen on
             mobile. */}
         <main className="md:ml-60">{children}</main>
+        <MobileBottomNav />
       </div>
     </MobileNavShell>
   );

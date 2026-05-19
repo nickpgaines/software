@@ -53,32 +53,3 @@ export function MobileNavShell({ children }: { children: React.ReactNode }) {
   );
 }
 
-// Floating hamburger button — visible on mobile only, top-left of viewport.
-export function MobileMenuButton() {
-  const { open, setOpen } = useMobileNav();
-  return (
-    <button
-      type="button"
-      onClick={() => setOpen(!open)}
-      aria-label={open ? "Close menu" : "Open menu"}
-      aria-expanded={open}
-      className="md:hidden fixed left-4 z-50 w-11 h-11 rounded-full flex items-center justify-center bg-card border border-line text-fg"
-      style={{ top: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}
-    >
-      <svg
-        width="20"
-        height="20"
-        viewBox="0 0 24 24"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.25"
-        strokeLinecap="round"
-        aria-hidden
-      >
-        <line x1="4" y1="7" x2="20" y2="7" />
-        <line x1="4" y1="12" x2="20" y2="12" />
-        <line x1="4" y1="17" x2="20" y2="17" />
-      </svg>
-    </button>
-  );
-}

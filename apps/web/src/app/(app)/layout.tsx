@@ -3,10 +3,8 @@ import { PulseSidebar } from "@/components/pulse/Sidebar";
 import { PULSE } from "@/components/pulse/theme";
 import SmsWelcomeModal from "@/components/SmsWelcomeModal";
 import { AppFrame } from "@/components/AppFrame";
-import {
-  MobileMenuButton,
-  MobileNavShell,
-} from "@/components/MobileNavShell";
+import MobileBottomNav from "@/components/MobileBottomNav";
+import { MobileNavShell } from "@/components/MobileNavShell";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -17,8 +15,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           style={{ background: PULSE.bg, color: PULSE.text }}
         >
           <PulseSidebar />
-          <MobileMenuButton />
           <AppFrame>{children}</AppFrame>
+          <MobileBottomNav />
           <SmsWelcomeModal />
         </div>
       </MobileNavShell>
