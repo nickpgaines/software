@@ -142,10 +142,12 @@ export async function POST(req: Request) {
     return new NextResponse("Missing required params", { status: 400 });
   }
 
-  // Verify signature. Path 1 (master account): every platform-managed send
-  // (trial pool + dedicated) comes from the master account, so the master
-  // auth token signs the webhook. Path 2 (legacy BYO): the AccountSid is
-  // a tenant's own, so we look up their auth token to verify.
+  // Verify signature against the right auth token for this AccountSid.
+  //   1. Master account → trial pool sends. Master auth token signs.
+  //   2. Tenant subaccount → tenant's dedicated number. Subaccount auth
+  //      token signs; we look it up on the company row.
+  //   3. Legacy BYO → tenant's own external Twilio account. Auth token
+  //      lives in messaging_settings.
   const signature = req.headers.get("x-twilio-signature") || "";
   const url = buildPublicUrl(req);
   let signatureValid = false;
@@ -158,18 +160,41 @@ export async function POST(req: Request) {
     });
   } else {
     const db = await getDb();
-    const settings = (await db
-      .prepare("SELECT * FROM messaging_settings WHERE account_sid = ? LIMIT 1")
+    const subaccount = (await db
+      .prepare(
+        "SELECT twilio_subaccount_auth_token FROM company WHERE twilio_subaccount_sid = ? LIMIT 1"
+      )
       .get(accountSid)) as
-      | { auth_token: string | null; company_id: number }
+      | { twilio_subaccount_auth_token: string | null }
       | undefined;
-    if (settings && settings.auth_token && isMessagingConfigured(settings as never)) {
+    if (subaccount?.twilio_subaccount_auth_token) {
       signatureValid = verifyTwilioSignature({
-        authToken: settings.auth_token,
+        authToken: subaccount.twilio_subaccount_auth_token,
         url,
         params,
         signature,
       });
+    }
+    if (!signatureValid) {
+      const settings = (await db
+        .prepare(
+          "SELECT * FROM messaging_settings WHERE account_sid = ? LIMIT 1"
+        )
+        .get(accountSid)) as
+        | { auth_token: string | null; company_id: number }
+        | undefined;
+      if (
+        settings &&
+        settings.auth_token &&
+        isMessagingConfigured(settings as never)
+      ) {
+        signatureValid = verifyTwilioSignature({
+          authToken: settings.auth_token,
+          url,
+          params,
+          signature,
+        });
+      }
     }
   }
   if (!signatureValid) {

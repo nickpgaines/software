@@ -1,34 +1,34 @@
-// Twilio Trust Hub + Messaging API client. Every call here hits the master
-// account credentials — every tenant's A2P 10DLC resources are owned by the
-// platform account, not subaccounts. The orchestrator in lib/sms-registration
-// drives the state machine; this file is the dumb HTTP layer.
+// Twilio Trust Hub + Messaging API client. Every call accepts an explicit
+// `creds` argument — for per-tenant resources we pass that tenant's
+// subaccount credentials, for the trial pool we pass master. This matches
+// Twilio's ISV guidance: each customer lives inside their own subaccount
+// container, with their own Auth Token signing webhooks back to us.
 //
 // All resource creation is idempotent at the orchestrator level: we persist
 // each returned SID onto the company row before moving to the next step, and
 // re-running the orchestrator skips any step whose SID is already stored.
 
-import { getPlatformConfig } from "@/lib/twilio-platform";
-
 const TRUST_HUB_BASE = "https://trusthub.twilio.com";
 const MESSAGING_BASE = "https://messaging.twilio.com";
 const API_BASE = "https://api.twilio.com";
-const NUMBERS_BASE = "https://numbers.twilio.com";
 
 const POLICY_SECONDARY_CUSTOMER_PROFILE = "RNdfbf3fae0e1107f8aded0e7cead80bf5";
 const POLICY_A2P_TRUST_PRODUCT = "RNb0d4771c2c98518d916a3d4cd70a8f8b";
 
-function masterAuthHeader(): string {
-  const cfg = getPlatformConfig();
-  if (!cfg) throw new Error("Platform Twilio is not configured");
+export type TwilioCreds = {
+  accountSid: string;
+  authToken: string;
+};
+
+function authHeader(creds: TwilioCreds): string {
   return (
     "Basic " +
-    Buffer.from(`${cfg.masterAccountSid}:${cfg.masterAuthToken}`).toString(
-      "base64"
-    )
+    Buffer.from(`${creds.accountSid}:${creds.authToken}`).toString("base64")
   );
 }
 
 async function twilioRequest<T>(
+  creds: TwilioCreds,
   method: "GET" | "POST",
   url: string,
   form?: Record<string, string | string[] | undefined>
@@ -38,7 +38,7 @@ async function twilioRequest<T>(
   const res = await fetch(url, {
     method,
     headers: {
-      Authorization: masterAuthHeader(),
+      Authorization: authHeader(creds),
       ...(body
         ? { "Content-Type": "application/x-www-form-urlencoded" }
         : {}),
@@ -75,6 +75,32 @@ function buildForm(
   return out;
 }
 
+// ----- Subaccount lifecycle (called with master creds) -----
+
+export type SubaccountResource = {
+  sid: string;
+  auth_token: string;
+  friendly_name: string;
+  status: string;
+};
+
+// Create a Twilio subaccount under the master account. The Auth Token in
+// the response is the ONLY chance to capture the subaccount's signing
+// secret — Twilio does not return it on subsequent fetches.
+export async function createSubaccount(args: {
+  masterCreds: TwilioCreds;
+  friendlyName: string;
+}): Promise<SubaccountResource> {
+  return twilioRequest<SubaccountResource>(
+    args.masterCreds,
+    "POST",
+    `${API_BASE}/2010-04-01/Accounts.json`,
+    { FriendlyName: args.friendlyName.slice(0, 64) }
+  );
+}
+
+// ----- Trust Hub resources (called with tenant subaccount creds) -----
+
 export type CustomerProfileResource = {
   sid: string;
   status: string;
@@ -83,11 +109,13 @@ export type CustomerProfileResource = {
 };
 
 export async function createSecondaryCustomerProfile(args: {
+  creds: TwilioCreds;
   friendlyName: string;
   email: string;
   statusCallback: string | null;
 }): Promise<CustomerProfileResource> {
   return twilioRequest<CustomerProfileResource>(
+    args.creds,
     "POST",
     `${TRUST_HUB_BASE}/v1/CustomerProfiles`,
     {
@@ -99,21 +127,25 @@ export async function createSecondaryCustomerProfile(args: {
   );
 }
 
-export async function fetchCustomerProfile(
-  sid: string
-): Promise<CustomerProfileResource> {
+export async function fetchCustomerProfile(args: {
+  creds: TwilioCreds;
+  sid: string;
+}): Promise<CustomerProfileResource> {
   return twilioRequest<CustomerProfileResource>(
+    args.creds,
     "GET",
-    `${TRUST_HUB_BASE}/v1/CustomerProfiles/${encodeURIComponent(sid)}`
+    `${TRUST_HUB_BASE}/v1/CustomerProfiles/${encodeURIComponent(args.sid)}`
   );
 }
 
-export async function submitCustomerProfile(
-  sid: string
-): Promise<CustomerProfileResource> {
+export async function submitCustomerProfile(args: {
+  creds: TwilioCreds;
+  sid: string;
+}): Promise<CustomerProfileResource> {
   return twilioRequest<CustomerProfileResource>(
+    args.creds,
     "POST",
-    `${TRUST_HUB_BASE}/v1/CustomerProfiles/${encodeURIComponent(sid)}`,
+    `${TRUST_HUB_BASE}/v1/CustomerProfiles/${encodeURIComponent(args.sid)}`,
     { Status: "pending-review" }
   );
 }
@@ -121,6 +153,7 @@ export async function submitCustomerProfile(
 export type EndUserResource = { sid: string; type: string };
 
 export async function createBusinessInformationEndUser(args: {
+  creds: TwilioCreds;
   friendlyName: string;
   legalCompanyName: string;
   ein: string;
@@ -130,6 +163,7 @@ export async function createBusinessInformationEndUser(args: {
   description: string;
 }): Promise<EndUserResource> {
   return twilioRequest<EndUserResource>(
+    args.creds,
     "POST",
     `${TRUST_HUB_BASE}/v1/EndUsers`,
     {
@@ -151,6 +185,7 @@ export async function createBusinessInformationEndUser(args: {
 }
 
 export async function createAuthorizedRepEndUser(args: {
+  creds: TwilioCreds;
   friendlyName: string;
   firstName: string;
   lastName: string;
@@ -160,6 +195,7 @@ export async function createAuthorizedRepEndUser(args: {
   businessTitle: string;
 }): Promise<EndUserResource> {
   return twilioRequest<EndUserResource>(
+    args.creds,
     "POST",
     `${TRUST_HUB_BASE}/v1/EndUsers`,
     {
@@ -180,6 +216,7 @@ export async function createAuthorizedRepEndUser(args: {
 export type AddressResource = { sid: string };
 
 export async function createAddress(args: {
+  creds: TwilioCreds;
   customerName: string;
   street: string;
   street2: string | null;
@@ -188,12 +225,11 @@ export async function createAddress(args: {
   postalCode: string;
   isoCountry: string;
 }): Promise<AddressResource> {
-  const cfg = getPlatformConfig();
-  if (!cfg) throw new Error("Platform Twilio is not configured");
   return twilioRequest<AddressResource>(
+    args.creds,
     "POST",
     `${API_BASE}/2010-04-01/Accounts/${encodeURIComponent(
-      cfg.masterAccountSid
+      args.creds.accountSid
     )}/Addresses.json`,
     {
       CustomerName: args.customerName,
@@ -208,10 +244,12 @@ export async function createAddress(args: {
 }
 
 export async function attachToCustomerProfile(args: {
+  creds: TwilioCreds;
   customerProfileSid: string;
   objectSid: string;
 }): Promise<void> {
   await twilioRequest<unknown>(
+    args.creds,
     "POST",
     `${TRUST_HUB_BASE}/v1/CustomerProfiles/${encodeURIComponent(
       args.customerProfileSid
@@ -223,11 +261,13 @@ export async function attachToCustomerProfile(args: {
 export type TrustProductResource = { sid: string; status: string };
 
 export async function createA2pTrustProduct(args: {
+  creds: TwilioCreds;
   friendlyName: string;
   email: string;
   statusCallback: string | null;
 }): Promise<TrustProductResource> {
   return twilioRequest<TrustProductResource>(
+    args.creds,
     "POST",
     `${TRUST_HUB_BASE}/v1/TrustProducts`,
     {
@@ -239,20 +279,24 @@ export async function createA2pTrustProduct(args: {
   );
 }
 
-export async function fetchTrustProduct(
-  sid: string
-): Promise<TrustProductResource> {
+export async function fetchTrustProduct(args: {
+  creds: TwilioCreds;
+  sid: string;
+}): Promise<TrustProductResource> {
   return twilioRequest<TrustProductResource>(
+    args.creds,
     "GET",
-    `${TRUST_HUB_BASE}/v1/TrustProducts/${encodeURIComponent(sid)}`
+    `${TRUST_HUB_BASE}/v1/TrustProducts/${encodeURIComponent(args.sid)}`
   );
 }
 
 export async function attachToTrustProduct(args: {
+  creds: TwilioCreds;
   trustProductSid: string;
   objectSid: string;
 }): Promise<void> {
   await twilioRequest<unknown>(
+    args.creds,
     "POST",
     `${TRUST_HUB_BASE}/v1/TrustProducts/${encodeURIComponent(
       args.trustProductSid
@@ -262,12 +306,14 @@ export async function attachToTrustProduct(args: {
 }
 
 export async function attachA2pProfileInfoEndUser(args: {
+  creds: TwilioCreds;
   trustProductSid: string;
   companyType: string;
   stockExchange: string | null;
   stockTicker: string | null;
 }): Promise<EndUserResource> {
   const endUser = await twilioRequest<EndUserResource>(
+    args.creds,
     "POST",
     `${TRUST_HUB_BASE}/v1/EndUsers`,
     {
@@ -281,18 +327,21 @@ export async function attachA2pProfileInfoEndUser(args: {
     }
   );
   await attachToTrustProduct({
+    creds: args.creds,
     trustProductSid: args.trustProductSid,
     objectSid: endUser.sid,
   });
   return endUser;
 }
 
-export async function submitTrustProduct(
-  sid: string
-): Promise<TrustProductResource> {
+export async function submitTrustProduct(args: {
+  creds: TwilioCreds;
+  sid: string;
+}): Promise<TrustProductResource> {
   return twilioRequest<TrustProductResource>(
+    args.creds,
     "POST",
-    `${TRUST_HUB_BASE}/v1/TrustProducts/${encodeURIComponent(sid)}`,
+    `${TRUST_HUB_BASE}/v1/TrustProducts/${encodeURIComponent(args.sid)}`,
     { Status: "pending-review" }
   );
 }
@@ -304,12 +353,14 @@ export type BrandRegistrationResource = {
 };
 
 export async function createBrandRegistration(args: {
+  creds: TwilioCreds;
   customerProfileSid: string;
   trustProductSid: string;
   brandType: "STANDARD" | "SOLE_PROPRIETOR";
   skipAutomaticSecondaryVetting: boolean;
 }): Promise<BrandRegistrationResource> {
   return twilioRequest<BrandRegistrationResource>(
+    args.creds,
     "POST",
     `${MESSAGING_BASE}/v1/a2p/BrandRegistrations`,
     {
@@ -321,23 +372,27 @@ export async function createBrandRegistration(args: {
   );
 }
 
-export async function fetchBrandRegistration(
-  sid: string
-): Promise<BrandRegistrationResource> {
+export async function fetchBrandRegistration(args: {
+  creds: TwilioCreds;
+  sid: string;
+}): Promise<BrandRegistrationResource> {
   return twilioRequest<BrandRegistrationResource>(
+    args.creds,
     "GET",
-    `${MESSAGING_BASE}/v1/a2p/BrandRegistrations/${encodeURIComponent(sid)}`
+    `${MESSAGING_BASE}/v1/a2p/BrandRegistrations/${encodeURIComponent(args.sid)}`
   );
 }
 
 export type MessagingServiceResource = { sid: string };
 
 export async function createMessagingService(args: {
+  creds: TwilioCreds;
   friendlyName: string;
   inboundRequestUrl: string | null;
   statusCallback: string | null;
 }): Promise<MessagingServiceResource> {
   return twilioRequest<MessagingServiceResource>(
+    args.creds,
     "POST",
     `${MESSAGING_BASE}/v1/Services`,
     {
@@ -357,6 +412,7 @@ export type CampaignResource = {
 };
 
 export async function createCampaign(args: {
+  creds: TwilioCreds;
   messagingServiceSid: string;
   brandRegistrationSid: string;
   description: string;
@@ -373,6 +429,7 @@ export async function createCampaign(args: {
   helpMessage: string;
 }): Promise<CampaignResource> {
   return twilioRequest<CampaignResource>(
+    args.creds,
     "POST",
     `${MESSAGING_BASE}/v1/Services/${encodeURIComponent(
       args.messagingServiceSid
@@ -396,10 +453,12 @@ export async function createCampaign(args: {
 }
 
 export async function fetchCampaign(args: {
+  creds: TwilioCreds;
   messagingServiceSid: string;
   campaignSid: string;
 }): Promise<CampaignResource> {
   return twilioRequest<CampaignResource>(
+    args.creds,
     "GET",
     `${MESSAGING_BASE}/v1/Services/${encodeURIComponent(
       args.messagingServiceSid
@@ -410,10 +469,9 @@ export async function fetchCampaign(args: {
 export type AvailableNumber = { phone_number: string };
 
 export async function findAvailableLocalNumber(args: {
+  creds: TwilioCreds;
   areaCode: string;
 }): Promise<string | null> {
-  const cfg = getPlatformConfig();
-  if (!cfg) throw new Error("Platform Twilio is not configured");
   const params = new URLSearchParams({
     AreaCode: args.areaCode,
     SmsEnabled: "true",
@@ -422,9 +480,9 @@ export async function findAvailableLocalNumber(args: {
   });
   const res = await fetch(
     `${API_BASE}/2010-04-01/Accounts/${encodeURIComponent(
-      cfg.masterAccountSid
+      args.creds.accountSid
     )}/AvailablePhoneNumbers/US/Local.json?${params.toString()}`,
-    { headers: { Authorization: masterAuthHeader() } }
+    { headers: { Authorization: authHeader(args.creds) } }
   );
   const data = (await res.json().catch(() => ({}))) as {
     available_phone_numbers?: AvailableNumber[];
@@ -441,17 +499,17 @@ export async function findAvailableLocalNumber(args: {
 export type IncomingPhoneNumber = { sid: string; phone_number: string };
 
 export async function purchasePhoneNumber(args: {
+  creds: TwilioCreds;
   phoneNumber: string;
   friendlyName: string;
   smsUrl: string | null;
   voiceUrl: string | null;
 }): Promise<IncomingPhoneNumber> {
-  const cfg = getPlatformConfig();
-  if (!cfg) throw new Error("Platform Twilio is not configured");
   return twilioRequest<IncomingPhoneNumber>(
+    args.creds,
     "POST",
     `${API_BASE}/2010-04-01/Accounts/${encodeURIComponent(
-      cfg.masterAccountSid
+      args.creds.accountSid
     )}/IncomingPhoneNumbers.json`,
     {
       PhoneNumber: args.phoneNumber,
@@ -465,10 +523,12 @@ export async function purchasePhoneNumber(args: {
 }
 
 export async function attachNumberToMessagingService(args: {
+  creds: TwilioCreds;
   messagingServiceSid: string;
   phoneNumberSid: string;
 }): Promise<void> {
   await twilioRequest<unknown>(
+    args.creds,
     "POST",
     `${MESSAGING_BASE}/v1/Services/${encodeURIComponent(
       args.messagingServiceSid
@@ -476,6 +536,7 @@ export async function attachNumberToMessagingService(args: {
     { PhoneNumberSid: args.phoneNumberSid }
   );
 }
+
 // US Trust Hub Policy SIDs are platform-wide constants published by Twilio:
 //   POLICY_SECONDARY_CUSTOMER_PROFILE — RNdfbf3fae0e1107f8aded0e7cead80bf5
 //   POLICY_A2P_TRUST_PRODUCT          — RNb0d4771c2c98518d916a3d4cd70a8f8b
