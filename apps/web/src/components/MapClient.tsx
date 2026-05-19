@@ -26,8 +26,14 @@ const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 const SATELLITE_STYLE = "mapbox://styles/mapbox/satellite-streets-v12";
 const STREETS_STYLE = "mapbox://styles/mapbox/streets-v12";
 
-const HOLD_MS = 600;
-const MOVE_THRESHOLD_PX = 5;
+// Long-press to drop a pin: ~750ms feels intentional without being sluggish.
+// OS defaults are ~500ms (iOS/Android) but those fire on top of native
+// scroll/zoom suppression — on a map canvas we need a longer threshold so
+// pan/zoom gestures don't race the timer.
+const HOLD_MS = 750;
+// Touch fingers wiggle; 5px was firing during normal taps. 12px matches the
+// slop most native gesture recognizers use to distinguish a press from a drag.
+const MOVE_THRESHOLD_PX = 12;
 
 const CUSTOMER_PIN_COLOR = "#dc2626";
 const SUBSCRIPTION_PIN_COLOR = "#22c55e";
@@ -841,6 +847,12 @@ export default function MapClient() {
       e: mapboxgl.MapMouseEvent | mapboxgl.MapTouchEvent
     ) {
       if (drawingTerritoryRef.current || drawingLassoRef.current) return;
+      // Multi-touch = pinch/rotate gesture, never a long-press.
+      const oe = e.originalEvent as TouchEvent | MouseEvent;
+      if ("touches" in oe && oe.touches && oe.touches.length > 1) {
+        clearHold();
+        return;
+      }
       const target = e.originalEvent.target as HTMLElement | null;
       if (
         target &&
@@ -883,6 +895,16 @@ export default function MapClient() {
     map.on("touchstart", onPressDown);
     map.on("touchmove", onMove);
     map.on("touchend", onUp);
+    map.on("touchcancel", clearHold);
+    // Any map-level gesture cancels the long-press. mousemove/touchmove
+    // alone don't catch wheel-zoom (no pointer motion) or pinch-zoom
+    // (second touch may not fire touchmove on the first finger), so we
+    // hook the gesture events Mapbox emits directly.
+    map.on("dragstart", clearHold);
+    map.on("zoomstart", clearHold);
+    map.on("rotatestart", clearHold);
+    map.on("pitchstart", clearHold);
+    map.on("wheel", clearHold);
 
     return () => {
       clearHold();
