@@ -1,11 +1,12 @@
-// Concept page: four directions for modernizing door-knock map pins.
-// Static visual exploration — no data, no Mapbox, no logic. Renders each
-// style against a faux satellite backdrop so the options can be compared
-// against the current production pin (see MapClient.makeMarkerElement).
+// Concept page: circle-only pin variations.
+// All circles, same ~28px footprint as today. The two axes being explored:
+//   1) Border / ring treatment (no ring, thin white, thick white, halo, etc.)
+//   2) Icon style (stroke weight + filled vs outline)
 //
-// Per CLAUDE.md §4: this is an exploration step — pick a direction here
-// before introducing a new primitive into the design system.
+// Pick a (border × icon) combo and that becomes the new production pin in
+// MapClient.makeMarkerElement.
 
+import type { CSSProperties, ReactNode } from "react";
 import { DollarSign, Home, Ban, FileText, RotateCcw, Skull } from "lucide-react";
 
 type StatusItem = {
@@ -26,198 +27,280 @@ const STATUSES: StatusItem[] = [
 ];
 
 // ────────────────────────────────────────────────────────────────────────
-// Style 1 — Teardrop (Flyra-inspired classic map pin, bolder + cleaner)
+// Icon renderers — different "fonts" for the glyph inside the circle.
 // ────────────────────────────────────────────────────────────────────────
-function TeardropPin({ s, size = 44 }: { s: StatusItem; size?: number }) {
-  const w = size * 0.78;
+
+type IconStyle = "lucide-thin" | "lucide-normal" | "lucide-bold" | "filled";
+
+function StatusGlyph({
+  s,
+  style,
+  size,
+}: {
+  s: StatusItem;
+  style: IconStyle;
+  size: number;
+}) {
+  const color = s.dark ? "#0f172a" : "#ffffff";
+
+  if (style === "filled") {
+    // Custom filled glyphs — bolder, app-icon-style read.
+    return <FilledGlyph kind={s.key} color={color} size={size} />;
+  }
+
+  const stroke = style === "lucide-thin" ? 1.5 : style === "lucide-bold" ? 2.75 : 2;
   const Icon = s.icon;
-  const iconColor = s.dark ? "#0f172a" : "#ffffff";
-  return (
-    <div
-      style={{ width: w, height: size }}
-      className="relative drop-shadow-[0_3px_6px_rgba(0,0,0,0.45)]"
-    >
-      <svg viewBox="0 0 32 40" width={w} height={size} xmlns="http://www.w3.org/2000/svg">
-        <path
-          d="M16 0C7.2 0 0 7 0 15.4 0 26 16 40 16 40s16-14 16-24.6C32 7 24.8 0 16 0z"
-          fill={s.color}
-        />
-      </svg>
-      <div
-        className="absolute inset-x-0 top-[16%] flex items-center justify-center"
-        style={{ height: w }}
-      >
-        <Icon width={w * 0.46} height={w * 0.46} color={iconColor} strokeWidth={2.5} />
-      </div>
-    </div>
-  );
+  return <Icon width={size} height={size} color={color} strokeWidth={stroke} />;
+}
+
+function FilledGlyph({
+  kind,
+  color,
+  size,
+}: {
+  kind: string;
+  color: string;
+  size: number;
+}) {
+  const props = { width: size, height: size, viewBox: "0 0 24 24", fill: color, xmlns: "http://www.w3.org/2000/svg" };
+  switch (kind) {
+    case "sale":
+      // Dollar sign filled
+      return (
+        <svg {...props}>
+          <path d="M13 2.5v1.6a4.5 4.5 0 0 1 3.9 3.4l-2 .5A2.5 2.5 0 0 0 12 6c-1.7 0-3 1-3 2.3 0 1.2.9 1.8 3.5 2.3 3.2.6 4.5 1.8 4.5 4 0 2.2-1.6 3.9-4 4.3v1.6h-2v-1.6a4.7 4.7 0 0 1-4.2-3.7l2-.5A2.7 2.7 0 0 0 12 17c1.8 0 3-1 3-2.4 0-1.2-.8-1.8-3.5-2.3-3.1-.6-4.5-1.7-4.5-4 0-2.1 1.6-3.8 4-4.2V2.5h2z" />
+        </svg>
+      );
+    case "not_home":
+      // Home filled
+      return (
+        <svg {...props}>
+          <path d="M12 3.2 2.5 11.5c-.3.3-.1.8.3.8H5v8c0 .3.2.5.5.5h4V14h5v6.8h4c.3 0 .5-.2.5-.5v-8h2.2c.4 0 .6-.5.3-.8L12 3.2z" />
+        </svg>
+      );
+    case "not_interested":
+      // Ban / prohibition filled (disc with diagonal cutout)
+      return (
+        <svg {...props}>
+          <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-6.6 6.4a8 8 0 0 1 11.2 11.2L5.4 8.4zm1.4 2.8 9.4 9.4A8 8 0 0 1 6.8 11.2z" />
+        </svg>
+      );
+    case "come_back":
+      // Rotate / refresh filled
+      return (
+        <svg {...props}>
+          <path d="M4 4v6h6L7.5 7.5A6 6 0 0 1 18 12h2A8 8 0 0 0 6 6.4L4 4zm16 16v-6h-6l2.5 2.5A6 6 0 0 1 6 12H4a8 8 0 0 0 14 5.6L20 20z" />
+        </svg>
+      );
+    case "quote_sent":
+      // Document filled
+      return (
+        <svg {...props}>
+          <path d="M6 2h7l5 5v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2zm7 1.5V8h4.5L13 3.5zM8 12h8v1.5H8V12zm0 3h8v1.5H8V15zm0 3h5v1.5H8V18z" />
+        </svg>
+      );
+    case "do_not_return":
+      // Skull filled
+      return (
+        <svg {...props}>
+          <path d="M12 2a8 8 0 0 0-8 8c0 3 1.5 5.4 3.5 6.7V19a1 1 0 0 0 1 1h1v-2h1.5v2h2v-2H14v2h1a1 1 0 0 0 1-1v-2.3C18 15.4 20 13 20 10a8 8 0 0 0-8-8zM9 9.5a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm6 0a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3zm-4 4.5h2l-1 2-1-2z" />
+        </svg>
+      );
+    default:
+      return <svg {...props}><circle cx="12" cy="12" r="9" /></svg>;
+  }
 }
 
 // ────────────────────────────────────────────────────────────────────────
-// Style 2 — Squircle Tile (app-icon energy, very flat & modern)
+// Circle pin variants — all 28px footprint, different ring treatments.
 // ────────────────────────────────────────────────────────────────────────
-function SquirclePin({ s, size = 36 }: { s: StatusItem; size?: number }) {
-  const Icon = s.icon;
-  const iconColor = s.dark ? "#0f172a" : "#ffffff";
+
+type RingVariant = {
+  key: string;
+  name: string;
+  desc: string;
+  render: (s: StatusItem, iconStyle: IconStyle) => ReactNode;
+};
+
+const SIZE = 28;
+const ICON_SIZE = 14;
+
+function CircleBase({
+  s,
+  iconStyle,
+  style,
+  innerSize = SIZE,
+  iconSize = ICON_SIZE,
+}: {
+  s: StatusItem;
+  iconStyle: IconStyle;
+  style: CSSProperties;
+  innerSize?: number;
+  iconSize?: number;
+}) {
   return (
     <div
       style={{
-        width: size,
-        height: size,
+        width: innerSize,
+        height: innerSize,
         background: s.color,
-        borderRadius: size * 0.32,
-        boxShadow:
-          "0 1px 0 rgba(255,255,255,0.18) inset, 0 4px 10px rgba(0,0,0,0.45), 0 1px 2px rgba(0,0,0,0.35)",
-      }}
-      className="flex items-center justify-center"
-    >
-      <Icon width={size * 0.52} height={size * 0.52} color={iconColor} strokeWidth={2.5} />
-    </div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────
-// Style 3 — Halo Ring (translucent outer halo + solid core; very Flyra)
-// ────────────────────────────────────────────────────────────────────────
-function HaloPin({ s, size = 40 }: { s: StatusItem; size?: number }) {
-  const Icon = s.icon;
-  const iconColor = s.dark ? "#0f172a" : "#ffffff";
-  const core = size * 0.7;
-  return (
-    <div
-      style={{
-        width: size,
-        height: size,
-        background: `${s.color}33`, // 20% opacity halo ring
         borderRadius: "50%",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        ...style,
       }}
-      className="flex items-center justify-center"
     >
-      <div
-        style={{
-          width: core,
-          height: core,
-          background: s.color,
-          borderRadius: "50%",
-          boxShadow:
-            "0 0 0 2px rgba(255,255,255,0.95), 0 2px 6px rgba(0,0,0,0.45)",
-        }}
-        className="flex items-center justify-center"
-      >
-        <Icon width={core * 0.55} height={core * 0.55} color={iconColor} strokeWidth={2.5} />
-      </div>
+      <StatusGlyph s={s} style={iconStyle} size={iconSize} />
     </div>
   );
 }
 
-// ────────────────────────────────────────────────────────────────────────
-// Style 4 — Glassy Bevel (subtle gradient + inner white ring, premium)
-// ────────────────────────────────────────────────────────────────────────
-function GlassyPin({ s, size = 36 }: { s: StatusItem; size?: number }) {
-  const Icon = s.icon;
-  const iconColor = s.dark ? "#0f172a" : "#ffffff";
-  return (
-    <div
-      style={{
-        width: size,
-        height: size,
-        background: `radial-gradient(circle at 50% 25%, ${s.color}, ${s.color}cc 60%, ${s.color}99)`,
-        borderRadius: "50%",
-        boxShadow:
-          "0 0 0 1.5px rgba(255,255,255,0.9) inset, 0 4px 10px rgba(0,0,0,0.5), 0 1px 2px rgba(0,0,0,0.4)",
-      }}
-      className="flex items-center justify-center relative overflow-hidden"
-    >
-      {/* glossy top highlight */}
-      <span
-        aria-hidden
-        className="absolute pointer-events-none"
-        style={{
-          inset: 2,
-          borderRadius: "50%",
-          background:
-            "radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.35), rgba(255,255,255,0) 55%)",
-        }}
-      />
-      <Icon
-        width={size * 0.5}
-        height={size * 0.5}
-        color={iconColor}
-        strokeWidth={2.5}
-        style={{ position: "relative" }}
-      />
-    </div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────
-// Current production pin (rendered for direct comparison)
-// ────────────────────────────────────────────────────────────────────────
-function CurrentPin({ s, size = 28 }: { s: StatusItem; size?: number }) {
-  const Icon = s.icon;
-  const iconColor = s.dark ? "#0f172a" : "#ffffff";
-  return (
-    <div
-      style={{
-        width: size,
-        height: size,
-        background: s.color,
-        border: "2px solid white",
-        borderRadius: "50%",
-        boxShadow: "0 2px 4px rgba(0,0,0,0.3)",
-      }}
-      className="flex items-center justify-center"
-    >
-      <Icon width={size * 0.5} height={size * 0.5} color={iconColor} />
-    </div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────
-// Layout
-// ────────────────────────────────────────────────────────────────────────
-
-const VARIANTS = [
+const RING_VARIANTS: RingVariant[] = [
   {
     key: "current",
-    name: "Current",
-    tagline: "What ships today — 28px ringed circle.",
-    render: (s: StatusItem) => <CurrentPin s={s} />,
-    note: "Baseline for comparison.",
+    name: "A · Current",
+    desc: "2px white ring, soft drop shadow. Baseline.",
+    render: (s, i) => (
+      <CircleBase
+        s={s}
+        iconStyle={i}
+        style={{ border: "2px solid white", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}
+      />
+    ),
   },
   {
-    key: "teardrop",
-    name: "Option 1 — Teardrop",
-    tagline: "Classic map pin, bolder + cleaner. Flyra-flavored.",
-    render: (s: StatusItem) => <TeardropPin s={s} />,
-    note:
-      "Reads instantly as 'map location'. The point anchors to a precise spot, which is more accurate at high zoom. Best when pins are sparse.",
+    key: "no-ring",
+    name: "B · No ring",
+    desc: "No border, deeper shadow. Color reads stronger.",
+    render: (s, i) => (
+      <CircleBase
+        s={s}
+        iconStyle={i}
+        style={{ boxShadow: "0 2px 6px rgba(0,0,0,0.5), 0 0 0 0.5px rgba(0,0,0,0.2)" }}
+      />
+    ),
   },
   {
-    key: "squircle",
-    name: "Option 2 — Squircle tile",
-    tagline: "App-icon energy. Flat, geometric, very modern.",
-    render: (s: StatusItem) => <SquirclePin s={s} />,
-    note:
-      "Feels native to a dark/bold UI like ours. Larger icon tap target. Doesn't 'point' at a coordinate, so works best with center-anchored markers.",
+    key: "thick-ring",
+    name: "C · Thick white ring",
+    desc: "3px white ring. Bolder, more contrast against satellite.",
+    render: (s, i) => (
+      <CircleBase
+        s={s}
+        iconStyle={i}
+        style={{ border: "3px solid white", boxShadow: "0 2px 5px rgba(0,0,0,0.4)" }}
+      />
+    ),
   },
   {
     key: "halo",
-    name: "Option 3 — Halo ring",
-    tagline: "Translucent halo + solid core. Premium, soft.",
-    render: (s: StatusItem) => <HaloPin s={s} />,
-    note:
-      "The translucent ring gives each pin breathing room on a busy satellite view. White inner ring makes the color pop. Closest to Flyra's read.",
+    name: "D · White ring + halo",
+    desc: "2px white ring + 3px translucent colored halo. Flyra-flavored.",
+    render: (s, i) => (
+      <div
+        style={{
+          padding: 3,
+          borderRadius: "50%",
+          background: `${s.color}40`,
+        }}
+      >
+        <CircleBase
+          s={s}
+          iconStyle={i}
+          style={{ border: "2px solid white", boxShadow: "0 2px 4px rgba(0,0,0,0.3)" }}
+        />
+      </div>
+    ),
   },
   {
-    key: "glassy",
-    name: "Option 4 — Glassy bevel",
-    tagline: "Subtle gradient + inner white ring. Dimensional.",
-    render: (s: StatusItem) => <GlassyPin s={s} />,
-    note:
-      "Same footprint as today's pin but with depth — top highlight + darker bottom. Feels like a polished iOS control. Most 'designed' of the four.",
+    key: "dark-ring",
+    name: "E · Dark ring",
+    desc: "1.5px near-black ring. Reads cleaner on light/concrete backdrops.",
+    render: (s, i) => (
+      <CircleBase
+        s={s}
+        iconStyle={i}
+        style={{
+          border: "1.5px solid rgba(15,23,42,0.85)",
+          boxShadow: "0 2px 5px rgba(0,0,0,0.35)",
+        }}
+      />
+    ),
   },
-] as const;
+  {
+    key: "dual-ring",
+    name: "F · Dual ring",
+    desc: "1.5px dark hairline outside 2px white ring. Hyper-crisp at any zoom.",
+    render: (s, i) => (
+      <CircleBase
+        s={s}
+        iconStyle={i}
+        style={{
+          border: "2px solid white",
+          boxShadow:
+            "0 0 0 1px rgba(15,23,42,0.6), 0 2px 4px rgba(0,0,0,0.35)",
+        }}
+      />
+    ),
+  },
+];
+
+// ────────────────────────────────────────────────────────────────────────
+// Icon "font" options
+// ────────────────────────────────────────────────────────────────────────
+
+const ICON_STYLES: { key: IconStyle; name: string; desc: string }[] = [
+  { key: "lucide-thin",   name: "1 · Thin stroke",   desc: "Lucide @ stroke 1.5 (current)." },
+  { key: "lucide-normal", name: "2 · Normal stroke", desc: "Lucide @ stroke 2 — slight bump." },
+  { key: "lucide-bold",   name: "3 · Bold stroke",   desc: "Lucide @ stroke 2.75 — chunky." },
+  { key: "filled",        name: "4 · Filled glyph",  desc: "Solid icons (no stroke). Bolder, app-icon read." },
+];
+
+// ────────────────────────────────────────────────────────────────────────
+// Layout helpers
+// ────────────────────────────────────────────────────────────────────────
+
+function MapBackdrop({ children }: { children: ReactNode }) {
+  return (
+    <div
+      className="relative px-6 py-8 rounded-xl overflow-hidden"
+      style={{
+        background:
+          "radial-gradient(circle at 20% 30%, rgba(0,0,0,0.35) 0, transparent 22%), radial-gradient(circle at 75% 65%, rgba(255,255,255,0.08) 0, transparent 25%), radial-gradient(circle at 60% 20%, rgba(0,0,0,0.25) 0, transparent 18%), linear-gradient(135deg, #2f3a2a 0%, #4a553f 35%, #6b6457 60%, #3a4434 100%)",
+      }}
+    >
+      <div
+        aria-hidden
+        className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-5 opacity-50"
+        style={{
+          background:
+            "linear-gradient(180deg, transparent, #1f1f1f 30%, #2a2a2a 50%, #1f1f1f 70%, transparent)",
+        }}
+      />
+      <div className="relative">{children}</div>
+    </div>
+  );
+}
+
+function StatusRow({
+  render,
+}: {
+  render: (s: StatusItem) => ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center justify-around gap-5">
+      {STATUSES.map((s) => (
+        <div key={s.key} className="flex flex-col items-center gap-2">
+          {render(s)}
+          <div className="text-[10px] uppercase tracking-wide text-white/85 font-medium drop-shadow">
+            {s.label}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function PinStylesPage() {
   return (
@@ -228,73 +311,120 @@ export default function PinStylesPage() {
             Design exploration
           </div>
           <h1 className="text-3xl font-bold tracking-tight">
-            Door-knock pin styles
+            Door-knock pins — circle variations
           </h1>
           <p className="mt-2 text-zinc-400 max-w-2xl">
-            Four directions for modernizing the map pins. Each style is shown
-            against a faux satellite backdrop with the full status set, plus
-            the current production pin at the top for comparison.
+            All circles, same 28px footprint as today. Two axes:{" "}
+            <span className="text-zinc-200">ring/border treatment</span> (rows
+            below) and{" "}
+            <span className="text-zinc-200">icon style</span> (columns).
+            Final pin = one ring × one icon.
           </p>
         </header>
 
-        <div className="grid gap-8">
-          {VARIANTS.map((v) => (
-            <section
-              key={v.key}
-              className="rounded-2xl border border-zinc-800 bg-zinc-900/60 overflow-hidden"
-            >
-              <div className="flex items-start justify-between gap-6 px-6 pt-5 pb-4">
-                <div>
-                  <h2 className="text-lg font-semibold">{v.name}</h2>
-                  <p className="text-sm text-zinc-400">{v.tagline}</p>
-                </div>
-                <div className="text-xs text-zinc-500 max-w-sm text-right hidden md:block">
-                  {v.note}
-                </div>
-              </div>
-
-              {/* Faux satellite backdrop */}
+        {/* SECTION 1 — Ring/border variants, normal-stroke icons */}
+        <section className="mb-12">
+          <h2 className="text-xl font-semibold mb-1">Ring &amp; border</h2>
+          <p className="text-sm text-zinc-400 mb-5">
+            Same icons (Lucide stroke 2) — vary only the outline of the circle.
+          </p>
+          <div className="grid gap-5">
+            {RING_VARIANTS.map((v) => (
               <div
-                className="relative px-6 py-10"
-                style={{
-                  background:
-                    "linear-gradient(135deg, #2f3a2a 0%, #4a553f 35%, #6b6457 60%, #3a4434 100%)",
-                  backgroundImage:
-                    "radial-gradient(circle at 20% 30%, rgba(0,0,0,0.35) 0, transparent 22%), radial-gradient(circle at 75% 65%, rgba(255,255,255,0.08) 0, transparent 25%), radial-gradient(circle at 60% 20%, rgba(0,0,0,0.25) 0, transparent 18%), linear-gradient(135deg, #2f3a2a 0%, #4a553f 35%, #6b6457 60%, #3a4434 100%)",
-                }}
+                key={v.key}
+                className="rounded-2xl border border-zinc-800 bg-zinc-900/60 overflow-hidden"
               >
-                {/* fake road */}
-                <div
-                  className="absolute left-0 right-0 top-1/2 -translate-y-1/2 h-6 opacity-50"
-                  style={{
-                    background:
-                      "linear-gradient(180deg, transparent, #1f1f1f 30%, #2a2a2a 50%, #1f1f1f 70%, transparent)",
-                  }}
-                />
-                <div className="relative flex flex-wrap items-end justify-around gap-6">
-                  {STATUSES.map((s) => (
-                    <div key={s.key} className="flex flex-col items-center gap-2">
-                      {v.render(s)}
-                      <div className="text-[10px] uppercase tracking-wide text-white/85 font-medium drop-shadow">
-                        {s.label}
-                      </div>
-                    </div>
-                  ))}
+                <div className="px-5 pt-4 pb-3 flex items-start justify-between gap-6">
+                  <div>
+                    <div className="text-sm font-semibold">{v.name}</div>
+                    <div className="text-xs text-zinc-400">{v.desc}</div>
+                  </div>
+                </div>
+                <div className="px-5 pb-5">
+                  <MapBackdrop>
+                    <StatusRow render={(s) => v.render(s, "lucide-normal")} />
+                  </MapBackdrop>
                 </div>
               </div>
+            ))}
+          </div>
+        </section>
 
-              <div className="md:hidden px-6 py-3 text-xs text-zinc-500 border-t border-zinc-800">
-                {v.note}
+        {/* SECTION 2 — Icon style variants, current ring */}
+        <section className="mb-12">
+          <h2 className="text-xl font-semibold mb-1">Icon style</h2>
+          <p className="text-sm text-zinc-400 mb-5">
+            Same ring (current — 2px white) — vary only the glyph weight / fill.
+          </p>
+          <div className="grid gap-5">
+            {ICON_STYLES.map((i) => (
+              <div
+                key={i.key}
+                className="rounded-2xl border border-zinc-800 bg-zinc-900/60 overflow-hidden"
+              >
+                <div className="px-5 pt-4 pb-3">
+                  <div className="text-sm font-semibold">{i.name}</div>
+                  <div className="text-xs text-zinc-400">{i.desc}</div>
+                </div>
+                <div className="px-5 pb-5">
+                  <MapBackdrop>
+                    <StatusRow
+                      render={(s) =>
+                        RING_VARIANTS[0].render(s, i.key)
+                      }
+                    />
+                  </MapBackdrop>
+                </div>
               </div>
-            </section>
-          ))}
-        </div>
+            ))}
+          </div>
+        </section>
+
+        {/* SECTION 3 — Combined preview: each ring with bold + filled */}
+        <section className="mb-12">
+          <h2 className="text-xl font-semibold mb-1">Combined preview</h2>
+          <p className="text-sm text-zinc-400 mb-5">
+            Each ring style paired with bold-stroke (top) and filled (bottom)
+            icons, so you can see which combo reads best.
+          </p>
+          <div className="grid gap-5">
+            {RING_VARIANTS.map((v) => (
+              <div
+                key={v.key}
+                className="rounded-2xl border border-zinc-800 bg-zinc-900/60 overflow-hidden"
+              >
+                <div className="px-5 pt-4 pb-3">
+                  <div className="text-sm font-semibold">{v.name}</div>
+                </div>
+                <div className="px-5 pb-5 grid gap-3">
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wide text-zinc-500 mb-2">
+                      Bold stroke
+                    </div>
+                    <MapBackdrop>
+                      <StatusRow render={(s) => v.render(s, "lucide-bold")} />
+                    </MapBackdrop>
+                  </div>
+                  <div>
+                    <div className="text-[10px] uppercase tracking-wide text-zinc-500 mb-2">
+                      Filled
+                    </div>
+                    <MapBackdrop>
+                      <StatusRow render={(s) => v.render(s, "filled")} />
+                    </MapBackdrop>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
 
         <footer className="mt-12 text-sm text-zinc-500">
-          Pick a direction and I'll wire it into{" "}
+          Tell me the ring + icon combo to land on (e.g. &ldquo;D + filled&rdquo;)
+          and I&apos;ll wire it into{" "}
           <code className="text-zinc-300">makeMarkerElement</code> in{" "}
-          <code className="text-zinc-300">MapClient.tsx</code> and document it
-          as a new primitive in <code className="text-zinc-300">DESIGN_SYSTEM.md</code>.
+          <code className="text-zinc-300">MapClient.tsx</code> and remove this
+          page.
         </footer>
       </div>
     </div>
