@@ -311,7 +311,7 @@ export default function SalesStatsClient({
         />
       </Section>
 
-      <Section title="Door Knocks">
+      <Section title="Knocking Stats">
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Kpi
             label="Conversion Rate"
