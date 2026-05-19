@@ -19,21 +19,21 @@ Project guidance for Claude Code sessions on this repo.
 ## Auto-merge policy
 
 When a feature branch passes typecheck and build locally, **open a PR to
-`main` and squash-merge it without asking for confirmation**, as long as the
-change is additive — new pages, new API routes, new tables/columns added via
-the auto-migration block, or self-contained UI components.
+`main` and squash-merge it without asking for confirmation**. This applies
+to UI changes, new pages, new API routes, new tables/columns, middleware
+tweaks, shared infra, files outside `apps/web` — anything that builds.
 
 **Always ask first** before merging if the change:
 
 - modifies authentication, session handling, or HMAC signing
 - modifies billing, Stripe, or payment flows
-- alters or drops existing DB columns/tables (additive ALTERs are fine)
-- changes shared infra: middleware, the libSQL client setup, build config,
-  CI, or env-var contracts
-- removes a feature or breaks an existing public route/API contract
-- touches files outside `apps/web` (root config, devcontainer, etc.)
 
-If unsure which bucket a change falls into, ask.
+These two categories alone require explicit approval because the blast
+radius is unrecoverable: auth bugs lock users out of prod, billing bugs
+cost real money. Everything else is recoverable via a follow-up commit
+or Vercel rollback, so the gate isn't worth the friction.
+
+If unsure whether a change touches auth or billing, ask.
 
 ## Branch naming
 
