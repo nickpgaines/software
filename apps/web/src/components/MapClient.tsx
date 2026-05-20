@@ -4,9 +4,13 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import MapIconStrip from "./MapIconStrip";
-import MapPinDropModal from "./MapPinDropModal";
+import MapPinDropModal, {
+  type PinAction,
+  type PinSubmitData,
+} from "./MapPinDropModal";
 import MapTerritoryModal, {
   type Staff as TerritoryStaff,
   type TerritoryDraft,
@@ -47,6 +51,9 @@ type ApiPin = {
   notes: string | null;
   objections: string | null;
   address: string | null;
+  first_name: string | null;
+  last_name: string | null;
+  phone: string | null;
   created_at: string;
 };
 
@@ -70,10 +77,14 @@ type ModalState = {
   open: boolean;
   lng: number;
   lat: number;
+  address?: string | null;
   editingId?: number;
   initialStatus?: PinStatus;
   initialNote?: string;
   initialObjections?: string[];
+  initialFirstName?: string;
+  initialLastName?: string;
+  initialPhone?: string;
 };
 
 const STATUS_PILL: Record<PinStatus, { bg: string; text: string }> = {
@@ -253,6 +264,7 @@ function makeCustomerMarkerElement(c: CustomerPin): HTMLElement {
 }
 
 export default function MapClient() {
+  const router = useRouter();
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<mapboxgl.Map | null>(null);
   const markersRef = useRef<Map<number, mapboxgl.Marker>>(new Map());
@@ -677,10 +689,14 @@ export default function MapClient() {
           open: true,
           lng: pin.lng,
           lat: pin.lat,
+          address: pin.address ?? null,
           editingId: pin.id,
           initialStatus: statusOf(pin),
           initialNote: pin.notes ?? "",
           initialObjections: parseObjections(pin.objections),
+          initialFirstName: pin.first_name ?? "",
+          initialLastName: pin.last_name ?? "",
+          initialPhone: pin.phone ?? "",
         });
       });
 
@@ -874,7 +890,20 @@ export default function MapClient() {
         const map = mapRef.current;
         if (!map) return;
         const lngLat = map.unproject(point);
-        setModal({ open: true, lng: lngLat.lng, lat: lngLat.lat });
+        setModal({
+          open: true,
+          lng: lngLat.lng,
+          lat: lngLat.lat,
+          address: null,
+        });
+        reverseGeocode(lngLat.lng, lngLat.lat).then((addr) => {
+          if (!addr) return;
+          setModal((m) =>
+            m.open && m.lng === lngLat.lng && m.lat === lngLat.lat
+              ? { ...m, address: addr }
+              : m
+          );
+        });
       }, HOLD_MS);
     }
     function onMove(e: mapboxgl.MapMouseEvent | mapboxgl.MapTouchEvent) {
@@ -956,42 +985,96 @@ export default function MapClient() {
     });
   }
 
-  async function submitModal(
-    status: PinStatus,
-    note: string,
-    objections: string[]
-  ) {
-    if (modal.editingId != null) {
-      const r = await fetch(`/api/map/pins/${modal.editingId}`, {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ status, note, objections }),
-      });
-      if (r.ok) {
-        const updated = (await r.json()) as ApiPin;
-        removeMarker(updated.id);
-        addMarker(updated);
-      }
-    } else {
-      const address = await reverseGeocode(modal.lng, modal.lat);
-      const r = await fetch("/api/map/pins", {
-        method: "POST",
+  async function persistPin(
+    data: PinSubmitData,
+    snap: ModalState
+  ): Promise<ApiPin | null> {
+    if (snap.editingId != null) {
+      const r = await fetch(`/api/map/pins/${snap.editingId}`, {
+        method: "PUT",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          lat: modal.lat,
-          lng: modal.lng,
-          status,
-          note,
-          objections,
-          address,
+          status: data.status,
+          notes: data.note,
+          objections: data.objections,
+          first_name: data.first_name || null,
+          last_name: data.last_name || null,
+          phone: data.phone || null,
         }),
       });
-      if (r.ok) {
-        const created = (await r.json()) as ApiPin;
-        addMarker(created);
-      }
+      if (!r.ok) return null;
+      const updated = (await r.json()) as ApiPin;
+      removeMarker(updated.id);
+      addMarker(updated);
+      return updated;
     }
+    const address =
+      snap.address ?? (await reverseGeocode(snap.lng, snap.lat));
+    const r = await fetch("/api/map/pins", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        lat: snap.lat,
+        lng: snap.lng,
+        status: data.status,
+        note: data.note,
+        objections: data.objections,
+        first_name: data.first_name || null,
+        last_name: data.last_name || null,
+        phone: data.phone || null,
+        address,
+      }),
+    });
+    if (!r.ok) return null;
+    const created = (await r.json()) as ApiPin;
+    addMarker(created);
+    return created;
+  }
+
+  function pinActionUrl(action: PinAction, data: PinSubmitData): string {
+    const q = new URLSearchParams();
+    if (data.first_name) q.set("first_name", data.first_name);
+    if (data.last_name) q.set("last_name", data.last_name);
+    if (data.phone) q.set("phone", data.phone);
+    if (data.email) q.set("email", data.email);
+    if (modal.address) q.set("address", modal.address);
+    const qs = q.toString();
+    switch (action) {
+      case "estimate":
+        return `/estimates/new${qs ? `?${qs}` : ""}`;
+      case "subscription":
+        return `/subscriptions/new${qs ? `?${qs}` : ""}`;
+      case "job":
+        return `/schedule/new${qs ? `?${qs}` : ""}`;
+      case "lead":
+        return `/leads${qs ? `?${qs}` : ""}`;
+      case "customer":
+        q.set("new", "1");
+        return `/customers?${q.toString()}`;
+    }
+  }
+
+  async function closeAndPersist(data: PinSubmitData) {
+    const snap = modal;
     setModal({ open: false, lng: 0, lat: 0 });
+    if (!snap.open) return;
+    await persistPin(data, snap);
+  }
+
+  async function handlePinAction(action: PinAction, data: PinSubmitData) {
+    const snap = modal;
+    setModal({ open: false, lng: 0, lat: 0 });
+    if (!snap.open) return;
+    await persistPin(data, snap);
+    router.push(pinActionUrl(action, data));
+  }
+
+  async function handlePinDelete() {
+    const id = modal.editingId;
+    if (id == null) return;
+    setModal({ open: false, lng: 0, lat: 0 });
+    const r = await fetch(`/api/map/pins/${id}`, { method: "DELETE" });
+    if (r.ok) removeMarker(id);
   }
 
   return (
@@ -1085,11 +1168,19 @@ export default function MapClient() {
       )}
       <MapPinDropModal
         open={modal.open}
+        address={modal.address ?? null}
+        lat={modal.lat}
+        lng={modal.lng}
+        editingId={modal.editingId}
         initialStatus={modal.initialStatus}
         initialNote={modal.initialNote}
         initialObjections={modal.initialObjections}
-        onCancel={() => setModal({ open: false, lng: 0, lat: 0 })}
-        onSubmit={submitModal}
+        initialFirstName={modal.initialFirstName}
+        initialLastName={modal.initialLastName}
+        initialPhone={modal.initialPhone}
+        onClose={closeAndPersist}
+        onAction={handlePinAction}
+        onDelete={modal.editingId != null ? handlePinDelete : undefined}
       />
       {territoryModal.open && (
         <MapTerritoryModal
