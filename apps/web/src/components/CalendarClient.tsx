@@ -406,9 +406,28 @@ export default function CalendarClient() {
   }, [view, cursor]);
 
   return (
-    <div className="h-[calc(100dvh-4.5rem-env(safe-area-inset-bottom))] md:h-[100dvh] flex flex-col overflow-hidden pt-[env(safe-area-inset-top)] md:pt-0">
-      <div className="px-6 py-4 flex items-center justify-between gap-3 flex-wrap border-b border-line shrink-0">
-        <div className="flex items-center gap-2 flex-wrap">
+    <div className="relative h-[calc(100dvh-4.5rem-env(safe-area-inset-bottom))] md:h-[100dvh] flex flex-col overflow-hidden pt-[env(safe-area-inset-top)] md:pt-0">
+      <div className="px-3 md:px-6 py-3 md:py-4 flex items-center justify-between gap-2 md:gap-3 md:flex-wrap border-b border-line shrink-0">
+        <div className="flex items-center gap-2 md:flex-wrap min-w-0">
+          {/* Native <select> kept: mobile-only compact view picker replaces the
+              desktop pill row so all toolbar controls fit on one phone row. */}
+          <select
+            value={view}
+            onChange={(e) => setView(e.target.value as View)}
+            aria-label="Calendar view"
+            className="md:hidden appearance-none border border-line bg-card rounded-full pl-4 pr-8 py-2 text-sm font-bold text-zinc-300 bg-no-repeat"
+            style={{
+              backgroundImage:
+                "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M1 1l5 5 5-5'/%3E%3C/svg%3E\")",
+              backgroundPosition: "right 12px center",
+            }}
+          >
+            {VIEW_OPTIONS.map((v) => (
+              <option key={v.value} value={v.value}>
+                {v.label}
+              </option>
+            ))}
+          </select>
           <Button
             type="button"
             variant="ghost"
@@ -431,7 +450,9 @@ export default function CalendarClient() {
             </svg>
             Today
           </Button>
-          <div className="inline-flex items-center gap-1 bg-card border border-line rounded-full px-1 py-1">
+          {/* Date navigation: desktop top bar. On mobile this is rendered as a
+              floating pill near the bottom of the schedule (see below). */}
+          <div className="hidden md:inline-flex items-center gap-1 bg-card border border-line rounded-full px-1 py-1">
             <Button
               variant="ghost"
               onClick={() => navigate(-1)}
@@ -454,8 +475,8 @@ export default function CalendarClient() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2 flex-wrap">
-          <div className="overflow-x-auto scrollbar-none max-w-full">
+        <div className="flex items-center gap-2 md:flex-wrap">
+          <div className="hidden md:block overflow-x-auto scrollbar-none max-w-full">
           <div className="inline-flex items-center gap-1 bg-black border border-line rounded-full p-1 text-sm">
             {VIEW_OPTIONS.map((v) => (
               <Button
@@ -606,6 +627,33 @@ export default function CalendarClient() {
             {view === "map" && <MapView />}
           </>
         )}
+      </div>
+
+      {/* Mobile-only floating date navigation. Hovers above the schedule
+          grid (and the global bottom nav) so the top toolbar can fit on one
+          row without the May 17-23 pill consuming horizontal space. */}
+      <div className="md:hidden pointer-events-none absolute inset-x-0 bottom-3 z-20 flex justify-center">
+        <div className="pointer-events-auto inline-flex items-center gap-1 bg-card/95 backdrop-blur border border-line rounded-full px-1 py-1 shadow-lg">
+          <Button
+            variant="ghost"
+            onClick={() => navigate(-1)}
+            className="w-8 h-8 p-0 rounded-full hover:bg-black"
+            aria-label="Previous"
+          >
+            ‹
+          </Button>
+          <span className="px-3 text-sm font-bold text-zinc-200 min-w-[140px] text-center select-none">
+            {navLabel}
+          </span>
+          <Button
+            variant="ghost"
+            onClick={() => navigate(1)}
+            className="w-8 h-8 p-0 rounded-full hover:bg-black"
+            aria-label="Next"
+          >
+            ›
+          </Button>
+        </div>
       </div>
 
       <EmployeeSchedulingModal
