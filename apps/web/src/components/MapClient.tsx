@@ -299,9 +299,8 @@ function makeCustomerMarkerElement(c: CustomerPin): HTMLElement {
     "0 2px 4px rgba(0,0,0,0.45);" +
     "display:flex;align-items:center;justify-content:center;cursor:pointer;";
   el.innerHTML =
-    '<svg viewBox="0 0 24 24" width="16" height="16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
-    '<circle cx="12" cy="9" r="4" fill="#ffffff"/>' +
-    '<path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8z" fill="#ffffff"/>' +
+    '<svg viewBox="0 0 24 24" width="16" height="16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" style="display:block">' +
+    '<path fill="#ffffff" d="M12 12c2.5 0 4.5-2 4.5-4.5S14.5 3 12 3 7.5 5 7.5 7.5 9.5 12 12 12zm0 1.8c-3 0-9 1.5-9 4.5V21h18v-2.7c0-3-6-4.5-9-4.5z"/>' +
     "</svg>";
   const tooltip =
     c.name +
