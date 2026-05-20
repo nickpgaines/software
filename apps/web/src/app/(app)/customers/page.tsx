@@ -53,6 +53,7 @@ function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [creating, setCreating] = useState(false);
+  const [attachPinId, setAttachPinId] = useState<number | null>(null);
   const [importing, setImporting] = useState(false);
   const [query, setQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -105,6 +106,9 @@ function CustomersPage() {
 
   useEffect(() => {
     if (searchParams.get("new") === "1") {
+      const pin = searchParams.get("attach_pin");
+      const pinId = pin ? Number(pin) : NaN;
+      setAttachPinId(Number.isFinite(pinId) ? pinId : null);
       setCreating(true);
       router.replace("/customers");
     }
@@ -238,10 +242,22 @@ function CustomersPage() {
           onClose={() => {
             setCreating(false);
             setEditing(null);
+            setAttachPinId(null);
           }}
-          onSaved={async () => {
+          onSaved={async (saved) => {
+            const pinId = attachPinId;
             setCreating(false);
             setEditing(null);
+            setAttachPinId(null);
+            if (pinId != null && saved.id != null) {
+              await fetch(`/api/map/pins/${pinId}`, {
+                method: "PUT",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ customer_id: saved.id }),
+              }).catch(() => {});
+              router.push("/map");
+              return;
+            }
             await load();
           }}
         />

@@ -2,10 +2,8 @@
 
 import {
   ChevronDown,
-  Crosshair,
   Hammer,
   Hand,
-  Mail,
   RefreshCw,
   Send,
   StickyNote,
@@ -14,10 +12,13 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { PIN_STATUS, filledGlyphSvg, type PinStatus } from "@/lib/map-pin-colors";
+import {
+  PIN_STATUS,
+  filledGlyphSvg,
+  type PinStatus,
+} from "@/lib/map-pin-colors";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -33,18 +34,9 @@ export type PinSubmitData = {
   status: PinStatus;
   note: string;
   objections: string[];
-  first_name: string;
-  last_name: string;
-  phone: string;
-  email: string;
 };
 
-export type PinAction =
-  | "estimate"
-  | "subscription"
-  | "job"
-  | "lead"
-  | "customer";
+export type PinAction = "estimate" | "subscription" | "job" | "customer";
 
 export default function MapPinDropModal({
   open,
@@ -55,10 +47,6 @@ export default function MapPinDropModal({
   initialStatus,
   initialNote,
   initialObjections,
-  initialFirstName,
-  initialLastName,
-  initialPhone,
-  initialEmail,
   onClose,
   onAction,
   onDelete,
@@ -71,10 +59,6 @@ export default function MapPinDropModal({
   initialStatus?: PinStatus;
   initialNote?: string;
   initialObjections?: string[];
-  initialFirstName?: string;
-  initialLastName?: string;
-  initialPhone?: string;
-  initialEmail?: string;
   onClose: (data: PinSubmitData) => void;
   onAction: (action: PinAction, data: PinSubmitData) => void;
   onDelete?: () => void;
@@ -89,10 +73,6 @@ export default function MapPinDropModal({
   const [objectionsOpen, setObjectionsOpen] = useState<boolean>(
     (initialObjections?.length ?? 0) > 0
   );
-  const [firstName, setFirstName] = useState(initialFirstName ?? "");
-  const [lastName, setLastName] = useState(initialLastName ?? "");
-  const [phone, setPhone] = useState(initialPhone ?? "");
-  const [email, setEmail] = useState(initialEmail ?? "");
 
   useEffect(() => {
     if (open) {
@@ -100,34 +80,13 @@ export default function MapPinDropModal({
       setNote(initialNote ?? "");
       setObjections(initialObjections ?? []);
       setObjectionsOpen((initialObjections?.length ?? 0) > 0);
-      setFirstName(initialFirstName ?? "");
-      setLastName(initialLastName ?? "");
-      setPhone(initialPhone ?? "");
-      setEmail(initialEmail ?? "");
     }
-  }, [
-    open,
-    initialStatus,
-    initialNote,
-    initialObjections,
-    initialFirstName,
-    initialLastName,
-    initialPhone,
-    initialEmail,
-  ]);
+  }, [open, initialStatus, initialNote, initialObjections]);
 
   if (!open) return null;
 
   function snapshot(): PinSubmitData {
-    return {
-      status,
-      note,
-      objections,
-      first_name: firstName.trim(),
-      last_name: lastName.trim(),
-      phone: phone.trim(),
-      email: email.trim(),
-    };
+    return { status, note, objections };
   }
 
   function toggleObjection(o: string) {
@@ -178,38 +137,7 @@ export default function MapPinDropModal({
         </div>
 
         <div className="p-5 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="First Name">
-              <Input
-                type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder="Enter first name..."
-                className="w-full h-auto border-line rounded-full px-4 py-2 text-sm"
-              />
-            </Field>
-            <Field label="Last Name">
-              <Input
-                type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder="Enter last name..."
-                className="w-full h-auto border-line rounded-full px-4 py-2 text-sm"
-              />
-            </Field>
-          </div>
-
-          <Field label="Mobile">
-            <Input
-              type="tel"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              placeholder="(123) 456-7890"
-              className="w-full h-auto border-line rounded-full px-4 py-2 text-sm"
-            />
-          </Field>
-
-          <div className="flex gap-4 overflow-x-auto pb-2 pt-3 -mx-1 px-1">
+          <div className="flex gap-4 overflow-x-auto pb-2 pt-1 -mx-1 px-1">
             {entries.map(([key, meta]) => {
               const active = status === key;
               // Match makeMarkerElement in MapClient.tsx (DESIGN_SYSTEM.md §8
@@ -303,6 +231,18 @@ export default function MapPinDropModal({
             )}
           </div>
 
+          <Label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 mb-1.5">
+            <StickyNote className="h-3.5 w-3.5 text-zinc-400" />
+            Notes
+          </Label>
+          <Textarea
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Add any additional notes..."
+            rows={3}
+            className="block w-full resize-none rounded-md border-line px-3 py-2 text-sm text-white placeholder:text-zinc-500 bg-transparent -mt-3"
+          />
+
           <div className="space-y-2.5 pt-1">
             <Button
               type="button"
@@ -316,15 +256,6 @@ export default function MapPinDropModal({
             <Button
               type="button"
               variant="ghost"
-              onClick={() => onAction("subscription", snapshot())}
-              className="w-full h-auto rounded-full bg-black border border-line text-white hover:bg-zinc-900 font-bold py-3 gap-2"
-            >
-              <RefreshCw className="h-4 w-4" />
-              Create Subscription
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
               onClick={() => onAction("job", snapshot())}
               className="w-full h-auto rounded-full bg-black border border-line text-white hover:bg-zinc-900 font-bold py-3 gap-2"
             >
@@ -334,11 +265,11 @@ export default function MapPinDropModal({
             <Button
               type="button"
               variant="ghost"
-              onClick={() => onAction("lead", snapshot())}
+              onClick={() => onAction("subscription", snapshot())}
               className="w-full h-auto rounded-full bg-black border border-line text-white hover:bg-zinc-900 font-bold py-3 gap-2"
             >
-              <Crosshair className="h-4 w-4" />
-              Create Lead
+              <RefreshCw className="h-4 w-4" />
+              Create Subscription
             </Button>
             <Button
               type="button"
@@ -350,32 +281,6 @@ export default function MapPinDropModal({
               Create Customer
             </Button>
           </div>
-
-          <Field
-            label="Email"
-            icon={<Mail className="h-3.5 w-3.5 text-zinc-400" />}
-          >
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@example.com"
-              className="w-full h-auto border-line rounded-md px-4 py-2 text-sm"
-            />
-          </Field>
-
-          <Field
-            label="Notes"
-            icon={<StickyNote className="h-3.5 w-3.5 text-zinc-400" />}
-          >
-            <Textarea
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              placeholder="Add any additional notes..."
-              rows={3}
-              className="block w-full resize-none rounded-md border-line px-3 py-2 text-sm text-white placeholder:text-zinc-500 bg-transparent"
-            />
-          </Field>
 
           {editingId != null && onDelete && (
             <Button
@@ -392,26 +297,6 @@ export default function MapPinDropModal({
           )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function Field({
-  label,
-  icon,
-  children,
-}: {
-  label: string;
-  icon?: React.ReactNode;
-  children: React.ReactNode;
-}) {
-  return (
-    <div>
-      <Label className="flex items-center gap-1.5 text-xs font-bold text-zinc-500 mb-1.5">
-        {icon}
-        {label}
-      </Label>
-      {children}
     </div>
   );
 }
