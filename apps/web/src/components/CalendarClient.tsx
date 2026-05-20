@@ -377,16 +377,6 @@ export default function CalendarClient() {
     } else setCursor(addDays(cursor, delta * 7));
   }
 
-  // Don't render any view until the data it depends on has finished its
-  // first fetch. The day view in particular reads from all three sources
-  // (jobs, staff, shifts) to build columns and color swatches; rendering
-  // partial data is what produced the "Jo Johnson with no color circle"
-  // and "Nick disappears on click-out" flicker.
-  const dataReady =
-    jobs !== null &&
-    staff !== null &&
-    (view !== "day" || scheduledTechIds !== null);
-
   const navLabel = useMemo(() => {
     if (view === "day") {
       return cursor.toLocaleDateString(undefined, {
@@ -584,49 +574,46 @@ export default function CalendarClient() {
       </div>
 
       <div ref={gridRef} className="flex-1 min-h-0 overflow-auto bg-card">
-        {!dataReady ? (
-          <div className="flex items-center justify-center h-full text-sm text-zinc-500">
-            Loading schedule…
-          </div>
-        ) : (
-          <>
-            {view === "week" && (
-              <WeekView
-                start={startOfWeek(cursor)}
-                jobs={jobs ?? []}
-                now={now}
-              />
-            )}
-            {view === "day" && (
-              <DayView
-                day={startOfDay(cursor)}
-                jobs={jobs ?? []}
-                staff={staff ?? []}
-                scheduledTechIds={scheduledTechIds ?? new Set()}
-                me={me}
-                now={now}
-              />
-            )}
-            {view === "month" && (
-              <MonthView
-                cursor={cursor}
-                jobs={jobs ?? []}
-                onPickDay={(d) => {
-                  setCursor(d);
-                  setView("day");
-                }}
-              />
-            )}
-            {view === "agenda" && (
-              <AgendaView
-                jobs={jobs ?? []}
-                rangeStart={range.start}
-                rangeEnd={range.end}
-              />
-            )}
-            {view === "map" && <MapView />}
-          </>
+        {/* Render views immediately with empty-data fallbacks so the schedule
+            grid is scrollable on first paint. Gating the entire view on
+            dataReady used to leave the user staring at a short non-scrollable
+            "Loading…" line, which iOS Safari registered as an unscrollable
+            container — that's the "frozen until you tap" bug. */}
+        {view === "week" && (
+          <WeekView
+            start={startOfWeek(cursor)}
+            jobs={jobs ?? []}
+            now={now}
+          />
         )}
+        {view === "day" && (
+          <DayView
+            day={startOfDay(cursor)}
+            jobs={jobs ?? []}
+            staff={staff ?? []}
+            scheduledTechIds={scheduledTechIds ?? new Set()}
+            me={me}
+            now={now}
+          />
+        )}
+        {view === "month" && (
+          <MonthView
+            cursor={cursor}
+            jobs={jobs ?? []}
+            onPickDay={(d) => {
+              setCursor(d);
+              setView("day");
+            }}
+          />
+        )}
+        {view === "agenda" && (
+          <AgendaView
+            jobs={jobs ?? []}
+            rangeStart={range.start}
+            rangeEnd={range.end}
+          />
+        )}
+        {view === "map" && <MapView />}
       </div>
 
       {/* Mobile-only floating date navigation. Hovers above the schedule
@@ -680,10 +667,7 @@ function NowLine({ now }: { now: Date }) {
       className="absolute left-0 right-0 z-20 pointer-events-none"
       style={{ top: `${top}px` }}
     >
-      <div className="flex items-center">
-        <span className="w-2 h-2 rounded-full bg-primary" />
-        <div className="flex-1 h-px bg-primary" />
-      </div>
+      <div className="h-px bg-primary" />
     </div>
   );
 }
@@ -904,11 +888,14 @@ function WeekView({
         </div>
         <div className="grid grid-cols-[40px_repeat(7,1fr)] md:grid-cols-[64px_repeat(7,1fr)] grid-rows-1">
           <div className="border-r border-line">
-            {HOURS.map((h) => (
+            {HOURS.map((h, i) => (
               <div
                 key={h}
                 style={{ height: `${HOUR_PX}px` }}
-                className="text-[10px] text-zinc-500 pr-2 text-right -translate-y-1.5"
+                className={
+                  "text-[10px] text-zinc-500 pr-2 text-right " +
+                  (i === 0 ? "" : "-translate-y-1.5")
+                }
               >
                 {formatHour(h)}
               </div>
@@ -1107,11 +1094,14 @@ function DayView({
 
       <div className="grid" style={{ gridTemplateColumns: gridCols }}>
         <div className="border-r border-line">
-          {HOURS.map((h) => (
+          {HOURS.map((h, i) => (
             <div
               key={h}
               style={{ height: `${HOUR_PX}px` }}
-              className="text-[10px] text-zinc-500 pr-2 text-right -translate-y-1.5"
+              className={
+                "text-[10px] text-zinc-500 pr-2 text-right " +
+                (i === 0 ? "" : "-translate-y-1.5")
+              }
             >
               {formatHour(h)}
             </div>
