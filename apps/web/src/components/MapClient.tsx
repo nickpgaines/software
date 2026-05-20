@@ -121,9 +121,6 @@ type ModalState = {
   initialStatus?: PinStatus;
   initialNote?: string;
   initialObjections?: string[];
-  initialFirstName?: string;
-  initialLastName?: string;
-  initialPhone?: string;
 };
 
 const STATUS_PILL: Record<PinStatus, { bg: string; text: string }> = {
@@ -947,9 +944,6 @@ export default function MapClient() {
           initialStatus: statusOf(pin),
           initialNote: pin.notes ?? "",
           initialObjections: parseObjections(pin.objections),
-          initialFirstName: pin.first_name ?? "",
-          initialLastName: pin.last_name ?? "",
-          initialPhone: pin.phone ?? "",
         });
       });
 
@@ -1352,9 +1346,6 @@ export default function MapClient() {
           status: data.status,
           notes: data.note,
           objections: data.objections,
-          first_name: data.first_name || null,
-          last_name: data.last_name || null,
-          phone: data.phone || null,
         }),
       });
       if (!r.ok) return null;
@@ -1374,9 +1365,6 @@ export default function MapClient() {
         status: data.status,
         note: data.note,
         objections: data.objections,
-        first_name: data.first_name || null,
-        last_name: data.last_name || null,
-        phone: data.phone || null,
         address,
       }),
     });
@@ -1386,13 +1374,14 @@ export default function MapClient() {
     return created;
   }
 
-  function pinActionUrl(action: PinAction, data: PinSubmitData): string {
+  function pinActionUrl(
+    action: PinAction,
+    pinId: number | null,
+    address: string | null
+  ): string {
     const q = new URLSearchParams();
-    if (data.first_name) q.set("first_name", data.first_name);
-    if (data.last_name) q.set("last_name", data.last_name);
-    if (data.phone) q.set("phone", data.phone);
-    if (data.email) q.set("email", data.email);
-    if (modal.address) q.set("address", modal.address);
+    if (address) q.set("address", address);
+    if (pinId != null) q.set("attach_pin", String(pinId));
     const qs = q.toString();
     switch (action) {
       case "estimate":
@@ -1401,8 +1390,6 @@ export default function MapClient() {
         return `/subscriptions/new${qs ? `?${qs}` : ""}`;
       case "job":
         return `/schedule/new${qs ? `?${qs}` : ""}`;
-      case "lead":
-        return `/leads${qs ? `?${qs}` : ""}`;
       case "customer":
         q.set("new", "1");
         return `/customers?${q.toString()}`;
@@ -1420,8 +1407,10 @@ export default function MapClient() {
     const snap = modal;
     setModal({ open: false, lng: 0, lat: 0 });
     if (!snap.open) return;
-    await persistPin(data, snap);
-    router.push(pinActionUrl(action, data));
+    const persisted = await persistPin(data, snap);
+    const pinId = persisted?.id ?? snap.editingId ?? null;
+    const address = persisted?.address ?? snap.address ?? null;
+    router.push(pinActionUrl(action, pinId, address));
   }
 
   async function handlePinDelete() {
@@ -1530,9 +1519,6 @@ export default function MapClient() {
         initialStatus={modal.initialStatus}
         initialNote={modal.initialNote}
         initialObjections={modal.initialObjections}
-        initialFirstName={modal.initialFirstName}
-        initialLastName={modal.initialLastName}
-        initialPhone={modal.initialPhone}
         onClose={closeAndPersist}
         onAction={handlePinAction}
         onDelete={modal.editingId != null ? handlePinDelete : undefined}
