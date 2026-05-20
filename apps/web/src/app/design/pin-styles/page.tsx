@@ -52,9 +52,11 @@ function FilledGlyph({ kind, color, size }: { kind: string; color: string; size:
         </svg>
       );
     case "not_interested":
+      // Donut ring (outer + inner via evenodd) + diagonal slash through it.
       return (
-        <svg {...props}>
-          <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-6.6 6.4a8 8 0 0 1 11.2 11.2L5.4 8.4zm1.4 2.8 9.4 9.4A8 8 0 0 1 6.8 11.2z" />
+        <svg {...props} fillRule="evenodd" clipRule="evenodd">
+          <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm0 2.5a7.5 7.5 0 1 1 0 15 7.5 7.5 0 0 1 0-15z" />
+          <rect x="10.85" y="3" width="2.3" height="18" rx="1.15" transform="rotate(45 12 12)" />
         </svg>
       );
     case "come_back":
