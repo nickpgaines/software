@@ -41,6 +41,41 @@ const MOVE_THRESHOLD_PX = 12;
 const CUSTOMER_PIN_COLOR = "#dc2626";
 const SUBSCRIPTION_PIN_COLOR = "#22c55e";
 
+// Cluster aggregation distance in pixels. 50px ≈ half a typical pin span on
+// mobile; tighter values leave pins visually overlapping at low zoom, wider
+// values group adjacent streets together unhelpfully.
+const CLUSTER_RADIUS = 50;
+// Above this zoom every point renders individually — at street-level the
+// user wants to see exact addresses, not aggregations.
+const CLUSTER_MAX_ZOOM = 14;
+const CUSTOMER_CLUSTER_COLOR = "#dc2626";
+// Fallback accent if the --color-violet CSS variable is missing (e.g. in
+// tests or before stylesheets load). Matches Tailwind's violet-600.
+const ACCENT_FALLBACK = "#7c3aed";
+const ACCENT_FALLBACK_FOREGROUND = "#ffffff";
+
+function readAccent(): { bg: string; fg: string } {
+  if (typeof window === "undefined") {
+    return { bg: ACCENT_FALLBACK, fg: ACCENT_FALLBACK_FOREGROUND };
+  }
+  const override = (() => {
+    try {
+      return localStorage.getItem("forge-accent");
+    } catch {
+      return null;
+    }
+  })();
+  const styles = getComputedStyle(document.documentElement);
+  const bg =
+    override?.trim() ||
+    styles.getPropertyValue("--color-violet").trim() ||
+    ACCENT_FALLBACK;
+  const fg =
+    styles.getPropertyValue("--color-violet-foreground").trim() ||
+    ACCENT_FALLBACK_FOREGROUND;
+  return { bg, fg };
+}
+
 type StyleMode = "satellite" | "streets";
 
 type ApiPin = {
@@ -352,6 +387,7 @@ export default function MapClient() {
     if (m) m.remove();
     markersRef.current.delete(id);
     pinsDataRef.current.delete(id);
+    setPinSourceData();
   }
 
   function addMarker(pin: ApiPin) {
@@ -369,6 +405,7 @@ export default function MapClient() {
     });
     markersRef.current.set(pin.id, marker);
     pinsDataRef.current.set(pin.id, pin);
+    setPinSourceData();
   }
 
   function addCustomerMarker(c: CustomerPin) {
@@ -385,6 +422,205 @@ export default function MapClient() {
     });
     customerMarkersRef.current.set(c.id, marker);
     customerDataRef.current.set(c.id, c);
+    setCustomerSourceData();
+  }
+
+  // Push the current pin set into the GeoJSON cluster source. Mapbox computes
+  // the clusters from this source; the DOM markers added above are toggled
+  // hidden whenever a point ends up inside a cluster (see syncMarkerVisibility).
+  function setPinSourceData() {
+    const map = mapRef.current;
+    if (!map) return;
+    const source = map.getSource("pins-source") as
+      | mapboxgl.GeoJSONSource
+      | undefined;
+    if (!source) return;
+    const features = Array.from(pinsDataRef.current.values()).map((p) => ({
+      type: "Feature" as const,
+      properties: { id: p.id },
+      geometry: { type: "Point" as const, coordinates: [p.lng, p.lat] },
+    }));
+    source.setData({ type: "FeatureCollection", features });
+  }
+
+  function setCustomerSourceData() {
+    const map = mapRef.current;
+    if (!map) return;
+    const source = map.getSource("customers-source") as
+      | mapboxgl.GeoJSONSource
+      | undefined;
+    if (!source) return;
+    // Filter to visible customers — hidden ones must not contribute to
+    // cluster counts, otherwise a "show subscriptions only" view would still
+    // show clusters sized as if customers were present.
+    const features = Array.from(customerDataRef.current.values())
+      .filter((c) => isCustomerVisible(c))
+      .map((c) => ({
+        type: "Feature" as const,
+        properties: { id: c.id },
+        geometry: {
+          type: "Point" as const,
+          coordinates: [c.longitude, c.latitude],
+        },
+      }));
+    source.setData({ type: "FeatureCollection", features });
+  }
+
+  function ensureClusterLayers() {
+    const map = mapRef.current;
+    if (!map) return;
+    const accent = readAccent();
+
+    if (!map.getSource("pins-source")) {
+      map.addSource("pins-source", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+        cluster: true,
+        clusterRadius: CLUSTER_RADIUS,
+        clusterMaxZoom: CLUSTER_MAX_ZOOM,
+      });
+    }
+    if (!map.getLayer("pins-cluster-circle")) {
+      map.addLayer({
+        id: "pins-cluster-circle",
+        type: "circle",
+        source: "pins-source",
+        filter: ["has", "point_count"],
+        paint: {
+          "circle-color": accent.bg,
+          "circle-opacity": 0.92,
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 2,
+          "circle-radius": [
+            "step",
+            ["get", "point_count"],
+            16,
+            10,
+            20,
+            50,
+            24,
+            200,
+            30,
+          ],
+        },
+      });
+    }
+    if (!map.getLayer("pins-cluster-count")) {
+      map.addLayer({
+        id: "pins-cluster-count",
+        type: "symbol",
+        source: "pins-source",
+        filter: ["has", "point_count"],
+        layout: {
+          "text-field": ["get", "point_count_abbreviated"],
+          "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+          "text-size": 13,
+          "text-allow-overlap": true,
+        },
+        paint: { "text-color": accent.fg },
+      });
+    }
+
+    if (!map.getSource("customers-source")) {
+      map.addSource("customers-source", {
+        type: "geojson",
+        data: { type: "FeatureCollection", features: [] },
+        cluster: true,
+        clusterRadius: CLUSTER_RADIUS,
+        clusterMaxZoom: CLUSTER_MAX_ZOOM,
+      });
+    }
+    if (!map.getLayer("customers-cluster-circle")) {
+      map.addLayer({
+        id: "customers-cluster-circle",
+        type: "circle",
+        source: "customers-source",
+        filter: ["has", "point_count"],
+        paint: {
+          "circle-color": CUSTOMER_CLUSTER_COLOR,
+          "circle-opacity": 0.92,
+          "circle-stroke-color": "#ffffff",
+          "circle-stroke-width": 2,
+          "circle-radius": [
+            "step",
+            ["get", "point_count"],
+            16,
+            10,
+            20,
+            50,
+            24,
+            200,
+            30,
+          ],
+        },
+      });
+    }
+    if (!map.getLayer("customers-cluster-count")) {
+      map.addLayer({
+        id: "customers-cluster-count",
+        type: "symbol",
+        source: "customers-source",
+        filter: ["has", "point_count"],
+        layout: {
+          "text-field": ["get", "point_count_abbreviated"],
+          "text-font": ["Open Sans Bold", "Arial Unicode MS Bold"],
+          "text-size": 13,
+          "text-allow-overlap": true,
+        },
+        paint: { "text-color": "#ffffff" },
+      });
+    }
+
+    setPinSourceData();
+    setCustomerSourceData();
+  }
+
+  // Mapbox clusters live in the GeoJSON source; the rich DOM markers (with
+  // status glyphs, glow, popups) live as standalone Markers. To make the two
+  // coexist, hide each DOM marker whose feature is currently rolled up into a
+  // cluster — leave only "leaf" features showing.
+  function syncMarkerVisibility() {
+    const map = mapRef.current;
+    if (!map) return;
+
+    if (map.getSource("pins-source")) {
+      const features = map.querySourceFeatures("pins-source", {
+        filter: ["!", ["has", "point_count"]],
+      });
+      const leafIds = new Set<number>();
+      for (const f of features) {
+        const id = f.properties?.id;
+        if (typeof id === "number") leafIds.add(id);
+      }
+      for (const [id, marker] of markersRef.current) {
+        const el = marker.getElement();
+        if (!pinsVisibleRef.current) {
+          el.style.display = "none";
+          continue;
+        }
+        el.style.display = leafIds.has(id) ? "flex" : "none";
+      }
+    }
+
+    if (map.getSource("customers-source")) {
+      const features = map.querySourceFeatures("customers-source", {
+        filter: ["!", ["has", "point_count"]],
+      });
+      const leafIds = new Set<number>();
+      for (const f of features) {
+        const id = f.properties?.id;
+        if (typeof id === "number") leafIds.add(id);
+      }
+      for (const [id, marker] of customerMarkersRef.current) {
+        const c = customerDataRef.current.get(id);
+        const el = marker.getElement();
+        if (!c || !isCustomerVisible(c)) {
+          el.style.display = "none";
+          continue;
+        }
+        el.style.display = leafIds.has(id) ? "" : "none";
+      }
+    }
   }
 
   function rangeStartMs(range: DateRange): number | null {
@@ -437,11 +673,10 @@ export default function MapClient() {
   }
 
   function applyCustomerFilters() {
-    for (const [id, marker] of customerMarkersRef.current) {
-      const c = customerDataRef.current.get(id);
-      if (!c) continue;
-      marker.getElement().style.display = isCustomerVisible(c) ? "" : "none";
-    }
+    // Rebuild the cluster source first so cluster counts reflect the filter,
+    // then re-sync DOM marker visibility against the new cluster layout.
+    setCustomerSourceData();
+    syncMarkerVisibility();
   }
 
   function parseTerritory(t: ApiTerritory): Territory {
@@ -796,6 +1031,7 @@ export default function MapClient() {
 
     map.on("load", async () => {
       ensureTerritoryLayers();
+      ensureClusterLayers();
       try {
         const [pinsRes, customersRes, territoriesRes, staffRes] =
           await Promise.all([
@@ -883,6 +1119,19 @@ export default function MapClient() {
         });
         if (hits.length > 0) return;
       }
+      // Long-pressing a cluster bubble should expand it, not drop a new pin.
+      const clusterLayers = [
+        "pins-cluster-circle",
+        "pins-cluster-count",
+        "customers-cluster-circle",
+        "customers-cluster-count",
+      ].filter((id) => map.getLayer(id));
+      if (clusterLayers.length > 0) {
+        const hits = map.queryRenderedFeatures(e.point, {
+          layers: clusterLayers,
+        });
+        if (hits.length > 0) return;
+      }
       holdStartRef.current = { x: e.point.x, y: e.point.y };
       const point = e.point;
       holdTimerRef.current = setTimeout(() => {
@@ -917,6 +1166,68 @@ export default function MapClient() {
     function onUp() {
       clearHold();
     }
+
+    // Click a cluster to zoom into its expansion zoom — standard Mapbox UX
+    // so users can drill into clusters without manually pinch-zooming.
+    function onClusterClick(sourceId: "pins-source" | "customers-source") {
+      return (e: mapboxgl.MapMouseEvent) => {
+        const feature = e.features?.[0];
+        const clusterId = feature?.properties?.cluster_id;
+        if (clusterId == null) return;
+        const source = map.getSource(sourceId) as
+          | mapboxgl.GeoJSONSource
+          | undefined;
+        if (!source) return;
+        source.getClusterExpansionZoom(clusterId, (err, zoom) => {
+          if (err || zoom == null) return;
+          const geom = feature?.geometry;
+          if (!geom || geom.type !== "Point") return;
+          const [lng, lat] = geom.coordinates as [number, number];
+          map.easeTo({ center: [lng, lat], zoom });
+        });
+      };
+    }
+    function onClusterEnter() {
+      map.getCanvas().style.cursor = "pointer";
+    }
+    function onClusterLeave() {
+      map.getCanvas().style.cursor = "";
+    }
+    map.on("click", "pins-cluster-circle", onClusterClick("pins-source"));
+    map.on("click", "pins-cluster-count", onClusterClick("pins-source"));
+    map.on(
+      "click",
+      "customers-cluster-circle",
+      onClusterClick("customers-source")
+    );
+    map.on(
+      "click",
+      "customers-cluster-count",
+      onClusterClick("customers-source")
+    );
+    for (const layer of [
+      "pins-cluster-circle",
+      "pins-cluster-count",
+      "customers-cluster-circle",
+      "customers-cluster-count",
+    ]) {
+      map.on("mouseenter", layer, onClusterEnter);
+      map.on("mouseleave", layer, onClusterLeave);
+    }
+
+    // Mapbox re-tiles clusters as the user pans/zooms. Sync DOM marker
+    // visibility whenever a relevant cluster source finishes updating, plus
+    // after movement settles — those are the moments the leaf-feature set
+    // actually changes.
+    map.on("sourcedata", (e) => {
+      if (e.sourceId !== "pins-source" && e.sourceId !== "customers-source") {
+        return;
+      }
+      if (!e.isSourceLoaded) return;
+      syncMarkerVisibility();
+    });
+    map.on("moveend", syncMarkerVisibility);
+    map.on("zoomend", syncMarkerVisibility);
 
     map.on("mousedown", onPressDown);
     map.on("mousemove", onMove);
@@ -954,9 +1265,19 @@ export default function MapClient() {
 
   useEffect(() => {
     pinsVisibleRef.current = pinsVisible;
-    for (const [, marker] of markersRef.current) {
-      marker.getElement().style.display = pinsVisible ? "flex" : "none";
+    const map = mapRef.current;
+    if (map) {
+      for (const layer of ["pins-cluster-circle", "pins-cluster-count"]) {
+        if (map.getLayer(layer)) {
+          map.setLayoutProperty(
+            layer,
+            "visibility",
+            pinsVisible ? "visible" : "none"
+          );
+        }
+      }
     }
+    syncMarkerVisibility();
   }, [pinsVisible]);
 
   useEffect(() => {
@@ -965,6 +1286,21 @@ export default function MapClient() {
     showSubscriptionsFilterRef.current = showSubscriptionsFilter;
     dateRangeRef.current = dateRange;
     selectedEmployeeIdsRef.current = selectedEmployeeIds;
+    const map = mapRef.current;
+    if (map) {
+      for (const layer of [
+        "customers-cluster-circle",
+        "customers-cluster-count",
+      ]) {
+        if (map.getLayer(layer)) {
+          map.setLayoutProperty(
+            layer,
+            "visibility",
+            showCustomerPins ? "visible" : "none"
+          );
+        }
+      }
+    }
     applyCustomerFilters();
   }, [
     showCustomerPins,
@@ -982,6 +1318,7 @@ export default function MapClient() {
     map.setStyle(next === "satellite" ? SATELLITE_STYLE : STREETS_STYLE);
     map.once("style.load", () => {
       ensureTerritoryLayers();
+      ensureClusterLayers();
     });
   }
 
