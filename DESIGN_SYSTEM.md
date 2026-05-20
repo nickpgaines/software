@@ -1320,6 +1320,52 @@ To add a new pin status: add a row to `PIN_STATUS` with its color/icon
 plus a matching `case` in `filledGlyphSvg` returning the solid-fill
 SVG markup at viewBox `0 0 24 24`.
 
+### 8.22 Map pin clusters
+
+At low zoom, individual pins/customer markers would overlap into an
+unreadable smear, so `/map` aggregates them into cluster bubbles via
+Mapbox's native GeoJSON clustering. Each cluster is a flat filled
+circle with a 2px white stroke and a centered count label
+(`point_count_abbreviated`). Clicking a cluster eases the camera to the
+cluster's `getClusterExpansionZoom` value, drilling in one tier.
+
+Source: `ensureClusterLayers`, `setPinSourceData`,
+`setCustomerSourceData`, and `syncMarkerVisibility` in
+`apps/web/src/components/MapClient.tsx`.
+
+Two cluster surfaces — pins (door-knock) and customers — render in
+parallel, distinguished by fill color:
+
+| Surface       | Fill color                                | Text color                                  |
+| ------------- | ----------------------------------------- | ------------------------------------------- |
+| Pin clusters  | `--color-violet` (accent, with override)  | `--color-violet-foreground`                 |
+| Customer clusters | `#dc2626` (matches `CUSTOMER_PIN_COLOR`) | `#ffffff`                                |
+
+Shared geometry/behavior tokens:
+
+| Token              | Value                                                                                |
+| ------------------ | ------------------------------------------------------------------------------------ |
+| Cluster radius     | `circle-radius` interpolation: `16` (<10), `20` (10–49), `24` (50–199), `30` (200+) |
+| Stroke             | `2px solid #ffffff`                                                                  |
+| Opacity            | `0.92`                                                                               |
+| Count font         | `Open Sans Bold` 13px                                                                |
+| Cluster radius (px) | `50` (`clusterRadius`)                                                              |
+| Cluster max zoom   | `14` (`clusterMaxZoom`) — above this every point renders individually                |
+| Click behavior     | `getClusterExpansionZoom` → `easeTo({ center, zoom })`                              |
+
+The DOM markers (rich status glyphs, glow, popups) still drive
+unclustered points; `syncMarkerVisibility` hides any DOM marker whose
+feature is currently aggregated by querying the source for features
+without `point_count` after each `sourcedata`, `moveend`, and
+`zoomend`. The toggles for "pins visible" / "customer pins visible"
+hide both the DOM markers and the cluster layers
+(via `setLayoutProperty('visibility', 'none')`).
+
+The customer-side cluster source is filtered through
+`isCustomerVisible` before `setData`, so subscription / date /
+employee filters change cluster counts in lockstep with the markers
+they aggregate.
+
 ---
 
 ## 9. Layout patterns
