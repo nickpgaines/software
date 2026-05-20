@@ -1019,8 +1019,8 @@ function DayView({
     : `64px repeat(${lanes.length}, minmax(180px,1fr))`;
 
   return (
-    <div className="md:overflow-x-auto">
-      <div className="md:min-w-[640px]">
+    <div className="md:min-w-[640px]">
+      <div className="sticky top-0 z-20 bg-card">
         <div
           className={
             "px-4 py-3 text-center text-sm font-extrabold tracking-tight border-b border-line " +
@@ -1030,7 +1030,7 @@ function DayView({
           {dateLabel}
         </div>
         <div
-          className="grid border-b border-line"
+          className="grid border-b border-line bg-card"
           style={{ gridTemplateColumns: gridCols }}
         >
           <div />
@@ -1085,7 +1085,7 @@ function DayView({
 
         {hasAnytimeRow && (
           <div
-            className="grid border-b border-line bg-black/40"
+            className="grid border-b border-line bg-zinc-950"
             style={{ gridTemplateColumns: gridCols }}
           >
             <div className="text-[10px] font-bold text-zinc-500 text-right pr-2 py-2">
@@ -1103,30 +1103,30 @@ function DayView({
             ))}
           </div>
         )}
+      </div>
 
-        <div className="grid" style={{ gridTemplateColumns: gridCols }}>
-          <div className="border-r border-line">
-            {HOURS.map((h) => (
-              <div
-                key={h}
-                style={{ height: `${HOUR_PX}px` }}
-                className="text-[10px] text-zinc-500 pr-2 text-right -translate-y-1.5"
-              >
-                {formatHour(h)}
-              </div>
-            ))}
-          </div>
-          {lanes.map((lane, i) => (
-            <LaneColumn
-              key={i}
-              day={day}
-              jobs={lane.timed}
-              technicianId={lane.staff?.id ?? null}
-              isToday={isToday}
-              now={now}
-            />
+      <div className="grid" style={{ gridTemplateColumns: gridCols }}>
+        <div className="border-r border-line">
+          {HOURS.map((h) => (
+            <div
+              key={h}
+              style={{ height: `${HOUR_PX}px` }}
+              className="text-[10px] text-zinc-500 pr-2 text-right -translate-y-1.5"
+            >
+              {formatHour(h)}
+            </div>
           ))}
         </div>
+        {lanes.map((lane, i) => (
+          <LaneColumn
+            key={i}
+            day={day}
+            jobs={lane.timed}
+            technicianId={lane.staff?.id ?? null}
+            isToday={isToday}
+            now={now}
+          />
+        ))}
       </div>
     </div>
   );
