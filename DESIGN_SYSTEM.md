@@ -1298,8 +1298,16 @@ a **filled** white (or `#0f172a` on yellow) glyph at 16px, no border,
 and a soft outer glow built from layered `box-shadow` rings using the
 status color at decreasing opacity.
 
-Source: `makeMarkerElement` in
-`apps/web/src/components/MapClient.tsx` reads from `PIN_STATUS` and
+Customer markers share the same treatment with a fixed two-state
+palette: red (`#dc2626`) for one-time / non-subscription customers,
+green (`#22c55e`) for active-subscription customers. The inner glyph
+is a filled white user silhouette (head circle + rounded shoulders
+clipped at the base of the 24×24 viewBox). The teardrop shape and
+white outline that previously distinguished customer pins were
+retired — customer and door-knock pins now read as one visual family.
+
+Source: `makeMarkerElement` and `makeCustomerMarkerElement` in
+`apps/web/src/components/MapClient.tsx` read from `PIN_STATUS` and
 `filledGlyphSvg` in `apps/web/src/lib/map-pin-colors.ts`.
 
 | Token            | Value                                                                                                              |
@@ -1336,17 +1344,16 @@ Source: `ensureClusterLayers`, `setPinSourceData`,
 Two cluster surfaces — pins (door-knock) and customers — render in
 parallel, distinguished by fill color:
 
-| Surface       | Fill color                                | Text color                                  |
-| ------------- | ----------------------------------------- | ------------------------------------------- |
-| Pin clusters  | `--color-violet` (accent, with override)  | `--color-violet-foreground`                 |
-| Customer clusters | `#dc2626` (matches `CUSTOMER_PIN_COLOR`) | `#ffffff`                                |
+| Surface           | Fill color                                | Stroke                              | Text color                  |
+| ----------------- | ----------------------------------------- | ----------------------------------- | --------------------------- |
+| Pin clusters      | `--color-violet` (accent, with override)  | None                                | `--color-violet-foreground` |
+| Customer clusters | `#dc2626` (matches `CUSTOMER_PIN_COLOR`)  | `2px #991b1b` (red-800, darker red) | `#ffffff`                   |
 
 Shared geometry/behavior tokens:
 
 | Token              | Value                                                                                |
 | ------------------ | ------------------------------------------------------------------------------------ |
 | Cluster radius     | `circle-radius` interpolation: `16` (<10), `20` (10–49), `24` (50–199), `30` (200+) |
-| Stroke             | `2px solid #ffffff`                                                                  |
 | Opacity            | `0.92`                                                                               |
 | Count font         | `Open Sans Bold` 13px                                                                |
 | Cluster radius (px) | `50` (`clusterRadius`)                                                              |

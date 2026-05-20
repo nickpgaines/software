@@ -49,6 +49,10 @@ const CLUSTER_RADIUS = 50;
 // user wants to see exact addresses, not aggregations.
 const CLUSTER_MAX_ZOOM = 14;
 const CUSTOMER_CLUSTER_COLOR = "#dc2626";
+// Darker red border on customer clusters (vs the white ring used elsewhere)
+// — matches the all-red, no-white-rim treatment of the new customer
+// markers. red-800.
+const CUSTOMER_CLUSTER_STROKE = "#991b1b";
 // Fallback accent if the --color-violet CSS variable is missing (e.g. in
 // tests or before stylesheets load). Matches Tailwind's violet-600.
 const ACCENT_FALLBACK = "#7c3aed";
@@ -280,20 +284,35 @@ function customerPinColor(c: CustomerPin): string {
 }
 
 function makeCustomerMarkerElement(c: CustomerPin): HTMLElement {
+  // Flyra-style customer marker: flat filled circle in the customer state
+  // color (red for one-time, green for active subscription), 16px filled
+  // user glyph, no stroke, layered colored glow — mirrors the door-knock
+  // marker treatment so customers read as the same family of pin.
+  // See DESIGN_SYSTEM.md §8.21 / §8.22.
+  const color = customerPinColor(c);
   const el = document.createElement("div");
   el.className = "mp-customer-pin";
   el.style.cssText =
-    "width:28px;height:36px;cursor:pointer;" +
-    "filter:drop-shadow(0 2px 3px rgba(0,0,0,0.35));" +
-    "transform:translateY(-4px);";
-  el.innerHTML = `
-    <svg viewBox="0 0 24 32" width="28" height="36" xmlns="http://www.w3.org/2000/svg">
-      <path d="M12 0C5.4 0 0 5.4 0 12c0 9 12 20 12 20s12-11 12-20C24 5.4 18.6 0 12 0z"
-            fill="${customerPinColor(c)}" stroke="white" stroke-width="2"/>
-      <circle cx="12" cy="12" r="4" fill="white"/>
-    </svg>
-  `;
-  const tooltip = c.name + (c.formatted_address ? ` — ${c.formatted_address}` : c.address ? ` — ${c.address}` : "");
+    "width:28px;height:28px;border-radius:50%;" +
+    `background:${color};color:#ffffff;` +
+    "box-shadow:" +
+    `0 0 0 1px ${color},` +
+    `0 0 12px 2px ${color}cc,` +
+    `0 0 24px 4px ${color}55,` +
+    "0 2px 4px rgba(0,0,0,0.45);" +
+    "display:flex;align-items:center;justify-content:center;cursor:pointer;";
+  el.innerHTML =
+    '<svg viewBox="0 0 24 24" width="16" height="16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">' +
+    '<circle cx="12" cy="9" r="4" fill="#ffffff"/>' +
+    '<path d="M4 22c0-4.4 3.6-8 8-8s8 3.6 8 8z" fill="#ffffff"/>' +
+    "</svg>";
+  const tooltip =
+    c.name +
+    (c.formatted_address
+      ? ` — ${c.formatted_address}`
+      : c.address
+        ? ` — ${c.address}`
+        : "");
   el.title = tooltip;
   return el;
 }
@@ -413,7 +432,7 @@ export default function MapClient() {
     if (!map) return;
     const el = makeCustomerMarkerElement(c);
     if (!isCustomerVisible(c)) el.style.display = "none";
-    const marker = new mapboxgl.Marker({ element: el, anchor: "bottom" })
+    const marker = new mapboxgl.Marker({ element: el })
       .setLngLat([c.longitude, c.latitude])
       .addTo(map);
     el.addEventListener("click", (ev) => {
@@ -489,8 +508,7 @@ export default function MapClient() {
         paint: {
           "circle-color": accent.bg,
           "circle-opacity": 0.92,
-          "circle-stroke-color": "#ffffff",
-          "circle-stroke-width": 2,
+          "circle-stroke-width": 0,
           "circle-radius": [
             "step",
             ["get", "point_count"],
@@ -539,7 +557,7 @@ export default function MapClient() {
         paint: {
           "circle-color": CUSTOMER_CLUSTER_COLOR,
           "circle-opacity": 0.92,
-          "circle-stroke-color": "#ffffff",
+          "circle-stroke-color": CUSTOMER_CLUSTER_STROKE,
           "circle-stroke-width": 2,
           "circle-radius": [
             "step",
@@ -967,7 +985,7 @@ export default function MapClient() {
       `<div style="margin-top:10px;">
          <a href="/customers/${c.id}" data-action="view" style="display:inline-block;padding:6px 10px;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;background:white;color:#0f172a;cursor:pointer;text-decoration:none;">View Customer</a>
        </div>`;
-    const popup = new mapboxgl.Popup({ offset: 28, closeButton: true })
+    const popup = new mapboxgl.Popup({ offset: 18, closeButton: true })
       .setLngLat([c.longitude, c.latitude])
       .setDOMContent(node)
       .addTo(map);
