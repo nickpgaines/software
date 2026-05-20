@@ -100,15 +100,15 @@ export default function MessagesClient() {
     conversations.find((c) => c.id === selectedId) || null;
 
   return (
-    <div className="flex bg-card overflow-hidden h-[calc(100dvh-4.5rem-env(safe-area-inset-bottom))] md:h-[100dvh] pt-[env(safe-area-inset-top)] md:pt-0">
-      <aside
+    <div className="flex flex-col bg-card overflow-hidden h-[calc(100dvh-4.5rem-env(safe-area-inset-bottom))] md:h-[100dvh]">
+      <div
         className={
-          "w-full md:w-80 shrink-0 border-r border-line flex-col " +
+          "shrink-0 px-4 md:px-10 pt-[calc(env(safe-area-inset-top)+1rem)] md:pt-10 pb-4 items-center justify-between gap-3 flex-wrap " +
           (selected ? "hidden md:flex" : "flex")
         }
       >
-        <div className="px-4 pt-4 pb-3 flex items-center justify-between gap-2">
-          <InboxTabs />
+        <InboxTabs />
+        <div className="flex items-center gap-2 shrink-0">
           <Button
             type="button"
             variant="ghost"
@@ -129,7 +129,15 @@ export default function MessagesClient() {
             </svg>
           </Button>
         </div>
-        <div className="px-4 pb-2">
+      </div>
+      <div className="flex flex-1 overflow-hidden">
+      <aside
+        className={
+          "w-full md:w-80 shrink-0 border-r border-line flex-col " +
+          (selected ? "hidden md:flex" : "flex")
+        }
+      >
+        <div className="px-4 pt-2 pb-2">
           <div className="relative">
             <Input
               type="search"
@@ -247,6 +255,7 @@ export default function MessagesClient() {
           />
         )}
       </main>
+      </div>
     </div>
   );
 }
