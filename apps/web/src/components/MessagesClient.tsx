@@ -103,31 +103,32 @@ export default function MessagesClient() {
     <div className="flex flex-col bg-card overflow-hidden h-[calc(100dvh-4.5rem-env(safe-area-inset-bottom))] md:h-[100dvh]">
       <div
         className={
-          "shrink-0 px-4 md:px-10 pt-[calc(env(safe-area-inset-top)+1rem)] md:pt-10 pb-4 items-center justify-between gap-3 flex-wrap " +
-          (selected ? "hidden md:flex" : "flex")
+          "shrink-0 " + (selected ? "hidden md:block" : "block")
         }
       >
-        <InboxTabs />
-        <div className="flex items-center gap-2 shrink-0">
-          <Button
-            type="button"
-            variant="ghost"
-            title="Compose"
-            className="w-8 h-8 p-0 rounded-full hover:bg-black text-zinc-400 shrink-0"
-          >
-            <svg
-              className="w-4 h-4"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
+        <div className="max-w-app mx-auto px-4 md:px-10 pt-[calc(env(safe-area-inset-top)+1rem)] md:pt-10 pb-4 flex items-center justify-between gap-3 flex-wrap">
+          <InboxTabs />
+          <div className="flex items-center gap-2 shrink-0">
+            <Button
+              type="button"
+              variant="ghost"
+              title="Compose"
+              className="w-8 h-8 p-0 rounded-full hover:bg-black text-zinc-400 shrink-0"
             >
-              <path d="M12 20h9" />
-              <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z" />
-            </svg>
-          </Button>
+              <svg
+                className="w-4 h-4"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z" />
+              </svg>
+            </Button>
+          </div>
         </div>
       </div>
       <div className="flex flex-1 overflow-hidden">
