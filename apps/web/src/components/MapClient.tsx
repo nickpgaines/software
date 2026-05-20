@@ -4,8 +4,7 @@ import mapboxgl from "mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import MapboxDraw from "@mapbox/mapbox-gl-draw";
 import "@mapbox/mapbox-gl-draw/dist/mapbox-gl-draw.css";
-import { createElement, useEffect, useRef, useState } from "react";
-import { renderToStaticMarkup } from "react-dom/server";
+import { useEffect, useRef, useState } from "react";
 import MapIconStrip from "./MapIconStrip";
 import MapPinDropModal from "./MapPinDropModal";
 import MapTerritoryModal, {
@@ -17,6 +16,7 @@ import MapFilterPanel, { type DateRange } from "./MapFilterPanel";
 import MapLassoPanel, { type LassoCustomer } from "./MapLassoPanel";
 import {
   PIN_STATUS,
+  filledGlyphSvg,
   isPinStatus,
   type PinStatus,
 } from "@/lib/map-pin-colors";
@@ -208,21 +208,22 @@ function statusOf(pin: ApiPin): PinStatus {
 }
 
 function makeMarkerElement(status: PinStatus): HTMLElement {
+  // Flyra-style pin: solid color circle, filled glyph, no white ring, soft
+  // colored glow built from layered box-shadows at decreasing opacity.
+  // See DESIGN_SYSTEM.md §8 "Door-knock map pins".
   const meta = PIN_STATUS[status];
   const el = document.createElement("div");
   el.className = "mp-pin";
   el.style.cssText =
     "width:28px;height:28px;border-radius:50%;" +
     `background:${meta.color};color:${meta.textColor};` +
-    "border:2px solid white;box-shadow:0 2px 4px rgba(0,0,0,0.3);" +
+    "box-shadow:" +
+    `0 0 0 1px ${meta.color},` +
+    `0 0 12px 2px ${meta.color}cc,` +
+    `0 0 24px 4px ${meta.color}55,` +
+    "0 2px 4px rgba(0,0,0,0.45);" +
     "display:flex;align-items:center;justify-content:center;cursor:pointer;";
-  el.innerHTML = renderToStaticMarkup(
-    createElement(meta.icon, {
-      width: 14,
-      height: 14,
-      color: meta.textColor,
-    })
-  );
+  el.innerHTML = filledGlyphSvg(status, meta.textColor, 16);
   return el;
 }
 

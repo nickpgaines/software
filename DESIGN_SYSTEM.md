@@ -1290,6 +1290,36 @@ The map page lets its full-bleed map slide under the nav (the bottom
 nav floats over the map surface; this matches Apple Maps / Google Maps
 mobile behavior).
 
+### 8.21 Door-knock map pins
+
+The markers rendered on `/map` for each door-knock pin status follow a
+"Flyra-style" treatment: a flat 28px filled circle in the status color,
+a **filled** white (or `#0f172a` on yellow) glyph at 16px, no border,
+and a soft outer glow built from layered `box-shadow` rings using the
+status color at decreasing opacity.
+
+Source: `makeMarkerElement` in
+`apps/web/src/components/MapClient.tsx` reads from `PIN_STATUS` and
+`filledGlyphSvg` in `apps/web/src/lib/map-pin-colors.ts`.
+
+| Token            | Value                                                                                                              |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------ |
+| Diameter         | 28px                                                                                                               |
+| Background       | `PIN_STATUS[status].color`                                                                                         |
+| Icon             | `filledGlyphSvg(status, textColor, 16)` — filled solid glyph (not Lucide outline)                                  |
+| Icon color       | `PIN_STATUS[status].textColor` (`#fff` everywhere except `not_home` which uses `#0f172a` on the yellow background) |
+| Outline          | None                                                                                                               |
+| Glow             | `0 0 0 1px {c}, 0 0 12px 2px {c}cc, 0 0 24px 4px {c}55, 0 2px 4px rgba(0,0,0,0.45)` where `{c}` is the status color |
+
+The Lucide outline icons still attached to each `PIN_STATUS` entry
+remain the source for surrounding UI chrome — the icon strip
+(`MapIconStrip`), drop modal (`MapPinDropModal`), and pin popup title.
+Only the map markers themselves use the filled glyphs.
+
+To add a new pin status: add a row to `PIN_STATUS` with its color/icon
+plus a matching `case` in `filledGlyphSvg` returning the solid-fill
+SVG markup at viewBox `0 0 24 24`.
+
 ---
 
 ## 9. Layout patterns
