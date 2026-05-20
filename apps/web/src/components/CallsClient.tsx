@@ -98,9 +98,9 @@ export default function CallsClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <h1 className="text-page-title text-white">Inbox</h1>
+      <div className="flex items-center justify-between gap-3 flex-wrap">
         <InboxTabs />
+        <div className="flex items-center gap-2 shrink-0" />
       </div>
       {!phone.configured && (
         <Badge

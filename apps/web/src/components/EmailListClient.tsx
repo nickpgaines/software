@@ -174,10 +174,9 @@ export default function EmailListClient() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-start justify-between gap-4 flex-wrap">
-        <h1 className="text-page-title text-white">Inbox</h1>
-        <div className="flex items-center gap-3 flex-wrap">
-          <InboxTabs />
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <InboxTabs />
+        <div className="flex items-center gap-2 shrink-0">
           <Link
             href="/email/new"
             className="text-sm bg-primary hover:opacity-90 text-primary-foreground rounded-full px-4 py-2 font-bold"
