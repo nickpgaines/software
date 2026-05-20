@@ -97,7 +97,7 @@ export default function CallsClient() {
   }, [phone.state.kind]);
 
   return (
-    <div className="space-y-6">
+    <div className="px-4 md:px-10 pt-[calc(env(safe-area-inset-top)+1rem)] md:pt-10 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-10 space-y-6">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <InboxTabs />
         <div className="flex items-center gap-2 shrink-0" />

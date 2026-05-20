@@ -106,7 +106,7 @@ export default function MessagesClient() {
           "shrink-0 " + (selected ? "hidden md:block" : "block")
         }
       >
-        <div className="max-w-app mx-auto px-4 md:px-10 pt-[calc(env(safe-area-inset-top)+1rem)] md:pt-10 pb-4 flex items-center justify-between gap-3 flex-wrap">
+        <div className="px-4 md:px-10 pt-[calc(env(safe-area-inset-top)+1rem)] md:pt-10 pb-4 flex items-center justify-between gap-3 flex-wrap">
           <InboxTabs />
           <div className="flex items-center gap-2 shrink-0">
             <Button
