@@ -162,7 +162,7 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
       .prepare(
         `SELECT
            COALESCE(SUM(CASE WHEN status = 'sale' THEN 1 ELSE 0 END), 0) AS sales,
-           COALESCE(SUM(CASE WHEN status IN ('sale', 'quote_sent') THEN 1 ELSE 0 END), 0) AS quoted
+           COALESCE(SUM(CASE WHEN status IN ('sale', 'quote', 'quote_sent') THEN 1 ELSE 0 END), 0) AS quoted
          FROM map_pins
          WHERE company_id = ?
            AND created_at >= ? AND created_at < ?`

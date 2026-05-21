@@ -12,11 +12,7 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useState } from "react";
-import {
-  PIN_STATUS,
-  filledGlyphSvg,
-  type PinStatus,
-} from "@/lib/map-pin-colors";
+import { PIN_STATUS, type PinStatus } from "@/lib/map-pin-colors";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
@@ -140,14 +136,10 @@ export default function MapPinDropModal({
           <div className="flex gap-4 overflow-x-auto pb-2 pt-1 -mx-1 px-1">
             {entries.map(([key, meta]) => {
               const active = status === key;
-              // Match makeMarkerElement in MapClient.tsx (DESIGN_SYSTEM.md §8
-              // "Door-knock map pins") so the picker swatches read as
-              // miniatures of the actual map markers.
-              const glow =
-                `0 0 0 1px ${meta.color},` +
-                `0 0 12px 2px ${meta.color}cc,` +
-                `0 0 24px 4px ${meta.color}55,` +
-                `0 2px 4px rgba(0,0,0,0.45)`;
+              const Icon = meta.icon;
+              // Holographic swatch: translucent colored fill + colored border
+              // + bright icon, mirroring the knocking stats tiles and the
+              // map marker. Active state gets a wider colored glow.
               return (
                 <Button
                   key={key}
@@ -160,15 +152,17 @@ export default function MapPinDropModal({
                   <span
                     className="w-11 h-11 rounded-full flex items-center justify-center transition-all"
                     style={{
-                      backgroundColor: meta.color,
-                      color: meta.textColor,
-                      boxShadow: active ? glow : "none",
-                      opacity: active ? 1 : 0.45,
+                      background: `${meta.color}26`,
+                      border: `1.5px solid ${meta.color}`,
+                      color: meta.color,
+                      boxShadow: active
+                        ? `0 0 18px ${meta.color}80, 0 2px 6px rgba(0,0,0,0.45)`
+                        : "none",
+                      opacity: active ? 1 : 0.55,
                     }}
-                    dangerouslySetInnerHTML={{
-                      __html: filledGlyphSvg(key, meta.textColor, 22),
-                    }}
-                  />
+                  >
+                    <Icon className="w-5 h-5" />
+                  </span>
                   <span
                     className={
                       "text-[11px] text-center leading-tight " +

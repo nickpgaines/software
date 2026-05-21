@@ -11,11 +11,28 @@ const PIN_STATUSES = [
   "sale",
   "not_home",
   "not_interested",
-  "come_back",
-  "quote_sent",
-  "do_not_return",
+  "not_qualified",
+  "do_not_contact",
+  "revisit",
+  "referral",
+  "quote",
 ] as const;
 type PinStatus = (typeof PIN_STATUSES)[number];
+
+// Older rows in the DB carry legacy status keys; normalize on read so they
+// land in the right bucket in reports.
+const LEGACY_STATUS_MAP: Record<string, PinStatus> = {
+  come_back: "revisit",
+  quote_sent: "quote",
+  do_not_return: "do_not_contact",
+};
+
+function normalizeStatus(s: string | null): PinStatus | null {
+  if (!s) return null;
+  if ((PIN_STATUSES as readonly string[]).includes(s)) return s as PinStatus;
+  if (s in LEGACY_STATUS_MAP) return LEGACY_STATUS_MAP[s];
+  return null;
+}
 
 type PinRow = { status: string | null; count: number };
 
@@ -116,7 +133,7 @@ async function getBucket(
       `SELECT
          COUNT(*) AS total,
          SUM(CASE WHEN status = 'sale' THEN 1 ELSE 0 END) AS sales,
-         SUM(CASE WHEN status IN ('sale', 'quote_sent') THEN 1 ELSE 0 END) AS quoted
+         SUM(CASE WHEN status IN ('sale', 'quote', 'quote_sent') THEN 1 ELSE 0 END) AS quoted
        FROM map_pins
        WHERE company_id = ?
          AND created_at >= ? AND created_at < ?`,
@@ -348,9 +365,11 @@ async function getPinStatusBreakdown(
       sale: 0,
       not_home: 0,
       not_interested: 0,
-      come_back: 0,
-      quote_sent: 0,
-      do_not_return: 0,
+      not_qualified: 0,
+      do_not_contact: 0,
+      revisit: 0,
+      referral: 0,
+      quote: 0,
     };
   }
 
@@ -361,8 +380,8 @@ async function getPinStatusBreakdown(
     const row = byRep.get(key) || blankRow(r.name, r.staff_id);
     row.total += r.n;
     team.total += r.n;
-    if (r.status && (PIN_STATUSES as readonly string[]).includes(r.status)) {
-      const s = r.status as PinStatus;
+    const s = normalizeStatus(r.status);
+    if (s) {
       row[s] += r.n;
       team[s] += r.n;
     }

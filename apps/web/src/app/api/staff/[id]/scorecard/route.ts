@@ -70,6 +70,20 @@ const PIN_STATUSES = [
 
 type PinStatus = (typeof PIN_STATUSES)[number];
 
+// Older rows used a 6-key registry; normalize on read so legacy pins are
+// still counted in the right bucket.
+const LEGACY_STATUS_MAP: Record<string, PinStatus> = {
+  come_back: "revisit",
+  quote_sent: "quote",
+  do_not_return: "do_not_contact",
+};
+
+function normalizeStatus(s: string): PinStatus | null {
+  if ((PIN_STATUSES as readonly string[]).includes(s)) return s as PinStatus;
+  if (s in LEGACY_STATUS_MAP) return LEGACY_STATUS_MAP[s];
+  return null;
+}
+
 export async function GET(
   req: Request,
   { params }: { params: { id: string } }
@@ -220,8 +234,9 @@ export async function GET(
   let pin_total = 0;
   for (const r of pinRows) {
     pin_total += r.n;
-    if ((PIN_STATUSES as readonly string[]).includes(r.status)) {
-      pin_counts[r.status as PinStatus] = r.n;
+    const s = normalizeStatus(r.status);
+    if (s) {
+      pin_counts[s] += r.n;
     }
   }
   // "Qualified" pins for conversion rate = those that engaged (everything
