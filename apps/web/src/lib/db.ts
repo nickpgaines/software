@@ -338,7 +338,7 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
 // Bump when init() gains migrations that must run on existing deploys.
 // First call after deploy runs the full init; subsequent cold starts hit
 // the fast-path below (one SELECT) and skip the ~150 DDL statements.
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 8;
 
 async function init(): Promise<void> {
   // Fast path: if the schema is already at the current version, skip the
@@ -1350,6 +1350,19 @@ async function init(): Promise<void> {
       ON customer_reviews(created_at);
     CREATE INDEX IF NOT EXISTS idx_customer_reviews_company_id
       ON customer_reviews(company_id);
+
+    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      staff_id    INTEGER NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      token_hash  TEXT NOT NULL UNIQUE,
+      expires_at  TEXT NOT NULL,
+      used_at     TEXT,
+      created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_staff_id
+      ON password_reset_tokens(staff_id);
+    CREATE INDEX IF NOT EXISTS idx_password_reset_tokens_expires_at
+      ON password_reset_tokens(expires_at);
 
     CREATE TABLE IF NOT EXISTS oauth_accounts (
       id                INTEGER PRIMARY KEY AUTOINCREMENT,

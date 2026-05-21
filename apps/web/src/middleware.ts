@@ -83,7 +83,12 @@ export async function middleware(req: NextRequest) {
   const token = req.cookies.get(COOKIE_NAME)?.value;
   const authed = await isValid(token);
 
-  if (pathname === "/login" || pathname === "/signup") {
+  if (
+    pathname === "/login" ||
+    pathname === "/signup" ||
+    pathname === "/forgot-password" ||
+    pathname === "/reset-password"
+  ) {
     if (authed) return NextResponse.redirect(new URL("/", req.url));
     return NextResponse.next();
   }
