@@ -1,8 +1,11 @@
+import Link from "next/link";
 import {
   getDashboardIdentity,
   getMonthlyRevenue,
   getTodayJobs,
 } from "@/lib/dashboard";
+import { getSessionContext } from "@/lib/auth";
+import { getCompany, isStripeConfigured } from "@/lib/stripe";
 import {
   CompactHeroKpi,
   PulseActivityCard,
@@ -20,11 +23,24 @@ import { dateLabel, formatCentsShort, greeting } from "@/components/pulse/format
 
 export const dynamic = "force-dynamic";
 
+async function needsStripeConnect(): Promise<boolean> {
+  if (!isStripeConfigured()) return false;
+  const ctx = await getSessionContext();
+  if (!ctx || ctx.isPlatformAdmin) return false;
+  try {
+    const company = await getCompany(ctx.companyId);
+    return !company.stripe_account_id || !company.stripe_charges_enabled;
+  } catch {
+    return false;
+  }
+}
+
 export default async function DashboardPage() {
-  const [{ firstName }, jobs, revenue] = await Promise.all([
+  const [{ firstName }, jobs, revenue, showStripeBanner] = await Promise.all([
     getDashboardIdentity(),
     getTodayJobs(),
     getMonthlyRevenue(),
+    needsStripeConnect(),
   ]);
   const completedCount = revenue.jobsCompleted;
   const closeRate = 0.34;
@@ -52,6 +68,22 @@ export default async function DashboardPage() {
           </Button>
         }
       />
+
+      {showStripeBanner && (
+        <Link
+          href="/settings?tab=payments"
+          className="mb-5 flex items-center justify-between gap-3 rounded-2xl border border-line bg-elevated px-4 py-3 text-sm hover:bg-card"
+        >
+          <span className="flex items-center gap-2 text-fg">
+            <PulseIcon name="wallet" className="w-4 h-4 text-fg-subtle" />
+            <span className="font-bold">Connect Stripe to accept payments.</span>
+            <span className="text-fg-subtle">
+              Invoices can't be sent until your Stripe account is connected.
+            </span>
+          </span>
+          <span className="text-fg-subtle">Set up →</span>
+        </Link>
+      )}
 
       <div className="hidden md:grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
         <CompactHeroKpi
