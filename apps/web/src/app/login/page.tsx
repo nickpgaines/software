@@ -143,6 +143,14 @@ function LoginPageInner() {
           >
             {loading ? "Signing in…" : "Sign in"}
           </Button>
+          <p className="text-center">
+            <Link
+              href="/forgot-password"
+              className="text-xs font-bold text-zinc-400 hover:text-violet-300"
+            >
+              Forgot password?
+            </Link>
+          </p>
           <p className="text-[11px] text-zinc-500 text-center font-bold">
             {process.env.NODE_ENV === "production" ? (
               <>Employees sign in with their email + password.</>
