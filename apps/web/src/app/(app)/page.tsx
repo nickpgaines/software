@@ -85,14 +85,16 @@ export default async function DashboardPage() {
           href="/settings?tab=payments"
           className="mb-5 flex items-center justify-between gap-3 rounded-2xl border border-line bg-elevated px-4 py-3 text-sm hover:bg-card"
         >
-          <span className="flex items-center gap-2 text-fg">
-            <PulseIcon name="wallet" className="w-4 h-4 text-fg-subtle" />
-            <span className="font-bold">Connect Stripe to accept payments.</span>
-            <span className="text-fg-subtle">
-              Invoices can't be sent until your Stripe account is connected.
+          <span className="flex min-w-0 flex-1 items-start gap-2 text-fg sm:items-center">
+            <PulseIcon name="wallet" className="w-4 h-4 mt-0.5 sm:mt-0 shrink-0 text-fg-subtle" />
+            <span className="flex min-w-0 flex-col sm:flex-row sm:items-center sm:gap-2">
+              <span className="font-bold">Connect Stripe to accept payments.</span>
+              <span className="text-fg-subtle">
+                Invoices can't be sent until your Stripe account is connected.
+              </span>
             </span>
           </span>
-          <span className="text-fg-subtle">Set up →</span>
+          <span className="shrink-0 text-fg-subtle">Set up →</span>
         </Link>
       )}
 
