@@ -642,13 +642,6 @@ export default function JobForm({
 
         <Section title="Assignment">
           <div className="space-y-3">
-            <LeadSourceField
-              staff={staff}
-              salesId={salesIds[0] ?? null}
-              setSalesId={(id) => setSalesIds(id == null ? [] : [id])}
-              leadMethod={leadSource}
-              setLeadMethod={setLeadSource}
-            />
             <Field label="Dispatched To">
               <StaffMultiPicker
                 staff={staff}
@@ -657,6 +650,13 @@ export default function JobForm({
                 placeholder="Search technicians…"
               />
             </Field>
+            <LeadSourceField
+              staff={staff}
+              salesId={salesIds[0] ?? null}
+              setSalesId={(id) => setSalesIds(id == null ? [] : [id])}
+              leadMethod={leadSource}
+              setLeadMethod={setLeadSource}
+            />
           </div>
         </Section>
       </div>
