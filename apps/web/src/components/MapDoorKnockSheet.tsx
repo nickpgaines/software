@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { OBJECTIONS, STATUSES, statusByKey, iconSvg } from "@/lib/map-status";
+import { useState } from "react";
+import { OBJECTIONS } from "@/lib/map-status";
+import { PIN_STATUS, PIN_STATUS_KEYS } from "@/lib/map-pin-colors";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -160,14 +161,16 @@ export default function MapDoorKnockSheet({
               Status
             </div>
             <div className="flex gap-2 overflow-x-auto pb-2 -mx-1 px-1">
-              {STATUSES.map((s) => {
-                const active = status === s.key;
+              {PIN_STATUS_KEYS.map((key) => {
+                const meta = PIN_STATUS[key];
+                const active = status === key;
+                const Icon = meta.icon;
                 return (
                   <Button
-                    key={s.key}
+                    key={key}
                     type="button"
                     variant="ghost"
-                    onClick={() => setStatus(s.key)}
+                    onClick={() => setStatus(key)}
                     className={
                       "shrink-0 h-auto flex-col items-center gap-1.5 rounded-2xl border px-3 py-2.5 w-24 hover:bg-transparent " +
                       (active
@@ -176,15 +179,21 @@ export default function MapDoorKnockSheet({
                     }
                   >
                     <span
-                      className="w-9 h-9 rounded-full flex items-center justify-center text-white"
+                      className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
                       style={{
-                        backgroundColor: s.color,
-                        boxShadow: s.glow ? "0 0 12px rgba(239,68,68,0.5)" : "",
+                        background: `${meta.color}26`,
+                        border: `1.5px solid ${meta.color}`,
+                        color: meta.color,
+                        boxShadow: active
+                          ? `0 0 16px ${meta.color}80`
+                          : "none",
+                        opacity: active ? 1 : 0.6,
                       }}
-                      dangerouslySetInnerHTML={{ __html: iconSvg(s.iconKey, 18) }}
-                    />
+                    >
+                      <Icon className="w-4 h-4" />
+                    </span>
                     <span className="text-[11px] font-medium text-zinc-300 text-center leading-tight">
-                      {s.label}
+                      {meta.label}
                     </span>
                   </Button>
                 );

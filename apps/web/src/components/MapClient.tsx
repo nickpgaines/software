@@ -21,7 +21,7 @@ import MapLassoPanel, { type LassoCustomer } from "./MapLassoPanel";
 import {
   PIN_STATUS,
   filledGlyphSvg,
-  isPinStatus,
+  normalizePinStatus,
   type PinStatus,
 } from "@/lib/map-pin-colors";
 
@@ -125,11 +125,13 @@ type ModalState = {
 
 const STATUS_PILL: Record<PinStatus, { bg: string; text: string }> = {
   sale: { bg: "#dcfce7", text: "#166534" },
-  not_home: { bg: "#fef9c3", text: "#854d0e" },
+  not_home: { bg: "#fef3c7", text: "#854d0e" },
   not_interested: { bg: "#fee2e2", text: "#991b1b" },
-  come_back: { bg: "#dbeafe", text: "#1e40af" },
-  quote_sent: { bg: "#ffedd5", text: "#9a3412" },
-  do_not_return: { bg: "#e2e8f0", text: "#0f172a" },
+  not_qualified: { bg: "#ede9fe", text: "#5b21b6" },
+  do_not_contact: { bg: "#e2e8f0", text: "#0f172a" },
+  revisit: { bg: "#cffafe", text: "#155e75" },
+  referral: { bg: "#fce7f3", text: "#9d174d" },
+  quote: { bg: "#dbeafe", text: "#1e40af" },
 };
 
 function pinCoordLabel(pin: { lat: number; lng: number }): string {
@@ -251,26 +253,29 @@ function escapeHtml(s: string): string {
 }
 
 function statusOf(pin: ApiPin): PinStatus {
-  return isPinStatus(pin.status) ? pin.status : "not_home";
+  return normalizePinStatus(pin.status);
 }
 
 function makeMarkerElement(status: PinStatus): HTMLElement {
-  // Flyra-style pin: solid color circle, filled glyph, no white ring, soft
-  // colored glow built from layered box-shadows at decreasing opacity.
+  // Holographic pin: translucent colored fill, colored border, brighter
+  // same-color icon — mirrors the knocking stats tiles so the map and the
+  // stats read as the same visual family.
   // See DESIGN_SYSTEM.md §8 "Door-knock map pins".
   const meta = PIN_STATUS[status];
   const el = document.createElement("div");
   el.className = "mp-pin";
   el.style.cssText =
-    "width:28px;height:28px;border-radius:50%;" +
-    `background:${meta.color};color:${meta.textColor};` +
+    "width:30px;height:30px;border-radius:50%;" +
+    `background:${meta.color}26;` +
+    `border:1.5px solid ${meta.color};` +
+    `color:${meta.color};` +
+    "backdrop-filter:blur(6px);" +
+    "-webkit-backdrop-filter:blur(6px);" +
     "box-shadow:" +
-    `0 0 0 1px ${meta.color},` +
-    `0 0 12px 2px ${meta.color}cc,` +
-    `0 0 24px 4px ${meta.color}55,` +
-    "0 2px 4px rgba(0,0,0,0.45);" +
+    `0 0 14px ${meta.color}66,` +
+    "0 2px 6px rgba(0,0,0,0.45);" +
     "display:flex;align-items:center;justify-content:center;cursor:pointer;";
-  el.innerHTML = filledGlyphSvg(status, meta.textColor, 16);
+  el.innerHTML = filledGlyphSvg(status, meta.color, 16);
   return el;
 }
 

@@ -3,20 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import {
-  Ban,
-  DollarSign,
-  FileText,
-  Home,
-  PhoneOff,
-  RotateCcw,
-  ShieldX,
-  UserPlus,
-  type LucideIcon,
-} from "lucide-react";
+import { type LucideIcon } from "lucide-react";
 import { HeroChart } from "@/components/pulse/widgets";
 import { PULSE } from "@/components/pulse/theme";
 import { formatCents, formatCentsShort } from "@/components/pulse/format";
+import { PIN_STATUS, PIN_STATUS_KEYS } from "@/lib/map-pin-colors";
 
 type Range = "today" | "week" | "month" | "year" | "custom";
 type View = "sales" | "tech";
@@ -61,16 +52,13 @@ const PRESETS: { key: Exclude<Range, "custom">; label: string }[] = [
   { key: "year", label: "This Year" },
 ];
 
-const PIN_DEFS: { key: string; label: string; color: string; icon: LucideIcon }[] = [
-  { key: "sale", label: "Sale", color: PULSE.green, icon: DollarSign },
-  { key: "not_home", label: "Not Home", color: "#f59e0b", icon: Home },
-  { key: "not_interested", label: "Not Interested", color: PULSE.red, icon: Ban },
-  { key: "not_qualified", label: "Not Qualified", color: PULSE.violet, icon: ShieldX },
-  { key: "do_not_contact", label: "Do Not Contact", color: PULSE.textDim, icon: PhoneOff },
-  { key: "revisit", label: "Revisit", color: PULSE.cyan, icon: RotateCcw },
-  { key: "referral", label: "Referral", color: "#ec4899", icon: UserPlus },
-  { key: "quote", label: "Quote", color: "#3b82f6", icon: FileText },
-];
+const PIN_DEFS: { key: string; label: string; color: string; icon: LucideIcon }[] =
+  PIN_STATUS_KEYS.map((key) => ({
+    key,
+    label: PIN_STATUS[key].label,
+    color: PIN_STATUS[key].color,
+    icon: PIN_STATUS[key].icon,
+  }));
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/);

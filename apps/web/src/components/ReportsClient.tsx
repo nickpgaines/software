@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Settings } from "lucide-react";
 import { HeroChart } from "@/components/pulse/widgets";
-import { PIN_STATUS, type PinStatus } from "@/lib/map-pin-colors";
+import { PIN_STATUS, PIN_STATUS_KEYS, type PinStatus } from "@/lib/map-pin-colors";
 import {
   Bar,
   BarChart,
@@ -780,13 +780,7 @@ type SalesPinStatusRow = {
   id: number | null;
   name: string;
   total: number;
-  sale: number;
-  not_home: number;
-  not_interested: number;
-  come_back: number;
-  quote_sent: number;
-  do_not_return: number;
-};
+} & Record<PinStatus, number>;
 
 type SalesReport = {
   range: Range;
@@ -833,18 +827,16 @@ type SalesReport = {
 };
 
 const PIN_STATUS_COLS: {
-  key: keyof Omit<SalesPinStatusRow, "id" | "name" | "total">;
+  key: PinStatus;
   label: string;
   color: string;
   status: PinStatus;
-}[] = [
-  { key: "sale", label: "Sale", color: PIN_STATUS.sale.color, status: "sale" },
-  { key: "not_home", label: "Not Home", color: PIN_STATUS.not_home.color, status: "not_home" },
-  { key: "not_interested", label: "Not Interested", color: PIN_STATUS.not_interested.color, status: "not_interested" },
-  { key: "come_back", label: "Come Back", color: PIN_STATUS.come_back.color, status: "come_back" },
-  { key: "quote_sent", label: "Quote Sent", color: PIN_STATUS.quote_sent.color, status: "quote_sent" },
-  { key: "do_not_return", label: "Do Not Return", color: "#64748b", status: "do_not_return" },
-];
+}[] = PIN_STATUS_KEYS.map((key) => ({
+  key,
+  label: PIN_STATUS[key].label,
+  color: PIN_STATUS[key].color,
+  status: key,
+}));
 
 function SalesPanel({ qs }: { qs: string }) {
   const router = useRouter();
