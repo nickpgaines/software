@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Settings } from "lucide-react";
 import { HeroChart } from "@/components/pulse/widgets";
+import { PIN_STATUS, type PinStatus } from "@/lib/map-pin-colors";
 import {
   Bar,
   BarChart,
@@ -831,13 +832,18 @@ type SalesReport = {
   };
 };
 
-const PIN_STATUS_COLS: { key: keyof Omit<SalesPinStatusRow, "id" | "name" | "total">; label: string; color: string }[] = [
-  { key: "sale", label: "Sale", color: "#22c55e" },
-  { key: "not_home", label: "Not Home", color: "#facc15" },
-  { key: "not_interested", label: "Not Interested", color: "#ef4444" },
-  { key: "come_back", label: "Come Back", color: "#3b82f6" },
-  { key: "quote_sent", label: "Quote Sent", color: "#f97316" },
-  { key: "do_not_return", label: "Do Not Return", color: "#64748b" },
+const PIN_STATUS_COLS: {
+  key: keyof Omit<SalesPinStatusRow, "id" | "name" | "total">;
+  label: string;
+  color: string;
+  status: PinStatus;
+}[] = [
+  { key: "sale", label: "Sale", color: PIN_STATUS.sale.color, status: "sale" },
+  { key: "not_home", label: "Not Home", color: PIN_STATUS.not_home.color, status: "not_home" },
+  { key: "not_interested", label: "Not Interested", color: PIN_STATUS.not_interested.color, status: "not_interested" },
+  { key: "come_back", label: "Come Back", color: PIN_STATUS.come_back.color, status: "come_back" },
+  { key: "quote_sent", label: "Quote Sent", color: PIN_STATUS.quote_sent.color, status: "quote_sent" },
+  { key: "do_not_return", label: "Do Not Return", color: "#64748b", status: "do_not_return" },
 ];
 
 function SalesPanel({ qs }: { qs: string }) {
@@ -974,7 +980,7 @@ function SalesPanel({ qs }: { qs: string }) {
 
       {/* Row 4 — Funnel KPIs */}
       <Section
-        title="Sales Funnel"
+        title="Sales KPIs"
         description="Pins, sales, and conversion across the door-knock funnel."
       >
         <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
@@ -1035,20 +1041,28 @@ function SalesPanel({ qs }: { qs: string }) {
                 <TableRow className="border-0 hover:bg-transparent">
                   <TableHead className="h-auto text-left px-5 py-3 text-xs font-bold text-zinc-500">Team Member</TableHead>
                   <TableHead className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500">Total</TableHead>
-                  {PIN_STATUS_COLS.map((c) => (
-                    <TableHead
-                      key={c.key}
-                      className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500"
-                    >
-                      <span className="inline-flex items-center gap-1.5">
-                        <span
-                          className="w-2 h-2 rounded-full"
-                          style={{ background: c.color }}
-                        />
-                        {c.label}
-                      </span>
-                    </TableHead>
-                  ))}
+                  {PIN_STATUS_COLS.map((c) => {
+                    const Icon = PIN_STATUS[c.status].icon;
+                    return (
+                      <TableHead
+                        key={c.key}
+                        className="h-auto text-right px-5 py-3 text-xs font-bold text-zinc-500"
+                      >
+                        <span className="inline-flex items-center justify-end gap-1.5">
+                          <span
+                            className="w-4 h-4 rounded-full inline-flex items-center justify-center"
+                            style={{
+                              background: `${c.color}1F`,
+                              border: `1px solid ${c.color}55`,
+                            }}
+                          >
+                            <Icon className="w-2.5 h-2.5" style={{ color: c.color }} />
+                          </span>
+                          {c.label}
+                        </span>
+                      </TableHead>
+                    );
+                  })}
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1150,6 +1164,14 @@ function ObjectionsBreakdown({
 }: {
   objections: SalesReport["objections"];
 }) {
+  const segments = objections.breakdown.map((o, i) => ({
+    name: o.name,
+    value: o.count,
+    color: SOURCE_COLORS[i % SOURCE_COLORS.length],
+    pct: o.pct,
+  }));
+  const total = segments.reduce((s, x) => s + x.value, 0);
+
   return (
     <div className="bg-card border border-line rounded-2xl overflow-hidden">
       {objections.breakdown.length === 0 ? (
@@ -1157,32 +1179,80 @@ function ObjectionsBreakdown({
           No objections recorded in this window.
         </p>
       ) : (
-        <div className="divide-y divide-line">
-          <div className="px-5 py-3 text-xs font-bold text-zinc-500 bg-black flex items-center justify-between">
-            <span>
-              Objection ({objections.pins_with_objections} pin
-              {objections.pins_with_objections === 1 ? "" : "s"} with objections)
-            </span>
-            <span>Share</span>
+        <div>
+          <div className="px-5 py-3 text-xs font-bold text-zinc-500 bg-black border-b border-line">
+            Objection ({objections.pins_with_objections} pin
+            {objections.pins_with_objections === 1 ? "" : "s"} with objections)
           </div>
-          {objections.breakdown.map((o) => (
-            <div key={o.name} className="px-5 py-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="font-bold text-white tracking-tight">{o.name}</span>
-                <span className="text-zinc-300 font-bold tabular-nums">
-                  {o.count} · {pct(o.pct)}
-                </span>
-              </div>
-              <div className="mt-2 h-2 w-full rounded-full bg-line overflow-hidden">
-                <div
-                  className="h-full bg-rose-500"
-                  style={{
-                    width: `${Math.max(2, Math.round(o.pct * 100))}%`,
-                  }}
-                />
+          <div className="grid gap-6 px-5 py-5 sm:grid-cols-[minmax(0,260px),1fr] items-center">
+            <div className="relative w-full h-56">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={segments}
+                    dataKey="value"
+                    nameKey="name"
+                    innerRadius="60%"
+                    outerRadius="90%"
+                    paddingAngle={2}
+                    stroke="#0f0f12"
+                    strokeWidth={2}
+                  >
+                    {segments.map((s) => (
+                      <Cell key={s.name} fill={s.color} />
+                    ))}
+                  </Pie>
+                  <RTooltip
+                    contentStyle={{
+                      background: "#0f0f12",
+                      border: "1px solid #1f1f24",
+                      borderRadius: 8,
+                      fontSize: 12,
+                      fontWeight: 700,
+                      color: "#fafafa",
+                    }}
+                    labelStyle={{ color: "#fafafa", fontWeight: 800 }}
+                    itemStyle={{ color: "#fafafa" }}
+                    formatter={(v, name) => {
+                      const n = typeof v === "number" ? v : Number(v) || 0;
+                      const pctStr =
+                        total > 0 ? ` (${((n / total) * 100).toFixed(1)}%)` : "";
+                      return [`${n}${pctStr}`, String(name)];
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                <div className="text-[14px] font-semibold text-zinc-500">
+                  Objections
+                </div>
+                <div className="text-lg font-black text-white tabular-nums tracking-tight">
+                  {total}
+                </div>
               </div>
             </div>
-          ))}
+            <ul className="space-y-2">
+              {segments.map((s) => (
+                <li
+                  key={s.name}
+                  className="flex items-center justify-between text-sm"
+                >
+                  <span className="inline-flex items-center gap-2 min-w-0">
+                    <span
+                      className="w-2.5 h-2.5 rounded-full shrink-0"
+                      style={{ background: s.color }}
+                    />
+                    <span className="font-bold text-white tracking-tight truncate">
+                      {s.name}
+                    </span>
+                  </span>
+                  <span className="text-zinc-300 font-bold tabular-nums shrink-0 ml-3">
+                    {s.value} · {pct(s.pct)}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </div>
         </div>
       )}
     </div>

@@ -3,6 +3,17 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import {
+  Ban,
+  DollarSign,
+  FileText,
+  Home,
+  PhoneOff,
+  RotateCcw,
+  ShieldX,
+  UserPlus,
+  type LucideIcon,
+} from "lucide-react";
 import { HeroChart } from "@/components/pulse/widgets";
 import { PULSE } from "@/components/pulse/theme";
 import { formatCents, formatCentsShort } from "@/components/pulse/format";
@@ -50,15 +61,15 @@ const PRESETS: { key: Exclude<Range, "custom">; label: string }[] = [
   { key: "year", label: "This Year" },
 ];
 
-const PIN_DEFS: { key: string; label: string; color: string }[] = [
-  { key: "sale", label: "Sale", color: PULSE.green },
-  { key: "not_home", label: "Not Home", color: "#f59e0b" },
-  { key: "not_interested", label: "Not Interested", color: PULSE.red },
-  { key: "not_qualified", label: "Not Qualified", color: PULSE.violet },
-  { key: "do_not_contact", label: "Do Not Contact", color: PULSE.textDim },
-  { key: "revisit", label: "Revisit", color: PULSE.cyan },
-  { key: "referral", label: "Referral", color: "#ec4899" },
-  { key: "quote", label: "Quote", color: "#3b82f6" },
+const PIN_DEFS: { key: string; label: string; color: string; icon: LucideIcon }[] = [
+  { key: "sale", label: "Sale", color: PULSE.green, icon: DollarSign },
+  { key: "not_home", label: "Not Home", color: "#f59e0b", icon: Home },
+  { key: "not_interested", label: "Not Interested", color: PULSE.red, icon: Ban },
+  { key: "not_qualified", label: "Not Qualified", color: PULSE.violet, icon: ShieldX },
+  { key: "do_not_contact", label: "Do Not Contact", color: PULSE.textDim, icon: PhoneOff },
+  { key: "revisit", label: "Revisit", color: PULSE.cyan, icon: RotateCcw },
+  { key: "referral", label: "Referral", color: "#ec4899", icon: UserPlus },
+  { key: "quote", label: "Quote", color: "#3b82f6", icon: FileText },
 ];
 
 function initials(name: string) {
@@ -344,6 +355,7 @@ export default function SalesStatsClient({
                 label={p.label}
                 count={count}
                 pct={pct}
+                icon={p.icon}
               />
             );
           })}
@@ -442,11 +454,13 @@ function PinTile({
   label,
   count,
   pct,
+  icon: Icon,
 }: {
   color: string;
   label: string;
   count: number;
   pct: number;
+  icon: LucideIcon;
 }) {
   return (
     <div
@@ -464,10 +478,7 @@ function PinTile({
             border: `1px solid ${color}33`,
           }}
         >
-          <span
-            className="w-2 h-2 rounded-full"
-            style={{ background: color }}
-          />
+          <Icon className="w-3.5 h-3.5" style={{ color }} />
         </span>
         <span
           className="text-xs font-bold tabular-nums"
