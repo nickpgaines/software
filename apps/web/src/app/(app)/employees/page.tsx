@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Plus, User } from "lucide-react";
-import { getDb, type Staff } from "@/lib/db";
+import { getDb, syncReplica, type Staff } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import {
@@ -51,6 +51,11 @@ function formatDate(iso: string): string {
 export default async function EmployeesPage() {
   const companyId = await requireCompanyId();
   const db = await getDb();
+  // After an Add/Edit on the employee form we land back here via
+  // router.refresh(). The local replica on this Lambda instance can lag
+  // behind the primary, so without an explicit sync the new row often
+  // wouldn't show up until the user manually reloaded the page.
+  await syncReplica();
   const employees = (await db
     .prepare(
       "SELECT * FROM staff WHERE company_id = ? ORDER BY name COLLATE NOCASE ASC"

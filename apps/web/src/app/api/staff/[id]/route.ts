@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, type Staff, type PermissionLevel } from "@/lib/db";
+import { getDb, syncReplica, type Staff, type PermissionLevel } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
 import { requireCompanyId } from "@/lib/auth";
 
@@ -94,6 +94,7 @@ export async function PATCH(
     const updated = (await db
       .prepare("SELECT * FROM staff WHERE id = ? AND company_id = ?")
       .get(id, companyId)) as Staff;
+    await syncReplica();
     return NextResponse.json(updated);
   }
 
@@ -180,6 +181,7 @@ export async function PATCH(
   const updated = (await db
     .prepare("SELECT * FROM staff WHERE id = ? AND company_id = ?")
     .get(id, companyId)) as Staff;
+  await syncReplica();
   return NextResponse.json(updated);
 }
 
@@ -193,5 +195,6 @@ export async function DELETE(
   await db
     .prepare("DELETE FROM staff WHERE id = ? AND company_id = ?")
     .run(id, companyId);
+  await syncReplica();
   return NextResponse.json({ ok: true });
 }

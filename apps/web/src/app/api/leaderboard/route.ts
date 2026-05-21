@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, syncReplica } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +47,11 @@ function resolveRange(
 export async function GET(req: Request) {
   const companyId = await requireCompanyId();
   const db = await getDb();
+  // Profile photo uploads on /settings update staff.photo_url on the primary,
+  // but the leaderboard reads from the local replica which can lag. Without
+  // a sync the user lands here right after uploading their photo and still
+  // sees initials. Forcing a sync keeps the avatar fresh.
+  await syncReplica();
   const url = new URL(req.url);
   const range = (url.searchParams.get("range") || "month") as Range;
   const view = (url.searchParams.get("view") || "sales") as View;

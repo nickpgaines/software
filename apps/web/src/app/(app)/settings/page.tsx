@@ -1,10 +1,14 @@
 import SettingsTabs from "@/components/SettingsTabs";
 import { getSessionUser } from "@/lib/auth";
+import { loadMe } from "@/lib/me";
 
 export const dynamic = "force-dynamic";
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
   const user = getSessionUser() || "";
+  // Seed the profile panel server-side so the form doesn't render a
+  // "Loading…" placeholder while it client-fetches /api/me.
+  const me = await loadMe();
   return (
     <div className="space-y-6">
       <div>
@@ -13,7 +17,7 @@ export default function SettingsPage() {
           Manage your team, profile, company details, and billing.
         </p>
       </div>
-      <SettingsTabs username={user} />
+      <SettingsTabs username={user} initialMe={me} />
     </div>
   );
 }
