@@ -1,5 +1,6 @@
 import {
   getDashboardIdentity,
+  getDashboardKpis,
   getMonthlyRevenue,
   getTodayJobs,
 } from "@/lib/dashboard";
@@ -20,16 +21,25 @@ import { dateLabel, formatCentsShort, greeting } from "@/components/pulse/format
 
 export const dynamic = "force-dynamic";
 
+function formatPctDelta(value: number): string {
+  const pct = value * 100;
+  const sign = pct >= 0 ? "+" : "−";
+  return `${sign}${Math.abs(pct).toFixed(1)}%`;
+}
+
+function formatCountDelta(value: number): string {
+  const sign = value >= 0 ? "+" : "−";
+  return `${sign}${Math.abs(value)}`;
+}
+
 export default async function DashboardPage() {
-  const [{ firstName }, jobs, revenue] = await Promise.all([
+  const [{ firstName }, jobs, revenue, kpis] = await Promise.all([
     getDashboardIdentity(),
     getTodayJobs(),
     getMonthlyRevenue(),
+    getDashboardKpis(),
   ]);
   const completedCount = revenue.jobsCompleted;
-  const closeRate = 0.34;
-  const arrCents = revenue.totalCents * 12;
-  const jobsSold = completedCount + jobs.length;
 
   return (
     <>
@@ -56,21 +66,24 @@ export default async function DashboardPage() {
       <div className="hidden md:grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
         <CompactHeroKpi
           label="Close Rate"
-          value={`${(closeRate * 100).toFixed(0)}%`}
-          delta="−1.1%"
-          deltaPositive={false}
+          value={`${(kpis.closeRate * 100).toFixed(0)}%`}
+          delta={formatPctDelta(kpis.closeRateDeltaPp)}
+          deltaPositive={kpis.closeRateDeltaPp >= 0}
+          subLabel="vs last month"
         />
         <CompactHeroKpi
           label="ARR"
-          value={formatCentsShort(arrCents)}
-          delta="+8.6%"
-          deltaPositive
+          value={formatCentsShort(kpis.arrCents)}
+          delta={formatPctDelta(kpis.arrDeltaPct)}
+          deltaPositive={kpis.arrDeltaPct >= 0}
+          subLabel="vs last month"
         />
         <CompactHeroKpi
           label="Jobs Sold"
-          value={String(jobsSold)}
-          delta="+12"
-          deltaPositive
+          value={String(kpis.jobsSold)}
+          delta={formatCountDelta(kpis.jobsSoldDelta)}
+          deltaPositive={kpis.jobsSoldDelta >= 0}
+          subLabel="vs last month"
         />
       </div>
 
