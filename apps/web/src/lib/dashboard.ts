@@ -1,5 +1,6 @@
 import { getDb, syncReplica } from "@/lib/db";
 import { getSessionContext } from "@/lib/auth";
+import { getMRRSnapshot, getARRAdded } from "@/lib/revenue";
 import type {
   LiveJob,
   RevenuePoint,
@@ -126,4 +127,97 @@ export async function getMonthlyRevenue(): Promise<RevenueSummary> {
   }));
 
   return { totalCents, jobsCompleted, customersCount, daily };
+}
+
+export type DashboardKpis = {
+  closeRate: number;
+  closeRateDeltaPp: number;
+  arrCents: number;
+  arrDeltaPct: number;
+  jobsSold: number;
+  jobsSoldDelta: number;
+};
+
+export async function getDashboardKpis(): Promise<DashboardKpis> {
+  const ctx = await getSessionContext();
+  const companyId = ctx?.companyId ?? 0;
+  const db = await getDb();
+
+  const now = new Date();
+  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  const priorStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const priorEnd = monthStart;
+
+  const monthStartIso = monthStart.toISOString();
+  const monthEndIso = monthEnd.toISOString();
+  const priorStartIso = priorStart.toISOString();
+  const priorEndIso = priorEnd.toISOString();
+
+  async function pinCloseRate(
+    startIso: string,
+    endIso: string,
+  ): Promise<number> {
+    const row = (await db
+      .prepare(
+        `SELECT
+           COALESCE(SUM(CASE WHEN status = 'sale' THEN 1 ELSE 0 END), 0) AS sales,
+           COALESCE(SUM(CASE WHEN status IN ('sale', 'quote_sent') THEN 1 ELSE 0 END), 0) AS quoted
+         FROM map_pins
+         WHERE company_id = ?
+           AND created_at >= ? AND created_at < ?`
+      )
+      .get(companyId, startIso, endIso)) as
+      | { sales: number; quoted: number }
+      | undefined;
+    const sales = row?.sales ?? 0;
+    const quoted = row?.quoted ?? 0;
+    return quoted > 0 ? sales / quoted : 0;
+  }
+
+  async function jobsSoldCount(
+    startIso: string,
+    endIso: string,
+  ): Promise<number> {
+    const row = (await db
+      .prepare(
+        `SELECT COUNT(*) AS n FROM jobs
+          WHERE company_id = ?
+            AND status != 'cancelled'
+            AND scheduled_at >= ? AND scheduled_at < ?`
+      )
+      .get(companyId, startIso, endIso)) as { n: number } | undefined;
+    return row?.n ?? 0;
+  }
+
+  const [
+    closeRate,
+    priorCloseRate,
+    jobsSold,
+    priorJobsSold,
+    mrrCents,
+    arrAddedCurrent,
+  ] = await Promise.all([
+    pinCloseRate(monthStartIso, monthEndIso),
+    pinCloseRate(priorStartIso, priorEndIso),
+    jobsSoldCount(monthStartIso, monthEndIso),
+    jobsSoldCount(priorStartIso, priorEndIso),
+    getMRRSnapshot(companyId),
+    getARRAdded(companyId, monthStartIso, monthEndIso),
+  ]);
+
+  const arrCents = mrrCents * 12;
+  // ARR at the start of the current month = current ARR minus net ARR added
+  // during the month. If non-positive (e.g. brand-new tenant) the delta is 0.
+  const arrAtStart = arrCents - arrAddedCurrent.net_added_cents;
+  const arrDeltaPct = arrAtStart > 0 ? arrAddedCurrent.net_added_cents / arrAtStart : 0;
+
+  return {
+    closeRate,
+    closeRateDeltaPp: closeRate - priorCloseRate,
+    arrCents,
+    arrDeltaPct,
+    jobsSold,
+    jobsSoldDelta: jobsSold - priorJobsSold,
+  };
 }
