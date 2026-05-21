@@ -166,7 +166,7 @@ function LoginPageInner() {
           Don&apos;t have an account?{" "}
           <Link
             href="/signup"
-            className="text-violet-400 hover:text-violet-300 font-extrabold"
+            className="text-white hover:text-zinc-200 font-extrabold"
           >
             Sign up
           </Link>{" "}
