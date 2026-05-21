@@ -1,10 +1,18 @@
 "use client";
 
-import { X } from "lucide-react";
+import { ChevronDown, X } from "lucide-react";
 import { staffColorHex } from "@/lib/staff-colors";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export type DateRange =
   | "all"
@@ -109,77 +117,30 @@ export default function MapFilterPanel({
         </Section>
 
         <Section label="Date">
-          <div className="flex flex-wrap gap-1.5">
-            {DATE_RANGES.map((r) => {
-              const active = dateRange === r.key;
-              return (
-                <Button
-                  key={r.key}
-                  type="button"
-                  variant="ghost"
-                  onClick={() => onChangeDateRange(r.key)}
-                  className={
-                    "h-auto rounded-full px-3 py-1 text-xs font-bold whitespace-nowrap " +
-                    (active
-                      ? "bg-card text-white shadow-sm border border-line-strong hover:bg-card"
-                      : "bg-black text-zinc-400 border border-transparent hover:text-white hover:bg-black")
-                  }
-                >
-                  {r.label}
-                </Button>
-              );
-            })}
-          </div>
+          {/* Native <select> kept: matches the form-control select pattern
+              used elsewhere (JobForm frequency / ends) and avoids Radix
+              Select's empty-string-value restriction. */}
+          <select
+            value={dateRange}
+            onChange={(e) => onChangeDateRange(e.target.value as DateRange)}
+            className="h-9 w-full rounded-full border border-line-strong bg-black px-3 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-canvas"
+          >
+            {DATE_RANGES.map((r) => (
+              <option key={r.key} value={r.key}>
+                {r.label}
+              </option>
+            ))}
+          </select>
         </Section>
 
         <Section label="Employee">
-          <div className="flex flex-wrap gap-1.5">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => onChangeEmployeeIds(null)}
-              className={
-                "h-auto rounded-full px-3 py-1 text-xs font-bold whitespace-nowrap " +
-                (allEmployees
-                  ? "bg-card text-white shadow-sm border border-line-strong hover:bg-card"
-                  : "bg-black text-zinc-400 border border-transparent hover:text-white hover:bg-black")
-              }
-            >
-              All employees
-            </Button>
-            {staff.length === 0 && (
-              <p className="text-xs font-bold text-zinc-500 w-full mt-1">
-                No employees yet.
-              </p>
-            )}
-            {staff.map((s) => {
-              const active =
-                !allEmployees && selectedEmployeeIds!.includes(s.id);
-              const color = staffColorHex(s.color);
-              return (
-                <Button
-                  key={s.id}
-                  type="button"
-                  variant="ghost"
-                  onClick={() => toggleEmployee(s.id)}
-                  className={
-                    "h-auto gap-1.5 rounded-full pl-1 pr-3 py-0.5 text-xs font-bold whitespace-nowrap " +
-                    (active
-                      ? "bg-card text-white shadow-sm border border-line-strong hover:bg-card"
-                      : "bg-black text-zinc-400 border border-transparent hover:text-white hover:bg-black")
-                  }
-                >
-                  <span
-                    className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white tracking-tight"
-                    style={{ backgroundColor: color }}
-                  >
-                    {initials(s.name)}
-                  </span>
-                  {s.name}
-                </Button>
-              );
-            })}
-          </div>
+          <EmployeeDropdown
+            allEmployees={allEmployees}
+            selectedEmployeeIds={selectedEmployeeIds}
+            staff={staff}
+            onSelectAll={() => onChangeEmployeeIds(null)}
+            onToggle={toggleEmployee}
+          />
         </Section>
       </div>
     </div>
@@ -239,6 +200,87 @@ function PinSwatch({ color }: { color: string }) {
         />
       </svg>
     </span>
+  );
+}
+
+function EmployeeDropdown({
+  allEmployees,
+  selectedEmployeeIds,
+  staff,
+  onSelectAll,
+  onToggle,
+}: {
+  allEmployees: boolean;
+  selectedEmployeeIds: number[] | null;
+  staff: FilterStaff[];
+  onSelectAll: () => void;
+  onToggle: (id: number) => void;
+}) {
+  const selectedCount = selectedEmployeeIds?.length ?? 0;
+  const summary = allEmployees
+    ? "All employees"
+    : selectedCount === 1
+      ? (staff.find((s) => s.id === selectedEmployeeIds![0])?.name ??
+        "1 selected")
+      : `${selectedCount} selected`;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="flex h-9 w-full items-center justify-between rounded-full border border-line-strong bg-black px-3 text-sm font-bold text-white focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:ring-offset-canvas"
+        >
+          <span className="truncate text-left">{summary}</span>
+          <ChevronDown className="ml-2 h-4 w-4 shrink-0 text-zinc-400" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent
+        align="start"
+        className="w-[--radix-dropdown-menu-trigger-width] max-h-72 overflow-y-auto"
+      >
+        <DropdownMenuItem
+          onSelect={(e) => {
+            e.preventDefault();
+            onSelectAll();
+          }}
+          className={allEmployees ? "text-white" : "text-zinc-400"}
+        >
+          All employees
+        </DropdownMenuItem>
+        {staff.length > 0 && <DropdownMenuSeparator />}
+        {staff.length === 0 && (
+          <div className="px-2 py-1.5 text-xs font-bold text-zinc-500">
+            No employees yet.
+          </div>
+        )}
+        {staff.map((s) => {
+          const checked =
+            !allEmployees && selectedEmployeeIds!.includes(s.id);
+          const color = staffColorHex(s.color);
+          return (
+            <DropdownMenuCheckboxItem
+              key={s.id}
+              checked={checked}
+              onSelect={(e) => {
+                e.preventDefault();
+                onToggle(s.id);
+              }}
+            >
+              <span className="flex items-center gap-2">
+                <span
+                  className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white tracking-tight"
+                  style={{ backgroundColor: color }}
+                >
+                  {initials(s.name)}
+                </span>
+                {s.name}
+              </span>
+            </DropdownMenuCheckboxItem>
+          );
+        })}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
