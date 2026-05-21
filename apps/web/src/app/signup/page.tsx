@@ -71,7 +71,6 @@ export default function SignupPage() {
               type="text"
               value={companyName}
               onChange={(e) => setCompanyName(e.target.value)}
-              placeholder="Ocean Bay Home Services"
               className={inputCls}
               autoFocus
             />
@@ -83,7 +82,6 @@ export default function SignupPage() {
                 type="text"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                placeholder="Nick"
                 autoComplete="given-name"
                 className={inputCls}
               />
@@ -94,7 +92,6 @@ export default function SignupPage() {
                 type="text"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                placeholder="Gaines"
                 autoComplete="family-name"
                 className={inputCls}
               />
@@ -106,7 +103,6 @@ export default function SignupPage() {
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
               autoComplete="email"
               className={inputCls}
             />
@@ -120,7 +116,6 @@ export default function SignupPage() {
               onChange={(e) =>
                 setAreaCode(e.target.value.replace(/\D/g, "").slice(0, 3))
               }
-              placeholder="843"
               maxLength={3}
               className={inputCls}
             />
@@ -136,7 +131,6 @@ export default function SignupPage() {
                 type={showPassword ? "text" : "password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="At least 8 characters"
                 autoComplete="new-password"
                 className={inputCls + " pr-10"}
               />
