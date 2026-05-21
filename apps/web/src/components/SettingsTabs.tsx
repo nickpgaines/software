@@ -36,15 +36,27 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "billing", label: "Billing" },
 ];
 
-export default function SettingsTabs({ username }: { username: string }) {
+export default function SettingsTabs({
+  username,
+  initialMe = null,
+}: {
+  username: string;
+  initialMe?: Me | null;
+}) {
   return (
     <Suspense fallback={null}>
-      <SettingsTabsInner username={username} />
+      <SettingsTabsInner username={username} initialMe={initialMe} />
     </Suspense>
   );
 }
 
-function SettingsTabsInner({ username }: { username: string }) {
+function SettingsTabsInner({
+  username,
+  initialMe,
+}: {
+  username: string;
+  initialMe: Me | null;
+}) {
   const searchParams = useSearchParams();
   const router = useRouter();
   const initialTab = (() => {
@@ -94,7 +106,9 @@ function SettingsTabsInner({ username }: { username: string }) {
       </div>
 
       <div className="bg-card border border-line rounded-2xl p-5 sm:p-6 shadow-sm">
-        {tab === "profile" && <ProfilePanel username={username} />}
+        {tab === "profile" && (
+          <ProfilePanel username={username} initialMe={initialMe} />
+        )}
         {tab === "company" && <CompanyPanel />}
         {tab === "payments" && <PaymentsPanel />}
         {tab === "subscriptions" && <SubscriptionsPanel />}
@@ -160,10 +174,21 @@ async function processProfileImage(file: File): Promise<string> {
   }
 }
 
-function ProfilePanel({ username }: { username: string }) {
-  const [me, setMe] = useState<Me | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+function ProfilePanel({
+  username,
+  initialMe,
+}: {
+  username: string;
+  initialMe: Me | null;
+}) {
+  const router = useRouter();
+  const [me, setMe] = useState<Me | null>(initialMe);
+  // If the server seeded us, we already have the row — skip the loading
+  // spinner and the redundant client fetch.
+  const [loading, setLoading] = useState(initialMe == null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(
+    initialMe?.staff?.photo_url ?? null
+  );
   const [photoBusy, setPhotoBusy] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -171,6 +196,7 @@ function ProfilePanel({ username }: { username: string }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    if (initialMe) return;
     fetch("/api/me")
       .then((r) => (r.ok ? r.json() : null))
       .then((m: Me | null) => {
@@ -178,7 +204,7 @@ function ProfilePanel({ username }: { username: string }) {
         setPhotoUrl(m?.staff?.photo_url ?? null);
       })
       .finally(() => setLoading(false));
-  }, []);
+  }, [initialMe]);
 
   async function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -223,6 +249,9 @@ function ProfilePanel({ username }: { username: string }) {
       setMe(updated);
       setPhotoUrl(updated.staff?.photo_url ?? null);
       setSavedAt(Date.now());
+      // Refresh the server layout so the sidebar avatar (rendered from the
+      // layout's loadMe()) picks up the new photo without a manual reload.
+      router.refresh();
     } finally {
       setSaving(false);
     }

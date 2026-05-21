@@ -66,26 +66,43 @@ function initials(name: string) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-export function PulseSidebar() {
+export function PulseSidebar({ initialMe = null }: { initialMe?: Me | null }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [me, setMe] = useState<Me | null>(null);
+  // Seeded from the server layout so the name + avatar are correct on first
+  // paint. Without a seed we'd render "You" / initials and only fill in
+  // after a network round-trip, flashing on every navigation.
+  const [me, setMe] = useState<Me | null>(initialMe);
   const [newOpen, setNewOpen] = useState(false);
   const newRef = useRef<HTMLDivElement>(null);
   const { open: mobileOpen } = useMobileNav();
 
+  // One-shot fallback: only fetch if the server didn't manage to seed us
+  // (e.g. session present but staff row still syncing on the layout's
+  // replica). Once we have data, never refetch on navigation — soft nav
+  // keeps this component mounted and the underlying record rarely changes
+  // mid-session. SettingsTabs refreshes the router itself after profile
+  // edits, which re-runs the layout and threads in the new initialMe.
   useEffect(() => {
+    if (me) return;
     let cancelled = false;
     fetch("/api/me")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
-        if (!cancelled) setMe(data);
+        if (!cancelled && data) setMe(data);
       })
       .catch(() => {});
     return () => {
       cancelled = true;
     };
-  }, [pathname]);
+  }, [me]);
+
+  // When the server layout re-runs (e.g. after router.refresh() following a
+  // profile photo update on Settings), thread the fresh server data through
+  // so the sidebar's avatar updates without a manual reload.
+  useEffect(() => {
+    if (initialMe) setMe(initialMe);
+  }, [initialMe]);
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {

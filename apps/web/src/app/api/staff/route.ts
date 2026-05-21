@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, type Staff, type PermissionLevel } from "@/lib/db";
+import { getDb, syncReplica, type Staff, type PermissionLevel } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
 import { requireCompanyId } from "@/lib/auth";
 
@@ -71,6 +71,9 @@ export async function POST(req: Request) {
     const created = (await db
       .prepare("SELECT * FROM staff WHERE id = ? AND company_id = ?")
       .get(result.lastInsertRowid, companyId)) as Staff;
+    // Force the local replica to pick up the insert so the router.refresh()
+    // landing on this instance sees the new row immediately.
+    await syncReplica();
     return NextResponse.json(created, { status: 201 });
   }
 
@@ -158,12 +161,18 @@ export async function POST(req: Request) {
   const created = (await db
     .prepare("SELECT * FROM staff WHERE id = ? AND company_id = ?")
     .get(result.lastInsertRowid, companyId)) as Staff | undefined;
+  if (created) {
+    // Force the local replica to pick up the insert so the router.refresh()
+    // landing on this instance sees the new row immediately.
+    await syncReplica();
+  }
   if (!created) {
     // Fall back to email lookup in case the driver didn't return lastInsertRowid.
     const fallback = (await db
       .prepare("SELECT * FROM staff WHERE email = ? AND company_id = ?")
       .get(email, companyId)) as Staff | undefined;
     if (fallback) {
+      await syncReplica();
       return NextResponse.json(fallback, { status: 201 });
     }
     console.error(
