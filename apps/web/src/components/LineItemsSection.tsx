@@ -193,23 +193,13 @@ function LineItemCard({
               </div>
             )}
           </div>
-          <div className="relative">
-            <Textarea
-              value={item.description}
-              onChange={(e) => onChange({ description: e.target.value })}
-              rows={2}
-              placeholder="Description (optional)"
-              className="w-full border-line rounded-2xl px-4 py-2 text-sm h-auto"
-            />
-            <Button
-              type="button"
-              title="AI write — coming soon"
-              variant="ghost"
-              className="absolute top-2 right-2 inline-flex items-center gap-1 text-xs bg-violet-50 text-violet-700 hover:bg-violet-100 rounded-full px-2.5 py-1 h-auto"
-            >
-              <span>✦</span> AI Write
-            </Button>
-          </div>
+          <Textarea
+            value={item.description}
+            onChange={(e) => onChange({ description: e.target.value })}
+            rows={2}
+            placeholder="Description (optional)"
+            className="w-full border-line rounded-2xl px-4 py-2 text-sm h-auto"
+          />
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label className="block text-xs font-bold text-zinc-500 mb-2">
