@@ -25,6 +25,11 @@ export const DATE_RANGES: { key: DateRange; label: string }[] = [
   { key: "all", label: "All time" },
 ];
 
+// Mirrors MapClient.tsx CUSTOMER_PIN_COLOR / SUBSCRIPTION_PIN_COLOR so the
+// filter swatches read as the same family as the rendered pins.
+const CUSTOMER_PIN_COLOR = "#dc2626";
+const SUBSCRIPTION_PIN_COLOR = "#22c55e";
+
 export type FilterStaff = {
   id: number;
   name: string;
@@ -93,58 +98,64 @@ export default function MapFilterPanel({
             checked={showCustomers}
             onChange={onChangeShowCustomers}
             label="Customers"
-            swatch="#dc2626"
+            pinColor={CUSTOMER_PIN_COLOR}
           />
           <CheckRow
             checked={showSubscriptions}
             onChange={onChangeShowSubscriptions}
             label="Subscriptions"
-            swatch="#22c55e"
+            pinColor={SUBSCRIPTION_PIN_COLOR}
           />
         </Section>
 
         <Section label="Date">
-          <div className="space-y-1">
-            {DATE_RANGES.map((r) => (
-              <Label
-                key={r.key}
-                className="flex items-center gap-2 text-sm cursor-pointer py-1 font-normal"
-              >
-                {/* Native <input type="radio"> kept: no Radio primitive in components/ui yet. */}
-                <input
-                  type="radio"
-                  name="map-filter-date"
-                  checked={dateRange === r.key}
-                  onChange={() => onChangeDateRange(r.key)}
-                  className="accent-slate-900"
-                />
-                <span className="text-zinc-300">{r.label}</span>
-              </Label>
-            ))}
+          <div className="flex flex-wrap gap-1.5">
+            {DATE_RANGES.map((r) => {
+              const active = dateRange === r.key;
+              return (
+                <Button
+                  key={r.key}
+                  type="button"
+                  variant="ghost"
+                  onClick={() => onChangeDateRange(r.key)}
+                  className={
+                    "h-auto rounded-full px-3 py-1 text-xs font-bold whitespace-nowrap " +
+                    (active
+                      ? "bg-card text-white shadow-sm border border-line-strong hover:bg-card"
+                      : "bg-black text-zinc-400 border border-transparent hover:text-white hover:bg-black")
+                  }
+                >
+                  {r.label}
+                </Button>
+              );
+            })}
           </div>
         </Section>
 
         <Section label="Employee">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => onChangeEmployeeIds(null)}
-            className={
-              "h-auto text-xs px-2 py-1 rounded-full mb-2 font-bold " +
-              (allEmployees
-                ? "bg-slate-900 text-white hover:bg-slate-900"
-                : "bg-black text-zinc-400 hover:bg-line")
-            }
-          >
-            All employees
-          </Button>
           <div className="flex flex-wrap gap-1.5">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => onChangeEmployeeIds(null)}
+              className={
+                "h-auto rounded-full px-3 py-1 text-xs font-bold whitespace-nowrap " +
+                (allEmployees
+                  ? "bg-card text-white shadow-sm border border-line-strong hover:bg-card"
+                  : "bg-black text-zinc-400 border border-transparent hover:text-white hover:bg-black")
+              }
+            >
+              All employees
+            </Button>
             {staff.length === 0 && (
-              <p className="text-xs font-bold text-zinc-500">No employees yet.</p>
+              <p className="text-xs font-bold text-zinc-500 w-full mt-1">
+                No employees yet.
+              </p>
             )}
             {staff.map((s) => {
               const active =
                 !allEmployees && selectedEmployeeIds!.includes(s.id);
+              const color = staffColorHex(s.color);
               return (
                 <Button
                   key={s.id}
@@ -152,18 +163,15 @@ export default function MapFilterPanel({
                   variant="ghost"
                   onClick={() => toggleEmployee(s.id)}
                   className={
-                    "h-auto gap-1.5 rounded-full pl-1 pr-2 py-0.5 text-xs border font-bold " +
+                    "h-auto gap-1.5 rounded-full pl-1 pr-3 py-0.5 text-xs font-bold whitespace-nowrap " +
                     (active
-                      ? "border-transparent text-white hover:bg-current"
-                      : "border-line text-zinc-300 hover:bg-black")
-                  }
-                  style={
-                    active ? { backgroundColor: staffColorHex(s.color) } : {}
+                      ? "bg-card text-white shadow-sm border border-line-strong hover:bg-card"
+                      : "bg-black text-zinc-400 border border-transparent hover:text-white hover:bg-black")
                   }
                 >
                   <span
                     className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-extrabold text-white tracking-tight"
-                    style={{ backgroundColor: staffColorHex(s.color) }}
+                    style={{ backgroundColor: color }}
                   >
                     {initials(s.name)}
                   </span>
@@ -195,27 +203,63 @@ function Section({
   );
 }
 
+/**
+ * Mini pin preview — mirrors `makeCustomerMarkerElement` in `MapClient.tsx`
+ * so the filter swatch reads as the same family as the actual map pin
+ * (filled colored circle, colored holographic glow, centered white person
+ * glyph). Sized down from 28px → 20px for the filter row.
+ */
+function PinSwatch({ color }: { color: string }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="relative inline-flex items-center justify-center rounded-full shrink-0"
+      style={{
+        width: 20,
+        height: 20,
+        backgroundColor: color,
+        boxShadow:
+          `0 0 0 1px ${color},` +
+          `0 0 8px 1px ${color}cc,` +
+          `0 0 16px 3px ${color}55,` +
+          "0 2px 4px rgba(0,0,0,0.45)",
+      }}
+    >
+      <svg
+        viewBox="0 0 24 24"
+        width={12}
+        height={12}
+        xmlns="http://www.w3.org/2000/svg"
+        style={{ display: "block" }}
+      >
+        <circle cx="12" cy="8" r="4" fill="#ffffff" />
+        <path
+          fill="#ffffff"
+          d="M12 14c-4.4 0-8 1.8-8 4v2h16v-2c0-2.2-3.6-4-8-4z"
+        />
+      </svg>
+    </span>
+  );
+}
+
 function CheckRow({
   checked,
   onChange,
   label,
-  swatch,
+  pinColor,
 }: {
   checked: boolean;
   onChange: (v: boolean) => void;
   label: string;
-  swatch: string;
+  pinColor: string;
 }) {
   return (
-    <Label className="flex items-center gap-2 text-sm cursor-pointer py-1 font-normal">
+    <Label className="flex items-center gap-2.5 text-sm cursor-pointer py-1 font-normal">
       <Checkbox
         checked={checked}
         onCheckedChange={(c) => onChange(c === true)}
       />
-      <span
-        className="w-3.5 h-3.5 rounded-full border border-white shadow-sm"
-        style={{ backgroundColor: swatch }}
-      />
+      <PinSwatch color={pinColor} />
       <span className="text-zinc-300">{label}</span>
     </Label>
   );
