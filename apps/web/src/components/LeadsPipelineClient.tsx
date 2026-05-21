@@ -16,24 +16,24 @@ import {
 } from "@/components/ui/table";
 
 const STAGES: { key: LeadStage; label: string; accent: string; text: string }[] = [
-  { key: "new", label: "NEW", accent: "bg-blue-500", text: "text-blue-600" },
+  { key: "new", label: "NEW", accent: "bg-primary", text: "text-primary" },
   {
     key: "contacted",
     label: "CONTACTED",
-    accent: "bg-indigo-500",
-    text: "text-indigo-600",
+    accent: "bg-primary",
+    text: "text-primary",
   },
   {
     key: "responded",
     label: "RESPONDED",
-    accent: "bg-purple-500",
-    text: "text-purple-600",
+    accent: "bg-primary",
+    text: "text-primary",
   },
   {
     key: "estimate_sent",
     label: "ESTIMATE SENT",
-    accent: "bg-amber-500",
-    text: "text-amber-600",
+    accent: "bg-primary",
+    text: "text-primary",
   },
 ];
 
@@ -145,7 +145,7 @@ export default function LeadsPipelineClient({
             className={
               "h-auto rounded-none px-3 py-2 hover:bg-transparent " +
               (view === "board"
-                ? "text-sky-500"
+                ? "text-primary"
                 : "text-zinc-500 hover:text-zinc-300")
             }
             aria-label="Board view"
@@ -159,7 +159,7 @@ export default function LeadsPipelineClient({
             className={
               "h-auto rounded-none px-3 py-2 border-l border-line hover:bg-transparent " +
               (view === "list"
-                ? "text-sky-500"
+                ? "text-primary"
                 : "text-zinc-500 hover:text-zinc-300")
             }
             aria-label="List view"
@@ -184,12 +184,6 @@ export default function LeadsPipelineClient({
           >
             <Settings className="w-4 h-4" />
           </Button>
-        </div>
-      </div>
-
-      <div>
-        <div className="inline-flex bg-card border border-sky-200 text-sky-600 px-4 py-1 rounded-full text-sm font-bold">
-          Leads
         </div>
       </div>
 
