@@ -13,6 +13,7 @@ export type AdminCompanyRow = {
   customers_count: number;
   jobs_count: number;
   invoices_count: number;
+  payments_total_cents: number;
   signed_up_at: string | null;
   last_activity_at: string | null;
 };
@@ -154,6 +155,8 @@ export async function loadAdminCompanies(
          (SELECT COUNT(*) FROM customers WHERE company_id = c.id) AS customers_count,
          (SELECT COUNT(*) FROM jobs      WHERE company_id = c.id) AS jobs_count,
          (SELECT COUNT(*) FROM invoices  WHERE company_id = c.id) AS invoices_count,
+         (SELECT COALESCE(SUM(amount_cents + tip_cents), 0) FROM payments
+            WHERE company_id = c.id) AS payments_total_cents,
          (SELECT MIN(created_at) FROM staff WHERE company_id = c.id) AS signed_up_at,
          (
            SELECT MAX(t) FROM (

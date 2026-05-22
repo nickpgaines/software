@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { PageHeader } from "@/components/pulse/PageHeader";
 import { PULSE } from "@/components/pulse/theme";
-import { formatCentsShort } from "@/components/pulse/format";
+import { formatCents, formatCentsShort } from "@/components/pulse/format";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -110,6 +110,9 @@ export default async function AdminIndexPage({
                 <TableHead className="hidden md:table-cell">Staff</TableHead>
                 <TableHead className="hidden md:table-cell">Customers</TableHead>
                 <TableHead className="hidden md:table-cell">Jobs</TableHead>
+                <TableHead className="hidden md:table-cell text-right">
+                  Processed
+                </TableHead>
                 <TableHead className="hidden lg:table-cell">Stripe</TableHead>
                 <TableHead className="hidden lg:table-cell">SMS</TableHead>
                 <TableHead className="hidden md:table-cell">Signed up</TableHead>
@@ -144,6 +147,11 @@ export default async function AdminIndexPage({
                   </TableCell>
                   <TableCell className="hidden md:table-cell tabular-nums">
                     {c.jobs_count}
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell text-right tabular-nums font-bold">
+                    {c.payments_total_cents > 0
+                      ? formatCents(c.payments_total_cents)
+                      : "—"}
                   </TableCell>
                   <TableCell className="hidden lg:table-cell">
                     <StripeBadge
