@@ -156,16 +156,21 @@ export async function getGeneratedRevenue(
 /** Current MRR snapshot at `asOf` (default: now). */
 export async function getMRRSnapshot(
   companyId: number,
-  options: { includeTax?: boolean; asOf?: Date } = {},
+  options: { includeTax?: boolean; asOf?: Date; salesStaffId?: number | null } = {},
 ): Promise<number> {
   const includeTax = options.includeTax ?? true;
+  const salesStaffId = options.salesStaffId ?? null;
   const db = await getDb();
-  const subs = (await db
-    .prepare(
-      `SELECT * FROM customer_subscriptions
-        WHERE company_id = ? AND status = 'active'`
-    )
-    .all<CustomerSubscription>(companyId)) || [];
+  const sql = salesStaffId != null
+    ? `SELECT * FROM customer_subscriptions
+        WHERE company_id = ? AND status = 'active' AND sold_by_id = ?`
+    : `SELECT * FROM customer_subscriptions
+        WHERE company_id = ? AND status = 'active'`;
+  const subs = (
+    salesStaffId != null
+      ? await db.prepare(sql).all<CustomerSubscription>(companyId, salesStaffId)
+      : await db.prepare(sql).all<CustomerSubscription>(companyId)
+  ) || [];
 
   let mrr = 0;
   for (const s of subs) {
@@ -191,13 +196,22 @@ export async function getARRAdded(
   companyId: number,
   startIso: string,
   endIso: string,
-  options: { includeTax?: boolean } = {},
+  options: { includeTax?: boolean; salesStaffId?: number | null } = {},
 ): Promise<ARRAddedResult> {
   const includeTax = options.includeTax ?? true;
+  const salesStaffId = options.salesStaffId ?? null;
   const db = await getDb();
-  const allSubs = (await db
-    .prepare(`SELECT * FROM customer_subscriptions WHERE company_id = ?`)
-    .all<CustomerSubscription>(companyId)) || [];
+  const allSubs = (
+    salesStaffId != null
+      ? await db
+          .prepare(
+            `SELECT * FROM customer_subscriptions WHERE company_id = ? AND sold_by_id = ?`
+          )
+          .all<CustomerSubscription>(companyId, salesStaffId)
+      : await db
+          .prepare(`SELECT * FROM customer_subscriptions WHERE company_id = ?`)
+          .all<CustomerSubscription>(companyId)
+  ) || [];
 
   let gross = 0;
   let churn = 0;

@@ -146,6 +146,18 @@ export async function getDashboardKpis(opts?: {
   const db = await getDb();
   const salesStaffId = opts?.salesStaffId ?? null;
 
+  // When scoping to a single salesperson we filter pins by their name —
+  // map_pins.created_by is a free-text column the rest of the app already
+  // matches on (see /api/staff/[id]/scorecard). Names aren't unique in
+  // principle but in practice map to the rep who dropped the pin.
+  let salesStaffName: string | null = null;
+  if (salesStaffId != null) {
+    const row = (await db
+      .prepare("SELECT name FROM staff WHERE id = ? AND company_id = ?")
+      .get(salesStaffId, companyId)) as { name: string | null } | undefined;
+    salesStaffName = row?.name ?? null;
+  }
+
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -161,18 +173,18 @@ export async function getDashboardKpis(opts?: {
     startIso: string,
     endIso: string,
   ): Promise<number> {
-    // map_pins don't carry a staff_id today, so close rate stays company-wide
-    // even when scoping the rest of the dashboard to a single salesperson.
-    const row = (await db
-      .prepare(
-        `SELECT
-           COALESCE(SUM(CASE WHEN status = 'sale' THEN 1 ELSE 0 END), 0) AS sales,
-           COALESCE(SUM(CASE WHEN status IN ('sale', 'quote', 'quote_sent') THEN 1 ELSE 0 END), 0) AS quoted
-         FROM map_pins
-         WHERE company_id = ?
-           AND created_at >= ? AND created_at < ?`
-      )
-      .get(companyId, startIso, endIso)) as
+    let sql = `SELECT
+         COALESCE(SUM(CASE WHEN status = 'sale' THEN 1 ELSE 0 END), 0) AS sales,
+         COALESCE(SUM(CASE WHEN status IN ('sale', 'quote', 'quote_sent') THEN 1 ELSE 0 END), 0) AS quoted
+       FROM map_pins
+       WHERE company_id = ?
+         AND created_at >= ? AND created_at < ?`;
+    const args: (string | number)[] = [companyId, startIso, endIso];
+    if (salesStaffName) {
+      sql += ` AND LOWER(created_by) = LOWER(?)`;
+      args.push(salesStaffName);
+    }
+    const row = (await db.prepare(sql).get(...args)) as
       | { sales: number; quoted: number }
       | undefined;
     const sales = row?.sales ?? 0;
@@ -209,8 +221,8 @@ export async function getDashboardKpis(opts?: {
     pinCloseRate(priorStartIso, priorEndIso),
     jobsSoldCount(monthStartIso, monthEndIso),
     jobsSoldCount(priorStartIso, priorEndIso),
-    getMRRSnapshot(companyId),
-    getARRAdded(companyId, monthStartIso, monthEndIso),
+    getMRRSnapshot(companyId, { salesStaffId }),
+    getARRAdded(companyId, monthStartIso, monthEndIso, { salesStaffId }),
   ]);
 
   const arrCents = mrrCents * 12;
