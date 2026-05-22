@@ -559,7 +559,9 @@ export default function CalendarClient() {
               <DropdownMenuLabel>Schedule settings</DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuItem onSelect={() => setSchedulingOpen(true)}>
-                Employee Scheduling
+                {me?.permission_level === "technician"
+                  ? "My Schedule"
+                  : "Employee Scheduling"}
               </DropdownMenuItem>
               <DropdownMenuItem disabled>
                 Route Optimization
@@ -958,7 +960,7 @@ function DayView({
   );
   assigned.sort((a, b) => a.name.localeCompare(b.name));
   if (
-    me?.permission_level === "field_tech" &&
+    me?.permission_level === "technician" &&
     me.staff_id != null &&
     !FULL_SCHEDULE_PERMISSIONS.has(me.permission_level)
   ) {

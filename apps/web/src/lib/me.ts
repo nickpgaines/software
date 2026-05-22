@@ -1,10 +1,17 @@
-import { getDb, syncReplica, type Staff } from "@/lib/db";
+import { getDb, syncReplica, type Staff, type CustomRole } from "@/lib/db";
 import { getSessionContext, type SessionContext } from "@/lib/auth";
+import {
+  resolvePermissions,
+  ALL_PERMISSIONS,
+  type Permission,
+} from "@/lib/permissions";
 
 export type Me = {
   identity: string;
   is_admin_account: boolean;
   staff: Staff | null;
+  custom_role: { id: number; name: string; color: string } | null;
+  permissions: Permission[];
 };
 
 async function lookupStaff(ctx: SessionContext): Promise<Staff | undefined> {
@@ -24,7 +31,13 @@ async function lookupStaff(ctx: SessionContext): Promise<Staff | undefined> {
 
 export async function buildMe(ctx: SessionContext): Promise<Me> {
   if (ctx.isPlatformAdmin) {
-    return { identity: ctx.identity, is_admin_account: true, staff: null };
+    return {
+      identity: ctx.identity,
+      is_admin_account: true,
+      staff: null,
+      custom_role: null,
+      permissions: [...ALL_PERMISSIONS],
+    };
   }
   let staff = await lookupStaff(ctx);
   // If the row isn't visible yet, this instance's embedded replica is
@@ -35,10 +48,39 @@ export async function buildMe(ctx: SessionContext): Promise<Me> {
     await syncReplica();
     staff = await lookupStaff(ctx);
   }
+
+  let customRole: { id: number; name: string; color: string } | null = null;
+  let customPerms: Permission[] | null = null;
+  if (staff?.custom_role_id) {
+    const db = await getDb();
+    const row = (await db
+      .prepare(
+        "SELECT * FROM custom_roles WHERE id = ? AND company_id = ? LIMIT 1"
+      )
+      .get(staff.custom_role_id, ctx.companyId)) as CustomRole | undefined;
+    if (row) {
+      customRole = { id: row.id, name: row.name, color: row.color };
+      try {
+        const parsed = JSON.parse(row.permissions) as unknown;
+        if (Array.isArray(parsed)) {
+          customPerms = parsed.filter(
+            (p): p is Permission => typeof p === "string"
+          ) as Permission[];
+        }
+      } catch {
+        customPerms = [];
+      }
+    }
+  }
+
+  const perms = resolvePermissions(staff?.permission_level ?? null, customPerms);
+
   return {
     identity: ctx.identity,
     is_admin_account: false,
     staff: staff ?? null,
+    custom_role: customRole,
+    permissions: Array.from(perms),
   };
 }
 

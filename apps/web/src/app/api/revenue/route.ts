@@ -67,16 +67,26 @@ export async function GET(req: Request) {
   const range = (url.searchParams.get("range") || "1m") as Range;
   const customStart = url.searchParams.get("start");
   const customEnd = url.searchParams.get("end");
+  // Optional: scope revenue to a specific salesperson (sold_by_id). Used by
+  // the salesperson dashboard hero to show "My Sales" instead of company
+  // revenue.
+  const salesStaffId = url.searchParams.get("sales_staff_id");
   const { start, end, label } = resolveRange(range, customStart, customEnd);
 
-  const rows = (await db
-    .prepare(
-      `SELECT scheduled_at, price_cents
-       FROM jobs
-       WHERE company_id = ?
-         AND scheduled_at >= ? AND scheduled_at <= ?`
-    )
-    .all(companyId, start.toISOString(), end.toISOString())) as {
+  let sql = `SELECT scheduled_at, price_cents
+             FROM jobs
+             WHERE company_id = ?
+               AND scheduled_at >= ? AND scheduled_at <= ?`;
+  const args: (string | number)[] = [
+    companyId,
+    start.toISOString(),
+    end.toISOString(),
+  ];
+  if (salesStaffId && /^\d+$/.test(salesStaffId)) {
+    sql += ` AND (sold_by_id = ? OR salesperson_id = ?)`;
+    args.push(Number(salesStaffId), Number(salesStaffId));
+  }
+  const rows = (await db.prepare(sql).all(...args)) as {
     scheduled_at: string;
     price_cents: number;
   }[];

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import { PulseIcon } from "@/components/pulse/Icon";
 import { PULSE } from "@/components/pulse/theme";
 import { useMobileNav } from "@/components/MobileNavShell";
@@ -12,6 +13,7 @@ type Tab = {
   icon: string;
   href?: string;
   matchPrefixes?: string[];
+  perm?: string;
 };
 
 const TABS: Tab[] = [
@@ -24,13 +26,35 @@ const TABS: Tab[] = [
     href: "/messages",
     matchPrefixes: ["/calls", "/email"],
   },
-  { key: "map", label: "Map", icon: "map", href: "/map" },
+  { key: "map", label: "Map", icon: "map", href: "/map", perm: "map.view" },
   { key: "more", label: "More", icon: "more" },
 ];
 
 export default function MobileBottomNav() {
   const pathname = usePathname();
   const { open: drawerOpen, setOpen } = useMobileNav();
+  const [perms, setPerms] = useState<string[] | null>(null);
+  const [isAdminAccount, setIsAdminAccount] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/me")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { permissions?: string[]; is_admin_account?: boolean } | null) => {
+        if (cancelled || !d) return;
+        setPerms(d.permissions ?? []);
+        setIsAdminAccount(!!d.is_admin_account);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const visibleTabs =
+    !perms || isAdminAccount
+      ? TABS
+      : TABS.filter((t) => !t.perm || perms.includes(t.perm));
 
   return (
     <nav
@@ -42,7 +66,7 @@ export default function MobileBottomNav() {
       }}
       aria-label="Primary"
     >
-      {TABS.map((tab) => {
+      {visibleTabs.map((tab) => {
         const isMore = tab.key === "more";
         const active = isMore
           ? drawerOpen

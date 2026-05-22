@@ -92,11 +92,8 @@ export function techSwatchClass(color: string | null | undefined): string {
 }
 
 // Permission levels that get to see the whole company's schedule.
-// Field techs and "own-jobs" salespeople are filtered to their own rows.
+// Technicians are filtered to their own assigned jobs.
 export const FULL_SCHEDULE_PERMISSIONS = new Set([
   "admin",
-  "manager",
-  "team_lead",
-  "salesperson_all",
-  "custom",
+  "salesperson",
 ]);

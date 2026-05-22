@@ -106,12 +106,17 @@ export default function LeaderboardClient({
   currentUser,
   currentStaffId,
   isAdmin,
+  canSeeSales = true,
+  canSeeTech = true,
 }: {
   currentUser: string;
   currentStaffId: number | null;
   isAdmin: boolean;
+  canSeeSales?: boolean;
+  canSeeTech?: boolean;
 }) {
-  const [view, setView] = useState<View>("sales");
+  const initialView: View = canSeeSales ? "sales" : "tech";
+  const [view, setView] = useState<View>(initialView);
   const [range, setRange] = useState<Range>("month");
   const [customFrom, setCustomFrom] = useState<string>("");
   const [customTo, setCustomTo] = useState<string>(todayDateInput());
@@ -234,30 +239,34 @@ export default function LeaderboardClient({
         <h1 className="text-page-title text-white">{title}</h1>
         <div className="overflow-x-auto scrollbar-none max-w-full">
         <div className="inline-flex items-center gap-1 bg-black rounded-full p-1 text-sm">
-          <Button
-            variant="ghost"
-            onClick={() => setView("sales")}
-            className={
-              "h-auto whitespace-nowrap px-4 py-1.5 rounded-full font-bold hover:bg-transparent " +
-              (view === "sales"
-                ? "bg-card text-white shadow-sm"
-                : "text-zinc-400 hover:text-white")
-            }
-          >
-            Sales
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={() => setView("tech")}
-            className={
-              "h-auto whitespace-nowrap px-4 py-1.5 rounded-full font-bold hover:bg-transparent " +
-              (view === "tech"
-                ? "bg-card text-white shadow-sm"
-                : "text-zinc-400 hover:text-white")
-            }
-          >
-            Technicians
-          </Button>
+          {canSeeSales && (
+            <Button
+              variant="ghost"
+              onClick={() => setView("sales")}
+              className={
+                "h-auto whitespace-nowrap px-4 py-1.5 rounded-full font-bold hover:bg-transparent " +
+                (view === "sales"
+                  ? "bg-card text-white shadow-sm"
+                  : "text-zinc-400 hover:text-white")
+              }
+            >
+              Sales
+            </Button>
+          )}
+          {canSeeTech && (
+            <Button
+              variant="ghost"
+              onClick={() => setView("tech")}
+              className={
+                "h-auto whitespace-nowrap px-4 py-1.5 rounded-full font-bold hover:bg-transparent " +
+                (view === "tech"
+                  ? "bg-card text-white shadow-sm"
+                  : "text-zinc-400 hover:text-white")
+              }
+            >
+              Technicians
+            </Button>
+          )}
         </div>
         </div>
       </div>

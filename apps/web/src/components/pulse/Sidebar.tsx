@@ -18,6 +18,7 @@ type Me = {
     last_name: string | null;
     photo_url: string | null;
   } | null;
+  permissions?: string[];
 };
 
 type NavItem = {
@@ -30,22 +31,23 @@ type NavItem = {
   matchPrefixes?: string[];
 };
 
-const NAV: NavItem[] = [
+const NAV: (NavItem & { perm?: string })[] = [
   { name: "Dashboard", icon: "home", href: "/", section: "Workspace" },
-  { name: "Schedule", icon: "calendar", href: "/schedule", section: "Workspace" },
+  { name: "Schedule", icon: "calendar", href: "/schedule", section: "Workspace", perm: "schedule.view" },
   {
     name: "Inbox",
     icon: "message",
     href: "/messages",
     section: "Workspace",
     matchPrefixes: ["/calls", "/email"],
+    perm: "messages.view",
   },
-  { name: "Map", icon: "map", href: "/map", section: "Workspace" },
-  { name: "Leads", icon: "inbox", href: "/leads", section: "Workspace" },
-  { name: "Reports", icon: "chart", href: "/reports", section: "Insights" },
+  { name: "Map", icon: "map", href: "/map", section: "Workspace", perm: "map.view" },
+  { name: "Leads", icon: "inbox", href: "/leads", section: "Workspace", perm: "leads.view" },
+  { name: "Reports", icon: "chart", href: "/reports", section: "Insights", perm: "reports.view" },
   { name: "Leaderboard", icon: "trophy", href: "/leaderboard", section: "Insights" },
-  { name: "Customers", icon: "user", href: "/customers", section: "Team" },
-  { name: "Employees", icon: "users", href: "/employees", section: "Team" },
+  { name: "Customers", icon: "user", href: "/customers", section: "Team", perm: "customers.view" },
+  { name: "Employees", icon: "users", href: "/employees", section: "Team", perm: "team.manage" },
   { name: "Settings", icon: "settings", href: "/settings", section: "Team" },
 ];
 
@@ -187,7 +189,14 @@ export function PulseSidebar({ initialMe = null }: { initialMe?: Me | null }) {
           </div>
         </li>
         {SECTIONS.map((section) => {
-          const items = NAV.filter((i) => i.section === section);
+          const items = NAV.filter((i) => {
+            if (i.section !== section) return false;
+            if (!i.perm) return true;
+            if (me?.is_admin_account) return true;
+            const perms = me?.permissions;
+            if (!perms) return true; // before /api/me resolves, show all
+            return perms.includes(i.perm);
+          });
           if (items.length === 0) return null;
           return (
             <li key={section}>

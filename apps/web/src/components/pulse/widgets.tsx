@@ -404,9 +404,13 @@ function thirtyDaysAgoIso() {
 export function PulseChartHero({
   initialRange = "1m",
   height = 300,
+  salesStaffId = null,
+  titleOverride,
 }: {
   initialRange?: ChartRange;
   height?: number;
+  salesStaffId?: number | null;
+  titleOverride?: string;
 } = {}) {
   const [range, setRange] = useState<ChartRange>(initialRange);
   const [customStart, setCustomStart] = useState<string>(thirtyDaysAgoIso());
@@ -422,6 +426,9 @@ export function PulseChartHero({
       params.set("start", customStart);
       params.set("end", customEnd);
     }
+    if (salesStaffId != null) {
+      params.set("sales_staff_id", String(salesStaffId));
+    }
     fetch(`/api/revenue?${params.toString()}`)
       .then((r) => r.json())
       .then((d: ApiRevenue) => {
@@ -433,13 +440,14 @@ export function PulseChartHero({
     return () => {
       cancelled = true;
     };
-  }, [range, customStart, customEnd]);
+  }, [range, customStart, customEnd, salesStaffId]);
 
   const titleLabel =
     range === "1m"
       ? new Date().toLocaleString(undefined, { month: "long", year: "numeric" })
       : CHART_RANGES.find((r) => r.key === range)?.title ?? data?.label ?? "Revenue";
   const total = data ? data.total_cents : 0;
+  const prefix = titleOverride ?? "Revenue";
 
   return (
     <section
@@ -449,7 +457,7 @@ export function PulseChartHero({
       <div className="flex items-baseline justify-between mb-5 flex-wrap gap-3">
         <div>
           <div className="text-[14px] font-semibold mb-3 text-zinc-500">
-            Revenue · {titleLabel}
+            {prefix} · {titleLabel}
           </div>
           <div className="flex items-baseline gap-3">
             <span className="text-[36px] md:text-[52px] font-black tracking-tight leading-none">

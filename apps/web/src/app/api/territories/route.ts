@@ -15,6 +15,30 @@ export async function GET() {
       "SELECT * FROM territories WHERE company_id = ? ORDER BY created_at DESC"
     )
     .all(ctx.companyId)) as Territory[];
+
+  // Salespeople only see territories assigned to them. Admins see all.
+  if (!ctx.isPlatformAdmin && ctx.staffId != null) {
+    const me = (await db
+      .prepare(
+        "SELECT permission_level FROM staff WHERE id = ? AND company_id = ?"
+      )
+      .get(ctx.staffId, ctx.companyId)) as
+      | { permission_level: string | null }
+      | undefined;
+    if (me?.permission_level === "salesperson") {
+      const myId = ctx.staffId;
+      const filtered = rows.filter((t) => {
+        if (!t.assigned_employee_ids) return false;
+        try {
+          const ids = JSON.parse(t.assigned_employee_ids) as unknown;
+          return Array.isArray(ids) && ids.includes(myId);
+        } catch {
+          return false;
+        }
+      });
+      return NextResponse.json(filtered);
+    }
+  }
   return NextResponse.json(rows);
 }
 

@@ -7,12 +7,8 @@ export const dynamic = "force-dynamic";
 
 const PERMISSION_LEVELS: PermissionLevel[] = [
   "admin",
-  "manager",
-  "team_lead",
-  "salesperson_all",
-  "salesperson_own",
-  "field_tech",
-  "custom",
+  "salesperson",
+  "technician",
 ];
 
 const ALLOWED_COLORS = [
@@ -51,6 +47,7 @@ type PatchBody = {
   password?: string;
   color?: string;
   permission_level?: PermissionLevel;
+  custom_role_id?: number | null;
   photo_url?: string | null;
   name?: string;
   role?: string | null;
@@ -139,7 +136,25 @@ export async function PATCH(
     body.permission_level !== undefined &&
     PERMISSION_LEVELS.includes(body.permission_level)
       ? body.permission_level
-      : existing.permission_level || "manager";
+      : existing.permission_level || "admin";
+
+  let custom_role_id: number | null = existing.custom_role_id ?? null;
+  if (body.custom_role_id !== undefined) {
+    if (body.custom_role_id === null) {
+      custom_role_id = null;
+    } else if (
+      typeof body.custom_role_id === "number" &&
+      Number.isFinite(body.custom_role_id)
+    ) {
+      const exists = (await db
+        .prepare(
+          "SELECT id FROM custom_roles WHERE id = ? AND company_id = ? LIMIT 1"
+        )
+        .get(body.custom_role_id, companyId)) as { id: number } | undefined;
+      custom_role_id = exists ? body.custom_role_id : null;
+    }
+  }
+
   const photo_url =
     body.photo_url !== undefined ? body.photo_url : existing.photo_url;
 
@@ -162,7 +177,8 @@ export async function PATCH(
   await db.prepare(
     `UPDATE staff
      SET name = ?, first_name = ?, last_name = ?, phone = ?, email = ?,
-         password_hash = ?, color = ?, permission_level = ?, photo_url = ?,
+         password_hash = ?, color = ?, permission_level = ?,
+         custom_role_id = ?, photo_url = ?,
          updated_at = datetime('now')
      WHERE id = ? AND company_id = ?`
   ).run(
@@ -174,6 +190,7 @@ export async function PATCH(
     password_hash,
     color,
     permission_level,
+    custom_role_id,
     photo_url,
     id,
     companyId

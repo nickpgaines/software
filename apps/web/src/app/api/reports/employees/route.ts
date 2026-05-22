@@ -157,17 +157,14 @@ export async function GET(req: Request) {
 
   const salesIds = new Set<number>(salesRevenue.map((r) => r.staff_id));
   for (const s of staff) {
-    if (s.permission_level && s.permission_level.startsWith("salesperson")) {
+    if (s.permission_level === "salesperson") {
       salesIds.add(s.id);
     }
   }
 
   const techIds = new Set<number>(techRevenue.map((r) => r.staff_id));
   for (const s of staff) {
-    if (
-      s.permission_level === "field_tech" ||
-      s.permission_level === "team_lead"
-    ) {
+    if (s.permission_level === "technician") {
       techIds.add(s.id);
     }
   }

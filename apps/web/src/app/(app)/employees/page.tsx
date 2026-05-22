@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Plus, User } from "lucide-react";
-import { getDb, syncReplica, type Staff } from "@/lib/db";
+import { getDb, syncReplica, type Staff, type CustomRole } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
 import { Card } from "@/components/ui/card";
 import {
@@ -11,18 +11,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { BUILT_IN_ROLE_LABELS } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
-
-const PERMISSION_LABELS: Record<string, string> = {
-  admin: "Admin",
-  manager: "Manager",
-  team_lead: "Team Lead",
-  salesperson_all: "Salesperson (All Jobs)",
-  salesperson_own: "Salesperson (Own Jobs Only)",
-  field_tech: "Field Tech",
-  custom: "Custom",
-};
 
 function displayName(s: Staff): string {
   const parts = [s.first_name, s.last_name].filter((p) => p && p.trim()) as string[];
@@ -61,6 +52,13 @@ export default async function EmployeesPage() {
       "SELECT * FROM staff WHERE company_id = ? ORDER BY name COLLATE NOCASE ASC"
     )
     .all(companyId)) as Staff[];
+
+  const customRoles = (await db
+    .prepare("SELECT * FROM custom_roles WHERE company_id = ?")
+    .all(companyId)) as CustomRole[];
+  const customRoleNames = new Map<number, string>(
+    customRoles.map((r) => [r.id, r.name])
+  );
 
   return (
     <div className="space-y-6">
@@ -108,8 +106,11 @@ export default async function EmployeesPage() {
             </TableHeader>
             <TableBody>
               {employees.map((e) => {
-                const role =
-                  PERMISSION_LABELS[e.permission_level] || "Manager";
+                const role = e.custom_role_id
+                  ? customRoleNames.get(e.custom_role_id) || "Custom"
+                  : BUILT_IN_ROLE_LABELS[
+                      e.permission_level as keyof typeof BUILT_IN_ROLE_LABELS
+                    ] || "Admin";
                 return (
                   <TableRow
                     key={e.id}

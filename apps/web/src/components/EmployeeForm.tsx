@@ -3,19 +3,22 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, Eye, EyeOff, User } from "lucide-react";
+import { ChevronLeft, Eye, EyeOff, Plus, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  BUILT_IN_ROLES,
+  BUILT_IN_ROLE_LABELS,
+  BUILT_IN_ROLE_DESCRIPTIONS,
+  type BuiltInRole,
+  type Permission,
+} from "@/lib/permissions";
+import RoleEditorModal, {
+  type RoleSummary,
+} from "@/components/RoleEditorModal";
 
-type PermissionLevel =
-  | "admin"
-  | "manager"
-  | "team_lead"
-  | "salesperson_all"
-  | "salesperson_own"
-  | "field_tech"
-  | "custom";
+type PermissionLevel = BuiltInRole;
 
 type EmployeeInitial = {
   id: number;
@@ -24,7 +27,8 @@ type EmployeeInitial = {
   phone: string | null;
   email: string | null;
   color: string | null;
-  permission_level: PermissionLevel | null;
+  permission_level: PermissionLevel | string | null;
+  custom_role_id: number | null;
   photo_url: string | null;
 };
 
@@ -40,49 +44,31 @@ const COLORS: { key: string; label: string; swatch: string }[] = [
   { key: "gray", label: "Gray", swatch: "bg-slate-400" },
 ];
 
-const PERMISSIONS: {
-  key: PermissionLevel;
+const ROLE_SWATCH_FROM_COLOR: Record<string, string> = {
+  blue: "bg-blue-500",
+  green: "bg-green-500",
+  red: "bg-red-500",
+  yellow: "bg-yellow-400",
+  purple: "bg-purple-500",
+  orange: "bg-orange-500",
+  teal: "bg-teal-500",
+  pink: "bg-pink-500",
+  gray: "bg-slate-400",
+};
+
+const BUILT_IN_OPTIONS: {
+  key: BuiltInRole;
   title: string;
   description: string;
-}[] = [
-  { key: "admin", title: "Admin", description: "Can manage all areas." },
-  {
-    key: "manager",
-    title: "Manager",
-    description:
-      "Can see and edit all jobs, territories, and customer info. Recommended for team leads or office staff that need to view/edit all the jobs in the schedule, and all territories in the territory map.",
-  },
-  {
-    key: "team_lead",
-    title: "Team Lead",
-    description:
-      "Can manage their own jobs as well as the jobs of assigned salespeople. Recommend for team leads that do not need to see all jobs in the schedule, but need to manage the jobs of their assigned salespeople.",
-  },
-  {
-    key: "salesperson_all",
-    title: "Salesperson (All Jobs)",
-    description:
-      "Can see all jobs, can edit jobs and customer info, and can only see their territory but can see/edit all markers. Recommended for salespeople that need to know all of the jobs scheduled across the company.",
-  },
-  {
-    key: "salesperson_own",
-    title: "Salesperson (Own Jobs Only)",
-    description:
-      "Can see only jobs they created or are assigned to them, can edit their own job and customer info, and can see only their territory but can see/edit all markers. Recommended for salespeople that only need to see their own jobs.",
-  },
-  {
-    key: "field_tech",
-    title: "Field Tech",
-    description:
-      "Can only view and edit jobs that are dispatched to them. Recommended for field techs who will be servicing jobs they are dispatched to.",
-  },
-  {
-    key: "custom",
-    title: "Custom",
-    description:
-      "Set custom permissions for this employee. Recommended for employees that need a custom set of permissions.",
-  },
-];
+}[] = BUILT_IN_ROLES.map((k) => ({
+  key: k,
+  title: BUILT_IN_ROLE_LABELS[k],
+  description: BUILT_IN_ROLE_DESCRIPTIONS[k],
+}));
+
+type SelectedRole =
+  | { kind: "builtin"; value: BuiltInRole }
+  | { kind: "custom"; id: number };
 
 export default function EmployeeForm({
   initial,
@@ -99,9 +85,20 @@ export default function EmployeeForm({
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [color, setColor] = useState(initial?.color || "blue");
-  const [permission, setPermission] = useState<PermissionLevel>(
-    initial?.permission_level || "manager"
-  );
+
+  const initialSelected: SelectedRole = (() => {
+    if (initial?.custom_role_id) {
+      return { kind: "custom", id: initial.custom_role_id };
+    }
+    const lvl = (initial?.permission_level || "admin") as string;
+    if (lvl === "admin" || lvl === "salesperson" || lvl === "technician") {
+      return { kind: "builtin", value: lvl };
+    }
+    return { kind: "builtin", value: "admin" };
+  })();
+  const [selectedRole, setSelectedRole] =
+    useState<SelectedRole>(initialSelected);
+
   const [photoUrl, setPhotoUrl] = useState<string | null>(
     initial?.photo_url ?? null
   );
@@ -112,8 +109,25 @@ export default function EmployeeForm({
   const [colorOpen, setColorOpen] = useState(false);
   const colorRef = useRef<HTMLDivElement>(null);
 
+  const [customRoles, setCustomRoles] = useState<RoleSummary[]>([]);
+  const [roleEditorOpen, setRoleEditorOpen] = useState(false);
+  const [editingRole, setEditingRole] = useState<RoleSummary | null>(null);
+
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/roles")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((d: RoleSummary[]) => {
+        if (!cancelled) setCustomRoles(Array.isArray(d) ? d : []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   useEffect(() => {
     function onDoc(e: MouseEvent) {
@@ -181,13 +195,23 @@ export default function EmployeeForm({
     if (!email.trim()) return setError("Email is required");
     if (!isEdit && !password) return setError("Password is required");
 
+    // When a custom role is selected we still need to write *some* built-in
+    // value to permission_level so legacy queries that look at that column
+    // don't blow up. Use 'admin' as the safe fallback; the resolved perms
+    // come from the custom role anyway.
+    const permission_level: BuiltInRole =
+      selectedRole.kind === "builtin" ? selectedRole.value : "admin";
+    const custom_role_id =
+      selectedRole.kind === "custom" ? selectedRole.id : null;
+
     const body: Record<string, unknown> = {
       first_name: firstName.trim(),
       last_name: lastName.trim(),
       phone: phone.trim() || null,
       email: email.trim(),
       color,
-      permission_level: permission,
+      permission_level,
+      custom_role_id,
       photo_url: photoUrl,
     };
     if (password) body.password = password;
@@ -214,7 +238,6 @@ export default function EmployeeForm({
       try {
         message = (JSON.parse(text) as { error?: string }).error || "";
       } catch {
-        // not JSON — surface raw text trimmed
         message = text.slice(0, 200);
       }
       setError(message || `Could not save (HTTP ${res.status})`);
@@ -226,6 +249,27 @@ export default function EmployeeForm({
 
   const selectedColor =
     COLORS.find((c) => c.key === color) || COLORS[0];
+
+  function onSavedRole(role: RoleSummary) {
+    setCustomRoles((prev) => {
+      const without = prev.filter((r) => r.id !== role.id);
+      return [...without, role].sort((a, b) =>
+        a.name.localeCompare(b.name, undefined, { sensitivity: "base" })
+      );
+    });
+    setSelectedRole({ kind: "custom", id: role.id });
+    setRoleEditorOpen(false);
+    setEditingRole(null);
+  }
+
+  function onDeletedRole(roleId: number) {
+    setCustomRoles((prev) => prev.filter((r) => r.id !== roleId));
+    if (selectedRole.kind === "custom" && selectedRole.id === roleId) {
+      setSelectedRole({ kind: "builtin", value: "admin" });
+    }
+    setRoleEditorOpen(false);
+    setEditingRole(null);
+  }
 
   return (
     <form onSubmit={save} className="space-y-6">
@@ -386,7 +430,7 @@ export default function EmployeeForm({
                   className="w-full h-auto justify-start gap-2 border border-line-strong rounded-lg px-3 py-2 text-sm bg-card hover:border-slate-400 hover:bg-transparent"
                 >
                   <span
-                    className={`w-4 h-4 rounded-full ${selectedColor.swatch}`}
+                    className={`inline-block w-3.5 h-3.5 rounded-full shrink-0 ${selectedColor.swatch}`}
                   />
                   <span className="text-zinc-300">{selectedColor.label}</span>
                 </Button>
@@ -406,7 +450,7 @@ export default function EmployeeForm({
                         }`}
                       >
                         <span
-                          className={`w-3.5 h-3.5 rounded-full ${c.swatch}`}
+                          className={`inline-block w-3.5 h-3.5 rounded-full shrink-0 ${c.swatch}`}
                         />
                         <span className="text-zinc-300 text-xs">
                           {c.label}
@@ -423,12 +467,27 @@ export default function EmployeeForm({
 
       {/* Permissions */}
       <section className="bg-card border border-line rounded-2xl shadow-sm">
-        <div className="px-6 py-4 border-b border-line">
-          <h2 className="text-base font-extrabold text-white tracking-tight">Permissions</h2>
+        <div className="px-6 py-4 border-b border-line flex items-center justify-between">
+          <h2 className="text-base font-extrabold text-white tracking-tight">
+            Permissions
+          </h2>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => {
+              setEditingRole(null);
+              setRoleEditorOpen(true);
+            }}
+            className="h-auto gap-2 px-3 py-1.5 rounded-lg text-xs font-bold text-zinc-300 border border-line-strong hover:border-slate-400 hover:bg-transparent"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            New Custom Role
+          </Button>
         </div>
         <div className="px-6 py-4 space-y-1">
-          {PERMISSIONS.map((p) => {
-            const checked = permission === p.key;
+          {BUILT_IN_OPTIONS.map((p) => {
+            const checked =
+              selectedRole.kind === "builtin" && selectedRole.value === p.key;
             return (
               <Label
                 key={p.key}
@@ -442,7 +501,9 @@ export default function EmployeeForm({
                   name="permission"
                   value={p.key}
                   checked={checked}
-                  onChange={() => setPermission(p.key)}
+                  onChange={() =>
+                    setSelectedRole({ kind: "builtin", value: p.key })
+                  }
                   className="mt-1 accent-slate-900"
                 />
                 <div>
@@ -457,13 +518,77 @@ export default function EmployeeForm({
             );
           })}
 
-          {permission === "custom" && (
-            <div className="mt-3 ml-7 px-4 py-3 border border-dashed border-line-strong rounded-lg text-sm text-zinc-400 font-bold bg-black">
-              Custom permissions configuration coming soon.
+          {customRoles.length > 0 && (
+            <div className="pt-3 mt-2 border-t border-line space-y-1">
+              <div className="px-3 pb-1 text-[11px] uppercase tracking-wider text-zinc-500 font-bold">
+                Custom Roles
+              </div>
+              {customRoles.map((r) => {
+                const checked =
+                  selectedRole.kind === "custom" && selectedRole.id === r.id;
+                return (
+                  <Label
+                    key={r.id}
+                    className={`flex items-start gap-3 px-3 py-3 rounded-lg cursor-pointer font-normal ${
+                      checked ? "bg-black" : "hover:bg-black"
+                    }`}
+                  >
+                    {/* Native <input type="radio"> kept: no Radio primitive in components/ui yet. */}
+                    <input
+                      type="radio"
+                      name="permission"
+                      checked={checked}
+                      onChange={() =>
+                        setSelectedRole({ kind: "custom", id: r.id })
+                      }
+                      className="mt-1 accent-slate-900"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className={`inline-block w-3 h-3 rounded-full shrink-0 ${
+                            ROLE_SWATCH_FROM_COLOR[r.color] || "bg-blue-500"
+                          }`}
+                        />
+                        <div className="text-sm font-extrabold text-white tracking-tight">
+                          {r.name}
+                        </div>
+                      </div>
+                      <div className="text-xs text-zinc-400 mt-0.5">
+                        {r.permissions.length} permission
+                        {r.permissions.length === 1 ? "" : "s"}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setEditingRole(r);
+                        setRoleEditorOpen(true);
+                      }}
+                      className="h-auto px-2 py-1 text-xs font-bold text-zinc-400 hover:text-white hover:bg-transparent"
+                    >
+                      Edit
+                    </Button>
+                  </Label>
+                );
+              })}
             </div>
           )}
         </div>
       </section>
+
+      <RoleEditorModal
+        open={roleEditorOpen}
+        initial={editingRole}
+        onClose={() => {
+          setRoleEditorOpen(false);
+          setEditingRole(null);
+        }}
+        onSaved={onSavedRole}
+        onDeleted={onDeletedRole}
+      />
     </form>
   );
 }
