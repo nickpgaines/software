@@ -429,15 +429,43 @@ async function init(): Promise<void> {
     ["email", "TEXT"],
     ["password_hash", "TEXT"],
     ["color", "TEXT NOT NULL DEFAULT 'blue'"],
-    ["permission_level", "TEXT NOT NULL DEFAULT 'manager'"],
+    ["permission_level", "TEXT NOT NULL DEFAULT 'admin'"],
     ["photo_url", "TEXT"],
     ["updated_at", "TEXT"],
     ["sales_commission_rate", "REAL NOT NULL DEFAULT 0.30"],
     ["tech_commission_rate", "REAL NOT NULL DEFAULT 0.20"],
+    ["custom_role_id", "INTEGER"],
   ];
   for (const [col, def] of staffAdds) {
     await alterAddColumn("staff", col, def, staffCols);
   }
+
+  // Migrate legacy permission_level values to the simplified 3-role model.
+  await _db.exec(`
+    UPDATE staff SET permission_level = 'salesperson'
+      WHERE permission_level IN ('salesperson_all', 'salesperson_own');
+    UPDATE staff SET permission_level = 'technician'
+      WHERE permission_level = 'field_tech';
+    UPDATE staff SET permission_level = 'admin'
+      WHERE permission_level IN ('manager', 'team_lead', 'custom')
+        OR permission_level IS NULL
+        OR permission_level = '';
+  `);
+
+  // Custom roles: per-company named roles with arbitrary permission sets.
+  await _db.exec(`
+    CREATE TABLE IF NOT EXISTS custom_roles (
+      id          INTEGER PRIMARY KEY AUTOINCREMENT,
+      company_id  INTEGER NOT NULL,
+      name        TEXT NOT NULL,
+      color       TEXT NOT NULL DEFAULT 'blue',
+      permissions TEXT NOT NULL DEFAULT '[]',
+      created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_custom_roles_company_id
+      ON custom_roles(company_id);
+  `);
   await _db.exec(`
     UPDATE staff
     SET first_name = CASE
@@ -1871,14 +1899,7 @@ export type Customer = {
   updated_at: string | null;
 };
 
-export type PermissionLevel =
-  | "admin"
-  | "manager"
-  | "team_lead"
-  | "salesperson_all"
-  | "salesperson_own"
-  | "field_tech"
-  | "custom";
+export type PermissionLevel = "admin" | "salesperson" | "technician";
 
 export type Staff = {
   id: number;
@@ -1895,8 +1916,19 @@ export type Staff = {
   photo_url: string | null;
   sales_commission_rate: number;
   tech_commission_rate: number;
+  custom_role_id: number | null;
   created_at: string;
   updated_at: string | null;
+};
+
+export type CustomRole = {
+  id: number;
+  company_id: number;
+  name: string;
+  color: string;
+  permissions: string; // JSON-encoded string[]
+  created_at: string;
+  updated_at: string;
 };
 
 export type Job = {

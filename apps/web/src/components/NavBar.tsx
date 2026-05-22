@@ -21,18 +21,25 @@ import {
 import NewMenu from "@/components/NewMenu";
 import { Button } from "@/components/ui/button";
 
-const links = [
+type NavLink = {
+  href: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  perm?: string;
+};
+
+const allLinks: NavLink[] = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/schedule", label: "Schedule", icon: Calendar },
-  { href: "/leads", label: "Leads", icon: Inbox },
-  { href: "/messages", label: "Messages", icon: MessageSquare },
+  { href: "/schedule", label: "Schedule", icon: Calendar, perm: "schedule.view" },
+  { href: "/leads", label: "Leads", icon: Inbox, perm: "leads.view" },
+  { href: "/messages", label: "Messages", icon: MessageSquare, perm: "messages.view" },
   { href: "/calls", label: "Calls", icon: Phone },
   { href: "/email", label: "Email", icon: Mail },
-  { href: "/map", label: "Map", icon: Map },
+  { href: "/map", label: "Map", icon: Map, perm: "map.view" },
   { href: "/leaderboard", label: "Leaderboard", icon: Trophy },
-  { href: "/reports", label: "Reports", icon: BarChart3 },
-  { href: "/customers", label: "Customers", icon: User },
-  { href: "/employees", label: "Employees", icon: Users },
+  { href: "/reports", label: "Reports", icon: BarChart3, perm: "reports.view" },
+  { href: "/customers", label: "Customers", icon: User, perm: "customers.view" },
+  { href: "/employees", label: "Employees", icon: Users, perm: "team.manage" },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
@@ -46,6 +53,7 @@ type Me = {
     last_name: string | null;
     photo_url: string | null;
   } | null;
+  permissions?: string[];
 };
 
 function initials(name: string) {
@@ -86,6 +94,14 @@ export default function NavBar() {
     "You";
   const photo = me?.staff?.photo_url ?? null;
 
+  // Until /api/me has resolved, show all links to avoid the nav flickering
+  // shorter on admin sessions. After resolution, hide links the user lacks
+  // permission for.
+  const perms = me?.permissions ?? null;
+  const filteredLinks = !perms || me?.is_admin_account
+    ? allLinks
+    : allLinks.filter((l) => !l.perm || perms.includes(l.perm));
+
   return (
     <aside className="fixed inset-y-0 left-0 w-60 bg-black flex flex-col z-40">
       {/* Logo */}
@@ -100,7 +116,7 @@ export default function NavBar() {
 
       {/* Nav links */}
       <nav className="flex-1 overflow-y-auto mt-6 px-3">
-        {links.map(({ href, label, icon: Icon }) => {
+        {filteredLinks.map(({ href, label, icon: Icon }) => {
           const active =
             href === "/" ? pathname === "/" : pathname.startsWith(href);
           return (

@@ -1,6 +1,7 @@
 import LeaderboardClient from "@/components/LeaderboardClient";
 import { getSessionContext } from "@/lib/auth";
 import { getDb } from "@/lib/db";
+import { loadMe } from "@/lib/me";
 
 export const dynamic = "force-dynamic";
 
@@ -20,11 +21,22 @@ export default async function LeaderboardPage() {
       | undefined;
     if (row?.permission_level === "admin") isAdmin = true;
   }
+
+  const me = await loadMe();
+  const perms = me?.permissions ?? [];
+  const isAdminAccount = !!me?.is_admin_account;
+  const canSeeSales =
+    isAdminAccount || perms.includes("leaderboard.view_sales");
+  const canSeeTech =
+    isAdminAccount || perms.includes("leaderboard.view_tech");
+
   return (
     <LeaderboardClient
       currentUser={user}
       currentStaffId={staffId}
       isAdmin={isAdmin}
+      canSeeSales={canSeeSales}
+      canSeeTech={canSeeTech}
     />
   );
 }

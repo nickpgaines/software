@@ -7,12 +7,8 @@ export const dynamic = "force-dynamic";
 
 const PERMISSION_LEVELS: PermissionLevel[] = [
   "admin",
-  "manager",
-  "team_lead",
-  "salesperson_all",
-  "salesperson_own",
-  "field_tech",
-  "custom",
+  "salesperson",
+  "technician",
 ];
 
 const ALLOWED_COLORS = [
@@ -46,6 +42,7 @@ type CreateBody = {
   password?: string;
   color?: string;
   permission_level?: PermissionLevel;
+  custom_role_id?: number | null;
   photo_url?: string | null;
   // legacy
   name?: string;
@@ -111,7 +108,20 @@ export async function POST(req: Request) {
     body.permission_level as PermissionLevel
   )
     ? (body.permission_level as PermissionLevel)
-    : "manager";
+    : "admin";
+
+  let custom_role_id: number | null = null;
+  if (
+    typeof body.custom_role_id === "number" &&
+    Number.isFinite(body.custom_role_id)
+  ) {
+    const exists = (await db
+      .prepare(
+        "SELECT id FROM custom_roles WHERE id = ? AND company_id = ? LIMIT 1"
+      )
+      .get(body.custom_role_id, companyId)) as { id: number } | undefined;
+    if (exists) custom_role_id = body.custom_role_id;
+  }
 
   const phone = body.phone?.toString().trim() || null;
   const photo_url = body.photo_url || null;
@@ -134,8 +144,8 @@ export async function POST(req: Request) {
       .prepare(
         `INSERT INTO staff
          (company_id, name, first_name, last_name, phone, email, password_hash,
-          color, permission_level, photo_url, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+          color, permission_level, custom_role_id, photo_url, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
       )
       .run(
         companyId,
@@ -147,6 +157,7 @@ export async function POST(req: Request) {
         password_hash,
         color,
         permission_level,
+        custom_role_id,
         photo_url
       );
   } catch (err) {

@@ -59,17 +59,29 @@ function SettingsTabsInner({
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
+  // Salespeople and technicians only see the Profile tab — every other
+  // settings surface (Company, Payments, Billing, etc.) is admin-only.
+  const canSeeAllSettings =
+    !!initialMe?.is_admin_account ||
+    !!(initialMe as MeWithPerms | null)?.permissions?.includes(
+      "settings.view_all"
+    );
+  const visibleTabs = canSeeAllSettings
+    ? TABS
+    : TABS.filter((t) => t.key === "profile");
   const initialTab = (() => {
     const t = searchParams.get("tab");
-    if (TABS.some((x) => x.key === t)) return t as Tab;
+    if (visibleTabs.some((x) => x.key === t)) return t as Tab;
     return "profile";
   })();
   const [tab, setTab] = useState<Tab>(initialTab);
 
   useEffect(() => {
     const t = searchParams.get("tab");
-    if (t && TABS.some((x) => x.key === t) && t !== tab) {
+    if (t && visibleTabs.some((x) => x.key === t) && t !== tab) {
       setTab(t as Tab);
+    } else if (t && !visibleTabs.some((x) => x.key === t)) {
+      setTab("profile");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
@@ -84,7 +96,7 @@ function SettingsTabsInner({
     <div className="space-y-6">
       <div className="border-b border-line">
         <nav className="-mb-px flex gap-6 overflow-x-auto scrollbar-none">
-          {TABS.map((t) => {
+          {visibleTabs.map((t) => {
             const active = tab === t.key;
             return (
               <Button
@@ -109,15 +121,15 @@ function SettingsTabsInner({
         {tab === "profile" && (
           <ProfilePanel username={username} initialMe={initialMe} />
         )}
-        {tab === "company" && <CompanyPanel />}
-        {tab === "payments" && <PaymentsPanel />}
-        {tab === "subscriptions" && <SubscriptionsPanel />}
-        {tab === "customizations" && <CustomizationsPanel />}
-        {tab === "messaging" && <MessagingPanel />}
-        {tab === "calling" && <CallingPanel />}
-        {tab === "email" && <EmailPanel />}
-        {tab === "ai" && <AiPanel />}
-        {tab === "billing" && <BillingPanel />}
+        {canSeeAllSettings && tab === "company" && <CompanyPanel />}
+        {canSeeAllSettings && tab === "payments" && <PaymentsPanel />}
+        {canSeeAllSettings && tab === "subscriptions" && <SubscriptionsPanel />}
+        {canSeeAllSettings && tab === "customizations" && <CustomizationsPanel />}
+        {canSeeAllSettings && tab === "messaging" && <MessagingPanel />}
+        {canSeeAllSettings && tab === "calling" && <CallingPanel />}
+        {canSeeAllSettings && tab === "email" && <EmailPanel />}
+        {canSeeAllSettings && tab === "ai" && <AiPanel />}
+        {canSeeAllSettings && tab === "billing" && <BillingPanel />}
       </div>
     </div>
   );
@@ -137,16 +149,15 @@ type Me = {
     permission_level: string;
     photo_url: string | null;
   } | null;
+  permissions?: string[];
 };
+
+type MeWithPerms = Me & { permissions?: string[] };
 
 const PERMISSION_LABELS: Record<string, string> = {
   admin: "Admin",
-  manager: "Manager",
-  team_lead: "Team Lead",
-  salesperson_all: "Salesperson (All Jobs)",
-  salesperson_own: "Salesperson (Own Jobs Only)",
-  field_tech: "Field Tech",
-  custom: "Custom",
+  salesperson: "Salesperson",
+  technician: "Technician",
 };
 
 async function processProfileImage(file: File): Promise<string> {

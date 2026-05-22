@@ -138,10 +138,13 @@ export type DashboardKpis = {
   jobsSoldDelta: number;
 };
 
-export async function getDashboardKpis(): Promise<DashboardKpis> {
+export async function getDashboardKpis(opts?: {
+  salesStaffId?: number | null;
+}): Promise<DashboardKpis> {
   const ctx = await getSessionContext();
   const companyId = ctx?.companyId ?? 0;
   const db = await getDb();
+  const salesStaffId = opts?.salesStaffId ?? null;
 
   const now = new Date();
   const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -158,6 +161,8 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
     startIso: string,
     endIso: string,
   ): Promise<number> {
+    // map_pins don't carry a staff_id today, so close rate stays company-wide
+    // even when scoping the rest of the dashboard to a single salesperson.
     const row = (await db
       .prepare(
         `SELECT
@@ -179,14 +184,16 @@ export async function getDashboardKpis(): Promise<DashboardKpis> {
     startIso: string,
     endIso: string,
   ): Promise<number> {
-    const row = (await db
-      .prepare(
-        `SELECT COUNT(*) AS n FROM jobs
-          WHERE company_id = ?
-            AND status != 'cancelled'
-            AND scheduled_at >= ? AND scheduled_at < ?`
-      )
-      .get(companyId, startIso, endIso)) as { n: number } | undefined;
+    let sql = `SELECT COUNT(*) AS n FROM jobs
+        WHERE company_id = ?
+          AND status != 'cancelled'
+          AND scheduled_at >= ? AND scheduled_at < ?`;
+    const args: (string | number)[] = [companyId, startIso, endIso];
+    if (salesStaffId != null) {
+      sql += ` AND (sold_by_id = ? OR salesperson_id = ?)`;
+      args.push(salesStaffId, salesStaffId);
+    }
+    const row = (await db.prepare(sql).get(...args)) as { n: number } | undefined;
     return row?.n ?? 0;
   }
 

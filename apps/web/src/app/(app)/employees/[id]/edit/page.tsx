@@ -28,6 +28,7 @@ export default async function EditEmployeePage({
         email: row.email,
         color: row.color,
         permission_level: row.permission_level,
+        custom_role_id: row.custom_role_id,
         photo_url: row.photo_url,
       }}
     />

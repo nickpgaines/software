@@ -7,6 +7,7 @@ import {
 } from "@/lib/dashboard";
 import { getSessionContext } from "@/lib/auth";
 import { getCompany, isStripeConfigured } from "@/lib/stripe";
+import { loadMe } from "@/lib/me";
 import {
   CompactHeroKpi,
   PulseActivityCard,
@@ -48,12 +49,18 @@ function formatCountDelta(value: number): string {
 }
 
 export default async function DashboardPage() {
+  const me = await loadMe();
+  const role = me?.staff?.permission_level || "admin";
+  const isSalesperson = role === "salesperson";
+  const isTechnician = role === "technician";
+  const salesStaffIdForScope = isSalesperson ? me?.staff?.id ?? null : null;
+
   const [{ firstName }, jobs, revenue, kpis, showStripeBanner] =
     await Promise.all([
       getDashboardIdentity(),
       getTodayJobs(),
       getMonthlyRevenue(),
-      getDashboardKpis(),
+      getDashboardKpis({ salesStaffId: salesStaffIdForScope }),
       needsStripeConnect(),
     ]);
   const completedCount = revenue.jobsCompleted;
@@ -68,7 +75,11 @@ export default async function DashboardPage() {
             <span style={{ color: PULSE.violetVar }}>{firstName}.</span>
           </>
         }
-        subtitle={`${jobs.length} jobs today · ${completedCount} completed this month`}
+        subtitle={
+          isTechnician
+            ? `${jobs.length} jobs today`
+            : `${jobs.length} jobs today · ${completedCount} completed this month`
+        }
         actions={
           <Button
             variant="outline"
@@ -90,7 +101,7 @@ export default async function DashboardPage() {
             <span className="flex min-w-0 flex-col sm:flex-row sm:items-center sm:gap-2">
               <span className="font-bold">Connect Stripe to accept payments.</span>
               <span className="text-fg-subtle">
-                Invoices can't be sent until your Stripe account is connected.
+                Invoices can&apos;t be sent until your Stripe account is connected.
               </span>
             </span>
           </span>
@@ -98,44 +109,63 @@ export default async function DashboardPage() {
         </Link>
       )}
 
-      <div className="hidden md:grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
-        <CompactHeroKpi
-          label="Close Rate"
-          value={`${(kpis.closeRate * 100).toFixed(0)}%`}
-          delta={formatPctDelta(kpis.closeRateDeltaPp)}
-          deltaPositive={kpis.closeRateDeltaPp >= 0}
-          subLabel="vs last month"
-        />
-        <CompactHeroKpi
-          label="ARR"
-          value={formatCentsShort(kpis.arrCents)}
-          delta={formatPctDelta(kpis.arrDeltaPct)}
-          deltaPositive={kpis.arrDeltaPct >= 0}
-          subLabel="vs last month"
-        />
-        <CompactHeroKpi
-          label="Jobs Sold"
-          value={String(kpis.jobsSold)}
-          delta={formatCountDelta(kpis.jobsSoldDelta)}
-          deltaPositive={kpis.jobsSoldDelta >= 0}
-          subLabel="vs last month"
-        />
-      </div>
+      {isTechnician ? (
+        <>
+          {/* Technicians: today's schedule full-width on top, inbox + tasks
+              50/50 underneath. No KPI tiles, no revenue chart. */}
+          <div className="mb-5">
+            <PulseScheduleCard jobs={jobs} rows={8} />
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <PulseInboxCard />
+            <PulseTasksCard />
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="hidden md:grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
+            <CompactHeroKpi
+              label="Close Rate"
+              value={`${(kpis.closeRate * 100).toFixed(0)}%`}
+              delta={formatPctDelta(kpis.closeRateDeltaPp)}
+              deltaPositive={kpis.closeRateDeltaPp >= 0}
+              subLabel="vs last month"
+            />
+            <CompactHeroKpi
+              label="ARR"
+              value={formatCentsShort(kpis.arrCents)}
+              delta={formatPctDelta(kpis.arrDeltaPct)}
+              deltaPositive={kpis.arrDeltaPct >= 0}
+              subLabel="vs last month"
+            />
+            <CompactHeroKpi
+              label={isSalesperson ? "My Jobs Sold" : "Jobs Sold"}
+              value={String(kpis.jobsSold)}
+              delta={formatCountDelta(kpis.jobsSoldDelta)}
+              deltaPositive={kpis.jobsSoldDelta >= 0}
+              subLabel="vs last month"
+            />
+          </div>
 
-      <div className="mb-5">
-        <PulseChartHero />
-      </div>
+          <div className="mb-5">
+            <PulseChartHero
+              salesStaffId={salesStaffIdForScope}
+              titleOverride={isSalesperson ? "My Sales" : undefined}
+            />
+          </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
-        <PulseScheduleCard jobs={jobs} rows={5} />
-        <PulsePipelineCard />
-      </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-5">
+            <PulseScheduleCard jobs={jobs} rows={5} />
+            <PulsePipelineCard />
+          </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <PulseInboxCard />
-        <PulseTasksCard />
-        <PulseActivityCard jobs={jobs} />
-      </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <PulseInboxCard />
+            <PulseTasksCard />
+            <PulseActivityCard jobs={jobs} />
+          </div>
+        </>
+      )}
     </>
   );
 }
