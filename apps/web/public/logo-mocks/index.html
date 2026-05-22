@@ -109,12 +109,24 @@
       <symbol id="f-k" viewBox="0 0 128 128">
         <path d="M16 16 L76 16 L96 36 L36 36 L36 54 L72 54 L54 72 L36 72 L36 92 L16 112 Z" fill="#fff"/>
       </symbol>
+
+      <!-- L: Rounded version of J — same edge-to-edge cuts, every corner slightly rounded -->
+      <symbol id="f-l" viewBox="0 0 128 128">
+        <path d="M16 16 L76 16 L96 36 L36 36 L36 54 L72 54 L54 72 L36 72 L36 112 L16 112 Z"
+              fill="#fff" stroke="#fff" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+      </symbol>
+
+      <!-- M: Rounded version of K — same edge-to-edge cuts on top + middle + foot, every corner slightly rounded -->
+      <symbol id="f-m" viewBox="0 0 128 128">
+        <path d="M16 16 L76 16 L96 36 L36 36 L36 54 L72 54 L54 72 L36 72 L36 92 L16 112 Z"
+              fill="#fff" stroke="#fff" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
+      </symbol>
     </defs>
   </svg>
 
   <main>
     <h1>Struck-corner F &mdash; variations</h1>
-    <p class="sub">Seven directions on the struck-corner theme. Partial cuts feel blockier and rounder; edge-to-edge cuts feel sharper and more aggressive. All built on the same 8px grid.</p>
+    <p class="sub">Nine directions on the struck-corner theme. Partial cuts feel blockier and rounder; edge-to-edge cuts feel sharper and more aggressive; the rounded set softens the edge-to-edge cuts subtly. All built on the same 8px grid.</p>
 
     <!-- B -->
     <section>
@@ -228,13 +240,45 @@
       </div>
     </section>
 
+    <!-- L -->
+    <section>
+      <div class="head">
+        <h2>L. Rounded version of J</h2>
+        <p>Same edge-to-edge cuts as J (top arm + middle arm underside), but every corner &mdash; outer and inner &mdash; is slightly rounded. Less aggressive, friendlier; still reads as &ldquo;struck.&rdquo;</p>
+      </div>
+      <div class="row">
+        <div class="icon size-16"><svg><use href="#f-l"/></svg></div>
+        <div class="icon size-32"><svg><use href="#f-l"/></svg></div>
+        <div class="icon size-64"><svg><use href="#f-l"/></svg></div>
+        <div class="icon size-128"><svg><use href="#f-l"/></svg></div>
+        <div class="lockup"><div class="icon"><svg><use href="#f-l"/></svg></div><span class="wordmark">FORGE</span></div>
+        <div class="tab"><svg><use href="#f-l"/></svg> Forge &middot; Dashboard</div>
+      </div>
+    </section>
+
+    <!-- M -->
+    <section>
+      <div class="head">
+        <h2>M. Rounded version of K</h2>
+        <p>Same three edge-to-edge cuts as K (top + middle underside + foot), every corner slightly rounded. Softens the aggressive triple-strike into something more inviting.</p>
+      </div>
+      <div class="row">
+        <div class="icon size-16"><svg><use href="#f-m"/></svg></div>
+        <div class="icon size-32"><svg><use href="#f-m"/></svg></div>
+        <div class="icon size-64"><svg><use href="#f-m"/></svg></div>
+        <div class="icon size-128"><svg><use href="#f-m"/></svg></div>
+        <div class="lockup"><div class="icon"><svg><use href="#f-m"/></svg></div><span class="wordmark">FORGE</span></div>
+        <div class="tab"><svg><use href="#f-m"/></svg> Forge &middot; Dashboard</div>
+      </div>
+    </section>
+
     <!-- Side-by-side at large size for direct comparison -->
     <section>
       <div class="head">
         <h2>Side-by-side</h2>
-        <p>All seven at app-icon size for direct comparison.</p>
+        <p>All nine at app-icon size for direct comparison.</p>
       </div>
-      <div class="compare" style="grid-template-columns: repeat(7, 1fr);">
+      <div class="compare" style="grid-template-columns: repeat(5, 1fr); row-gap: 24px;">
         <div class="cell"><div class="icon size-128"><svg><use href="#f-b"/></svg></div><span class="lbl">B &middot; double partial</span></div>
         <div class="cell"><div class="icon size-128"><svg><use href="#f-c"/></svg></div><span class="lbl">C &middot; double sharp</span></div>
         <div class="cell"><div class="icon size-128"><svg><use href="#f-g"/></svg></div><span class="lbl">G &middot; bevel</span></div>
@@ -242,6 +286,8 @@
         <div class="cell"><div class="icon size-128"><svg><use href="#f-i"/></svg></div><span class="lbl">I &middot; real V2 fav</span></div>
         <div class="cell"><div class="icon size-128"><svg><use href="#f-j"/></svg></div><span class="lbl">J &middot; H sharp</span></div>
         <div class="cell"><div class="icon size-128"><svg><use href="#f-k"/></svg></div><span class="lbl">K &middot; I sharp</span></div>
+        <div class="cell"><div class="icon size-128"><svg><use href="#f-l"/></svg></div><span class="lbl">L &middot; J rounded</span></div>
+        <div class="cell"><div class="icon size-128"><svg><use href="#f-m"/></svg></div><span class="lbl">M &middot; K rounded</span></div>
       </div>
     </section>
   </main>
