@@ -38,6 +38,7 @@ function formatDate(iso: string, mounted: boolean) {
 
 export default function PaymentsSection({
   jobId,
+  customerId,
   jobTotalCents,
   paidTotalCents,
   customerEmail,
@@ -46,6 +47,7 @@ export default function PaymentsSection({
   onChanged,
 }: {
   jobId: number;
+  customerId: number;
   jobTotalCents: number;
   paidTotalCents: number;
   customerEmail: string | null;
@@ -147,6 +149,7 @@ export default function PaymentsSection({
       {modalOpen && (
         <RecordPaymentModal
           jobId={jobId}
+          customerId={customerId}
           jobTotalCents={jobTotalCents}
           paidTotalCents={paidTotalCents}
           customerEmail={customerEmail}
