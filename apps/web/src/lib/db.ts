@@ -1362,6 +1362,57 @@ async function init(): Promise<void> {
       received_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    -- Card-on-file storage. Stripe Customers live on the *connected*
+    -- account (we run direct charges, so the Customer + PaymentMethod
+    -- pair must be owned by the merchant's Stripe account, not the
+    -- platform). One row per (company, customer); the same internal
+    -- customer never has two Stripe Customer IDs on the same merchant.
+    CREATE TABLE IF NOT EXISTS stripe_customers (
+      id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+      company_id           INTEGER NOT NULL REFERENCES company(id) ON DELETE CASCADE,
+      customer_id          INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      stripe_customer_id   TEXT    NOT NULL,
+      created_at           TEXT    NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (company_id, customer_id),
+      UNIQUE (company_id, stripe_customer_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_stripe_customers_company
+      ON stripe_customers(company_id);
+
+    -- Saved payment methods (cards, wallets) attached to a Stripe
+    -- Customer on the connected account. Each row mirrors a Stripe
+    -- PaymentMethod so we don't have to round-trip to Stripe for
+    -- routine listing/UX, but Stripe remains the source of truth — if
+    -- you need fresh status, detach via API and reconcile.
+    CREATE TABLE IF NOT EXISTS stripe_payment_methods (
+      id                        INTEGER PRIMARY KEY AUTOINCREMENT,
+      company_id                INTEGER NOT NULL REFERENCES company(id) ON DELETE CASCADE,
+      customer_id               INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      stripe_customer_id        TEXT    NOT NULL,
+      stripe_payment_method_id  TEXT    NOT NULL,
+      brand                     TEXT,
+      last4                     TEXT,
+      exp_month                 INTEGER,
+      exp_year                  INTEGER,
+      wallet_type               TEXT,
+      is_default                INTEGER NOT NULL DEFAULT 0,
+      created_at                TEXT    NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (company_id, stripe_payment_method_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_stripe_payment_methods_customer
+      ON stripe_payment_methods(company_id, customer_id);
+
+    -- Per-company Stripe Terminal Location (required for Tap to Pay on
+    -- iPhone and any other Terminal reader). We create one Location per
+    -- connected account lazily and cache its ID here.
+    CREATE TABLE IF NOT EXISTS stripe_terminal_locations (
+      id                            INTEGER PRIMARY KEY AUTOINCREMENT,
+      company_id                    INTEGER NOT NULL UNIQUE REFERENCES company(id) ON DELETE CASCADE,
+      stripe_terminal_location_id   TEXT    NOT NULL,
+      display_name                  TEXT,
+      created_at                    TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS customer_reviews (
       id             INTEGER PRIMARY KEY AUTOINCREMENT,
       company_id     INTEGER NOT NULL,
@@ -1462,6 +1513,9 @@ async function init(): Promise<void> {
     ["tax_rate_bps", "INTEGER NOT NULL DEFAULT 0"],
     ["service_interval", "TEXT NOT NULL DEFAULT 'monthly'"],
     ["accept_token", "TEXT"],
+    ["default_payment_method_id", "TEXT"],
+    ["last_charged_at", "TEXT"],
+    ["next_charge_at", "TEXT"],
   ];
   for (const [col, def] of subAdds) {
     await alterAddColumn("customer_subscriptions", col, def, subCols);
@@ -2344,6 +2398,40 @@ export type CustomerSubscription = {
   sold_by_id: number | null;
   tax_rate_bps: number;
   accept_token: string | null;
+  default_payment_method_id: string | null;
+  last_charged_at: string | null;
+  next_charge_at: string | null;
+  created_at: string;
+};
+
+export type StripeCustomer = {
+  id: number;
+  company_id: number;
+  customer_id: number;
+  stripe_customer_id: string;
+  created_at: string;
+};
+
+export type StripePaymentMethod = {
+  id: number;
+  company_id: number;
+  customer_id: number;
+  stripe_customer_id: string;
+  stripe_payment_method_id: string;
+  brand: string | null;
+  last4: string | null;
+  exp_month: number | null;
+  exp_year: number | null;
+  wallet_type: string | null;
+  is_default: number;
+  created_at: string;
+};
+
+export type StripeTerminalLocation = {
+  id: number;
+  company_id: number;
+  stripe_terminal_location_id: string;
+  display_name: string | null;
   created_at: string;
 };
 

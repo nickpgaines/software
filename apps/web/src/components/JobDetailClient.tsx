@@ -540,6 +540,7 @@ export default function JobDetailClient({
 
           <PaymentsSection
             jobId={job.id}
+            customerId={job.customer_id}
             jobTotalCents={job.price_cents}
             customerEmail={job.customer_email}
             customerPhone={job.customer_phone}
@@ -565,6 +566,7 @@ export default function JobDetailClient({
       {paymentModalOpen && (
         <RecordPaymentModal
           jobId={job.id}
+          customerId={job.customer_id}
           jobTotalCents={job.price_cents}
           paidTotalCents={job.paid_total_cents}
           customerEmail={job.customer_email}
