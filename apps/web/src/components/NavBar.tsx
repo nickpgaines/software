@@ -19,7 +19,6 @@ import {
   Inbox,
 } from "lucide-react";
 import NewMenu from "@/components/NewMenu";
-import ThemeToggle from "@/components/ThemeToggle";
 import { Button } from "@/components/ui/button";
 
 const links = [
@@ -144,7 +143,6 @@ export default function NavBar() {
             {displayName}
           </span>
         </div>
-        <ThemeToggle />
         <Button
           type="button"
           variant="ghost"
