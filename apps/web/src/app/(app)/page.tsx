@@ -125,14 +125,14 @@ export default async function DashboardPage() {
         <>
           <div className="hidden md:grid grid-cols-1 sm:grid-cols-3 gap-4 mb-5">
             <CompactHeroKpi
-              label="Close Rate"
+              label={isSalesperson ? "My Close Rate" : "Close Rate"}
               value={`${(kpis.closeRate * 100).toFixed(0)}%`}
               delta={formatPctDelta(kpis.closeRateDeltaPp)}
               deltaPositive={kpis.closeRateDeltaPp >= 0}
               subLabel="vs last month"
             />
             <CompactHeroKpi
-              label="ARR"
+              label={isSalesperson ? "My ARR" : "ARR"}
               value={formatCentsShort(kpis.arrCents)}
               delta={formatPctDelta(kpis.arrDeltaPct)}
               deltaPositive={kpis.arrDeltaPct >= 0}
