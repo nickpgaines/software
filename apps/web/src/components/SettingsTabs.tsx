@@ -3157,11 +3157,8 @@ type AiStatus = {
   };
 };
 
-const AI_MODEL_LABELS: Record<string, string> = {
-  "claude-sonnet-4-6": "Claude Sonnet 4.6 (recommended — fast & cheap)",
-  "claude-opus-4-7": "Claude Opus 4.7 (smartest, slower & pricier)",
-  "claude-haiku-4-5": "Claude Haiku 4.5 (fastest, cheapest)",
-};
+const AI_MODEL_ID = "claude-sonnet-4-6";
+const AI_MODEL_LABEL = "Claude Sonnet 4.6";
 
 function AiPanel() {
   const [status, setStatus] = useState<AiStatus | null>(null);
@@ -3170,7 +3167,6 @@ function AiPanel() {
   const [savedAt, setSavedAt] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const [model, setModel] = useState("claude-sonnet-4-6");
   const [voice, setVoice] = useState("");
 
   async function load() {
@@ -3178,7 +3174,6 @@ function AiPanel() {
     if (res.ok) {
       const s = (await res.json()) as AiStatus;
       setStatus(s);
-      setModel(s.model || "claude-sonnet-4-6");
       setVoice(s.company_voice ?? "");
     }
     setLoading(false);
@@ -3196,7 +3191,7 @@ function AiPanel() {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model,
+        model: AI_MODEL_ID,
         company_voice: voice,
       }),
     });
@@ -3278,19 +3273,9 @@ function AiPanel() {
       )}
 
       <Field label="Model">
-        {/* Native <select> kept: Radix Select forbids empty-string item values; preserved for consistency with sibling sentinel selects in this file. */}
-        <select
-          value={model}
-          disabled={loading}
-          onChange={(e) => setModel(e.target.value)}
-          className="w-full border border-line rounded-full px-4 py-2 text-sm bg-card"
-        >
-          {Object.entries(AI_MODEL_LABELS).map(([id, label]) => (
-            <option key={id} value={id}>
-              {label}
-            </option>
-          ))}
-        </select>
+        <div className="w-full border border-line rounded-full px-4 py-2 text-sm bg-card text-zinc-300 font-bold">
+          {AI_MODEL_LABEL}
+        </div>
       </Field>
       <Field label="Company voice (optional)">
         <Textarea
