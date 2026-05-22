@@ -75,21 +75,6 @@
   <!-- SVG library — all variations -->
   <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0" aria-hidden="true">
     <defs>
-      <!-- B: Double-strike partial — partial top + partial foot -->
-      <symbol id="f-b" viewBox="0 0 128 128">
-        <path d="M16 16 L80 16 L96 32 L96 36 L36 36 L36 54 L72 54 L72 72 L36 72 L36 96 L20 112 L16 112 Z" fill="#fff"/>
-      </symbol>
-
-      <!-- C: Double-strike SHARP — edge-to-edge 45° on top + foot -->
-      <symbol id="f-c" viewBox="0 0 128 128">
-        <path d="M16 16 L76 16 L96 36 L36 36 L36 54 L72 54 L72 72 L36 72 L36 92 L16 112 Z" fill="#fff"/>
-      </symbol>
-
-      <!-- G: Beveled middle-arm tip + sharp top — no foot cut -->
-      <symbol id="f-g" viewBox="0 0 128 128">
-        <path d="M16 16 L76 16 L96 36 L36 36 L36 54 L72 54 L62 72 L36 72 L36 112 L16 112 Z" fill="#fff"/>
-      </symbol>
-
       <!-- H: Real V1 from your reference — partial top + partial UNDERSIDE of middle arm tip -->
       <symbol id="f-h" viewBox="0 0 128 128">
         <path d="M16 16 L80 16 L96 32 L96 36 L36 36 L36 54 L72 54 L72 56 L56 72 L36 72 L36 112 L16 112 Z" fill="#fff"/>
@@ -121,60 +106,17 @@
         <path d="M16 16 L76 16 L96 36 L36 36 L36 54 L72 54 L54 72 L36 72 L36 92 L16 112 Z"
               fill="#fff" stroke="#fff" stroke-width="6" stroke-linejoin="round" stroke-linecap="round"/>
       </symbol>
+
+      <!-- N: K with the top slant FLIPPED — top arm cut now slants "/" to match middle and foot. All three diagonals parallel. -->
+      <symbol id="f-n" viewBox="0 0 128 128">
+        <path d="M16 16 L96 16 L76 36 L36 36 L36 54 L72 54 L54 72 L36 72 L36 92 L16 112 Z" fill="#fff"/>
+      </symbol>
     </defs>
   </svg>
 
   <main>
     <h1>Struck-corner F &mdash; variations</h1>
-    <p class="sub">Nine directions on the struck-corner theme. Partial cuts feel blockier and rounder; edge-to-edge cuts feel sharper and more aggressive; the rounded set softens the edge-to-edge cuts subtly. All built on the same 8px grid.</p>
-
-    <!-- B -->
-    <section>
-      <div class="head">
-        <h2>B. Double-strike partial <span class="pill fav">your favorite</span></h2>
-        <p>Same 16px chamfer on top-right of top arm, plus a matching 16px chamfer on bottom-right of the stem foot. Two marks of impact, both blocky.</p>
-      </div>
-      <div class="row">
-        <div class="icon size-16"><svg><use href="#f-b"/></svg></div>
-        <div class="icon size-32"><svg><use href="#f-b"/></svg></div>
-        <div class="icon size-64"><svg><use href="#f-b"/></svg></div>
-        <div class="icon size-128"><svg><use href="#f-b"/></svg></div>
-        <div class="lockup"><div class="icon"><svg><use href="#f-b"/></svg></div><span class="wordmark">FORGE</span></div>
-        <div class="tab"><svg><use href="#f-b"/></svg> Forge &middot; Dashboard</div>
-      </div>
-    </section>
-
-    <!-- C -->
-    <section>
-      <div class="head">
-        <h2>C. Double-strike sharp</h2>
-        <p>Same two impact points as B, but each chamfer spans the full edge &mdash; corner totally sliced, no flat remainder. Sharper, more aggressive.</p>
-      </div>
-      <div class="row">
-        <div class="icon size-16"><svg><use href="#f-c"/></svg></div>
-        <div class="icon size-32"><svg><use href="#f-c"/></svg></div>
-        <div class="icon size-64"><svg><use href="#f-c"/></svg></div>
-        <div class="icon size-128"><svg><use href="#f-c"/></svg></div>
-        <div class="lockup"><div class="icon"><svg><use href="#f-c"/></svg></div><span class="wordmark">FORGE</span></div>
-        <div class="tab"><svg><use href="#f-c"/></svg> Forge &middot; Dashboard</div>
-      </div>
-    </section>
-
-    <!-- G -->
-    <section>
-      <div class="head">
-        <h2>G. Beveled middle + sharp top</h2>
-        <p>Sharp edge-to-edge top, square foot, but the middle arm&rsquo;s right tip angles downward into a point. Hints at a chisel mark mid-stroke.</p>
-      </div>
-      <div class="row">
-        <div class="icon size-16"><svg><use href="#f-g"/></svg></div>
-        <div class="icon size-32"><svg><use href="#f-g"/></svg></div>
-        <div class="icon size-64"><svg><use href="#f-g"/></svg></div>
-        <div class="icon size-128"><svg><use href="#f-g"/></svg></div>
-        <div class="lockup"><div class="icon"><svg><use href="#f-g"/></svg></div><span class="wordmark">FORGE</span></div>
-        <div class="tab"><svg><use href="#f-g"/></svg> Forge &middot; Dashboard</div>
-      </div>
-    </section>
+    <p class="sub">Seven directions on the struck-corner theme. All built on the same 8px grid.</p>
 
     <!-- H -->
     <section>
@@ -272,22 +214,36 @@
       </div>
     </section>
 
+    <!-- N -->
+    <section>
+      <div class="head">
+        <h2>N. K with flipped top slant</h2>
+        <p>Same three edge-to-edge cuts as K, but the top arm&rsquo;s diagonal is flipped &mdash; now slanting &ldquo;/&rdquo; instead of &ldquo;\&rdquo;. All three cuts (top, middle, foot) run in the same direction, so the right side of the F reads as one continuous downward slash.</p>
+      </div>
+      <div class="row">
+        <div class="icon size-16"><svg><use href="#f-n"/></svg></div>
+        <div class="icon size-32"><svg><use href="#f-n"/></svg></div>
+        <div class="icon size-64"><svg><use href="#f-n"/></svg></div>
+        <div class="icon size-128"><svg><use href="#f-n"/></svg></div>
+        <div class="lockup"><div class="icon"><svg><use href="#f-n"/></svg></div><span class="wordmark">FORGE</span></div>
+        <div class="tab"><svg><use href="#f-n"/></svg> Forge &middot; Dashboard</div>
+      </div>
+    </section>
+
     <!-- Side-by-side at large size for direct comparison -->
     <section>
       <div class="head">
         <h2>Side-by-side</h2>
-        <p>All nine at app-icon size for direct comparison.</p>
+        <p>All seven at app-icon size for direct comparison.</p>
       </div>
-      <div class="compare" style="grid-template-columns: repeat(5, 1fr); row-gap: 24px;">
-        <div class="cell"><div class="icon size-128"><svg><use href="#f-b"/></svg></div><span class="lbl">B &middot; double partial</span></div>
-        <div class="cell"><div class="icon size-128"><svg><use href="#f-c"/></svg></div><span class="lbl">C &middot; double sharp</span></div>
-        <div class="cell"><div class="icon size-128"><svg><use href="#f-g"/></svg></div><span class="lbl">G &middot; bevel</span></div>
+      <div class="compare" style="grid-template-columns: repeat(7, 1fr);">
         <div class="cell"><div class="icon size-128"><svg><use href="#f-h"/></svg></div><span class="lbl">H &middot; real V1</span></div>
         <div class="cell"><div class="icon size-128"><svg><use href="#f-i"/></svg></div><span class="lbl">I &middot; real V2 fav</span></div>
         <div class="cell"><div class="icon size-128"><svg><use href="#f-j"/></svg></div><span class="lbl">J &middot; H sharp</span></div>
         <div class="cell"><div class="icon size-128"><svg><use href="#f-k"/></svg></div><span class="lbl">K &middot; I sharp</span></div>
         <div class="cell"><div class="icon size-128"><svg><use href="#f-l"/></svg></div><span class="lbl">L &middot; J rounded</span></div>
         <div class="cell"><div class="icon size-128"><svg><use href="#f-m"/></svg></div><span class="lbl">M &middot; K rounded</span></div>
+        <div class="cell"><div class="icon size-128"><svg><use href="#f-n"/></svg></div><span class="lbl">N &middot; K flipped top</span></div>
       </div>
     </section>
   </main>
