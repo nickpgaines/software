@@ -94,7 +94,8 @@ export async function loadAdminMetrics(): Promise<AdminMetrics> {
     db
       .prepare(
         `SELECT COALESCE(SUM(amount_cents + tip_cents), 0) AS n FROM payments
-           WHERE created_at >= datetime('now', '-30 days')`
+           WHERE created_at >= datetime('now', '-30 days')
+             AND stripe_payment_intent_id IS NOT NULL`
       )
       .get<{ n: number }>(),
   ]);
@@ -156,7 +157,8 @@ export async function loadAdminCompanies(
          (SELECT COUNT(*) FROM jobs      WHERE company_id = c.id) AS jobs_count,
          (SELECT COUNT(*) FROM invoices  WHERE company_id = c.id) AS invoices_count,
          (SELECT COALESCE(SUM(amount_cents + tip_cents), 0) FROM payments
-            WHERE company_id = c.id) AS payments_total_cents,
+            WHERE company_id = c.id
+              AND stripe_payment_intent_id IS NOT NULL) AS payments_total_cents,
          (SELECT MIN(created_at) FROM staff WHERE company_id = c.id) AS signed_up_at,
          (
            SELECT MAX(t) FROM (
@@ -268,7 +270,8 @@ export async function loadAdminCompanyDetail(
          (SELECT COUNT(*) FROM invoices  WHERE company_id = c.id
             AND status = 'paid') AS invoices_paid_count,
          (SELECT COALESCE(SUM(amount_cents + tip_cents), 0) FROM payments
-            WHERE company_id = c.id) AS payments_total_cents
+            WHERE company_id = c.id
+              AND stripe_payment_intent_id IS NOT NULL) AS payments_total_cents
        FROM company c
        WHERE c.id = ?
        LIMIT 1`
