@@ -72,7 +72,7 @@ export default async function AdminCompanyDetailPage({
           sub={`${detail.jobs_30d} in last 30d`}
         />
         <Metric
-          label="Payments processed"
+          label="Stripe processed"
           value={formatCentsShort(detail.payments_total_cents)}
           sub={`${detail.invoices_paid_count} of ${detail.invoices_count} invoices paid`}
         />

@@ -56,7 +56,7 @@ export default async function AdminIndexPage({
           sub="last 30 days"
         />
         <MetricCard
-          label="Payments processed"
+          label="Stripe processed"
           value={formatCentsShort(metrics.payments_cents_30d)}
           sub={`${metrics.customers_30d} new customers · 30d`}
         />
@@ -111,7 +111,7 @@ export default async function AdminIndexPage({
                 <TableHead className="hidden md:table-cell">Customers</TableHead>
                 <TableHead className="hidden md:table-cell">Jobs</TableHead>
                 <TableHead className="hidden md:table-cell text-right">
-                  Processed
+                  Stripe processed
                 </TableHead>
                 <TableHead className="hidden lg:table-cell">Stripe</TableHead>
                 <TableHead className="hidden lg:table-cell">SMS</TableHead>
