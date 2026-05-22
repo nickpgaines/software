@@ -1,12 +1,10 @@
 /**
  * Pulse design tokens — TypeScript bindings.
  *
- * Surface and text tokens are CSS-variable references (`var(--color-*)`) so
- * inline styles using them automatically respond to the active theme
- * (dark by default; `html[data-theme="light"]` flips them — see
- * src/app/globals.css). Accent tokens stay as hex literals because some
- * call sites concatenate opacity onto them (`${PULSE.green}1F`), which
- * only works on hex.
+ * Surface and text tokens are CSS-variable references (`var(--color-*)`)
+ * defined in src/app/globals.css. Accent tokens stay as hex literals
+ * because some call sites concatenate opacity onto them
+ * (`${PULSE.green}1F`), which only works on hex.
  *
  * Token names mirror CSS variable names so grepping for either side maps
  * cleanly:
@@ -17,7 +15,7 @@
  */
 
 export const PULSE = {
-  // Surfaces — CSS-var refs so they flip with the active theme.
+  // Surfaces — CSS-var refs to the tokens defined in globals.css.
   bg: "var(--color-canvas)",
   bgAlt: "var(--color-elevated)",
   card: "var(--color-card)",

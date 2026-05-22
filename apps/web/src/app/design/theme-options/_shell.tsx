@@ -7,10 +7,6 @@
  * scoped style block that overrides accent CSS variables and (optionally)
  * injects the screenshot's accent-dash underline + recolors the chart line.
  *
- * Light/dark mode toggling is handled by the existing ThemeToggle rendered
- * inside the Pulse sidebar — it flips `html[data-theme]` exactly like the
- * production app.
- *
  * Scoping is via [data-theme-preview-scope="N"] on the wrapper, so the
  * overrides do not leak into the design index page or any sibling route.
  */
@@ -89,9 +85,6 @@ function PreviewTopBar({ option }: { option: PreviewOption }) {
         <span className="opacity-60">·</span>
         <span>{option.label}</span>
         <span className="opacity-60 hidden sm:inline">— {option.description}</span>
-      </div>
-      <div className="flex items-center gap-2 text-[11px] font-bold opacity-80">
-        <span>Use the moon/sun toggle in the sidebar for light/dark</span>
       </div>
     </div>
   );

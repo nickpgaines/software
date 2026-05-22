@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { PULSE } from "./theme";
 import { PulseIcon } from "./Icon";
-import ThemeToggle from "@/components/ThemeToggle";
 import { useMobileNav } from "@/components/MobileNavShell";
 
 type Me = {
@@ -232,7 +231,6 @@ export function PulseSidebar({ initialMe = null }: { initialMe?: Me | null }) {
             {displayName}
           </span>
         </div>
-        <ThemeToggle />
         <button
           type="button"
           onClick={logout}

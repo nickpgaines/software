@@ -31,16 +31,12 @@ export const metadata: Metadata = {
   },
 };
 
-// Status bar color follows the device's system light/dark preference.
 // Splash screen background is set in manifest.json and stays dark.
 // Pinch-zoom and side-scroll are disabled app-wide so every screen
 // stays sized-to-fit on mobile (multi-tab pages get a locally-scrollable
 // tab strip per DESIGN_SYSTEM §9.6).
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f9f9fb" },
-    { media: "(prefers-color-scheme: dark)", color: "#000000" },
-  ],
+  themeColor: "#000000",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -49,14 +45,12 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-// Runs before paint to apply the user's saved theme + accent color. Inlined
-// to avoid a flash of defaults on first paint when the user has chosen
-// something other than the default white-on-dark / black-on-light accent.
+// Runs before paint to apply the user's saved accent color. Inlined to
+// avoid a flash of the default white accent on first paint when the user
+// has chosen a custom one.
 const themeInitScript = `
 (function () {
   try {
-    var t = localStorage.getItem('forge-theme');
-    if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
     var a = localStorage.getItem('forge-accent');
     if (a && /^#[0-9a-fA-F]{6}$/.test(a)) {
       var r = parseInt(a.slice(1, 3), 16);
