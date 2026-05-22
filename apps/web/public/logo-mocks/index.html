@@ -20,7 +20,6 @@
       background: var(--bg);
       color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
-      font-feature-settings: "cv11", "ss01";
       -webkit-font-smoothing: antialiased;
     }
     main {
@@ -51,6 +50,7 @@
       align-items: baseline;
       justify-content: space-between;
       margin-bottom: 24px;
+      gap: 32px;
     }
     .head h2 {
       font-size: 17px;
@@ -83,7 +83,6 @@
       letter-spacing: 0.04em;
       text-transform: uppercase;
     }
-    /* Icon containers — each at the size it would actually ship at. */
     .icon {
       background: #000;
       border: 1px solid var(--card-border);
@@ -91,21 +90,17 @@
       place-items: center;
       overflow: hidden;
     }
-    .icon img { display: block; }
+    .icon svg { display: block; }
 
-    .size-16 { width: 16px; height: 16px; border-radius: 3px; border-width: 0.5px; }
-    .size-16 img { width: 14px; height: 14px; }
-
-    .size-32 { width: 32px; height: 32px; border-radius: 6px; }
-    .size-32 img { width: 26px; height: 26px; }
-
-    .size-64 { width: 64px; height: 64px; border-radius: 10px; }
-    .size-64 img { width: 50px; height: 50px; }
-
+    .size-16  { width: 16px;  height: 16px;  border-radius: 3px; }
+    .size-16  svg { width: 14px;  height: 14px; }
+    .size-32  { width: 32px;  height: 32px;  border-radius: 6px; }
+    .size-32  svg { width: 26px;  height: 26px; }
+    .size-64  { width: 64px;  height: 64px;  border-radius: 10px; }
+    .size-64  svg { width: 50px;  height: 50px; }
     .size-128 { width: 128px; height: 128px; border-radius: 20px; }
-    .size-128 img { width: 96px; height: 96px; }
+    .size-128 svg { width: 96px;  height: 96px; }
 
-    /* Lockup row: mark + wordmark, app-header sized. */
     .lockup {
       display: flex;
       align-items: center;
@@ -117,7 +112,7 @@
       width: fit-content;
     }
     .lockup .icon { width: 28px; height: 28px; border-radius: 6px; border: none; }
-    .lockup .icon img { width: 22px; height: 22px; }
+    .lockup .icon svg { width: 22px; height: 22px; }
     .wordmark {
       font-size: 18px;
       font-weight: 800;
@@ -125,7 +120,6 @@
       color: #fff;
     }
 
-    /* Sidebar mock — show how the mark sits where the collapsed sidebar logo lives. */
     .sidebar-mock {
       display: flex;
       align-items: stretch;
@@ -168,13 +162,7 @@
       font-size: 12px;
       color: var(--text-muted);
     }
-
-    .grid-three {
-      display: grid;
-      grid-template-columns: auto auto auto;
-      gap: 24px;
-      align-items: center;
-    }
+    .browser-tab svg { width: 14px; height: 14px; }
 
     .pill {
       display: inline-block;
@@ -187,114 +175,135 @@
       padding: 3px 8px;
       margin-left: 8px;
     }
+
+    .ctx { display: flex; gap: 24px; margin-top: 32px; flex-wrap: wrap; align-items: center; }
   </style>
 </head>
 <body>
+  <!-- SVG symbol library -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0" aria-hidden="true">
+    <defs>
+      <symbol id="f-struck" viewBox="0 0 128 128">
+        <path d="M16 16 L80 16 L96 32 L96 36 L36 36 L36 54 L72 54 L72 72 L36 72 L36 112 L16 112 Z" fill="#ffffff"/>
+      </symbol>
+      <symbol id="f-anvil" viewBox="0 0 128 128">
+        <path d="M16 16 L96 16 L96 36 L36 36 L36 54 L72 54 L72 72 L36 72 L36 100 L48 100 L48 112 L4 112 L4 100 L16 100 Z" fill="#ffffff"/>
+      </symbol>
+      <symbol id="f-stacked" viewBox="0 0 128 128">
+        <path d="M16 16 L112 16 L112 36 L28 36 L28 54 L80 54 L80 72 L28 72 L28 94 L60 94 L60 112 L16 112 Z" fill="#ffffff"/>
+      </symbol>
+      <symbol id="f-hotedge" viewBox="0 0 128 128">
+        <path d="M16 16 L96 16 L96 36 L36 36 L36 54 L72 54 L72 72 L36 72 L36 112 L16 112 Z" fill="#ffffff"/>
+        <rect x="92" y="16" width="4" height="20" fill="#F97316"/>
+      </symbol>
+    </defs>
+  </svg>
+
   <main>
     <h1>Forge logo mocks</h1>
     <p class="sub">Four directions for the &ldquo;F&rdquo; mark, rendered at every size they&rsquo;d actually ship at. Surface tokens, card borders, and radii all match <code style="color:#a1a1aa">DESIGN_SYSTEM.md</code>.</p>
 
-    <!-- Mark 1: Struck corner -->
+    <!-- 1. Struck corner -->
     <section>
       <div class="head">
         <h2>1. Struck corner F <span class="pill">recommended</span></h2>
-        <p>Top-right corner of the top arm chamfered at 45&deg; — reads as a normal bold F until you look twice, then it feels &ldquo;shaped by force.&rdquo;</p>
+        <p>Top-right corner of the top arm chamfered at 45&deg; &mdash; reads as a normal bold F until you look twice, then it feels &ldquo;shaped by force.&rdquo;</p>
       </div>
       <div class="row">
-        <div class="cell"><div class="icon size-16"><img src="f-struck.svg" alt=""></div><span class="label">Favicon &middot; 16</span></div>
-        <div class="cell"><div class="icon size-32"><img src="f-struck.svg" alt=""></div><span class="label">Sidebar &middot; 32</span></div>
-        <div class="cell"><div class="icon size-64"><img src="f-struck.svg" alt=""></div><span class="label">Touch icon &middot; 64</span></div>
-        <div class="cell"><div class="icon size-128"><img src="f-struck.svg" alt=""></div><span class="label">App icon &middot; 128</span></div>
+        <div class="cell"><div class="icon size-16"><svg><use href="#f-struck"/></svg></div><span class="label">Favicon &middot; 16</span></div>
+        <div class="cell"><div class="icon size-32"><svg><use href="#f-struck"/></svg></div><span class="label">Sidebar &middot; 32</span></div>
+        <div class="cell"><div class="icon size-64"><svg><use href="#f-struck"/></svg></div><span class="label">Touch icon &middot; 64</span></div>
+        <div class="cell"><div class="icon size-128"><svg><use href="#f-struck"/></svg></div><span class="label">App icon &middot; 128</span></div>
       </div>
-      <div style="display:flex; gap:24px; margin-top: 32px; flex-wrap: wrap;">
-        <div class="lockup"><div class="icon"><img src="f-struck.svg" alt=""></div><span class="wordmark">FORGE</span></div>
+      <div class="ctx">
+        <div class="lockup"><div class="icon"><svg><use href="#f-struck"/></svg></div><span class="wordmark">FORGE</span></div>
         <div class="sidebar-mock">
           <div class="rail">
-            <div class="icon size-32"><img src="f-struck.svg" alt=""></div>
+            <div class="icon size-32"><svg><use href="#f-struck"/></svg></div>
             <div class="dot"></div><div class="dot"></div><div class="dot"></div>
           </div>
           <div class="body">Sidebar collapsed state</div>
         </div>
-        <div class="browser-tab"><img src="f-struck.svg" width="14" height="14" alt=""> Forge &middot; Dashboard</div>
+        <div class="browser-tab"><svg><use href="#f-struck"/></svg> Forge &middot; Dashboard</div>
       </div>
     </section>
 
-    <!-- Mark 2: Anvil-foot -->
+    <!-- 2. Anvil-foot -->
     <section>
       <div class="head">
         <h2>2. Anvil-foot F</h2>
         <p>Stem flares into a horizontal foot, ~1 grid unit each side. The lower silhouette reads as an anvil profile without being illustrative.</p>
       </div>
       <div class="row">
-        <div class="cell"><div class="icon size-16"><img src="f-anvil.svg" alt=""></div><span class="label">Favicon &middot; 16</span></div>
-        <div class="cell"><div class="icon size-32"><img src="f-anvil.svg" alt=""></div><span class="label">Sidebar &middot; 32</span></div>
-        <div class="cell"><div class="icon size-64"><img src="f-anvil.svg" alt=""></div><span class="label">Touch icon &middot; 64</span></div>
-        <div class="cell"><div class="icon size-128"><img src="f-anvil.svg" alt=""></div><span class="label">App icon &middot; 128</span></div>
+        <div class="cell"><div class="icon size-16"><svg><use href="#f-anvil"/></svg></div><span class="label">Favicon &middot; 16</span></div>
+        <div class="cell"><div class="icon size-32"><svg><use href="#f-anvil"/></svg></div><span class="label">Sidebar &middot; 32</span></div>
+        <div class="cell"><div class="icon size-64"><svg><use href="#f-anvil"/></svg></div><span class="label">Touch icon &middot; 64</span></div>
+        <div class="cell"><div class="icon size-128"><svg><use href="#f-anvil"/></svg></div><span class="label">App icon &middot; 128</span></div>
       </div>
-      <div style="display:flex; gap:24px; margin-top: 32px; flex-wrap: wrap;">
-        <div class="lockup"><div class="icon"><img src="f-anvil.svg" alt=""></div><span class="wordmark">FORGE</span></div>
+      <div class="ctx">
+        <div class="lockup"><div class="icon"><svg><use href="#f-anvil"/></svg></div><span class="wordmark">FORGE</span></div>
         <div class="sidebar-mock">
           <div class="rail">
-            <div class="icon size-32"><img src="f-anvil.svg" alt=""></div>
+            <div class="icon size-32"><svg><use href="#f-anvil"/></svg></div>
             <div class="dot"></div><div class="dot"></div><div class="dot"></div>
           </div>
           <div class="body">Sidebar collapsed state</div>
         </div>
-        <div class="browser-tab"><img src="f-anvil.svg" width="14" height="14" alt=""> Forge &middot; Dashboard</div>
+        <div class="browser-tab"><svg><use href="#f-anvil"/></svg> Forge &middot; Dashboard</div>
       </div>
     </section>
 
-    <!-- Mark 3: Stacked -->
+    <!-- 3. Stacked -->
     <section>
       <div class="head">
         <h2>3. Stacked F</h2>
-        <p>Three chunky horizontal bars joined by a narrower spine — reads like folded/forged steel plates. Most architectural of the four.</p>
+        <p>Three chunky horizontal bars joined by a narrower spine &mdash; reads like folded/forged steel plates. Most architectural of the four.</p>
       </div>
       <div class="row">
-        <div class="cell"><div class="icon size-16"><img src="f-stacked.svg" alt=""></div><span class="label">Favicon &middot; 16</span></div>
-        <div class="cell"><div class="icon size-32"><img src="f-stacked.svg" alt=""></div><span class="label">Sidebar &middot; 32</span></div>
-        <div class="cell"><div class="icon size-64"><img src="f-stacked.svg" alt=""></div><span class="label">Touch icon &middot; 64</span></div>
-        <div class="cell"><div class="icon size-128"><img src="f-stacked.svg" alt=""></div><span class="label">App icon &middot; 128</span></div>
+        <div class="cell"><div class="icon size-16"><svg><use href="#f-stacked"/></svg></div><span class="label">Favicon &middot; 16</span></div>
+        <div class="cell"><div class="icon size-32"><svg><use href="#f-stacked"/></svg></div><span class="label">Sidebar &middot; 32</span></div>
+        <div class="cell"><div class="icon size-64"><svg><use href="#f-stacked"/></svg></div><span class="label">Touch icon &middot; 64</span></div>
+        <div class="cell"><div class="icon size-128"><svg><use href="#f-stacked"/></svg></div><span class="label">App icon &middot; 128</span></div>
       </div>
-      <div style="display:flex; gap:24px; margin-top: 32px; flex-wrap: wrap;">
-        <div class="lockup"><div class="icon"><img src="f-stacked.svg" alt=""></div><span class="wordmark">FORGE</span></div>
+      <div class="ctx">
+        <div class="lockup"><div class="icon"><svg><use href="#f-stacked"/></svg></div><span class="wordmark">FORGE</span></div>
         <div class="sidebar-mock">
           <div class="rail">
-            <div class="icon size-32"><img src="f-stacked.svg" alt=""></div>
+            <div class="icon size-32"><svg><use href="#f-stacked"/></svg></div>
             <div class="dot"></div><div class="dot"></div><div class="dot"></div>
           </div>
           <div class="body">Sidebar collapsed state</div>
         </div>
-        <div class="browser-tab"><img src="f-stacked.svg" width="14" height="14" alt=""> Forge &middot; Dashboard</div>
+        <div class="browser-tab"><svg><use href="#f-stacked"/></svg> Forge &middot; Dashboard</div>
       </div>
     </section>
 
-    <!-- Mark 4: Hot edge -->
+    <!-- 4. Hot edge -->
     <section>
       <div class="head">
         <h2>4. Hot-edge F</h2>
-        <p>One edge of the top arm in a warm accent (here: <code style="color:#a1a1aa">#F97316</code>) — the glowing edge of struck metal. Locks you to an accent color, so use only if you&rsquo;re ready for that.</p>
+        <p>One edge of the top arm in a warm accent (here: <code style="color:#a1a1aa">#F97316</code>) &mdash; the glowing edge of struck metal. Locks you to an accent color.</p>
       </div>
       <div class="row">
-        <div class="cell"><div class="icon size-16"><img src="f-hotedge.svg" alt=""></div><span class="label">Favicon &middot; 16</span></div>
-        <div class="cell"><div class="icon size-32"><img src="f-hotedge.svg" alt=""></div><span class="label">Sidebar &middot; 32</span></div>
-        <div class="cell"><div class="icon size-64"><img src="f-hotedge.svg" alt=""></div><span class="label">Touch icon &middot; 64</span></div>
-        <div class="cell"><div class="icon size-128"><img src="f-hotedge.svg" alt=""></div><span class="label">App icon &middot; 128</span></div>
+        <div class="cell"><div class="icon size-16"><svg><use href="#f-hotedge"/></svg></div><span class="label">Favicon &middot; 16</span></div>
+        <div class="cell"><div class="icon size-32"><svg><use href="#f-hotedge"/></svg></div><span class="label">Sidebar &middot; 32</span></div>
+        <div class="cell"><div class="icon size-64"><svg><use href="#f-hotedge"/></svg></div><span class="label">Touch icon &middot; 64</span></div>
+        <div class="cell"><div class="icon size-128"><svg><use href="#f-hotedge"/></svg></div><span class="label">App icon &middot; 128</span></div>
       </div>
-      <div style="display:flex; gap:24px; margin-top: 32px; flex-wrap: wrap;">
-        <div class="lockup"><div class="icon"><img src="f-hotedge.svg" alt=""></div><span class="wordmark">FORGE</span></div>
+      <div class="ctx">
+        <div class="lockup"><div class="icon"><svg><use href="#f-hotedge"/></svg></div><span class="wordmark">FORGE</span></div>
         <div class="sidebar-mock">
           <div class="rail">
-            <div class="icon size-32"><img src="f-hotedge.svg" alt=""></div>
+            <div class="icon size-32"><svg><use href="#f-hotedge"/></svg></div>
             <div class="dot"></div><div class="dot"></div><div class="dot"></div>
           </div>
           <div class="body">Sidebar collapsed state</div>
         </div>
-        <div class="browser-tab"><img src="f-hotedge.svg" width="14" height="14" alt=""> Forge &middot; Dashboard</div>
+        <div class="browser-tab"><svg><use href="#f-hotedge"/></svg> Forge &middot; Dashboard</div>
       </div>
     </section>
 
-    <p class="sub" style="margin-top: 48px;">All four marks are built on an 8px grid, single fill, one stroke weight, sharp corners only. Drop-in ready to wire into <code style="color:#a1a1aa">favicon</code>, <code style="color:#a1a1aa">app/icon.tsx</code>, or the sidebar.</p>
+    <p class="sub" style="margin-top: 48px;">All four built on an 8px grid, single fill, one stroke weight, sharp corners only.</p>
   </main>
 </body>
 </html>
