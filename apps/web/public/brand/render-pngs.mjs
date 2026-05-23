@@ -92,7 +92,7 @@ async function renderUnifiedWordmark({ dpr, bg, color, radius = 0, outName }) {
     </style>
   </head><body>
     <div class="card">
-      <div class="word"><svg viewBox="32 16 80 96" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"><path d="${F_PATH}" fill="${color}"/></svg>ORGE</div>
+      <div class="word"><svg viewBox="28 16 92 96" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"><path d="${F_PATH}" fill="${color}"/></svg>ORGE</div>
     </div>
   </body></html>`;
   await page.setContent(html, { waitUntil: "networkidle", timeout: 30000 });
