@@ -11,7 +11,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Forge CRM",
+  title: "Forge",
   description: "Simple CRM for door-to-door window cleaning",
   manifest: "/manifest.json",
   applicationName: "Forge",

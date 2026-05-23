@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 576" font-family="Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif">
+  <rect width="1600" height="576" rx="96" ry="96" fill="#000000"/>
+  <g transform="translate(176 160) scale(2)">
+    <path d="M32 16 L92 16 L112 36 L52 36 L52 54 L88 54 L70 72 L52 72 L52 92 L32 112 Z" fill="#ffffff"/>
+  </g>
+  <text x="552" y="288" fill="#ffffff" font-size="176" font-weight="800" letter-spacing="31.68" dominant-baseline="central">FORGE</text>
+</svg>

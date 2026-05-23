@@ -106,7 +106,15 @@ export default function NavBar() {
     <aside className="fixed inset-y-0 left-0 w-60 bg-black flex flex-col z-40">
       {/* Logo */}
       <div className="pt-6 pb-4 px-5 shrink-0">
-        <span className="font-bold text-lg text-white tracking-tight">Forge CRM</span>
+        <div className="flex items-center gap-2.5">
+          <svg viewBox="0 0 128 128" className="w-9 h-9 flex-shrink-0 text-white" aria-hidden="true">
+            <path
+              d="M32 16 L92 16 L112 36 L52 36 L52 54 L88 54 L70 72 L52 72 L52 92 L32 112 Z"
+              fill="currentColor"
+            />
+          </svg>
+          <span className="text-[15px] font-extrabold text-white tracking-[0.18em]">FORGE</span>
+        </div>
       </div>
 
       {/* + New button */}

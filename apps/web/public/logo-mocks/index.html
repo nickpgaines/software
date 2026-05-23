@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Forge — struck-corner F variations</title>
+  <style>
+    :root {
+      --bg: #000000;
+      --card: #0f0f12;
+      --card-border: #1f1f24;
+      --text: #ffffff;
+      --text-muted: #a1a1aa;
+      --text-subtle: #71717a;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    main { max-width: 1120px; margin: 0 auto; padding: 56px 32px 96px; }
+    h1 { font-size: 28px; font-weight: 700; letter-spacing: -0.02em; margin: 0 0 8px; }
+    .sub { color: var(--text-muted); font-size: 14px; margin: 0 0 48px; }
+
+    section {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 12px;
+      padding: 28px;
+      margin-bottom: 20px;
+    }
+    .head { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 24px; gap: 32px; }
+    .head h2 { font-size: 17px; font-weight: 600; letter-spacing: -0.01em; margin: 0; }
+    .head p { color: var(--text-subtle); font-size: 13px; margin: 0; max-width: 600px; text-align: right; }
+
+    .row { display: flex; gap: 24px; align-items: center; flex-wrap: wrap; }
+    .icon { background: #000; border: 1px solid var(--card-border); display: grid; place-items: center; overflow: hidden; }
+    .icon svg { display: block; }
+
+    .size-16  { width: 16px;  height: 16px;  border-radius: 3px; }
+    .size-16  svg { width: 14px; height: 14px; }
+    .size-32  { width: 32px;  height: 32px;  border-radius: 6px; }
+    .size-32  svg { width: 26px; height: 26px; }
+    .size-64  { width: 64px;  height: 64px;  border-radius: 10px; }
+    .size-64  svg { width: 50px; height: 50px; }
+    .size-128 { width: 128px; height: 128px; border-radius: 20px; }
+    .size-128 svg { width: 96px; height: 96px; }
+
+    .lockup { display: flex; align-items: center; gap: 12px; padding: 16px 18px; background: #000; border: 1px solid var(--card-border); border-radius: 10px; }
+    .lockup .icon { width: 32px; height: 32px; border-radius: 6px; border: none; }
+    .lockup .icon svg { width: 26px; height: 26px; }
+    .wordmark { font-size: 18px; font-weight: 800; letter-spacing: 0.18em; color: #fff; }
+
+    .tab { display: inline-flex; align-items: center; gap: 8px; background: #0f0f12; border: 1px solid #1f1f24; border-radius: 8px 8px 0 0; padding: 8px 12px 10px; font-size: 12px; color: var(--text-muted); }
+    .tab svg { width: 14px; height: 14px; }
+
+    .pill { display: inline-block; font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-subtle); border: 1px solid var(--card-border); border-radius: 999px; padding: 3px 8px; margin-left: 8px; }
+    .pill.fav { color: #f97316; border-color: #4a2a10; }
+
+    .compare {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 16px;
+      align-items: end;
+      margin-top: 8px;
+    }
+    .compare .cell { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+    .compare .lbl { color: var(--text-subtle); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; text-align: center; }
+  </style>
+</head>
+<body>
+  <!-- SVG library — all variations -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="position:absolute;width:0;height:0" aria-hidden="true">
+    <defs>
+      <!-- I: Real V2 from your reference (favorite) — partial top + partial middle underside + partial foot -->
+      <symbol id="f-i" viewBox="0 0 128 128">
+        <path d="M16 16 L80 16 L96 32 L96 36 L36 36 L36 54 L72 54 L72 56 L56 72 L36 72 L36 96 L20 112 L16 112 Z" fill="#fff"/>
+      </symbol>
+
+      <!-- K: Sharp/edge-to-edge version of I — full strike-through on top + middle underside + foot -->
+      <symbol id="f-k" viewBox="0 0 128 128">
+        <path d="M16 16 L76 16 L96 36 L36 36 L36 54 L72 54 L54 72 L36 72 L36 92 L16 112 Z" fill="#fff"/>
+      </symbol>
+
+      <!-- M: Barely-rounded version of K — path inset by 1, stroke-width 2, ~1px corner radius. Just enough to take the bite off the corners. -->
+      <symbol id="f-m" viewBox="0 0 128 128">
+        <path d="M17 17 L75.59 17 L93.59 35 L35 35 L35 55 L69.59 55 L53.59 71 L35 71 L35 91.59 L17 109.59 Z"
+              fill="#fff" stroke="#fff" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+      </symbol>
+
+      <!-- N: K with the top slant FLIPPED — top arm cut now slants "/" to match middle and foot. All three diagonals parallel. -->
+      <symbol id="f-n" viewBox="0 0 128 128">
+        <path d="M16 16 L96 16 L76 36 L36 36 L36 54 L72 54 L54 72 L36 72 L36 92 L16 112 Z" fill="#fff"/>
+      </symbol>
+    </defs>
+  </svg>
+
+  <main>
+    <h1>Struck-corner F &mdash; variations</h1>
+    <p class="sub">Four directions on the struck-corner theme. All built on the same 8px grid.</p>
+
+    <!-- I -->
+    <section>
+      <div class="head">
+        <h2>I. Real V2 from your reference <span class="pill fav">your actual favorite</span></h2>
+        <p>H plus a third partial chamfer on the stem foot. Three cuts in the same visual rhythm down the right side of the letter.</p>
+      </div>
+      <div class="row">
+        <div class="icon size-16"><svg><use href="#f-i"/></svg></div>
+        <div class="icon size-32"><svg><use href="#f-i"/></svg></div>
+        <div class="icon size-64"><svg><use href="#f-i"/></svg></div>
+        <div class="icon size-128"><svg><use href="#f-i"/></svg></div>
+        <div class="lockup"><div class="icon"><svg><use href="#f-i"/></svg></div><span class="wordmark">FORGE</span></div>
+        <div class="tab"><svg><use href="#f-i"/></svg> Forge &middot; Dashboard</div>
+      </div>
+    </section>
+
+    <!-- K -->
+    <section>
+      <div class="head">
+        <h2>K. Sharp version of I</h2>
+        <p>All three cuts from I taken edge-to-edge: top arm tip, middle arm tip, stem foot. Most aggressive of the set &mdash; reads as &ldquo;sliced&rdquo; all the way down the right side.</p>
+      </div>
+      <div class="row">
+        <div class="icon size-16"><svg><use href="#f-k"/></svg></div>
+        <div class="icon size-32"><svg><use href="#f-k"/></svg></div>
+        <div class="icon size-64"><svg><use href="#f-k"/></svg></div>
+        <div class="icon size-128"><svg><use href="#f-k"/></svg></div>
+        <div class="lockup"><div class="icon"><svg><use href="#f-k"/></svg></div><span class="wordmark">FORGE</span></div>
+        <div class="tab"><svg><use href="#f-k"/></svg> Forge &middot; Dashboard</div>
+      </div>
+    </section>
+
+    <!-- M -->
+    <section>
+      <div class="head">
+        <h2>M. K with barely-there rounding</h2>
+        <p>Same shape and thickness as K, but every corner is softened with a ~1px radius &mdash; barely visible at large sizes, just takes the bite off the sharpest points. Should read as the same letterform with the same weight.</p>
+      </div>
+      <div class="row">
+        <div class="icon size-16"><svg><use href="#f-m"/></svg></div>
+        <div class="icon size-32"><svg><use href="#f-m"/></svg></div>
+        <div class="icon size-64"><svg><use href="#f-m"/></svg></div>
+        <div class="icon size-128"><svg><use href="#f-m"/></svg></div>
+        <div class="lockup"><div class="icon"><svg><use href="#f-m"/></svg></div><span class="wordmark">FORGE</span></div>
+        <div class="tab"><svg><use href="#f-m"/></svg> Forge &middot; Dashboard</div>
+      </div>
+    </section>
+
+    <!-- N -->
+    <section>
+      <div class="head">
+        <h2>N. K with flipped top slant</h2>
+        <p>Same three edge-to-edge cuts as K, but the top arm&rsquo;s diagonal is flipped &mdash; now slanting &ldquo;/&rdquo; instead of &ldquo;\&rdquo;. All three cuts (top, middle, foot) run in the same direction, so the right side of the F reads as one continuous downward slash.</p>
+      </div>
+      <div class="row">
+        <div class="icon size-16"><svg><use href="#f-n"/></svg></div>
+        <div class="icon size-32"><svg><use href="#f-n"/></svg></div>
+        <div class="icon size-64"><svg><use href="#f-n"/></svg></div>
+        <div class="icon size-128"><svg><use href="#f-n"/></svg></div>
+        <div class="lockup"><div class="icon"><svg><use href="#f-n"/></svg></div><span class="wordmark">FORGE</span></div>
+        <div class="tab"><svg><use href="#f-n"/></svg> Forge &middot; Dashboard</div>
+      </div>
+    </section>
+
+    <!-- Side-by-side at large size for direct comparison -->
+    <section>
+      <div class="head">
+        <h2>Side-by-side</h2>
+        <p>All four at app-icon size for direct comparison.</p>
+      </div>
+      <div class="compare" style="grid-template-columns: repeat(4, 1fr);">
+        <div class="cell"><div class="icon size-128"><svg><use href="#f-i"/></svg></div><span class="lbl">I &middot; favorite</span></div>
+        <div class="cell"><div class="icon size-128"><svg><use href="#f-k"/></svg></div><span class="lbl">K &middot; sharp</span></div>
+        <div class="cell"><div class="icon size-128"><svg><use href="#f-m"/></svg></div><span class="lbl">M &middot; subtly rounded</span></div>
+        <div class="cell"><div class="icon size-128"><svg><use href="#f-n"/></svg></div><span class="lbl">N &middot; flipped top</span></div>
+      </div>
+    </section>
+  </main>
+</body>
+</html>
