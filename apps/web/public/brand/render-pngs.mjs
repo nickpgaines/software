@@ -31,9 +31,14 @@ async function renderSvgAt(svg, size, outName) {
 }
 
 async function renderLockup({ dpr, bg, color, radius = 0, outName }) {
-  // Design at CSS pixels; deviceScaleFactor scales the output resolution.
+  // Proportions exactly match the Logo Mox page (.lockup CSS) scaled up:
+  //   visible F mark = 26 → 256 (scale ≈ 9.85x)
+  //   wordmark font-size = 18 → 176
+  //   gap = 12 → 120
+  //   padding = 16/18 → 160/176
+  //   border-radius = 10 → 96
   const page = await browser.newPage({
-    viewport: { width: 2000, height: 600 },
+    viewport: { width: 2400, height: 600 },
     deviceScaleFactor: dpr,
   });
   const html = `<!doctype html><html><head>
@@ -45,10 +50,10 @@ async function renderLockup({ dpr, bg, color, radius = 0, outName }) {
         display:flex;align-items:center;justify-content:center;
         font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
       .card{background:${bg};${radius ? `border-radius:${radius}px;` : ""}
-        display:flex;align-items:center;gap:64px;padding:96px 128px;}
+        display:inline-flex;align-items:center;gap:120px;padding:160px 176px;}
       .mark{width:256px;height:256px;flex-shrink:0;}
       .mark svg{display:block;width:100%;height:100%;}
-      .wm{font-size:256px;font-weight:800;letter-spacing:0.18em;color:${color};line-height:1;
+      .wm{font-size:176px;font-weight:800;letter-spacing:0.18em;color:${color};line-height:1;
         font-feature-settings:"cv11","ss01";white-space:nowrap;}
     </style>
   </head><body>
