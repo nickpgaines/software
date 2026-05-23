@@ -98,7 +98,11 @@ function rowToObject<T>(row: unknown, columns: string[]): T {
   return obj as T;
 }
 
-function makeStmt(exec: Executor, sql: string): Stmt {
+function makeStmt(
+  exec: Executor,
+  sql: string,
+  afterWrite?: () => Promise<void>
+): Stmt {
   return {
     async get<T>(...args: Args): Promise<T | undefined> {
       const r = await exec(sql, args);
@@ -113,18 +117,32 @@ function makeStmt(exec: Executor, sql: string): Stmt {
       const r = await exec(sql, args);
       const lastInsertRowid =
         r.lastInsertRowid != null ? Number(r.lastInsertRowid) : 0;
-      return { lastInsertRowid, changes: r.rowsAffected ?? 0 };
+      const changes = r.rowsAffected ?? 0;
+      // Auto-commit single-statement write: pull the new state into the
+      // local embedded replica so the next read on this instance sees it.
+      // Without this the user has to manually refresh after creating a
+      // job, recording a payment, etc. — the write hit the primary but
+      // this instance's local SQLite file hasn't synced yet.
+      if (afterWrite && (changes > 0 || lastInsertRowid > 0)) {
+        await afterWrite();
+      }
+      return { lastInsertRowid, changes };
     },
   };
 }
 
 function makeDb(exec: Executor, execMany: ExecMany, txCapable: boolean): Db {
+  // Top-level writes (auto-commit single statements) should sync the local
+  // replica on success. Writes performed inside a transaction shouldn't —
+  // the transaction wrapper syncs once after `tx.commit()` instead.
+  const afterWrite = txCapable ? syncReplica : undefined;
   const db: Db = {
     prepare(sql: string) {
-      return makeStmt(exec, sql);
+      return makeStmt(exec, sql, afterWrite);
     },
     async exec(sql: string) {
       await execMany(sql);
+      if (afterWrite) await afterWrite();
     },
     async transaction<R>(fn: (inner: Db) => Promise<R>): Promise<R> {
       if (!txCapable) {
@@ -150,6 +168,9 @@ function makeDb(exec: Executor, execMany: ExecMany, txCapable: boolean): Db {
         const innerDb = makeDb(innerExec, innerExecMany, false);
         const result = await fn(innerDb);
         await tx.commit();
+        // Pull the just-committed write into the local replica so a
+        // subsequent read on this instance sees it.
+        await syncReplica();
         return result;
       } catch (e) {
         try {

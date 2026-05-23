@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getDb } from "@/lib/db";
+import { getDb, syncReplica } from "@/lib/db";
 import { getJobDetail } from "@/lib/jobs";
 import { requireCompanyId } from "@/lib/auth";
 import JobForm from "@/components/JobForm";
@@ -14,7 +14,13 @@ export default async function EditJobPage({
   const companyId = await requireCompanyId();
   const db = await getDb();
   const id = Number(params.id);
-  const job = await getJobDetail(db, id, companyId);
+  let job = await getJobDetail(db, id, companyId);
+  // Replica lag fallback: if a write from another instance hasn't synced
+  // here yet, force a sync and retry once before 404-ing.
+  if (!job) {
+    await syncReplica();
+    job = await getJobDetail(db, id, companyId);
+  }
   if (!job) notFound();
   return <JobForm mode="edit" job={job} />;
 }
