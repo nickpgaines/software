@@ -88,11 +88,11 @@ async function renderUnifiedWordmark({ dpr, bg, color, radius = 0, outName }) {
         display:inline-flex;align-items:center;padding:160px 176px;}
       .word{font-size:256px;font-weight:800;letter-spacing:0.18em;color:${color};line-height:1;
         font-feature-settings:"cv11","ss01";display:inline-flex;align-items:baseline;}
-      .word svg{height:184px;flex-shrink:0;}
+      .word svg{height:172px;flex-shrink:0;align-self:baseline;}
     </style>
   </head><body>
     <div class="card">
-      <div class="word"><svg viewBox="28 16 92 96" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"><path d="${F_PATH}" fill="${color}"/></svg>ORGE</div>
+      <div class="word"><svg viewBox="28 16 102 96" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"><path d="${F_PATH}" fill="${color}"/></svg>ORGE</div>
     </div>
   </body></html>`;
   await page.setContent(html, { waitUntil: "networkidle", timeout: 30000 });
