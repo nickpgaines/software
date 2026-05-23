@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, syncReplica } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
 import { getJobDetail, updateJob, type JobInput } from "@/lib/jobs";
 
@@ -12,6 +12,13 @@ export async function GET(
   const companyId = await requireCompanyId();
   const db = await getDb();
   const id = Number(params.id);
+  // The Job Detail page calls this after the Stripe payment modal closes
+  // (`refreshJob`) and after every status step. If the read lands on a
+  // different instance than the one that committed the write, the local
+  // replica may be stale and child rows (payments, timestamps) won't show
+  // up — that's why a manual refresh was needed before. Sync first so
+  // the response always reflects the latest committed state.
+  await syncReplica();
   const detail = await getJobDetail(db, id, companyId);
   if (!detail) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });

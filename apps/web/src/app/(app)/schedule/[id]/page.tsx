@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { getDb, type CustomerSubscription } from "@/lib/db";
+import { getDb, syncReplica, type CustomerSubscription } from "@/lib/db";
 import { getJobDetail } from "@/lib/jobs";
 import { requireCompanyId } from "@/lib/auth";
 import JobDetailClient from "@/components/JobDetailClient";
@@ -20,7 +20,14 @@ export default async function JobDetailPage({
     );
     notFound();
   }
-  const job = await getJobDetail(db, id, companyId);
+  let job = await getJobDetail(db, id, companyId);
+  // A miss here right after creation almost always means the embedded
+  // replica on this instance hasn't synced the write from another
+  // instance yet. Force a sync and retry once before 404-ing the user.
+  if (!job) {
+    await syncReplica();
+    job = await getJobDetail(db, id, companyId);
+  }
   if (!job) {
     console.warn(
       `JobDetailPage: job ${id} not found for company ${companyId}`
