@@ -34,6 +34,30 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+// Picks the smallest "nice" chart-top >= value so 5 ticks (0, 25%, 50%, 75%, 100%)
+// cover the data tightly. Uses steps from {1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10} × 10^n
+// so e.g. 1098 → 1200 and 5425 → 6000 instead of jumping to 2000 / 10000.
+function niceChartTop(value: number) {
+  if (value <= 0) return 1;
+  const intervals = 4;
+  const rawStep = value / intervals;
+  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const norm = rawStep / mag;
+  const niceMultipliers = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+  let chosen = 10;
+  for (const m of niceMultipliers) {
+    if (m >= norm) {
+      chosen = m;
+      break;
+    }
+  }
+  return chosen * mag * intervals;
+}
+
+function fiveTicks(top: number) {
+  return [0, top * 0.25, top * 0.5, top * 0.75, top];
+}
+
 function RevenueBarChart({
   data,
   color,
@@ -49,6 +73,13 @@ function RevenueBarChart({
     name: d.name,
     revenue: d.revenue_cents / 100,
   }));
+  const maxRevenue = Math.max(
+    0,
+    ...chartData.map((d) => d.revenue),
+    typeof averageDollars === "number" ? averageDollars : 0
+  );
+  const yTop = niceChartTop(maxRevenue || 1);
+  const yTicks = fiveTicks(yTop);
   return (
     <div className="w-full h-56">
       <ResponsiveContainer width="100%" height="100%">
@@ -68,6 +99,8 @@ function RevenueBarChart({
             tickFormatter={(v: number) =>
               v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v.toFixed(0)}`
             }
+            domain={[0, yTop]}
+            ticks={yTicks}
             width={48}
           />
           <RTooltip
@@ -654,6 +687,9 @@ function MonthlyMrrChart({
     mrr: m.mrr_cents / 100,
     is_forecast: m.is_forecast,
   }));
+  const maxMrr = Math.max(0, ...chartData.map((d) => d.mrr));
+  const mrrTop = niceChartTop(maxMrr || 1);
+  const mrrTicks = fiveTicks(mrrTop);
   return (
     <div className="bg-card border border-line rounded-2xl p-5 shadow-sm">
       <div className="flex items-baseline justify-between gap-3">
@@ -699,6 +735,8 @@ function MonthlyMrrChart({
                 tickFormatter={(v: number) =>
                   v >= 1000 ? `$${(v / 1000).toFixed(1)}k` : `$${v.toFixed(0)}`
                 }
+                domain={[0, mrrTop]}
+                ticks={mrrTicks}
                 width={56}
               />
               <RTooltip

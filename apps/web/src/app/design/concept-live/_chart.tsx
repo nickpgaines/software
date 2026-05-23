@@ -110,13 +110,24 @@ function smoothPath(points: [number, number][]): string {
   return d;
 }
 
+// Picks the smallest "nice" chart-top >= value so 5 ticks (0, 25%, 50%, 75%, 100%)
+// cover the data tightly. Uses steps from {1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10} × 10^n
+// so e.g. 1098 → 1200 and 5425 → 6000 instead of jumping to 2000 / 10000.
 function niceCeil(value: number) {
   if (value <= 0) return 1;
-  const exp = Math.floor(Math.log10(value));
-  const mag = Math.pow(10, exp);
-  const norm = value / mag;
-  const nice = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
-  return nice * mag;
+  const intervals = 4;
+  const rawStep = value / intervals;
+  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const norm = rawStep / mag;
+  const niceMultipliers = [1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10];
+  let chosen = 10;
+  for (const m of niceMultipliers) {
+    if (m >= norm) {
+      chosen = m;
+      break;
+    }
+  }
+  return chosen * mag * intervals;
 }
 
 function ChartCanvas({
