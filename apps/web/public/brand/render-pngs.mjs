@@ -70,7 +70,7 @@ async function renderLockup({ dpr, bg, color, radius = 0, outName }) {
   console.log(`✓ ${outName}`);
 }
 
-async function renderUnifiedWordmark({ dpr, bg, color, radius = 0, tracking = "0.18em", outName }) {
+async function renderUnifiedWordmark({ dpr, bg, color, radius = 0, tracking = "0.18em", viewBox = "28 16 102 96", outName }) {
   // F mark replaces the literal F in FORGE. Mark height ~0.67×font-size (so its diagonal chamfers fit cap-height).
   const page = await browser.newPage({
     viewport: { width: 2800, height: 800 },
@@ -92,7 +92,7 @@ async function renderUnifiedWordmark({ dpr, bg, color, radius = 0, tracking = "0
     </style>
   </head><body>
     <div class="card">
-      <div class="word"><svg viewBox="28 16 102 96" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"><path d="${F_PATH}" fill="${color}"/></svg>ORGE</div>
+      <div class="word"><svg viewBox="${viewBox}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"><path d="${F_PATH}" fill="${color}"/></svg>ORGE</div>
     </div>
   </body></html>`;
   await page.setContent(html, { waitUntil: "networkidle", timeout: 30000 });
@@ -148,10 +148,11 @@ try {
     await renderUnifiedWordmark({ dpr, tracking: "0.18em", bg: "transparent", color: "#000", outName: `forge-wordmark-unified-black-${dpr}x.png` });
     await renderUnifiedWordmark({ dpr, tracking: "0.18em", bg: "#000", color: "#fff", radius: 96, outName: `forge-wordmark-unified-card-${dpr}x.png` });
 
-    // Tight tracking — whole word closer together.
-    await renderUnifiedWordmark({ dpr, tracking: "0.04em", bg: "transparent", color: "#fff", outName: `forge-wordmark-unified-tight-white-${dpr}x.png` });
-    await renderUnifiedWordmark({ dpr, tracking: "0.04em", bg: "transparent", color: "#000", outName: `forge-wordmark-unified-tight-black-${dpr}x.png` });
-    await renderUnifiedWordmark({ dpr, tracking: "0.04em", bg: "#000", color: "#fff", radius: 96, outName: `forge-wordmark-unified-tight-card-${dpr}x.png` });
+    // Tight tracking — F-icon right padding shrunk so F→O matches the new O→R rhythm.
+    const tightOpts = { tracking: "0.04em", viewBox: "28 16 90 96" };
+    await renderUnifiedWordmark({ dpr, ...tightOpts, bg: "transparent", color: "#fff", outName: `forge-wordmark-unified-tight-white-${dpr}x.png` });
+    await renderUnifiedWordmark({ dpr, ...tightOpts, bg: "transparent", color: "#000", outName: `forge-wordmark-unified-tight-black-${dpr}x.png` });
+    await renderUnifiedWordmark({ dpr, ...tightOpts, bg: "#000", color: "#fff", radius: 96, outName: `forge-wordmark-unified-tight-card-${dpr}x.png` });
   }
 
   await renderOg("forge-og.png");
