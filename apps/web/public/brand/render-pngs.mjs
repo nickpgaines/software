@@ -70,8 +70,8 @@ async function renderLockup({ dpr, bg, color, radius = 0, outName }) {
   console.log(`✓ ${outName}`);
 }
 
-async function renderUnifiedWordmark({ dpr, bg, color, radius = 0, outName }) {
-  // F mark replaces the literal F in FORGE. Mark height = cap-height (0.72×font-size for Inter).
+async function renderUnifiedWordmark({ dpr, bg, color, radius = 0, tracking = "0.18em", outName }) {
+  // F mark replaces the literal F in FORGE. Mark height ~0.67×font-size (so its diagonal chamfers fit cap-height).
   const page = await browser.newPage({
     viewport: { width: 2800, height: 800 },
     deviceScaleFactor: dpr,
@@ -86,7 +86,7 @@ async function renderUnifiedWordmark({ dpr, bg, color, radius = 0, outName }) {
         font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;}
       .card{background:${bg};${radius ? `border-radius:${radius}px;` : ""}
         display:inline-flex;align-items:center;padding:160px 176px;}
-      .word{font-size:256px;font-weight:800;letter-spacing:0.18em;color:${color};line-height:1;
+      .word{font-size:256px;font-weight:800;letter-spacing:${tracking};color:${color};line-height:1;
         font-feature-settings:"cv11","ss01";display:inline-flex;align-items:baseline;}
       .word svg{height:172px;flex-shrink:0;align-self:baseline;}
     </style>
@@ -141,11 +141,17 @@ try {
     await renderLockup({ dpr, bg: "#000", color: "#fff", radius: 48, outName: `forge-lockup-card-${dpr}x.png` });
   }
 
-  // Unified wordmark — F mark IS the F letter in FORGE.
+  // Unified wordmark — F mark IS the F letter in FORGE. Two tracking variants.
   for (const dpr of [2, 4]) {
-    await renderUnifiedWordmark({ dpr, bg: "transparent", color: "#fff", outName: `forge-wordmark-unified-white-${dpr}x.png` });
-    await renderUnifiedWordmark({ dpr, bg: "transparent", color: "#000", outName: `forge-wordmark-unified-black-${dpr}x.png` });
-    await renderUnifiedWordmark({ dpr, bg: "#000", color: "#fff", radius: 96, outName: `forge-wordmark-unified-card-${dpr}x.png` });
+    // Loose tracking (the current approved version).
+    await renderUnifiedWordmark({ dpr, tracking: "0.18em", bg: "transparent", color: "#fff", outName: `forge-wordmark-unified-white-${dpr}x.png` });
+    await renderUnifiedWordmark({ dpr, tracking: "0.18em", bg: "transparent", color: "#000", outName: `forge-wordmark-unified-black-${dpr}x.png` });
+    await renderUnifiedWordmark({ dpr, tracking: "0.18em", bg: "#000", color: "#fff", radius: 96, outName: `forge-wordmark-unified-card-${dpr}x.png` });
+
+    // Tight tracking — whole word closer together.
+    await renderUnifiedWordmark({ dpr, tracking: "0.04em", bg: "transparent", color: "#fff", outName: `forge-wordmark-unified-tight-white-${dpr}x.png` });
+    await renderUnifiedWordmark({ dpr, tracking: "0.04em", bg: "transparent", color: "#000", outName: `forge-wordmark-unified-tight-black-${dpr}x.png` });
+    await renderUnifiedWordmark({ dpr, tracking: "0.04em", bg: "#000", color: "#fff", radius: 96, outName: `forge-wordmark-unified-tight-card-${dpr}x.png` });
   }
 
   await renderOg("forge-og.png");
