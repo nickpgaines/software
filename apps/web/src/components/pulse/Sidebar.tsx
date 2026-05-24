@@ -137,10 +137,10 @@ export function PulseSidebar({ initialMe = null }: { initialMe?: Me | null }) {
     >
       {/* Brand */}
       <div className="px-2 mb-1">
-        <div className="pt-1 pb-2">
+        <div className="py-1">
           <svg
             viewBox="0 0 128 128"
-            className="w-14 h-14 flex-shrink-0"
+            className="w-12 h-12 flex-shrink-0"
             style={{ color: PULSE.text }}
             aria-label="Forge"
           >
