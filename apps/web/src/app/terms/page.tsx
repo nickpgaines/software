@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Terms of Service — the NG Ventures messaging platform",
+  title: "Terms of Service — Forge CRM",
   description:
-    "Terms of Service for the NG Ventures messaging platform, operated by NG Ventures LLC.",
+    "Terms of Service for Forge CRM, a product of NG Ventures, LLC.",
 };
 
 const EFFECTIVE_DATE = "May 16, 2026";
@@ -28,17 +28,17 @@ export default function TermsOfServicePage() {
         <div className="mt-8 space-y-6 text-zinc-300 leading-relaxed font-bold">
           <p>
             These Terms of Service (&ldquo;Terms&rdquo;) govern your use of
-            the NG Ventures messaging platform (the &ldquo;Service&rdquo;), operated by NG Ventures LLC
-            (&ldquo;we,&rdquo; &ldquo;us&rdquo;). By creating an account or
-            using the Service you agree to these Terms.
+            Forge CRM (the &ldquo;Service&rdquo;), a product of NG Ventures,
+            LLC (&ldquo;we,&rdquo; &ldquo;us&rdquo;). By creating an account
+            or using the Service you agree to these Terms.
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
             1. The Service
           </h2>
           <p>
-            The NG Ventures messaging platform is a customer-relationship and operations platform for
-            service businesses. It includes scheduling, customer records,
+            Forge CRM is the all-in-one operations platform for home service
+            businesses. It includes scheduling, customer records, estimates,
             invoicing, payments, email, and SMS messaging features.
           </p>
 
@@ -46,16 +46,39 @@ export default function TermsOfServicePage() {
             2. SMS messaging program
           </h2>
           <p>
-            <strong className="text-white">Program name:</strong> NG Ventures Customer Messaging.
+            <strong className="text-white">Program name:</strong> Forge CRM
+            Customer Messaging.
           </p>
           <p>
-            <strong className="text-white">Program description:</strong> the Service sends
-            transactional, reminder, and promotional SMS messages on behalf of
-            its business customers (&ldquo;Customers&rdquo;) to those
-            Customers&rsquo; end consumers (&ldquo;End Users&rdquo;) who have
-            opted in. Typical messages include appointment reminders, payment
+            <strong className="text-white">Program description:</strong> the
+            Service sends transactional, reminder, and promotional SMS
+            messages on behalf of its business customers
+            (&ldquo;Customers&rdquo;) to those Customers&rsquo; end consumers
+            (&ldquo;End Users&rdquo;) who have provided express written
+            consent. Typical messages include appointment reminders, payment
             receipts, follow-up check-ins, AI-drafted replies, and seasonal
             promotional offers.
+          </p>
+          <p>
+            <strong className="text-white">Consent capture:</strong> End Users
+            consent at the point of sale by signing to accept the
+            Customer&rsquo;s service estimate or agreement, which includes an
+            SMS consent clause naming the Customer. Each acceptance is
+            timestamped and stored per Customer. See{" "}
+            <Link
+              href="/sms-consent"
+              className="text-violet-400 hover:text-violet-300 font-extrabold"
+            >
+              SMS Consent Disclosure
+            </Link>{" "}
+            for the disclosure End Users see, and{" "}
+            <Link
+              href="/sms-terms"
+              className="text-violet-400 hover:text-violet-300 font-extrabold"
+            >
+              SMS Terms
+            </Link>{" "}
+            for full program details.
           </p>
           <p>
             <strong className="text-white">Message frequency:</strong> message frequency varies and
@@ -74,18 +97,18 @@ export default function TermsOfServicePage() {
             <strong className="text-white">START</strong>.
           </p>
           <p>
-            <strong className="text-white">Help:</strong> reply <strong className="text-white">HELP</strong> for help, or
-            contact the business that originated the message directly using
-            the phone number or email they provided you. For platform-level
-            questions, you may email{" "}
+            <strong className="text-white">Help:</strong> reply{" "}
+            <strong className="text-white">HELP</strong> for help, or contact
+            the business that originated the message directly using the phone
+            number or email they provided you. For platform-level questions,
+            email{" "}
             <a
-              href="mailto:nick@homeserviceascension.com"
+              href="mailto:support@forgecrm.app"
               className="text-violet-400 hover:text-violet-300 font-extrabold"
             >
-              nick@homeserviceascension.com
-            </a>{" "}
-            (NG Ventures LLC operates the messaging platform through its
-            affiliated company Home Service Ascension).
+              support@forgecrm.app
+            </a>
+            .
           </p>
           <p>
             <strong className="text-white">Carriers:</strong> carriers (including AT&amp;T, T-Mobile,
@@ -284,21 +307,37 @@ export default function TermsOfServicePage() {
             14. Contact
           </h2>
           <p>
-            NG Ventures LLC
+            NG Ventures, LLC
+            <br />
+            2643 Great Scott Drive, Myrtle Beach, SC 29579
             <br />
             Email:{" "}
             <a
-              href="mailto:nick@homeserviceascension.com"
+              href="mailto:support@forgecrm.app"
               className="text-violet-400 hover:text-violet-300 font-extrabold"
             >
-              nick@homeserviceascension.com
+              support@forgecrm.app
+            </a>
+            <br />
+            Phone:{" "}
+            <a
+              href="tel:+18435045474"
+              className="text-violet-400 hover:text-violet-300 font-extrabold"
+            >
+              (843) 504-5474
             </a>
           </p>
         </div>
 
-        <div className="mt-12 pt-6 border-t border-line text-sm text-zinc-500 font-bold">
+        <div className="mt-12 pt-6 border-t border-line text-sm text-zinc-500 font-bold space-x-4">
           <Link href="/privacy" className="hover:text-zinc-300">
             Privacy Policy
+          </Link>
+          <Link href="/sms-terms" className="hover:text-zinc-300">
+            SMS Terms
+          </Link>
+          <Link href="/sms-consent" className="hover:text-zinc-300">
+            Consent Disclosure
           </Link>
         </div>
       </div>

@@ -1,9 +1,9 @@
 import Link from "next/link";
 
 export const metadata = {
-  title: "Privacy Policy — the NG Ventures messaging platform",
+  title: "Privacy Policy — Forge CRM",
   description:
-    "How the NG Ventures messaging platform (operated by NG Ventures LLC) collects, uses, and protects your information.",
+    "How Forge CRM (operated by NG Ventures, LLC) collects, uses, and protects your information.",
 };
 
 const EFFECTIVE_DATE = "May 16, 2026";
@@ -25,12 +25,13 @@ export default function PrivacyPolicyPage() {
 
         <div className="mt-8 space-y-6 text-zinc-300 leading-relaxed font-bold">
           <p>
-            This Privacy Policy describes how the NG Ventures messaging platform (the &ldquo;Service,&rdquo;
-            &ldquo;we,&rdquo; or &ldquo;us&rdquo;), operated by NG Ventures LLC,
-            collects, uses, and protects information about (a) businesses that
-            sign up to use the Service (&ldquo;Customers&rdquo;) and (b) end
-            consumers of those businesses (&ldquo;End Users&rdquo;) whose
-            information is processed through the Service.
+            This Privacy Policy describes how Forge CRM (the
+            &ldquo;Service,&rdquo; &ldquo;we,&rdquo; or &ldquo;us&rdquo;), a
+            product of NG Ventures, LLC, collects, uses, and protects
+            information about (a) businesses that sign up to use the Service
+            (&ldquo;Customers&rdquo;) and (b) end consumers of those
+            businesses (&ldquo;End Users&rdquo;) whose information is
+            processed through the Service.
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
@@ -48,12 +49,21 @@ export default function PrivacyPolicyPage() {
             opt-in/opt-out records for messaging programs.
           </p>
           <p>
-            Phone numbers and SMS opt-in records are collected at the point an
-            End User provides their phone number to a Customer&mdash;for
-            example, by entering it on a Customer&rsquo;s website, customer
-            portal, scheduling form, or digital tablet form during in-person or telephone sale&mdash;in order to
-            receive transactional, reminder, and promotional messages from that
-            Customer.
+            Phone numbers and SMS consent records are collected at the point of
+            sale, when an End User signs to accept a Customer&rsquo;s service
+            estimate or agreement. Those signed terms include an SMS consent
+            clause naming the specific Customer and authorizing transactional
+            and promotional messages to the phone number the End User provided.
+            Each signed acceptance is timestamped and stored per Customer
+            inside the Service. A sample of the consent disclosure is
+            available at{" "}
+            <Link
+              href="/sms-consent"
+              className="text-violet-400 hover:text-violet-300 font-extrabold"
+            >
+              /sms-consent
+            </Link>
+            .
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
@@ -236,21 +246,37 @@ export default function PrivacyPolicyPage() {
             Questions about this policy or your information can be sent to:
           </p>
           <p>
-            NG Ventures LLC
+            NG Ventures, LLC
+            <br />
+            2643 Great Scott Drive, Myrtle Beach, SC 29579
             <br />
             Email:{" "}
             <a
-              href="mailto:nick@homeserviceascension.com"
+              href="mailto:support@forgecrm.app"
               className="text-violet-400 hover:text-violet-300 font-extrabold"
             >
-              nick@homeserviceascension.com
+              support@forgecrm.app
+            </a>
+            <br />
+            Phone:{" "}
+            <a
+              href="tel:+18435045474"
+              className="text-violet-400 hover:text-violet-300 font-extrabold"
+            >
+              (843) 504-5474
             </a>
           </p>
         </div>
 
-        <div className="mt-12 pt-6 border-t border-line text-sm text-zinc-500 font-bold">
+        <div className="mt-12 pt-6 border-t border-line text-sm text-zinc-500 font-bold space-x-4">
           <Link href="/terms" className="hover:text-zinc-300">
             Terms of Service
+          </Link>
+          <Link href="/sms-terms" className="hover:text-zinc-300">
+            SMS Terms
+          </Link>
+          <Link href="/sms-consent" className="hover:text-zinc-300">
+            Consent Disclosure
           </Link>
         </div>
       </div>
