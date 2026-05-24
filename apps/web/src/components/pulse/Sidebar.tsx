@@ -137,24 +137,18 @@ export function PulseSidebar({ initialMe = null }: { initialMe?: Me | null }) {
     >
       {/* Brand */}
       <div className="px-2 mb-1">
-        <div className="flex items-center gap-2.5 py-2">
+        <div className="py-2">
           <svg
             viewBox="0 0 128 128"
             className="w-9 h-9 flex-shrink-0"
             style={{ color: PULSE.text }}
-            aria-hidden="true"
+            aria-label="Forge"
           >
             <path
               d="M32 16 L92 16 L112 36 L52 36 L52 54 L88 54 L70 72 L52 72 L52 92 L32 112 Z"
               fill="currentColor"
             />
           </svg>
-          <span
-            className="text-[15px] font-extrabold tracking-[0.18em]"
-            style={{ color: PULSE.text }}
-          >
-            FORGE
-          </span>
         </div>
       </div>
 
