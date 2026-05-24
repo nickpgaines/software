@@ -60,7 +60,7 @@ function ResetPasswordInner() {
       <div className="min-h-screen flex items-center justify-center px-4">
         <div className="w-full max-w-sm text-center">
           <div className="flex justify-center">
-            <svg viewBox="0 0 128 128" className="w-12 h-12 text-white" aria-label="Forge">
+            <svg viewBox="0 0 128 128" className="w-24 h-24 text-white" aria-label="Forge">
               <path
                 d="M32 16 L92 16 L112 36 L52 36 L52 54 L88 54 L70 72 L52 72 L52 92 L32 112 Z"
                 fill="currentColor"
@@ -85,7 +85,7 @@ function ResetPasswordInner() {
     <div className="min-h-screen flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <div className="mb-8 flex flex-col items-center text-center">
-          <svg viewBox="0 0 128 128" className="w-12 h-12 text-white" aria-label="Forge">
+          <svg viewBox="0 0 128 128" className="w-24 h-24 text-white" aria-label="Forge">
             <path
               d="M32 16 L92 16 L112 36 L52 36 L52 54 L88 54 L70 72 L52 72 L52 92 L32 112 Z"
               fill="currentColor"
