@@ -23,7 +23,7 @@ function Inner() {
     if (searchParams.get("welcome") !== "sms") return;
     if (typeof window !== "undefined" && localStorage.getItem(STORAGE_KEY) === "1") {
       // Already seen — strip the query param and bail.
-      router.replace("/");
+      router.replace("/dashboard");
       return;
     }
     setOpen(true);
@@ -34,7 +34,7 @@ function Inner() {
       localStorage.setItem(STORAGE_KEY, "1");
     }
     setOpen(false);
-    router.replace("/");
+    router.replace("/dashboard");
   }
 
   if (!open) return null;

@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Settings } from "lucide-react";
 import { HeroChart } from "@/components/pulse/widgets";
+import { RevenueBarChart } from "@/components/reports/RevenueBarChart";
 import { PIN_STATUS, PIN_STATUS_KEYS, type PinStatus } from "@/lib/map-pin-colors";
 import {
   Bar,
@@ -56,93 +57,6 @@ function niceChartTop(value: number) {
 
 function fiveTicks(top: number) {
   return [0, top * 0.25, top * 0.5, top * 0.75, top];
-}
-
-function RevenueBarChart({
-  data,
-  color,
-  averageDollars,
-  tooltipLabel = "Revenue",
-}: {
-  data: { name: string; revenue_cents: number }[];
-  color: string;
-  averageDollars?: number;
-  tooltipLabel?: string;
-}) {
-  const chartData = data.map((d) => ({
-    name: d.name,
-    revenue: d.revenue_cents / 100,
-  }));
-  const maxRevenue = Math.max(
-    0,
-    ...chartData.map((d) => d.revenue),
-    typeof averageDollars === "number" ? averageDollars : 0
-  );
-  const yTop = niceChartTop(maxRevenue || 1);
-  const yTicks = fiveTicks(yTop);
-  return (
-    <div className="w-full h-56">
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-          <CartesianGrid stroke="#1f1f24" strokeDasharray="3 3" vertical={false} />
-          <XAxis
-            dataKey="name"
-            tick={{ fill: "#a1a1aa", fontSize: 11, fontWeight: 700 }}
-            tickLine={false}
-            axisLine={{ stroke: "#1f1f24" }}
-            interval={0}
-          />
-          <YAxis
-            tick={{ fill: "#a1a1aa", fontSize: 11, fontWeight: 700 }}
-            tickLine={false}
-            axisLine={{ stroke: "#1f1f24" }}
-            tickFormatter={(v: number) =>
-              v >= 1000 ? `$${(v / 1000).toFixed(0)}k` : `$${v.toFixed(0)}`
-            }
-            domain={[0, yTop]}
-            ticks={yTicks}
-            width={48}
-          />
-          <RTooltip
-            cursor={{ fill: "rgba(255,255,255,0.04)" }}
-            contentStyle={{
-              background: "#0f0f12",
-              border: "1px solid #1f1f24",
-              borderRadius: 8,
-              fontSize: 12,
-              fontWeight: 700,
-              color: "#fafafa",
-            }}
-            labelStyle={{ color: "#fafafa", fontWeight: 800 }}
-            itemStyle={{ color: "#fafafa" }}
-            formatter={(v) => {
-              const n = typeof v === "number" ? v : Number(v) || 0;
-              return [
-                `$${n.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
-                tooltipLabel,
-              ];
-            }}
-          />
-          <Bar dataKey="revenue" fill={color} radius={[6, 6, 0, 0]} />
-          {typeof averageDollars === "number" && averageDollars > 0 && (
-            <ReferenceLine
-              y={averageDollars}
-              stroke="#f59e0b"
-              strokeDasharray="4 4"
-              strokeWidth={2}
-              label={{
-                value: `Team avg $${averageDollars.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
-                position: "insideTopRight",
-                fill: "#f59e0b",
-                fontSize: 11,
-                fontWeight: 800,
-              }}
-            />
-          )}
-        </BarChart>
-      </ResponsiveContainer>
-    </div>
-  );
 }
 
 function CountDonut({

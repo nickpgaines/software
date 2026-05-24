@@ -412,6 +412,132 @@ function thirtyDaysAgoIso() {
   return d.toISOString().slice(0, 10);
 }
 
+/**
+ * Pure presentation version of the revenue chart hero. Renders the card,
+ * headline, range pills, and HeroChart from props — no fetching, no state.
+ * Pass `onRangeChange` to make the pills interactive; omit it to render
+ * them as inert (visible, highlighted current range, but clicks no-op).
+ * Used by the live `PulseChartHero` (with handlers) and by the marketing
+ * site (without handlers).
+ */
+export function RevenueHeroView({
+  days,
+  totalCents,
+  label,
+  range,
+  prefix = "Revenue",
+  height = 300,
+  onRangeChange,
+  customStart,
+  customEnd,
+  onCustomStartChange,
+  onCustomEndChange,
+  loading = false,
+}: {
+  days: RevenuePoint[];
+  totalCents: number;
+  label: string;
+  range: ChartRange;
+  prefix?: string;
+  height?: number;
+  onRangeChange?: (r: ChartRange) => void;
+  customStart?: string;
+  customEnd?: string;
+  onCustomStartChange?: (s: string) => void;
+  onCustomEndChange?: (s: string) => void;
+  loading?: boolean;
+}) {
+  return (
+    <section
+      className="rounded-2xl p-4 md:p-7"
+      style={{ background: PULSE.card, border: `1px solid ${PULSE.cardBorder}` }}
+    >
+      <div className="flex items-baseline justify-between mb-5 flex-wrap gap-3">
+        <div>
+          <div className="text-[14px] font-semibold mb-3 text-zinc-500">
+            {prefix} · {label}
+          </div>
+          <div className="flex items-baseline gap-3">
+            <span className="text-[36px] md:text-[52px] font-black tracking-tight leading-none">
+              {days.length ? formatCentsShort(totalCents) : "—"}
+            </span>
+          </div>
+        </div>
+        <div className="flex flex-col items-end gap-2">
+          <div
+            className="flex items-center gap-1 p-1 rounded-full"
+            style={{ background: PULSE.bgAlt }}
+          >
+            {CHART_RANGES.map((r) => {
+              const active = r.key === range;
+              return (
+                <button
+                  key={r.key}
+                  type="button"
+                  onClick={onRangeChange ? () => onRangeChange(r.key) : undefined}
+                  className="px-3.5 py-1 rounded-full text-[11.5px] font-extrabold transition-colors"
+                  style={{
+                    background: active ? PULSE.text : "transparent",
+                    color: active ? PULSE.bg : PULSE.textMuted,
+                    cursor: onRangeChange ? "pointer" : "default",
+                  }}
+                >
+                  {r.label}
+                </button>
+              );
+            })}
+          </div>
+          {range === "custom" && (
+            <div className="flex items-center gap-2 text-xs">
+              <input
+                type="date"
+                value={customStart ?? ""}
+                onChange={
+                  onCustomStartChange
+                    ? (e) => onCustomStartChange(e.target.value)
+                    : undefined
+                }
+                readOnly={!onCustomStartChange}
+                className="h-8 w-36 rounded-md px-2 text-sm"
+                style={{
+                  background: PULSE.bgAlt,
+                  border: `1px solid ${PULSE.cardBorder}`,
+                  color: PULSE.text,
+                }}
+              />
+              <span style={{ color: PULSE.textMuted }}>to</span>
+              <input
+                type="date"
+                value={customEnd ?? ""}
+                onChange={
+                  onCustomEndChange
+                    ? (e) => onCustomEndChange(e.target.value)
+                    : undefined
+                }
+                readOnly={!onCustomEndChange}
+                className="h-8 w-36 rounded-md px-2 text-sm"
+                style={{
+                  background: PULSE.bgAlt,
+                  border: `1px solid ${PULSE.cardBorder}`,
+                  color: PULSE.text,
+                }}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+      {loading ? (
+        <div
+          className="rounded-xl animate-pulse"
+          style={{ height, background: PULSE.bgAlt }}
+        />
+      ) : (
+        <HeroChart days={days} height={height} />
+      )}
+    </section>
+  );
+}
+
 export function PulseChartHero({
   initialRange = "1m",
   height = 300,
@@ -457,85 +583,22 @@ export function PulseChartHero({
     range === "1m"
       ? new Date().toLocaleString(undefined, { month: "long", year: "numeric" })
       : CHART_RANGES.find((r) => r.key === range)?.title ?? data?.label ?? "Revenue";
-  const total = data ? data.total_cents : 0;
-  const prefix = titleOverride ?? "Revenue";
 
   return (
-    <section
-      className="rounded-2xl p-4 md:p-7"
-      style={{ background: PULSE.card, border: `1px solid ${PULSE.cardBorder}` }}
-    >
-      <div className="flex items-baseline justify-between mb-5 flex-wrap gap-3">
-        <div>
-          <div className="text-[14px] font-semibold mb-3 text-zinc-500">
-            {prefix} · {titleLabel}
-          </div>
-          <div className="flex items-baseline gap-3">
-            <span className="text-[36px] md:text-[52px] font-black tracking-tight leading-none">
-              {data ? formatCentsShort(total) : "—"}
-            </span>
-          </div>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <div
-            className="flex items-center gap-1 p-1 rounded-full"
-            style={{ background: PULSE.bgAlt }}
-          >
-            {CHART_RANGES.map((r) => {
-              const active = r.key === range;
-              return (
-                <button
-                  key={r.key}
-                  onClick={() => setRange(r.key)}
-                  className="px-3.5 py-1 rounded-full text-[11.5px] font-extrabold transition-colors"
-                  style={{
-                    background: active ? PULSE.text : "transparent",
-                    color: active ? PULSE.bg : PULSE.textMuted,
-                  }}
-                >
-                  {r.label}
-                </button>
-              );
-            })}
-          </div>
-          {range === "custom" && (
-            <div className="flex items-center gap-2 text-xs">
-              <input
-                type="date"
-                value={customStart}
-                onChange={(e) => setCustomStart(e.target.value)}
-                className="h-8 w-36 rounded-md px-2 text-sm"
-                style={{
-                  background: PULSE.bgAlt,
-                  border: `1px solid ${PULSE.cardBorder}`,
-                  color: PULSE.text,
-                }}
-              />
-              <span style={{ color: PULSE.textMuted }}>to</span>
-              <input
-                type="date"
-                value={customEnd}
-                onChange={(e) => setCustomEnd(e.target.value)}
-                className="h-8 w-36 rounded-md px-2 text-sm"
-                style={{
-                  background: PULSE.bgAlt,
-                  border: `1px solid ${PULSE.cardBorder}`,
-                  color: PULSE.text,
-                }}
-              />
-            </div>
-          )}
-        </div>
-      </div>
-      {loading && !data ? (
-        <div
-          className="rounded-xl animate-pulse"
-          style={{ height, background: PULSE.bgAlt }}
-        />
-      ) : (
-        <HeroChart days={data?.days ?? []} height={height} />
-      )}
-    </section>
+    <RevenueHeroView
+      days={data?.days ?? []}
+      totalCents={data?.total_cents ?? 0}
+      label={titleLabel}
+      range={range}
+      prefix={titleOverride ?? "Revenue"}
+      height={height}
+      onRangeChange={setRange}
+      customStart={customStart}
+      customEnd={customEnd}
+      onCustomStartChange={setCustomStart}
+      onCustomEndChange={setCustomEnd}
+      loading={loading && !data}
+    />
   );
 }
 

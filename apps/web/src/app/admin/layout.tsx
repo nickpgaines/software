@@ -38,7 +38,7 @@ export default async function AdminLayout({
             </span>
           </div>
           <Link
-            href="/"
+            href="/dashboard"
             className="text-[12.5px] font-bold"
             style={{ color: PULSE.textSubtle }}
           >

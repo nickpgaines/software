@@ -83,13 +83,19 @@ export async function middleware(req: NextRequest) {
   const token = req.cookies.get(COOKIE_NAME)?.value;
   const authed = await isValid(token);
 
+  // Public marketing pages — visible to everyone, no auth needed.
+  // Logged-in users see them too (e.g. to compare pricing).
+  if (pathname === "/") {
+    return NextResponse.next();
+  }
+
   if (
     pathname === "/login" ||
     pathname === "/signup" ||
     pathname === "/forgot-password" ||
     pathname === "/reset-password"
   ) {
-    if (authed) return NextResponse.redirect(new URL("/", req.url));
+    if (authed) return NextResponse.redirect(new URL("/dashboard", req.url));
     return NextResponse.next();
   }
 

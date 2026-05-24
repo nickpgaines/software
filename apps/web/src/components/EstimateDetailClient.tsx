@@ -76,7 +76,7 @@ export default function EstimateDetailClient({ id }: { id: number }) {
   async function onDelete() {
     if (!confirm("Delete this estimate?")) return;
     const res = await fetch(`/api/estimates/${id}`, { method: "DELETE" });
-    if (res.ok) router.push("/");
+    if (res.ok) router.push("/dashboard");
   }
 
   async function markAccepted() {

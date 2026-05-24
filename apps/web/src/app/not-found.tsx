@@ -17,7 +17,7 @@ export default function NotFound() {
             variant="ghost"
             className="w-full h-auto bg-white hover:bg-zinc-200 text-black rounded-lg py-2.5 text-sm font-extrabold tracking-tight"
           >
-            <Link href="/">Back to dashboard</Link>
+            <Link href="/dashboard">Back to dashboard</Link>
           </Button>
         </div>
       </div>
