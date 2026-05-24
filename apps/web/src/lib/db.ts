@@ -98,7 +98,11 @@ function rowToObject<T>(row: unknown, columns: string[]): T {
   return obj as T;
 }
 
-function makeStmt(exec: Executor, sql: string): Stmt {
+function makeStmt(
+  exec: Executor,
+  sql: string,
+  afterWrite?: () => Promise<void>
+): Stmt {
   return {
     async get<T>(...args: Args): Promise<T | undefined> {
       const r = await exec(sql, args);
@@ -113,18 +117,32 @@ function makeStmt(exec: Executor, sql: string): Stmt {
       const r = await exec(sql, args);
       const lastInsertRowid =
         r.lastInsertRowid != null ? Number(r.lastInsertRowid) : 0;
-      return { lastInsertRowid, changes: r.rowsAffected ?? 0 };
+      const changes = r.rowsAffected ?? 0;
+      // Auto-commit single-statement write: pull the new state into the
+      // local embedded replica so the next read on this instance sees it.
+      // Without this the user has to manually refresh after creating a
+      // job, recording a payment, etc. — the write hit the primary but
+      // this instance's local SQLite file hasn't synced yet.
+      if (afterWrite && (changes > 0 || lastInsertRowid > 0)) {
+        await afterWrite();
+      }
+      return { lastInsertRowid, changes };
     },
   };
 }
 
 function makeDb(exec: Executor, execMany: ExecMany, txCapable: boolean): Db {
+  // Top-level writes (auto-commit single statements) should sync the local
+  // replica on success. Writes performed inside a transaction shouldn't —
+  // the transaction wrapper syncs once after `tx.commit()` instead.
+  const afterWrite = txCapable ? syncReplica : undefined;
   const db: Db = {
     prepare(sql: string) {
-      return makeStmt(exec, sql);
+      return makeStmt(exec, sql, afterWrite);
     },
     async exec(sql: string) {
       await execMany(sql);
+      if (afterWrite) await afterWrite();
     },
     async transaction<R>(fn: (inner: Db) => Promise<R>): Promise<R> {
       if (!txCapable) {
@@ -150,6 +168,9 @@ function makeDb(exec: Executor, execMany: ExecMany, txCapable: boolean): Db {
         const innerDb = makeDb(innerExec, innerExecMany, false);
         const result = await fn(innerDb);
         await tx.commit();
+        // Pull the just-committed write into the local replica so a
+        // subsequent read on this instance sees it.
+        await syncReplica();
         return result;
       } catch (e) {
         try {
@@ -338,7 +359,7 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
 // Bump when init() gains migrations that must run on existing deploys.
 // First call after deploy runs the full init; subsequent cold starts hit
 // the fast-path below (one SELECT) and skip the ~150 DDL statements.
-const SCHEMA_VERSION = 8;
+const SCHEMA_VERSION = 9;
 
 async function init(): Promise<void> {
   // Fast path: if the schema is already at the current version, skip the
@@ -1362,6 +1383,57 @@ async function init(): Promise<void> {
       received_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    -- Card-on-file storage. Stripe Customers live on the *connected*
+    -- account (we run direct charges, so the Customer + PaymentMethod
+    -- pair must be owned by the merchant's Stripe account, not the
+    -- platform). One row per (company, customer); the same internal
+    -- customer never has two Stripe Customer IDs on the same merchant.
+    CREATE TABLE IF NOT EXISTS stripe_customers (
+      id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+      company_id           INTEGER NOT NULL REFERENCES company(id) ON DELETE CASCADE,
+      customer_id          INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      stripe_customer_id   TEXT    NOT NULL,
+      created_at           TEXT    NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (company_id, customer_id),
+      UNIQUE (company_id, stripe_customer_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_stripe_customers_company
+      ON stripe_customers(company_id);
+
+    -- Saved payment methods (cards, wallets) attached to a Stripe
+    -- Customer on the connected account. Each row mirrors a Stripe
+    -- PaymentMethod so we don't have to round-trip to Stripe for
+    -- routine listing/UX, but Stripe remains the source of truth — if
+    -- you need fresh status, detach via API and reconcile.
+    CREATE TABLE IF NOT EXISTS stripe_payment_methods (
+      id                        INTEGER PRIMARY KEY AUTOINCREMENT,
+      company_id                INTEGER NOT NULL REFERENCES company(id) ON DELETE CASCADE,
+      customer_id               INTEGER NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+      stripe_customer_id        TEXT    NOT NULL,
+      stripe_payment_method_id  TEXT    NOT NULL,
+      brand                     TEXT,
+      last4                     TEXT,
+      exp_month                 INTEGER,
+      exp_year                  INTEGER,
+      wallet_type               TEXT,
+      is_default                INTEGER NOT NULL DEFAULT 0,
+      created_at                TEXT    NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (company_id, stripe_payment_method_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_stripe_payment_methods_customer
+      ON stripe_payment_methods(company_id, customer_id);
+
+    -- Per-company Stripe Terminal Location (required for Tap to Pay on
+    -- iPhone and any other Terminal reader). We create one Location per
+    -- connected account lazily and cache its ID here.
+    CREATE TABLE IF NOT EXISTS stripe_terminal_locations (
+      id                            INTEGER PRIMARY KEY AUTOINCREMENT,
+      company_id                    INTEGER NOT NULL UNIQUE REFERENCES company(id) ON DELETE CASCADE,
+      stripe_terminal_location_id   TEXT    NOT NULL,
+      display_name                  TEXT,
+      created_at                    TEXT    NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS customer_reviews (
       id             INTEGER PRIMARY KEY AUTOINCREMENT,
       company_id     INTEGER NOT NULL,
@@ -1462,6 +1534,9 @@ async function init(): Promise<void> {
     ["tax_rate_bps", "INTEGER NOT NULL DEFAULT 0"],
     ["service_interval", "TEXT NOT NULL DEFAULT 'monthly'"],
     ["accept_token", "TEXT"],
+    ["default_payment_method_id", "TEXT"],
+    ["last_charged_at", "TEXT"],
+    ["next_charge_at", "TEXT"],
   ];
   for (const [col, def] of subAdds) {
     await alterAddColumn("customer_subscriptions", col, def, subCols);
@@ -2344,6 +2419,40 @@ export type CustomerSubscription = {
   sold_by_id: number | null;
   tax_rate_bps: number;
   accept_token: string | null;
+  default_payment_method_id: string | null;
+  last_charged_at: string | null;
+  next_charge_at: string | null;
+  created_at: string;
+};
+
+export type StripeCustomer = {
+  id: number;
+  company_id: number;
+  customer_id: number;
+  stripe_customer_id: string;
+  created_at: string;
+};
+
+export type StripePaymentMethod = {
+  id: number;
+  company_id: number;
+  customer_id: number;
+  stripe_customer_id: string;
+  stripe_payment_method_id: string;
+  brand: string | null;
+  last4: string | null;
+  exp_month: number | null;
+  exp_year: number | null;
+  wallet_type: string | null;
+  is_default: number;
+  created_at: string;
+};
+
+export type StripeTerminalLocation = {
+  id: number;
+  company_id: number;
+  stripe_terminal_location_id: string;
+  display_name: string | null;
   created_at: string;
 };
 

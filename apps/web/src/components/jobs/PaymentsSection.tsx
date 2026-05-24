@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import CheckoutModal from "@/components/jobs/CheckoutModal";
 import RecordPaymentModal from "@/components/jobs/RecordPaymentModal";
 import { Button } from "@/components/ui/button";
 
@@ -38,6 +39,7 @@ function formatDate(iso: string, mounted: boolean) {
 
 export default function PaymentsSection({
   jobId,
+  customerId,
   jobTotalCents,
   paidTotalCents,
   customerEmail,
@@ -46,6 +48,7 @@ export default function PaymentsSection({
   onChanged,
 }: {
   jobId: number;
+  customerId: number;
   jobTotalCents: number;
   paidTotalCents: number;
   customerEmail: string | null;
@@ -54,6 +57,7 @@ export default function PaymentsSection({
   onChanged: () => void;
 }) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   if (typeof window !== "undefined" && !mounted) {
     queueMicrotask(() => setMounted(true));
@@ -73,10 +77,10 @@ export default function PaymentsSection({
           <Button
             variant="ghost"
             type="button"
-            onClick={() => setModalOpen(true)}
+            onClick={() => setCheckoutOpen(true)}
             className="h-auto text-sm bg-primary hover:opacity-90 text-primary-foreground rounded-full px-4 py-1.5 font-bold"
           >
-            Record payment
+            Pay
           </Button>
         )}
       </div>
@@ -87,10 +91,10 @@ export default function PaymentsSection({
           <Button
             variant="ghost"
             type="button"
-            onClick={() => setModalOpen(true)}
+            onClick={() => setCheckoutOpen(true)}
             className="h-auto mt-3 text-sm bg-primary hover:opacity-90 text-primary-foreground rounded-full px-4 py-2 font-bold"
           >
-            Record payment
+            Pay
           </Button>
         </div>
       ) : (
@@ -144,9 +148,25 @@ export default function PaymentsSection({
         </ul>
       )}
 
+      {checkoutOpen && (
+        <CheckoutModal
+          jobId={jobId}
+          jobTotalCents={jobTotalCents}
+          paidTotalCents={paidTotalCents}
+          onClose={() => setCheckoutOpen(false)}
+          onChoose={(choice) => {
+            setCheckoutOpen(false);
+            if (choice === "card" || choice === "other") {
+              setModalOpen(true);
+            }
+          }}
+        />
+      )}
+
       {modalOpen && (
         <RecordPaymentModal
           jobId={jobId}
+          customerId={customerId}
           jobTotalCents={jobTotalCents}
           paidTotalCents={paidTotalCents}
           customerEmail={customerEmail}

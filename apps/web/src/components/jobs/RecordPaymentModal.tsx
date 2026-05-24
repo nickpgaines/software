@@ -56,8 +56,19 @@ type ConnectStatus = {
 
 type Step = "details" | "card";
 
+type SavedCard = {
+  id: number;
+  brand: string | null;
+  last4: string | null;
+  exp_month: number | null;
+  exp_year: number | null;
+  is_default: number;
+  wallet_type: string | null;
+};
+
 export default function RecordPaymentModal({
   jobId,
+  customerId,
   jobTotalCents,
   paidTotalCents,
   customerEmail,
@@ -66,6 +77,7 @@ export default function RecordPaymentModal({
   onRecorded,
 }: {
   jobId: number;
+  customerId: number;
   jobTotalCents: number;
   paidTotalCents: number;
   customerEmail: string | null;
@@ -91,6 +103,15 @@ export default function RecordPaymentModal({
   const [connectStatus, setConnectStatus] = useState<ConnectStatus | null>(
     null
   );
+
+  // Saved cards on file for this customer. When at least one exists we
+  // show a chip row above the PaymentElement so the merchant can charge
+  // a card without re-entering it. Picking "Use new card" falls back to
+  // the on-session PaymentElement flow.
+  const [savedCards, setSavedCards] = useState<SavedCard[]>([]);
+  const [selectedSavedCardId, setSelectedSavedCardId] = useState<
+    number | "new"
+  >("new");
 
   const amountNumber = useMemo(() => Number(amount), [amount]);
   const amountValid = Number.isFinite(amountNumber) && amountNumber > 0;
@@ -120,6 +141,27 @@ export default function RecordPaymentModal({
       cancelled = true;
     };
   }, [method, stripeReady]);
+
+  // Load saved cards once the modal opens. Independent of Connect
+  // status so the list shows up even before the user picks `card`.
+  useEffect(() => {
+    let cancelled = false;
+    fetch(`/api/stripe/customers/${customerId}/payment-methods`)
+      .then((r) => (r.ok ? r.json() : { payment_methods: [] }))
+      .then((data: { payment_methods?: SavedCard[] }) => {
+        if (cancelled) return;
+        const cards = data.payment_methods || [];
+        setSavedCards(cards);
+        const def = cards.find((c) => c.is_default) || cards[0];
+        if (def) setSelectedSavedCardId(def.id);
+      })
+      .catch(() => {
+        // Non-fatal — falls back to entering a new card.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [customerId]);
 
   async function recordManualPayment() {
     setSaving(true);
@@ -174,6 +216,46 @@ export default function RecordPaymentModal({
     setStep("card");
   }
 
+  async function chargeSavedCard(paymentMethodId: number) {
+    setSaving(true);
+    const res = await fetch(
+      `/api/jobs/${jobId}/payments/charge-saved-card`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          amount_cents: Math.round(amountNumber * 100),
+          tip_cents: Math.round(tipNumber * 100),
+          payment_method_id: paymentMethodId,
+          notes: notes.trim() || null,
+          send_email: sendEmail,
+          send_sms: sendSms,
+        }),
+      }
+    );
+    setSaving(false);
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        requires_action?: boolean;
+      };
+      if (data.requires_action) {
+        // 3DS required — fall back to on-session PaymentElement so the
+        // customer can re-authenticate the card.
+        setError(
+          (data.error || "Card needs verification") +
+            " — switching to manual entry."
+        );
+        setSelectedSavedCardId("new");
+        await startCardPayment();
+        return;
+      }
+      setError(data.error || "Could not charge saved card");
+      return;
+    }
+    onRecorded();
+  }
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -202,6 +284,10 @@ export default function RecordPaymentModal({
         setError(
           "Stripe is still verifying this account. Finish onboarding in Settings → Payments before charging cards."
         );
+        return;
+      }
+      if (selectedSavedCardId !== "new") {
+        await chargeSavedCard(selectedSavedCardId);
         return;
       }
       await startCardPayment();
@@ -335,6 +421,52 @@ export default function RecordPaymentModal({
                   </p>
                 )}
             </div>
+
+            {method === "card" && savedCards.length > 0 && (
+              <div>
+                <Label className="block text-xs font-bold text-zinc-500 mb-1.5 font-normal">
+                  Card on file
+                </Label>
+                <div className="flex flex-wrap gap-1.5">
+                  {savedCards.map((c) => {
+                    const active = selectedSavedCardId === c.id;
+                    const label = c.wallet_type
+                      ? `${c.wallet_type === "apple_pay" ? "Apple Pay" : c.wallet_type === "google_pay" ? "Google Pay" : c.wallet_type} •••• ${c.last4 ?? "—"}`
+                      : `${c.brand?.toUpperCase() || "Card"} •••• ${c.last4 ?? "—"}`;
+                    return (
+                      <Button
+                        key={c.id}
+                        variant="ghost"
+                        type="button"
+                        onClick={() => setSelectedSavedCardId(c.id)}
+                        className={
+                          "h-auto rounded-full px-3 py-1.5 text-sm border " +
+                          (active
+                            ? "bg-slate-900 border-slate-900 text-white"
+                            : "bg-card border-line text-zinc-300 hover:bg-black")
+                        }
+                      >
+                        {label}
+                        {c.is_default ? " · default" : ""}
+                      </Button>
+                    );
+                  })}
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    onClick={() => setSelectedSavedCardId("new")}
+                    className={
+                      "h-auto rounded-full px-3 py-1.5 text-sm border " +
+                      (selectedSavedCardId === "new"
+                        ? "bg-slate-900 border-slate-900 text-white"
+                        : "bg-card border-line text-zinc-300 hover:bg-black")
+                    }
+                  >
+                    New card
+                  </Button>
+                </div>
+              </div>
+            )}
 
             <div>
               <Label className="block text-xs font-bold text-zinc-500 mb-1 font-normal">

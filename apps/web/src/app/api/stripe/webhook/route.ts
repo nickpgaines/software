@@ -4,6 +4,7 @@ import {
   getStripe,
   syncAccountStatus,
   getCompanyByStripeAccount,
+  savePaymentMethodForCustomer,
 } from "@/lib/stripe";
 import { getDb, type Invoice } from "@/lib/db";
 
@@ -14,10 +15,17 @@ export const dynamic = "force-dynamic";
  * events:
  *   - account.updated (platform):     refresh cached capability flags
  *   - checkout.session.completed (Connect): mark invoice paid
+ *   - payment_intent.succeeded (Connect): mark invoice paid for inline
+ *       PaymentElement / Apple Pay / Google Pay flow (no Checkout
+ *       redirect to deliver session.completed)
+ *   - setup_intent.succeeded (Connect): persist a saved card-on-file
+ *       so the PWA UI sees it immediately even if the client-side save
+ *       call hasn't landed yet
  *
  * Configure in Stripe dashboard → Developers → Webhooks → Add endpoint:
  *   URL: https://<your-app>/api/stripe/webhook
- *   Events: account.updated, checkout.session.completed
+ *   Events: account.updated, checkout.session.completed,
+ *           payment_intent.succeeded, setup_intent.succeeded
  *   ✓ Listen to events on Connected accounts
  * Drop the signing secret in STRIPE_WEBHOOK_SECRET.
  */
@@ -80,6 +88,10 @@ export async function POST(req: Request) {
       }
     } else if (event.type === "checkout.session.completed") {
       await handleCheckoutCompleted(event);
+    } else if (event.type === "payment_intent.succeeded") {
+      await handlePaymentIntentSucceeded(event);
+    } else if (event.type === "setup_intent.succeeded") {
+      await handleSetupIntentSucceeded(event);
     }
   } catch (e) {
     console.error("Webhook handler failed:", e);
@@ -142,4 +154,78 @@ async function handleCheckoutCompleted(event: Stripe.Event) {
        WHERE id = ? AND company_id = ?`
     )
     .run(paymentIntentId, invoiceId, company.id);
+}
+
+async function handlePaymentIntentSucceeded(event: Stripe.Event) {
+  const intent = event.data.object as Stripe.PaymentIntent;
+  // Only reconcile invoice payments here. Job/RecordPayment flows record
+  // their own row via /api/jobs/[id]/payments/stripe-confirm, and the
+  // subscription off-session charge writes its own Payment row, so we
+  // intentionally don't double-write here.
+  const invoiceIdRaw = intent.metadata?.invoice_id;
+  if (!invoiceIdRaw) return;
+  const invoiceId = Number(invoiceIdRaw);
+  if (!Number.isFinite(invoiceId)) return;
+
+  const connectedAccountId =
+    typeof event.account === "string" ? event.account : null;
+  if (!connectedAccountId) return;
+  const company = await getCompanyByStripeAccount(connectedAccountId);
+  if (!company) return;
+
+  const db = await getDb();
+  const invoice = (await db
+    .prepare("SELECT * FROM invoices WHERE id = ? AND company_id = ?")
+    .get(invoiceId, company.id)) as Invoice | undefined;
+  if (!invoice) return;
+  if (invoice.status === "paid") return;
+
+  await db
+    .prepare(
+      `UPDATE invoices
+         SET status = 'paid',
+             paid_cents = total_cents,
+             paid_at = datetime('now'),
+             stripe_payment_intent_id = ?,
+             updated_at = datetime('now')
+       WHERE id = ? AND company_id = ?`
+    )
+    .run(intent.id, invoiceId, company.id);
+}
+
+async function handleSetupIntentSucceeded(event: Stripe.Event) {
+  const si = event.data.object as Stripe.SetupIntent;
+  const companyIdRaw = si.metadata?.company_id;
+  const customerIdRaw = si.metadata?.customer_id;
+  if (!companyIdRaw || !customerIdRaw) return;
+  const companyId = Number(companyIdRaw);
+  const customerId = Number(customerIdRaw);
+  if (!Number.isFinite(companyId) || !Number.isFinite(customerId)) return;
+
+  const connectedAccountId =
+    typeof event.account === "string" ? event.account : null;
+  if (!connectedAccountId) return;
+  const company = await getCompanyByStripeAccount(connectedAccountId);
+  if (!company || company.id !== companyId) return;
+
+  const pmId =
+    typeof si.payment_method === "string"
+      ? si.payment_method
+      : si.payment_method?.id;
+  if (!pmId) return;
+
+  // The accept page already calls PUT /setup-intent which saves the PM
+  // on the server. This is the safety net for cases where the network
+  // dropped between confirmSetup and our save call.
+  try {
+    await savePaymentMethodForCustomer({
+      companyId,
+      customerId,
+      stripeAccountId: connectedAccountId,
+      stripePaymentMethodId: pmId,
+      makeDefault: false,
+    });
+  } catch (e) {
+    console.warn("Webhook: could not save payment method:", e);
+  }
 }

@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import EmployeeForm from "@/components/EmployeeForm";
-import { getDb, type Staff } from "@/lib/db";
+import { getDb, syncReplica, type Staff } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
@@ -13,9 +13,13 @@ export default async function EditEmployeePage({
   const companyId = await requireCompanyId();
   const db = await getDb();
   const id = Number(params.id);
-  const row = (await db
-    .prepare("SELECT * FROM staff WHERE id = ? AND company_id = ?")
-    .get(id, companyId)) as Staff | undefined;
+  const sql = "SELECT * FROM staff WHERE id = ? AND company_id = ?";
+  let row = (await db.prepare(sql).get(id, companyId)) as Staff | undefined;
+  // Replica lag fallback before 404-ing on a brand-new staff row.
+  if (!row) {
+    await syncReplica();
+    row = (await db.prepare(sql).get(id, companyId)) as Staff | undefined;
+  }
   if (!row) notFound();
 
   return (

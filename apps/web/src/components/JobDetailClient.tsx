@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
+import CheckoutModal from "@/components/jobs/CheckoutModal";
 import PaymentsSection from "@/components/jobs/PaymentsSection";
 import RecordPaymentModal from "@/components/jobs/RecordPaymentModal";
 import {
@@ -230,6 +231,7 @@ export default function JobDetailClient({
   const [job, setJob] = useState<Detail>(initialJob);
   const [busy, setBusy] = useState<Step | null>(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [staff, setStaff] = useState<Staff[]>([]);
   const subscription = initialSubscription;
 
@@ -494,11 +496,11 @@ export default function JobDetailClient({
               <Button
                 variant="ghost"
                 type="button"
-                onClick={() => setPaymentModalOpen(true)}
-                className="w-full inline-flex items-center justify-between border-line hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold h-auto"
+                onClick={() => setCheckoutOpen(true)}
+                className="w-full inline-flex items-center justify-between bg-primary hover:opacity-90 text-primary-foreground rounded-2xl px-4 py-3 text-sm font-extrabold h-auto"
               >
-                <span>Record Payment</span>
-                <span className="text-zinc-500">›</span>
+                <span>Pay</span>
+                <span>›</span>
               </Button>
               <Link
                 href="/schedule"
@@ -540,6 +542,7 @@ export default function JobDetailClient({
 
           <PaymentsSection
             jobId={job.id}
+            customerId={job.customer_id}
             jobTotalCents={job.price_cents}
             customerEmail={job.customer_email}
             customerPhone={job.customer_phone}
@@ -562,9 +565,25 @@ export default function JobDetailClient({
         </div>
       </div>
 
+      {checkoutOpen && (
+        <CheckoutModal
+          jobId={job.id}
+          jobTotalCents={job.price_cents}
+          paidTotalCents={job.paid_total_cents}
+          onClose={() => setCheckoutOpen(false)}
+          onChoose={(choice) => {
+            setCheckoutOpen(false);
+            if (choice === "card" || choice === "other") {
+              setPaymentModalOpen(true);
+            }
+          }}
+        />
+      )}
+
       {paymentModalOpen && (
         <RecordPaymentModal
           jobId={job.id}
+          customerId={job.customer_id}
           jobTotalCents={job.price_cents}
           paidTotalCents={job.paid_total_cents}
           customerEmail={job.customer_email}

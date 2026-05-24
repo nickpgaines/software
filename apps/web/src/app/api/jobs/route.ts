@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, syncReplica } from "@/lib/db";
 import { getSessionContext, requireCompanyId } from "@/lib/auth";
 import { computeJobStatus, createJob, type JobInput } from "@/lib/jobs";
 import { FULL_SCHEDULE_PERMISSIONS } from "@/lib/technicianColors";
@@ -21,6 +21,12 @@ export async function GET(req: Request) {
   if (!ctx) throw new Error("No session");
   const companyId = ctx.companyId;
   const db = await getDb();
+  // The schedule is one of the most write-after-read sensitive surfaces:
+  // a user creating a job expects to see it the next time the calendar
+  // refetches, even if the read lands on a different instance than the
+  // one that handled the write. Pull the latest deltas into this
+  // instance's local replica before we query.
+  await syncReplica();
   const url = new URL(req.url);
   const from = url.searchParams.get("from");
   const to = url.searchParams.get("to");
