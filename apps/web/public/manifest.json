@@ -2,7 +2,7 @@
   "name": "Forge",
   "short_name": "Forge",
   "description": "Simple CRM for door-to-door window cleaning",
-  "start_url": "/",
+  "start_url": "/login",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait",
