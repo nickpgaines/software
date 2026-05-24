@@ -105,8 +105,8 @@ export default function NavBar() {
   return (
     <aside className="fixed inset-y-0 left-0 w-60 bg-black flex flex-col z-40">
       {/* Logo */}
-      <div className="pt-4 pb-3 px-5 shrink-0">
-        <svg viewBox="0 0 128 128" className="w-14 h-14 flex-shrink-0 text-white" aria-label="Forge">
+      <div className="pt-2 pb-2 px-5 shrink-0">
+        <svg viewBox="0 0 128 128" className="w-12 h-12 flex-shrink-0 text-white" aria-label="Forge">
           <path
             d="M32 16 L92 16 L112 36 L52 36 L52 54 L88 54 L70 72 L52 72 L52 92 L32 112 Z"
             fill="currentColor"
