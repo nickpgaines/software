@@ -104,6 +104,6 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/|favicon.ico|favicon.png|manifest.json|sw.js|icons/|privacy|terms|data-deletion|api/login|api/signup|api/auth/|api/messages/webhook|api/twilio/|api/voice/outbound|api/voice/status|api/voice/recording|api/email/unsubscribe|api/stripe/webhook|api/integrations/meta/webhook|invoices/pay/|api/invoices/pay/).*)",
+    "/((?!_next/|favicon.ico|favicon.png|manifest.json|sw.js|icons/|privacy|terms|sms-terms|sms-consent|about|data-deletion|api/login|api/signup|api/auth/|api/messages/webhook|api/twilio/|api/voice/outbound|api/voice/status|api/voice/recording|api/email/unsubscribe|api/stripe/webhook|api/integrations/meta/webhook|invoices/pay/|api/invoices/pay/).*)",
   ],
 };
