@@ -88,7 +88,7 @@ export default function InvoiceDetailClient({ id }: { id: number }) {
   async function onDelete() {
     if (!confirm("Delete this invoice?")) return;
     const res = await fetch(`/api/invoices/${id}`, { method: "DELETE" });
-    if (res.ok) router.push("/");
+    if (res.ok) router.push("/dashboard");
   }
 
   if (loading) {

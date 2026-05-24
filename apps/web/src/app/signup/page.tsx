@@ -41,7 +41,7 @@ export default function SignupPage() {
       setError(data?.error || "Could not create your account.");
       return;
     }
-    router.push("/?welcome=sms");
+    router.push("/dashboard?welcome=sms");
     router.refresh();
   }
 

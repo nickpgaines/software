@@ -32,7 +32,7 @@ export default function GlobalError({
             variant="ghost"
             className="w-full h-auto bg-card border border-line hover:bg-black text-white rounded-lg py-2.5 text-sm font-extrabold tracking-tight"
           >
-            <Link href="/">Back to dashboard</Link>
+            <Link href="/dashboard">Back to dashboard</Link>
           </Button>
         </div>
       </div>

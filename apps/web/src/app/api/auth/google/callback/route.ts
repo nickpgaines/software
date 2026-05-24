@@ -120,7 +120,7 @@ export async function GET(req: Request) {
     staffId: staff.id,
     companyId: staff.company_id ?? 1,
   });
-  const res = NextResponse.redirect(new URL("/", req.url));
+  const res = NextResponse.redirect(new URL("/dashboard", req.url));
   res.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
     sameSite: "lax",

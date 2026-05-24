@@ -31,7 +31,7 @@ type NavItem = {
 };
 
 const NAV: (NavItem & { perm?: string })[] = [
-  { name: "Dashboard", icon: "home", href: "/", section: "Workspace" },
+  { name: "Dashboard", icon: "home", href: "/dashboard", section: "Workspace" },
   { name: "Schedule", icon: "calendar", href: "/schedule", section: "Workspace", perm: "schedule.view" },
   {
     name: "Inbox",
@@ -272,8 +272,8 @@ function PulseNavRow({
   pathname: string | null;
 }) {
   const active =
-    item.href === "/"
-      ? pathname === "/"
+    item.href === "/dashboard"
+      ? pathname === "/dashboard"
       : (pathname?.startsWith(item.href) ?? false) ||
         (item.matchPrefixes?.some((p) => pathname?.startsWith(p)) ?? false);
   const baseRow =

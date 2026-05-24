@@ -52,7 +52,7 @@ function LoginPageInner() {
       setError("Invalid credentials");
       return;
     }
-    router.push("/");
+    router.push("/dashboard");
     router.refresh();
   }
 

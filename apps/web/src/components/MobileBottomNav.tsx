@@ -17,7 +17,7 @@ type Tab = {
 };
 
 const TABS: Tab[] = [
-  { key: "home", label: "Home", icon: "home", href: "/" },
+  { key: "home", label: "Home", icon: "home", href: "/dashboard" },
   { key: "schedule", label: "Schedule", icon: "calendar", href: "/schedule" },
   {
     key: "inbox",
@@ -70,8 +70,8 @@ export default function MobileBottomNav() {
         const isMore = tab.key === "more";
         const active = isMore
           ? drawerOpen
-          : tab.href === "/"
-            ? pathname === "/" && !drawerOpen
+          : tab.href === "/dashboard"
+            ? pathname === "/dashboard" && !drawerOpen
             : (!drawerOpen &&
                 (pathname?.startsWith(tab.href!) ||
                   tab.matchPrefixes?.some((p) => pathname?.startsWith(p)))) ??
