@@ -22,7 +22,7 @@ export default function MarketingHome() {
   return (
     <div>
       {/* Hero */}
-      <section className="px-6 md:px-10 pt-20 md:pt-28 pb-20 md:pb-28">
+      <section className="px-6 md:px-10 pt-20 md:pt-28 pb-16 md:pb-20">
         <div className="max-w-app mx-auto text-center">
           <Eyebrow>CRM for service businesses</Eyebrow>
           <h1 className="mt-6 text-[44px] md:text-[80px] lg:text-[96px] font-black tracking-[-0.03em] leading-[0.92] text-white">
@@ -49,7 +49,7 @@ export default function MarketingHome() {
       {/* Features — tabbed panel */}
       <section
         id="features"
-        className="px-6 md:px-10 py-24 md:py-32 scroll-mt-20"
+        className="px-6 md:px-10 py-16 md:py-20 scroll-mt-20"
       >
         <div className="max-w-app mx-auto">
           <div className="text-center max-w-3xl mx-auto">
@@ -79,7 +79,7 @@ export default function MarketingHome() {
       {/* Pricing */}
       <section
         id="pricing"
-        className="px-6 md:px-10 py-24 md:py-32 scroll-mt-20"
+        className="px-6 md:px-10 py-16 md:py-20 scroll-mt-20"
       >
         <div className="max-w-app mx-auto">
           <div className="text-center max-w-2xl mx-auto">
@@ -101,7 +101,7 @@ export default function MarketingHome() {
       </section>
 
       {/* FAQ */}
-      <section id="faq" className="px-6 md:px-10 py-24 md:py-32 scroll-mt-20">
+      <section id="faq" className="px-6 md:px-10 py-16 md:py-20 scroll-mt-20">
         <div className="max-w-app mx-auto">
           <Eyebrow>FAQ</Eyebrow>
           <SectionHeading className="mt-5 max-w-2xl">

@@ -124,7 +124,7 @@ export function SecondaryCta({
 
 export function FinalCta() {
   return (
-    <section className="px-6 md:px-10 py-24 md:py-32">
+    <section className="px-6 md:px-10 py-16 md:py-20">
       <div className="max-w-app mx-auto">
         <div className="bg-card border border-line rounded-3xl px-8 md:px-16 py-16 md:py-24 text-center">
           <Eyebrow>Get Started</Eyebrow>
