@@ -140,6 +140,36 @@ function SummaryRow({
   );
 }
 
+/**
+ * Logo mark for the fictional issuing business — a window pane with a
+ * shine sparkle, monochrome so it sits on a white letterhead tile. Drawn
+ * here rather than imported because it's content of the mock invoice, not
+ * a Forge brand asset.
+ */
+function LogoGlyph({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      style={{ color: PULSE.bg }}
+      aria-hidden
+    >
+      <rect x="2.5" y="3" width="12" height="12" rx="2" />
+      <path d="M2.5 9h12M8.5 3v12" />
+      <path
+        d="M19 4l1 2 2 1-2 1-1 2-1-2-2-1 2-1z"
+        fill="currentColor"
+        stroke="none"
+      />
+    </svg>
+  );
+}
+
 /* --------------------------------------------------------------------- */
 /*  Component                                                            */
 /* --------------------------------------------------------------------- */
@@ -153,6 +183,46 @@ export function PaymentsScreenshot() {
         border: `1px solid ${PULSE.cardBorder}`,
       }}
     >
+      {/* Letterhead: issuing business (the Forge customer) -------------- */}
+      <div
+        className="mb-6 flex flex-wrap items-center justify-between gap-3 pb-5"
+        style={{ borderBottom: `1px solid ${PULSE.cardBorder}` }}
+      >
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-white">
+            <LogoGlyph className="h-6 w-6" />
+          </div>
+          <div>
+            <div
+              className="text-[15px] font-extrabold tracking-tight"
+              style={{ color: PULSE.text }}
+            >
+              Clearline Window Co.
+            </div>
+            <div
+              className="text-[12px] font-bold"
+              style={{ color: PULSE.textMuted }}
+            >
+              Exterior cleaning · Austin, TX
+            </div>
+          </div>
+        </div>
+        <div className="text-right">
+          <div
+            className="text-[12px] font-bold"
+            style={{ color: PULSE.text }}
+          >
+            hello@clearlinewindow.co
+          </div>
+          <div
+            className="text-[12px] font-bold tabular-nums"
+            style={{ color: PULSE.textMuted }}
+          >
+            (512) 555-0188
+          </div>
+        </div>
+      </div>
+
       {/* Top row: invoice number + status pill + actions ---------------- */}
       <div className="mb-6 flex flex-wrap items-start justify-between gap-3">
         <div>
@@ -167,7 +237,7 @@ export function PaymentsScreenshot() {
               className="text-[28px] font-extrabold tracking-tight leading-none tabular-nums"
               style={{ color: PULSE.text }}
             >
-              INV-1247
+              INV-1042
             </h3>
             {/* PAID status pill — emerald scheme (positive/paid). */}
             <span
@@ -268,31 +338,31 @@ export function PaymentsScreenshot() {
             className="text-[14px] font-extrabold tracking-tight"
             style={{ color: PULSE.text }}
           >
-            Mountain View Window Co.
+            Olivia Bennett
           </div>
           <div
             className="mt-1 text-[12px] font-bold"
             style={{ color: PULSE.textMuted }}
           >
-            1428 Alpine Ridge Rd
+            210 Elm Crest Dr
           </div>
           <div
             className="text-[12px] font-bold"
             style={{ color: PULSE.textMuted }}
           >
-            Boulder, CO 80302
+            Austin, TX 78704
           </div>
           <div
             className="mt-2 text-[12px] font-bold tabular-nums"
             style={{ color: PULSE.textMuted }}
           >
-            (303) 555-0142
+            (512) 555-0142
           </div>
           <div
             className="text-[12px] font-bold"
             style={{ color: PULSE.textMuted }}
           >
-            ops@mvwindow.co
+            olivia.bennett@gmail.com
           </div>
         </div>
       </div>
