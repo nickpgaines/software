@@ -9,6 +9,7 @@ import {
   SecondaryCta,
 } from "@/components/marketing/sections";
 import { FeatureTabs } from "@/components/marketing/FeatureTabs";
+import { GlanceStrip } from "@/components/marketing/GlanceStrip";
 import { PricingSection } from "@/components/marketing/PricingSection";
 import { FaqSection } from "@/components/marketing/FaqSection";
 
@@ -45,6 +46,9 @@ export default function MarketingHome() {
       </section>
 
       <PoweredByStrip />
+
+      {/* At a glance — quick, non-interactive teaser of breadth */}
+      <GlanceStrip />
 
       {/* Features — tabbed panel */}
       <section

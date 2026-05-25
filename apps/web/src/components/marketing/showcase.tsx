@@ -17,8 +17,6 @@
  */
 
 import { CompactHeroKpi, RevenueHeroView } from "@/components/pulse/widgets";
-import { PULSE } from "@/components/pulse/theme";
-import { RevenueBarChart } from "@/components/reports/RevenueBarChart";
 import {
   LeaderboardRankingsView,
   type Row,
@@ -56,19 +54,6 @@ function seededRevenueDays(): { date: string; cents: number }[] {
 
 const DEMO_DAYS = seededRevenueDays();
 const DEMO_TOTAL_CENTS = DEMO_DAYS.reduce((s, d) => s + d.cents, 0);
-
-const DEMO_BARCHART = [
-  { name: "Marcus B.", revenue_cents: 9_820_00 },
-  { name: "Avery C.", revenue_cents: 9_010_00 },
-  { name: "Jordan R.", revenue_cents: 7_640_00 },
-  { name: "Samira P.", revenue_cents: 5_820_00 },
-  { name: "Tyler B.", revenue_cents: 5_610_00 },
-];
-const DEMO_BARCHART_AVG_DOLLARS = Math.round(
-  DEMO_BARCHART.reduce((s, r) => s + r.revenue_cents, 0) /
-    DEMO_BARCHART.length /
-    100,
-);
 
 // Leaderboard rows — shape matches `Row` from LeaderboardRankingsView.
 const DEMO_LEADERBOARD_ROWS: Row[] = [
@@ -253,31 +238,6 @@ export function RevenueHeroShowcase() {
       range="1m"
       height={260}
     />
-  );
-}
-
-/* ---------- Top Salespeople (real RevenueBarChart) -------------------- */
-
-export function TopSalespeopleShowcase() {
-  return (
-    <section
-      className="rounded-2xl p-6 md:p-7"
-      style={{
-        background: PULSE.card,
-        border: `1px solid ${PULSE.cardBorder}`,
-      }}
-    >
-      <div className="text-[14px] font-semibold mb-4 text-zinc-500">
-        Top Salespeople ·{" "}
-        {new Date().toLocaleString(undefined, { month: "long" })}
-      </div>
-      <RevenueBarChart
-        data={DEMO_BARCHART}
-        color="#3b82f6"
-        averageDollars={DEMO_BARCHART_AVG_DOLLARS}
-        tooltipLabel="Revenue Sold"
-      />
-    </section>
   );
 }
 

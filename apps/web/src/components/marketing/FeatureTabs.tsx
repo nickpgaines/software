@@ -23,7 +23,6 @@ import {
   MapShowcase,
   RevenueHeroShowcase,
   ScorecardShowcase,
-  TopSalespeopleShowcase,
 } from "./showcase";
 import { ScheduleScreenshot } from "./screenshots/ScheduleScreenshot";
 import { PaymentsScreenshot } from "./screenshots/PaymentsScreenshot";
@@ -47,7 +46,7 @@ const FEATURES: FeatureMeta[] = [
     key: "dashboard",
     label: "Dashboard",
     blurb:
-      "Revenue, KPIs, and your top performers — every metric that matters, one screen.",
+      "Revenue and the KPIs that matter — every metric that moves the business, one screen.",
   },
   {
     key: "leaderboard",
@@ -88,7 +87,6 @@ function renderPanel(key: FeatureKey) {
         <div className="space-y-5">
           <KpiRowShowcase />
           <RevenueHeroShowcase />
-          <TopSalespeopleShowcase />
         </div>
       );
     case "leaderboard":
