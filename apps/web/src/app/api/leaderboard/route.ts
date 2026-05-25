@@ -65,7 +65,7 @@ export async function GET(req: Request) {
 
   const rows = (await db
     .prepare(
-      `SELECT s.id, s.name, s.role, s.photo_url, s.color,
+      `SELECT s.id, s.name, s.role, s.permission_level, s.photo_url, s.color,
               COALESCE(SUM(j.price_cents), 0) AS revenue_cents,
               COUNT(j.id) AS job_count,
               MAX(j.scheduled_at) AS last_sale_at
@@ -82,6 +82,7 @@ export async function GET(req: Request) {
     id: number;
     name: string;
     role: string | null;
+    permission_level: string | null;
     photo_url: string | null;
     color: string | null;
     revenue_cents: number;
