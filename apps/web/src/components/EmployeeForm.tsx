@@ -44,18 +44,6 @@ const COLORS: { key: string; label: string; swatch: string }[] = [
   { key: "gray", label: "Gray", swatch: "bg-slate-400" },
 ];
 
-const ROLE_SWATCH_FROM_COLOR: Record<string, string> = {
-  blue: "bg-blue-500",
-  green: "bg-green-500",
-  red: "bg-red-500",
-  yellow: "bg-yellow-400",
-  purple: "bg-purple-500",
-  orange: "bg-orange-500",
-  teal: "bg-teal-500",
-  pink: "bg-pink-500",
-  gray: "bg-slate-400",
-};
-
 const BUILT_IN_OPTIONS: {
   key: BuiltInRole;
   title: string;
@@ -544,15 +532,8 @@ export default function EmployeeForm({
                       className="mt-1 accent-slate-900"
                     />
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span
-                          className={`inline-block w-3 h-3 rounded-full shrink-0 ${
-                            ROLE_SWATCH_FROM_COLOR[r.color] || "bg-blue-500"
-                          }`}
-                        />
-                        <div className="text-sm font-extrabold text-white tracking-tight">
-                          {r.name}
-                        </div>
+                      <div className="text-sm font-extrabold text-white tracking-tight">
+                        {r.name}
                       </div>
                       <div className="text-xs text-zinc-400 mt-0.5">
                         {r.permissions.length} permission

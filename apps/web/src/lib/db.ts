@@ -479,7 +479,6 @@ async function init(): Promise<void> {
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
       company_id  INTEGER NOT NULL,
       name        TEXT NOT NULL,
-      color       TEXT NOT NULL DEFAULT 'blue',
       permissions TEXT NOT NULL DEFAULT '[]',
       created_at  TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at  TEXT NOT NULL DEFAULT (datetime('now'))
@@ -2000,7 +1999,6 @@ export type CustomRole = {
   id: number;
   company_id: number;
   name: string;
-  color: string;
   permissions: string; // JSON-encoded string[]
   created_at: string;
   updated_at: string;

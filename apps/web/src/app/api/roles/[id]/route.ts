@@ -5,18 +5,6 @@ import { ALL_PERMISSIONS, type Permission } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED_COLORS = [
-  "blue",
-  "green",
-  "red",
-  "yellow",
-  "purple",
-  "orange",
-  "teal",
-  "pink",
-  "gray",
-];
-
 function serialize(row: CustomRole) {
   let perms: Permission[] = [];
   try {
@@ -30,12 +18,11 @@ function serialize(row: CustomRole) {
   } catch {
     perms = [];
   }
-  return { id: row.id, name: row.name, color: row.color, permissions: perms };
+  return { id: row.id, name: row.name, permissions: perms };
 }
 
 type PatchBody = {
   name?: string;
-  color?: string;
   permissions?: string[];
 };
 
@@ -58,10 +45,6 @@ export async function PATCH(
   if (!name) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
   }
-  const color =
-    body.color !== undefined && ALLOWED_COLORS.includes(body.color)
-      ? body.color
-      : existing.color;
   let permsJson = existing.permissions;
   if (body.permissions !== undefined) {
     const incoming = Array.isArray(body.permissions) ? body.permissions : [];
@@ -81,10 +64,10 @@ export async function PATCH(
   await db
     .prepare(
       `UPDATE custom_roles
-       SET name = ?, color = ?, permissions = ?, updated_at = datetime('now')
+       SET name = ?, permissions = ?, updated_at = datetime('now')
        WHERE id = ? AND company_id = ?`
     )
-    .run(name, color, permsJson, id, companyId);
+    .run(name, permsJson, id, companyId);
 
   const row = (await db
     .prepare("SELECT * FROM custom_roles WHERE id = ? AND company_id = ?")

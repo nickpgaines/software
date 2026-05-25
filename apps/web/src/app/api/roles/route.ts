@@ -5,22 +5,9 @@ import { ALL_PERMISSIONS, type Permission } from "@/lib/permissions";
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED_COLORS = [
-  "blue",
-  "green",
-  "red",
-  "yellow",
-  "purple",
-  "orange",
-  "teal",
-  "pink",
-  "gray",
-];
-
 type RoleResponse = {
   id: number;
   name: string;
-  color: string;
   permissions: Permission[];
 };
 
@@ -37,7 +24,7 @@ function serialize(row: CustomRole): RoleResponse {
   } catch {
     perms = [];
   }
-  return { id: row.id, name: row.name, color: row.color, permissions: perms };
+  return { id: row.id, name: row.name, permissions: perms };
 }
 
 export async function GET() {
@@ -53,7 +40,6 @@ export async function GET() {
 
 type CreateBody = {
   name?: string;
-  color?: string;
   permissions?: string[];
 };
 
@@ -66,9 +52,6 @@ export async function POST(req: Request) {
   if (!name) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
   }
-  const color = ALLOWED_COLORS.includes(body.color || "")
-    ? (body.color as string)
-    : "blue";
   const incoming = Array.isArray(body.permissions) ? body.permissions : [];
   const perms = incoming.filter(
     (p): p is Permission =>
@@ -83,10 +66,10 @@ export async function POST(req: Request) {
 
   const result = await db
     .prepare(
-      `INSERT INTO custom_roles (company_id, name, color, permissions)
-       VALUES (?, ?, ?, ?)`
+      `INSERT INTO custom_roles (company_id, name, permissions)
+       VALUES (?, ?, ?)`
     )
-    .run(companyId, name, color, JSON.stringify(perms));
+    .run(companyId, name, JSON.stringify(perms));
 
   const row = (await db
     .prepare("SELECT * FROM custom_roles WHERE id = ? AND company_id = ?")

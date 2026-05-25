@@ -10,7 +10,7 @@ export type Me = {
   identity: string;
   is_admin_account: boolean;
   staff: Staff | null;
-  custom_role: { id: number; name: string; color: string } | null;
+  custom_role: { id: number; name: string } | null;
   permissions: Permission[];
 };
 
@@ -49,7 +49,7 @@ export async function buildMe(ctx: SessionContext): Promise<Me> {
     staff = await lookupStaff(ctx);
   }
 
-  let customRole: { id: number; name: string; color: string } | null = null;
+  let customRole: { id: number; name: string } | null = null;
   let customPerms: Permission[] | null = null;
   if (staff?.custom_role_id) {
     const db = await getDb();
@@ -59,7 +59,7 @@ export async function buildMe(ctx: SessionContext): Promise<Me> {
       )
       .get(staff.custom_role_id, ctx.companyId)) as CustomRole | undefined;
     if (row) {
-      customRole = { id: row.id, name: row.name, color: row.color };
+      customRole = { id: row.id, name: row.name };
       try {
         const parsed = JSON.parse(row.permissions) as unknown;
         if (Array.isArray(parsed)) {

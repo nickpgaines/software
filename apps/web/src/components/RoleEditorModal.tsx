@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, Trash2, Users, X } from "lucide-react";
+import { Trash2, Users, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -14,21 +14,8 @@ import {
 export type RoleSummary = {
   id: number;
   name: string;
-  color: string;
   permissions: Permission[];
 };
-
-const COLORS: { key: string; label: string; swatch: string }[] = [
-  { key: "blue", label: "Blue", swatch: "bg-blue-500" },
-  { key: "green", label: "Green", swatch: "bg-green-500" },
-  { key: "red", label: "Red", swatch: "bg-red-500" },
-  { key: "yellow", label: "Yellow", swatch: "bg-yellow-400" },
-  { key: "purple", label: "Purple", swatch: "bg-purple-500" },
-  { key: "orange", label: "Orange", swatch: "bg-orange-500" },
-  { key: "teal", label: "Teal", swatch: "bg-teal-500" },
-  { key: "pink", label: "Pink", swatch: "bg-pink-500" },
-  { key: "gray", label: "Gray", swatch: "bg-slate-400" },
-];
 
 export default function RoleEditorModal({
   open,
@@ -44,7 +31,6 @@ export default function RoleEditorModal({
   onDeleted: (id: number) => void;
 }) {
   const [name, setName] = useState("");
-  const [color, setColor] = useState("blue");
   const [perms, setPerms] = useState<Set<Permission>>(new Set());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -53,7 +39,6 @@ export default function RoleEditorModal({
   useEffect(() => {
     if (open) {
       setName(initial?.name || "");
-      setColor(initial?.color || "blue");
       setPerms(new Set(initial?.permissions || []));
       setError(null);
       setConfirmDelete(false);
@@ -80,7 +65,6 @@ export default function RoleEditorModal({
     setSaving(true);
     const body = {
       name: trimmed,
-      color,
       permissions: Array.from(perms),
     };
     const url = initial ? `/api/roles/${initial.id}` : "/api/roles";
@@ -178,39 +162,6 @@ export default function RoleEditorModal({
               Choose a descriptive name that clearly identifies this role&apos;s
               responsibilities
             </p>
-          </div>
-
-          <div>
-            <Label className="block text-xs font-bold text-zinc-500 mb-2">
-              Role Color<span className="text-rose-500 ml-0.5">*</span>
-            </Label>
-            <p className="mb-3 text-xs text-zinc-500">
-              Choose a color to help identify this role in the interface
-            </p>
-            <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-              {COLORS.map((c) => {
-                const active = color === c.key;
-                return (
-                  <Button
-                    key={c.key}
-                    type="button"
-                    variant="ghost"
-                    onClick={() => setColor(c.key)}
-                    className={`h-auto justify-start gap-2 px-3 py-2 rounded-lg border text-sm font-bold hover:bg-transparent ${
-                      active
-                        ? "border-primary bg-black text-white"
-                        : "border-line-strong text-zinc-300 hover:border-slate-400"
-                    }`}
-                  >
-                    <span
-                      className={`inline-block w-3.5 h-3.5 rounded-full shrink-0 ${c.swatch}`}
-                    />
-                    <span>{c.label}</span>
-                    {active && <Check className="w-3.5 h-3.5 ml-auto" />}
-                  </Button>
-                );
-              })}
-            </div>
           </div>
 
           <div>
