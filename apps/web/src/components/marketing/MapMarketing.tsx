@@ -143,15 +143,15 @@ export function MapMarketing() {
               left: `${p.x}%`,
               top: `${p.y}%`,
               transform: "translate(-50%, -50%)",
-              width: 30,
-              height: 30,
+              width: 26,
+              height: 26,
               borderRadius: "50%",
               background: `${meta.color}26`,
               border: `1.5px solid ${meta.color}`,
               color: meta.color,
               backdropFilter: "blur(6px)",
               WebkitBackdropFilter: "blur(6px)",
-              boxShadow: `0 0 14px ${meta.color}66, 0 2px 6px rgba(0,0,0,0.45)`,
+              boxShadow: `0 0 5px ${meta.color}55, 0 1px 3px rgba(0,0,0,0.4)`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -160,7 +160,7 @@ export function MapMarketing() {
             // map uses for its DOM markers, so the icon stroke + viewbox
             // match exactly.
             dangerouslySetInnerHTML={{
-              __html: filledGlyphSvg(p.status, meta.color, 16),
+              __html: filledGlyphSvg(p.status, meta.color, 15),
             }}
           />
         );

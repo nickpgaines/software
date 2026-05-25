@@ -1267,10 +1267,14 @@ mobile behavior).
 ### 8.21 Door-knock map pins
 
 The markers rendered on `/map` for each door-knock pin status follow a
-"Flyra-style" treatment: a flat 28px filled circle in the status color,
-a **filled** white (or `#0f172a` on yellow) glyph at 16px, no border,
+"Flyra-style" treatment: a flat 26px filled circle in the status color,
+a **filled** white (or `#0f172a` on yellow) glyph at ~15px, no border,
 and a soft outer glow built from layered `box-shadow` rings using the
-status color at decreasing opacity.
+status color at decreasing opacity. The glow is intentionally tight — a
+single small ring plus a drop shadow — so a pin reads at roughly its own
+26px footprint rather than ballooning into an ~80px halo that dwarfs the
+house it sits on, especially at lower zooms where the markers are a
+fixed screen size while the buildings shrink.
 
 Customer markers share the same treatment with a fixed two-state
 palette: red (`#dc2626`) for one-time / non-subscription customers,
@@ -1286,12 +1290,13 @@ Source: `makeMarkerElement` and `makeCustomerMarkerElement` in
 
 | Token            | Value                                                                                                              |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Diameter         | 28px                                                                                                               |
+| Diameter         | 26px                                                                                                               |
 | Background       | `PIN_STATUS[status].color`                                                                                         |
-| Icon             | `filledGlyphSvg(status, textColor, 16)` — filled solid glyph (not Lucide outline)                                  |
+| Icon             | `filledGlyphSvg(status, textColor, 15)` — filled solid glyph (not Lucide outline)                                  |
 | Icon color       | `PIN_STATUS[status].textColor` (`#fff` everywhere except `not_home` which uses `#0f172a` on the yellow background) |
 | Outline          | None                                                                                                               |
-| Glow             | `0 0 0 1px {c}, 0 0 12px 2px {c}cc, 0 0 24px 4px {c}55, 0 2px 4px rgba(0,0,0,0.45)` where `{c}` is the status color |
+| Glow (customer)  | `0 0 0 1px {c}, 0 0 5px 1px {c}99, 0 1px 3px rgba(0,0,0,0.4)` where `{c}` is the status color                       |
+| Glow (door-knock)| `0 0 5px {c}55, 0 1px 3px rgba(0,0,0,0.4)` (paired with the translucent `{c}26` fill + `1.5px {c}` border)          |
 
 The Lucide outline icons still attached to each `PIN_STATUS` entry
 remain the source for surrounding UI chrome — the icon strip

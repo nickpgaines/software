@@ -168,7 +168,7 @@ function Section({
  * Mini pin preview — mirrors `makeCustomerMarkerElement` in `MapClient.tsx`
  * so the filter swatch reads as the same family as the actual map pin
  * (filled colored circle, colored holographic glow, centered white person
- * glyph). Sized down from 28px → 20px for the filter row.
+ * glyph). Sized down from 26px → 20px for the filter row.
  */
 function PinSwatch({ color }: { color: string }) {
   return (
@@ -181,9 +181,8 @@ function PinSwatch({ color }: { color: string }) {
         backgroundColor: color,
         boxShadow:
           `0 0 0 1px ${color},` +
-          `0 0 8px 1px ${color}cc,` +
-          `0 0 16px 3px ${color}55,` +
-          "0 2px 4px rgba(0,0,0,0.45)",
+          `0 0 4px 1px ${color}99,` +
+          "0 1px 3px rgba(0,0,0,0.4)",
       }}
     >
       <svg
