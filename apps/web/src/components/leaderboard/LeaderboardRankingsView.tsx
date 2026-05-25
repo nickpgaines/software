@@ -20,6 +20,7 @@ export type Row = {
   id: number;
   name: string;
   role: string | null;
+  permission_level?: string | null;
   photo_url: string | null;
   color: string | null;
   revenue_cents: number;
@@ -407,7 +408,11 @@ export function LeaderboardRankingsView({
                         {r.job_count}
                       </TableCell>
                       <TableCell className="px-5 py-3 text-right text-zinc-300 font-bold tabular-nums">
-                        {money(Math.round(r.revenue_cents / r.job_count))}
+                        {money(
+                          r.job_count > 0
+                            ? Math.round(r.revenue_cents / r.job_count)
+                            : 0
+                        )}
                       </TableCell>
                       <TableCell
                         className="px-5 py-3 text-right text-white tabular-nums whitespace-nowrap"

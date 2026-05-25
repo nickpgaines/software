@@ -118,14 +118,25 @@ export default function LeaderboardClient({
     };
   }, [view, range, customFrom, customTo]);
 
+  // Show everyone who did work in this view, plus staff whose role makes them a
+  // participant here (technicians on the tech board, salespeople on sales) even
+  // with zero jobs — otherwise a brand-new tech with no jobs yet is invisible.
+  const viewPermission = view === "tech" ? "technician" : "salesperson";
   const activeRows = useMemo(
-    () => (data ? data.rows.filter((r) => r.job_count > 0) : []),
-    [data]
+    () =>
+      data
+        ? data.rows.filter(
+            (r) => r.job_count > 0 || r.permission_level === viewPermission
+          )
+        : [],
+    [data, viewPermission]
   );
 
   const total = activeRows.reduce((a, r) => a + r.revenue_cents, 0);
   const totalJobs = activeRows.reduce((a, r) => a + r.job_count, 0);
-  const top = activeRows[0] || null;
+  // Rows are sorted by revenue desc, so [0] is the leader — but don't crown a
+  // "top performer" when nobody has any revenue yet.
+  const top = activeRows[0]?.revenue_cents ? activeRows[0] : null;
 
   const me = useMemo(() => {
     if (!data) return null;
