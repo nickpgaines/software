@@ -19,8 +19,8 @@ const PLANS: Plan[] = [
   {
     name: "Solo",
     tag: "Starter",
-    monthly: 89,
-    yearly: 62,
+    monthly: 99,
+    yearly: 79,
     blurb: "Start solo. Scale into the next plan.",
     features: [
       "1 user",
@@ -38,8 +38,8 @@ const PLANS: Plan[] = [
   {
     name: "Team",
     tag: "Most popular",
-    monthly: 199,
-    yearly: 139,
+    monthly: 229,
+    yearly: 179,
     blurb: "More reps. More doors. More revenue.",
     features: [
       "Up to 8 users",
@@ -57,8 +57,8 @@ const PLANS: Plan[] = [
   {
     name: "Business",
     tag: "Scale",
-    monthly: 349,
-    yearly: 244,
+    monthly: 379,
+    yearly: 279,
     blurb: "For scaled operations.",
     features: [
       "Up to 30 users",
@@ -85,9 +85,6 @@ export function PricingSection() {
           </BillingTab>
           <BillingTab active={yearly} onClick={() => setYearly(true)}>
             Yearly
-            <span className="ml-2 text-[10px] font-extrabold tracking-[0.18em] uppercase text-green-400">
-              30% off
-            </span>
           </BillingTab>
         </div>
       </div>
@@ -189,7 +186,7 @@ function PlanCard({ plan, yearly }: { plan: Plan; yearly: boolean }) {
           plan.highlight ? "text-black/60" : "text-zinc-500",
         )}
       >
-        {yearly ? "Billed yearly · 30% off" : "Billed monthly"}
+        {yearly ? "Billed yearly" : "Billed monthly"}
       </div>
 
       <Button
