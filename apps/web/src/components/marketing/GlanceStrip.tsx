@@ -1,91 +1,207 @@
 /**
  * "At a glance" overview strip — sits above the in-depth FeatureTabs on the
  * marketing home. Where FeatureTabs renders the real, interactive product
- * surfaces, this strip is a quick, NON-interactive teaser of breadth: the
- * parts of Forge that don't get a full panel (tap-to-pay, payroll, reviews)
- * plus a fast taste of the ones that do (subscriptions, CRM customization).
+ * surfaces, this strip is a quick, NON-interactive teaser of breadth.
  *
- * Every card composes the established marketing card aesthetic
- * (`bg-card border border-line rounded-2xl`) and the dark-canvas tokens from
- * DESIGN_SYSTEM.md — no new tokens, no interactivity, server-rendered. The
- * little visuals inside each card are static facsimiles of real product UI
- * (the "our actual stuff" signal), not stock imagery.
+ * Each card pairs a flat graphic illustration with a short title + blurb.
+ * The art is deliberately simple and aesthetic (one bold motif per card,
+ * soft accent glow) rather than a dense UI facsimile — the goal is a clean,
+ * digestible overview, not a second feature section. Cards compose the
+ * established marketing card aesthetic (`bg-card border border-line
+ * rounded-2xl`); the illustrations use only palette colors from
+ * DESIGN_SYSTEM.md (white, zinc, green #22c55e, cyan #22d3ee). Server-rendered.
  */
 
-import { PULSE } from "@/components/pulse/theme";
 import { Eyebrow, SectionHeading, SectionSubhead } from "./sections";
 
-/* ---------- decorative glyphs ----------------------------------------- */
+/* ---------- shared art atoms ------------------------------------------ */
 
-function Contactless({ className }: { className?: string }) {
+const STAR =
+  "M12 2l2.9 6.3 6.9.6-5.2 4.6 1.6 6.8L12 17.3 5.8 20.9l1.6-6.8L2.2 8.9l6.9-.6z";
+
+function Star({
+  cx,
+  cy,
+  size,
+  fill = "#ffffff",
+  opacity = 1,
+}: {
+  cx: number;
+  cy: number;
+  size: number;
+  fill?: string;
+  opacity?: number;
+}) {
+  const s = size / 24;
   return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={2}
-      strokeLinecap="round"
-      aria-hidden
-    >
-      <path d="M7 8a8 8 0 0 1 0 8" />
-      <path d="M11 5a13 13 0 0 1 0 14" />
-      <path d="M15 3a18 18 0 0 1 0 18" />
+    <path
+      d={STAR}
+      fill={fill}
+      fillOpacity={opacity}
+      transform={`translate(${cx - 12 * s} ${cy - 12 * s}) scale(${s})`}
+    />
+  );
+}
+
+const ART_CLASS = "block h-40 w-full";
+
+/* ---------- flat illustrations ---------------------------------------- */
+
+function TapToPayArt() {
+  return (
+    <svg className={ART_CLASS} viewBox="0 0 360 160" fill="none" aria-hidden>
+      <defs>
+        <linearGradient id="tp-card" x1="84" y1="44" x2="84" y2="128" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#ffffff" />
+          <stop offset="1" stopColor="#e4e4e7" />
+        </linearGradient>
+        <filter id="tp-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="24" />
+        </filter>
+      </defs>
+      <circle cx="168" cy="82" r="58" fill="#22d3ee" fillOpacity="0.16" filter="url(#tp-glow)" />
+      <g transform="rotate(-6 165 86)">
+        <rect x="84" y="44" width="150" height="84" rx="16" fill="url(#tp-card)" />
+        <rect x="102" y="62" width="24" height="18" rx="4" fill="#a1a1aa" />
+        <rect x="102" y="96" width="72" height="8" rx="4" fill="#71717a" fillOpacity="0.5" />
+        <rect x="102" y="110" width="44" height="8" rx="4" fill="#71717a" fillOpacity="0.3" />
+      </g>
+      <g stroke="#ffffff" strokeWidth="7" strokeLinecap="round">
+        <path d="M252 64 A22 22 0 0 1 252 108" />
+        <path d="M264 56 A34 34 0 0 1 264 116" />
+        <path d="M276 48 A46 46 0 0 1 276 124" />
+      </g>
+      <circle cx="214" cy="52" r="15" fill="#22c55e" />
+      <path d="M207 52l5 5 9-10" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
 }
 
-function Stars({ count = 5 }: { count?: number }) {
+function CrmArt() {
   return (
-    <div className="flex gap-0.5 text-white">
-      {Array.from({ length: count }).map((_, i) => (
-        <svg key={i} className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="currentColor" aria-hidden>
-          <path d="M12 2l2.9 6.3 6.9.6-5.2 4.6 1.6 6.8L12 17.3 5.8 20.9l1.6-6.8L2.2 8.9l6.9-.6z" />
-        </svg>
-      ))}
-    </div>
+    <svg className={ART_CLASS} viewBox="0 0 360 160" fill="none" aria-hidden>
+      <defs>
+        <filter id="crm-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="26" />
+        </filter>
+      </defs>
+      <circle cx="180" cy="80" r="60" fill="#ffffff" fillOpacity="0.08" filter="url(#crm-glow)" />
+      <rect x="92" y="32" width="176" height="96" rx="14" fill="#0f0f12" stroke="#2a2a32" strokeWidth="1.5" />
+      {/* row 1 — field with toggle on */}
+      <rect x="110" y="50" width="52" height="8" rx="4" fill="#a1a1aa" fillOpacity="0.6" />
+      <rect x="214" y="46" width="38" height="16" rx="8" fill="#22c55e" />
+      <circle cx="244" cy="54" r="6" fill="#ffffff" />
+      {/* row 2 — field with toggle off */}
+      <rect x="110" y="76" width="64" height="8" rx="4" fill="#71717a" fillOpacity="0.6" />
+      <rect x="214" y="72" width="38" height="16" rx="8" fill="#2a2a32" />
+      <circle cx="224" cy="80" r="6" fill="#a1a1aa" />
+      {/* row 3 — custom tags */}
+      <rect x="110" y="100" width="36" height="14" rx="7" fill="#ffffff" fillOpacity="0.24" />
+      <rect x="152" y="100" width="36" height="14" rx="7" fill="#22c55e" fillOpacity="0.38" />
+      <rect x="194" y="100" width="36" height="14" rx="7" fill="#22d3ee" fillOpacity="0.38" />
+    </svg>
   );
 }
 
-/* ---------- small atoms ----------------------------------------------- */
-
-function Chip({ label, color }: { label: string; color: string }) {
+function PayrollArt() {
   return (
-    <span
-      className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-extrabold tracking-tight"
-      style={{ background: `${color}1F`, color }}
-    >
-      {label}
-    </span>
+    <svg className={ART_CLASS} viewBox="0 0 360 160" fill="none" aria-hidden>
+      <defs>
+        <filter id="pay-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="26" />
+        </filter>
+      </defs>
+      <circle cx="180" cy="92" r="56" fill="#22c55e" fillOpacity="0.16" filter="url(#pay-glow)" />
+      {/* coin stack */}
+      <ellipse cx="180" cy="116" rx="48" ry="14" fill="#52525b" />
+      <rect x="132" y="104" width="96" height="12" fill="#52525b" />
+      <ellipse cx="180" cy="104" rx="48" ry="14" fill="#71717a" />
+      <rect x="132" y="88" width="96" height="12" fill="#52525b" />
+      <ellipse cx="180" cy="88" rx="48" ry="14" fill="#71717a" />
+      <rect x="132" y="72" width="96" height="12" fill="#52525b" />
+      <ellipse cx="180" cy="72" rx="48" ry="14" fill="#ffffff" />
+      <text x="180" y="79" textAnchor="middle" fontSize="20" fontWeight={900} fill="#22c55e">
+        $
+      </text>
+      {/* growth marker */}
+      <circle cx="256" cy="54" r="15" fill="#22c55e" fillOpacity="0.18" />
+      <path d="M256 61v-13M250 54l6-6 6 6" stroke="#22c55e" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
   );
 }
 
-function StatusDot({ label }: { label: string }) {
+function SubscriptionsArt() {
   return (
-    <span
-      className="inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[11px] font-extrabold tracking-tight"
-      style={{ background: `${PULSE.green}1F`, color: PULSE.green }}
-    >
-      <span className="h-1.5 w-1.5 rounded-full" style={{ background: PULSE.green }} />
-      {label}
-    </span>
+    <svg className={ART_CLASS} viewBox="0 0 560 160" fill="none" aria-hidden>
+      <defs>
+        <linearGradient id="sub-card" x1="235" y1="52" x2="235" y2="108" gradientUnits="userSpaceOnUse">
+          <stop stopColor="#ffffff" />
+          <stop offset="1" stopColor="#e4e4e7" />
+        </linearGradient>
+        <filter id="sub-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="30" />
+        </filter>
+      </defs>
+      <circle cx="280" cy="80" r="68" fill="#22d3ee" fillOpacity="0.14" filter="url(#sub-glow)" />
+      {/* recurring ghost cards — faded duplicates of the center card */}
+      <g opacity="0.4">
+        <rect x="118" y="60" width="82" height="44" rx="10" fill="#ffffff" fillOpacity="0.1" />
+        <rect x="130" y="70" width="15" height="11" rx="3" fill="#71717a" />
+        <rect x="130" y="90" width="42" height="5" rx="2.5" fill="#71717a" fillOpacity="0.6" />
+      </g>
+      <g opacity="0.4">
+        <rect x="360" y="60" width="82" height="44" rx="10" fill="#ffffff" fillOpacity="0.1" />
+        <rect x="372" y="70" width="15" height="11" rx="3" fill="#71717a" />
+        <rect x="372" y="90" width="42" height="5" rx="2.5" fill="#71717a" fillOpacity="0.6" />
+      </g>
+      {/* refresh arrows */}
+      <g stroke="#22d3ee" strokeWidth="6" strokeLinecap="round">
+        <path d="M232 38A64 64 0 0 1 340 58" />
+        <path d="M328 122A64 64 0 0 1 220 102" />
+      </g>
+      <path d="M340 58l-13-3 4-12z" fill="#22d3ee" />
+      <path d="M220 102l13 3-4 12z" fill="#22d3ee" />
+      {/* center card */}
+      <rect x="235" y="52" width="90" height="56" rx="12" fill="url(#sub-card)" />
+      <rect x="248" y="64" width="18" height="13" rx="3" fill="#a1a1aa" />
+      <rect x="248" y="92" width="52" height="6" rx="3" fill="#71717a" fillOpacity="0.5" />
+    </svg>
   );
 }
 
-function Avatar({ initial }: { initial: string }) {
+function ReviewsArt() {
   return (
-    <div
-      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[12px] font-black"
-      style={{
-        background: `${PULSE.cyan}1F`,
-        color: PULSE.cyan,
-        border: `1px solid ${PULSE.cyan}33`,
-      }}
-    >
-      {initial}
-    </div>
+    <svg className={ART_CLASS} viewBox="0 0 560 160" fill="none" aria-hidden>
+      <defs>
+        <filter id="rev-glow" x="-50%" y="-50%" width="200%" height="200%">
+          <feGaussianBlur stdDeviation="30" />
+        </filter>
+      </defs>
+      <circle cx="280" cy="76" r="70" fill="#ffffff" fillOpacity="0.09" filter="url(#rev-glow)" />
+      {/* side bubble — review text */}
+      <rect x="70" y="58" width="92" height="48" rx="14" fill="#0f0f12" stroke="#2a2a32" strokeWidth="1.5" />
+      <rect x="84" y="72" width="64" height="6" rx="3" fill="#a1a1aa" fillOpacity="0.45" />
+      <rect x="84" y="84" width="46" height="6" rx="3" fill="#a1a1aa" fillOpacity="0.3" />
+      {/* main bubble — 5 stars */}
+      <path d="M224 100l-2 20 20-18z" fill="#0f0f12" />
+      <rect x="190" y="38" width="180" height="64" rx="18" fill="#0f0f12" stroke="#2a2a32" strokeWidth="1.5" />
+      <Star cx={220} cy={70} size={22} />
+      <Star cx={250} cy={70} size={22} />
+      <Star cx={280} cy={70} size={22} />
+      <Star cx={310} cy={70} size={22} />
+      <Star cx={340} cy={70} size={22} />
+      {/* side bubble — mini stars */}
+      <rect x="398" y="58" width="92" height="48" rx="14" fill="#0f0f12" stroke="#2a2a32" strokeWidth="1.5" />
+      <Star cx={410} cy={82} size={12} opacity={0.85} />
+      <Star cx={427} cy={82} size={12} opacity={0.85} />
+      <Star cx={444} cy={82} size={12} opacity={0.85} />
+      <Star cx={461} cy={82} size={12} opacity={0.85} />
+      <Star cx={478} cy={82} size={12} opacity={0.85} />
+    </svg>
   );
 }
+
+/* ---------- card ------------------------------------------------------- */
 
 function GlanceCard({
   title,
@@ -100,12 +216,14 @@ function GlanceCard({
 }) {
   return (
     <div
-      className={`bg-card border border-line rounded-2xl p-6 flex flex-col ${
+      className={`bg-card border border-line rounded-2xl p-5 flex flex-col ${
         span === "narrow" ? "lg:col-span-2" : "lg:col-span-3"
       }`}
     >
-      <div className="rounded-xl bg-elevated border border-line p-4">{children}</div>
-      <h3 className="mt-6 text-[18px] font-extrabold tracking-tight text-white">
+      <div className="rounded-xl bg-elevated border border-line overflow-hidden">
+        {children}
+      </div>
+      <h3 className="mt-5 text-[18px] font-extrabold tracking-tight text-white">
         {title}
       </h3>
       <p className="mt-2 text-[13px] font-bold text-zinc-400 leading-relaxed">
@@ -136,138 +254,44 @@ export function GlanceStrip() {
         </div>
 
         <div className="mt-16 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-5">
-          {/* Tap to pay */}
           <GlanceCard
             span="narrow"
             title="Tap to Pay"
             blurb="Take a card in person with a tap — no reader, no extra hardware. Funds settle straight to your account."
           >
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <div className="text-[11px] font-bold text-zinc-500">Charged</div>
-                <div className="mt-1 text-[22px] font-black tracking-tight leading-none tabular-nums text-white">
-                  $349.00
-                </div>
-                <div className="mt-2.5">
-                  <StatusDot label="Approved" />
-                </div>
-              </div>
-              <Contactless className="h-10 w-10 text-white" />
-            </div>
+            <TapToPayArt />
           </GlanceCard>
 
-          {/* CRM customization */}
           <GlanceCard
             span="narrow"
             title="Customizable CRM"
             blurb="Custom fields, tags, and statuses that bend the CRM to exactly how your business runs."
           >
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between">
-                <span className="text-[12px] font-bold text-zinc-500">Gate code</span>
-                <span className="text-[12px] font-bold tabular-nums text-white">#4821</span>
-              </div>
-              <div className="flex items-center justify-between">
-                <span className="text-[12px] font-bold text-zinc-500">Preferred day</span>
-                <span className="text-[12px] font-bold text-white">Tue AM</span>
-              </div>
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                <Chip label="VIP" color={PULSE.violet} />
-                <Chip label="Recurring" color={PULSE.green} />
-                <Chip label="Net 14" color={PULSE.cyan} />
-              </div>
-            </div>
+            <CrmArt />
           </GlanceCard>
 
-          {/* Payroll */}
           <GlanceCard
             span="narrow"
             title="Built-in Payroll"
             blurb="Commission and hourly pay calculated straight from closed jobs — run it in a click."
           >
-            <div className="flex items-center gap-3">
-              <Avatar initial="M" />
-              <div className="min-w-0 flex-1">
-                <div className="text-[13px] font-bold tracking-tight text-white">
-                  Marcus B.
-                </div>
-                <div className="text-[11px] font-bold text-zinc-500">
-                  41 jobs · 12% commission
-                </div>
-              </div>
-              <div className="text-[14px] font-black tabular-nums text-white">$1,420</div>
-            </div>
-            <div className="mt-3 flex items-center justify-between border-t border-line pt-3">
-              <span className="text-[12px] font-bold text-zinc-500">Total payroll</span>
-              <span className="text-[14px] font-black tabular-nums text-white">$8,940</span>
-            </div>
+            <PayrollArt />
           </GlanceCard>
 
-          {/* Subscriptions */}
           <GlanceCard
             span="wide"
             title="Seamless Subscriptions"
             blurb="Recurring plans with a card on file and auto-pay. Predictable revenue, zero chasing."
           >
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="text-[13px] font-bold tracking-tight text-white">
-                    Monthly Window Plan
-                  </div>
-                  <div className="text-[11px] font-bold tabular-nums text-zinc-500">
-                    Visa •••• 4242 · Auto-pay · Next Jun 1
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <span className="text-[13px] font-black tabular-nums text-white">$89/mo</span>
-                  <StatusDot label="Active" />
-                </div>
-              </div>
-              <div className="flex items-center justify-between gap-3 border-t border-line pt-2.5">
-                <div className="min-w-0">
-                  <div className="text-[13px] font-bold tracking-tight text-white">
-                    Quarterly Exterior Plan
-                  </div>
-                  <div className="text-[11px] font-bold tabular-nums text-zinc-500">
-                    Visa •••• 8821 · Auto-pay · Next Aug 1
-                  </div>
-                </div>
-                <div className="flex shrink-0 items-center gap-2">
-                  <span className="text-[13px] font-black tabular-nums text-white">$240/qtr</span>
-                  <StatusDot label="Active" />
-                </div>
-              </div>
-            </div>
+            <SubscriptionsArt />
           </GlanceCard>
 
-          {/* Reviews */}
           <GlanceCard
             span="wide"
             title="Reviews on Autopilot"
             blurb="Collect and showcase customer reviews automatically after every completed job."
           >
-            <div className="flex items-center gap-5">
-              <div className="shrink-0 text-center">
-                <div className="text-[34px] font-black tracking-tight leading-none tabular-nums text-white">
-                  4.9
-                </div>
-                <div className="mt-2 flex justify-center">
-                  <Stars />
-                </div>
-                <div className="mt-1.5 text-[11px] font-bold text-zinc-500">128 reviews</div>
-              </div>
-              <div className="min-w-0 border-l border-line pl-5">
-                <Stars />
-                <p className="mt-2 text-[12.5px] font-bold leading-snug text-zinc-300">
-                  “Best window cleaners we&apos;ve used — booking and paying was
-                  effortless.”
-                </p>
-                <div className="mt-1.5 text-[11px] font-bold text-zinc-500">
-                  Olivia R. · Verified customer
-                </div>
-              </div>
-            </div>
+            <ReviewsArt />
           </GlanceCard>
         </div>
       </div>
