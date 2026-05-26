@@ -1284,10 +1284,15 @@ mobile behavior).
 ### 8.21 Door-knock map pins
 
 The markers rendered on `/map` for each door-knock pin status follow a
-"Flyra-style" treatment: a flat 28px filled circle in the status color,
-a **filled** white glyph (`textColor` = `#fff` for every status) at 16px,
-no border, and a soft outer glow built from layered `box-shadow` rings
-using the status color at decreasing opacity.
+"Flyra-style" treatment: a flat 26px filled circle in the status color,
+a **filled** white glyph (`textColor` = `#fff` for every status) at
+~15px, no border, and a soft outer glow built from layered `box-shadow`
+rings using the status color at decreasing opacity. The glow is
+intentionally tight — a 1px color ring, one small blurred ring, and a
+drop shadow — so a pin reads at roughly its own 26px footprint rather
+than ballooning into an ~80px halo that dwarfs the house it sits on,
+especially at lower zooms where the markers are a fixed screen size
+while the buildings shrink.
 
 Customer markers share the same treatment with a fixed two-state
 palette: red (`#dc2626`) for one-time / non-subscription customers,
@@ -1303,18 +1308,20 @@ Source: `makeMarkerElement` and `makeCustomerMarkerElement` in
 
 | Token            | Value                                                                                                              |
 | ---------------- | ------------------------------------------------------------------------------------------------------------------ |
-| Diameter         | 28px                                                                                                               |
+| Diameter         | 26px                                                                                                               |
 | Background       | `PIN_STATUS[status].color`                                                                                         |
-| Icon             | `filledGlyphSvg(status, textColor, 16)` — filled solid glyph (not Lucide outline)                                  |
-| Icon color       | `PIN_STATUS[status].textColor` — `#fff` for every status |
+| Icon             | `filledGlyphSvg(status, textColor, 15)` — filled solid glyph (not Lucide outline)                                  |
+| Icon color       | `PIN_STATUS[status].textColor` — `#fff` for every status                                                           |
 | Outline          | None                                                                                                               |
-| Glow             | `0 0 0 1px {c}, 0 0 12px 2px {c}cc, 0 0 24px 4px {c}55, 0 2px 4px rgba(0,0,0,0.45)` where `{c}` is the status color |
+| Glow             | `0 0 0 1px {c}, 0 0 5px 1px {c}99, 0 1px 3px rgba(0,0,0,0.4)` where `{c}` is the status color                       |
 
 The same solid-fill treatment is mirrored on the pin swatches in the
 drop modal (`MapPinDropModal`) and the door-knock detail sheet
 (`MapDoorKnockSheet`): both render `filledGlyphSvg(status, textColor)`
-on a solid `color` circle, with the layered glow applied to the active
-swatch. The small status chips on Knocking Stats (`SalesStatsClient`
+on a solid `color` circle. The active swatch keeps the fuller layered
+glow (`0 0 12px 2px {c}cc, 0 0 24px 4px {c}55`) as a selection emphasis
+— those are fixed-size pickers, not the zoomable map, so they don't
+share the map markers' tightened always-on glow above. The small status chips on Knocking Stats (`SalesStatsClient`
 `PinTile`) and the Reports table header (`ReportsClient`) also fill
 solid in `color` but keep the Lucide outline icon in `textColor`, since
 a filled glyph is illegible at those sizes (≤14px).

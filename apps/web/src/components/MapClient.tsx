@@ -436,15 +436,14 @@ function makeMarkerElement(status: PinStatus): HTMLElement {
   const el = document.createElement("div");
   el.className = "mp-pin";
   el.style.cssText =
-    "width:28px;height:28px;border-radius:50%;" +
+    "width:26px;height:26px;border-radius:50%;" +
     `background:${meta.color};color:${meta.textColor};` +
     "box-shadow:" +
     `0 0 0 1px ${meta.color},` +
-    `0 0 12px 2px ${meta.color}cc,` +
-    `0 0 24px 4px ${meta.color}55,` +
-    "0 2px 4px rgba(0,0,0,0.45);" +
+    `0 0 5px 1px ${meta.color}99,` +
+    "0 1px 3px rgba(0,0,0,0.4);" +
     "display:flex;align-items:center;justify-content:center;cursor:pointer;";
-  el.innerHTML = filledGlyphSvg(status, meta.textColor, 16);
+  el.innerHTML = filledGlyphSvg(status, meta.textColor, 15);
   return el;
 }
 
@@ -463,20 +462,26 @@ function makeCustomerMarkerElement(c: CustomerPin): HTMLElement {
   const color = customerPinColor(c);
   const el = document.createElement("div");
   el.className = "mp-customer-pin";
+  // No inline `position` here: mapbox-gl positions every marker with
+  // `.mapboxgl-marker { position: absolute }` + an inline transform. Setting
+  // `position: relative` overrode that, dropping the marker into normal
+  // document flow so it stacked against its siblings and visibly drifted as
+  // clustering toggled markers' `display` on zoom. The absolutely-positioned
+  // glyph below still centers against this element — the marker is its own
+  // containing block via the mapbox transform.
   el.style.cssText =
-    "width:28px;height:28px;border-radius:50%;position:relative;" +
+    "width:26px;height:26px;border-radius:50%;" +
     `background:${color};color:#ffffff;` +
     "box-shadow:" +
     `0 0 0 1px ${color},` +
-    `0 0 12px 2px ${color}cc,` +
-    `0 0 24px 4px ${color}55,` +
-    "0 2px 4px rgba(0,0,0,0.45);" +
+    `0 0 5px 1px ${color}99,` +
+    "0 1px 3px rgba(0,0,0,0.4);" +
     "cursor:pointer;";
   // Material-style Person glyph: head circle + body trapezoid, total
   // bounding box (x: 4..20, y: 4..20) — symmetric about (12, 12). Absolute
   // centered so no flex / inline-baseline drift can pull it off-center.
   el.innerHTML =
-    '<svg viewBox="0 0 24 24" width="18" height="18" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" ' +
+    '<svg viewBox="0 0 24 24" width="16" height="16" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" ' +
     'style="display:block;position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);pointer-events:none;">' +
     '<circle cx="12" cy="8" r="4" fill="#ffffff"/>' +
     '<path fill="#ffffff" d="M12 14c-4.4 0-8 1.8-8 4v2h16v-2c0-2.2-3.6-4-8-4z"/>' +

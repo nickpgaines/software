@@ -143,12 +143,12 @@ export function MapMarketing() {
               left: `${p.x}%`,
               top: `${p.y}%`,
               transform: "translate(-50%, -50%)",
-              width: 28,
-              height: 28,
+              width: 26,
+              height: 26,
               borderRadius: "50%",
               background: meta.color,
               color: meta.textColor,
-              boxShadow: `0 0 0 1px ${meta.color}, 0 0 12px 2px ${meta.color}cc, 0 0 24px 4px ${meta.color}55, 0 2px 4px rgba(0,0,0,0.45)`,
+              boxShadow: `0 0 0 1px ${meta.color}, 0 0 5px 1px ${meta.color}99, 0 1px 3px rgba(0,0,0,0.4)`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -157,7 +157,7 @@ export function MapMarketing() {
             // map uses for its DOM markers, so the glyph + viewbox match
             // exactly.
             dangerouslySetInnerHTML={{
-              __html: filledGlyphSvg(p.status, meta.textColor, 16),
+              __html: filledGlyphSvg(p.status, meta.textColor, 15),
             }}
           />
         );
