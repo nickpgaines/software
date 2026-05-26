@@ -1268,10 +1268,9 @@ mobile behavior).
 
 The markers rendered on `/map` for each door-knock pin status follow a
 "Flyra-style" treatment: a flat 28px filled circle in the status color,
-a **filled** glyph at 16px in `textColor` (`#0f172a` on the light fills
-— not_home, not_qualified, do_not_contact, revisit — and `#fff` on the
-saturated ones), no border, and a soft outer glow built from layered
-`box-shadow` rings using the status color at decreasing opacity.
+a **filled** white glyph (`textColor` = `#fff` for every status) at 16px,
+no border, and a soft outer glow built from layered `box-shadow` rings
+using the status color at decreasing opacity.
 
 Customer markers share the same treatment with a fixed two-state
 palette: red (`#dc2626`) for one-time / non-subscription customers,
@@ -1290,7 +1289,7 @@ Source: `makeMarkerElement` and `makeCustomerMarkerElement` in
 | Diameter         | 28px                                                                                                               |
 | Background       | `PIN_STATUS[status].color`                                                                                         |
 | Icon             | `filledGlyphSvg(status, textColor, 16)` — filled solid glyph (not Lucide outline)                                  |
-| Icon color       | `PIN_STATUS[status].textColor` — `#0f172a` on the light fills (not_home, not_qualified, do_not_contact, revisit), `#fff` on the saturated ones |
+| Icon color       | `PIN_STATUS[status].textColor` — `#fff` for every status |
 | Outline          | None                                                                                                               |
 | Glow             | `0 0 0 1px {c}, 0 0 12px 2px {c}cc, 0 0 24px 4px {c}55, 0 2px 4px rgba(0,0,0,0.45)` where `{c}` is the status color |
 
