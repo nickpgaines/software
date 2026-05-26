@@ -48,7 +48,15 @@ import {
   submitTrustProduct,
 } from "@/lib/twilio-trust-hub";
 
-const CAMPAIGN_USECASE = "MIXED";
+// Sole-proprietor brands must register their campaign under the SOLE_PROPRIETOR
+// use case; everyone else registers as LOW_VOLUME — no external vetting, lowest
+// carrier fees, and ample for transactional traffic plus modest consented
+// blasts. A tenant that outgrows it is upgraded by vetting the brand (which
+// raises the carrier daily caps), not by editing this — a campaign's use case
+// is immutable once created.
+function campaignUseCase(brandType: "STANDARD" | "SOLE_PROPRIETOR"): string {
+  return brandType === "SOLE_PROPRIETOR" ? "SOLE_PROPRIETOR" : "LOW_VOLUME";
+}
 
 const CAMPAIGN_OPT_IN_KEYWORDS = ["START", "YES"];
 const CAMPAIGN_OPT_OUT_KEYWORDS = [
@@ -456,7 +464,10 @@ async function step(companyId: number): Promise<{
           customerProfileSid: company.twilio_customer_profile_sid!,
           trustProductSid: company.twilio_trust_product_sid!,
           brandType,
-          skipAutomaticSecondaryVetting: false,
+          // Skip the ~$40 external secondary vetting. It only buys higher
+          // carrier throughput/daily caps, which low-volume tenants never
+          // reach. Vet on demand later for a tenant that needs the headroom.
+          skipAutomaticSecondaryVetting: true,
         });
         brandSid = brand.sid;
         await persistState(companyId, "brand_pending", null, {
@@ -536,7 +547,7 @@ async function step(companyId: number): Promise<{
           description: buildCampaignDescription(registration.legal_company_name),
           messageSamples: buildMessageSamples(registration.legal_company_name),
           messageFlow: CAMPAIGN_MESSAGE_FLOW,
-          usAppToPersonUsecase: CAMPAIGN_USECASE,
+          usAppToPersonUsecase: campaignUseCase(brandType),
           hasEmbeddedLinks: true,
           hasEmbeddedPhone: false,
           optInKeywords: CAMPAIGN_OPT_IN_KEYWORDS,
