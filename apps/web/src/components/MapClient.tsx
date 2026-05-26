@@ -443,7 +443,7 @@ function makeMarkerElement(status: PinStatus): HTMLElement {
     `0 0 5px 1px ${meta.color}99,` +
     "0 1px 3px rgba(0,0,0,0.4);" +
     "display:flex;align-items:center;justify-content:center;cursor:pointer;";
-  el.innerHTML = filledGlyphSvg(status, meta.textColor, 18);
+  el.innerHTML = filledGlyphSvg(status, meta.textColor, 16);
   return el;
 }
 
