@@ -732,6 +732,16 @@ async function init(): Promise<void> {
       "INTEGER REFERENCES staff(id) ON DELETE SET NULL",
       estimateCols
     );
+    await alterAddColumn("estimates", "terms", "TEXT", estimateCols);
+    await alterAddColumn(
+      "estimates",
+      "sms_consent",
+      "INTEGER NOT NULL DEFAULT 0",
+      estimateCols
+    );
+    await alterAddColumn("estimates", "sms_consent_text", "TEXT", estimateCols);
+    await alterAddColumn("estimates", "sms_consent_at", "TEXT", estimateCols);
+    await alterAddColumn("estimates", "sms_consent_ip", "TEXT", estimateCols);
   }
 
   await _db.exec(`
@@ -1161,6 +1171,11 @@ async function init(): Promise<void> {
       signature_data TEXT,
       signature_name TEXT,
       signed_at      TEXT,
+      terms          TEXT,
+      sms_consent    INTEGER NOT NULL DEFAULT 0,
+      sms_consent_text TEXT,
+      sms_consent_at TEXT,
+      sms_consent_ip TEXT,
       sold_by_id     INTEGER REFERENCES staff(id) ON DELETE SET NULL,
       lead_source    TEXT,
       created_by     TEXT,
@@ -2507,6 +2522,11 @@ export type Estimate = {
   signature_data: string | null;
   signature_name: string | null;
   signed_at: string | null;
+  terms: string | null;
+  sms_consent: number;
+  sms_consent_text: string | null;
+  sms_consent_at: string | null;
+  sms_consent_ip: string | null;
   sold_by_id: number | null;
   lead_source: string | null;
   created_by: string | null;
