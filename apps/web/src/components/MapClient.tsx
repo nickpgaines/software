@@ -429,25 +429,22 @@ function statusOf(pin: ApiPin): PinStatus {
 }
 
 function makeMarkerElement(status: PinStatus): HTMLElement {
-  // Holographic pin: translucent colored fill, colored border, brighter
-  // same-color icon — mirrors the knocking stats tiles so the map and the
-  // stats read as the same visual family.
-  // See DESIGN_SYSTEM.md §8 "Door-knock map pins".
+  // Flyra-style pin: solid color circle, filled glyph, no border, soft
+  // colored glow built from layered box-shadows at decreasing opacity.
+  // See DESIGN_SYSTEM.md §8.21 "Door-knock map pins".
   const meta = PIN_STATUS[status];
   const el = document.createElement("div");
   el.className = "mp-pin";
   el.style.cssText =
-    "width:30px;height:30px;border-radius:50%;" +
-    `background:${meta.color}26;` +
-    `border:1.5px solid ${meta.color};` +
-    `color:${meta.color};` +
-    "backdrop-filter:blur(6px);" +
-    "-webkit-backdrop-filter:blur(6px);" +
+    "width:28px;height:28px;border-radius:50%;" +
+    `background:${meta.color};color:${meta.textColor};` +
     "box-shadow:" +
-    `0 0 14px ${meta.color}66,` +
-    "0 2px 6px rgba(0,0,0,0.45);" +
+    `0 0 0 1px ${meta.color},` +
+    `0 0 12px 2px ${meta.color}cc,` +
+    `0 0 24px 4px ${meta.color}55,` +
+    "0 2px 4px rgba(0,0,0,0.45);" +
     "display:flex;align-items:center;justify-content:center;cursor:pointer;";
-  el.innerHTML = filledGlyphSvg(status, meta.color, 16);
+  el.innerHTML = filledGlyphSvg(status, meta.textColor, 16);
   return el;
 }
 
