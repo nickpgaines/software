@@ -54,16 +54,17 @@ export async function ensureTenantSubaccount(args: {
   return { accountSid: sub.sid, authToken: sub.auth_token };
 }
 
-// Platform-managed Twilio. The platform owns a single master account
-// (TWILIO_MASTER_ACCOUNT_SID / TWILIO_MASTER_AUTH_TOKEN) and a single
-// Messaging Service tied to one A2P brand + campaign. All tenant numbers
-// live in the master account and are added to the Messaging Service so they
-// inherit campaign approval and carrier compliance.
+// Platform-managed Twilio. The master account (TWILIO_MASTER_ACCOUNT_SID /
+// TWILIO_MASTER_AUTH_TOKEN) holds the shared trial pool, which sends one-way
+// for trial + paid_pending tenants. Paid (paid_approved) tenants each get
+// their OWN Twilio subaccount with their own A2P brand + campaign + dedicated
+// number — see sms-registration.ts and sendDedicatedSms below. That per-tenant
+// isolation is what lets us vet or suspend one tenant without touching others.
 //
-// Subaccount-per-tenant was the original plan but is incompatible with one
-// shared A2P campaign — Messaging Services and the numbers in them must
-// belong to the same Twilio account. Per-tenant billing isolation is now
-// metered inside our own app rather than at the Twilio account boundary.
+// NOTE: provisionTwilioForCompany / sendPlatformSms / hasPlatformSms below are
+// legacy from an earlier "one shared brand+campaign for everyone" design. They
+// are no longer wired into the send path (sendCompanySms routes paid tenants to
+// sendDedicatedSms) and are kept only until that dead path is removed.
 
 export type PlatformConfig = {
   masterAccountSid: string;
@@ -361,6 +362,15 @@ async function postTwilioMessage(args: {
   form.set("MessagingServiceSid", args.messagingServiceSid);
   form.set("Body", args.body);
   if (args.from) form.set("From", args.from);
+  // Ask Twilio to call us back with the async delivery outcome so a filtered
+  // or failed message stops looking "sent". Handled by /api/messages/status.
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (appUrl) {
+    form.set(
+      "StatusCallback",
+      `${appUrl.replace(/\/$/, "")}/api/messages/status`
+    );
+  }
 
   const auth = Buffer.from(
     `${args.accountSid}:${args.authToken}`

@@ -189,6 +189,14 @@ export async function sendSms(args: {
   form.set("To", to);
   form.set("From", settings.from_number!);
   form.set("Body", body);
+  // Capture the async delivery outcome (see /api/messages/status).
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL?.trim();
+  if (appUrl) {
+    form.set(
+      "StatusCallback",
+      `${appUrl.replace(/\/$/, "")}/api/messages/status`
+    );
+  }
 
   const auth = Buffer.from(
     `${settings.account_sid}:${settings.auth_token}`
