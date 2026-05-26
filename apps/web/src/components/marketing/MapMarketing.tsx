@@ -157,7 +157,7 @@ export function MapMarketing() {
             // map uses for its DOM markers, so the glyph + viewbox match
             // exactly.
             dangerouslySetInnerHTML={{
-              __html: filledGlyphSvg(p.status, meta.textColor, 15),
+              __html: filledGlyphSvg(p.status, meta.textColor, 18),
             }}
           />
         );

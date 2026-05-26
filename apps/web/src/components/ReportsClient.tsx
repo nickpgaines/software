@@ -1002,7 +1002,7 @@ function SalesPanel({ qs }: { qs: string }) {
                               boxShadow: `0 0 0 1px ${c.color}, 0 0 6px ${c.color}aa`,
                             }}
                           >
-                            <Icon className="w-2.5 h-2.5" style={{ color: c.textColor }} />
+                            <Icon className="w-3 h-3" style={{ color: c.textColor }} />
                           </span>
                           {c.label}
                         </span>

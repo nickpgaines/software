@@ -1285,14 +1285,16 @@ mobile behavior).
 
 The markers rendered on `/map` for each door-knock pin status follow a
 "Flyra-style" treatment: a flat 26px filled circle in the status color,
-a **filled** white glyph (`textColor` = `#fff` for every status) at
-~15px, no border, and a soft outer glow built from layered `box-shadow`
-rings using the status color at decreasing opacity. The glow is
-intentionally tight — a 1px color ring, one small blurred ring, and a
-drop shadow — so a pin reads at roughly its own 26px footprint rather
-than ballooning into an ~80px halo that dwarfs the house it sits on,
-especially at lower zooms where the markers are a fixed screen size
-while the buildings shrink.
+a white glyph (`textColor` = `#fff` for every status) at ~18px, no
+border, and a tight outer glow — a 1px color ring, one small blurred
+ring, and a drop shadow — kept tight so a pin reads at roughly its own
+26px footprint rather than ballooning into an ~80px halo that dwarfs the
+house it sits on, especially at lower zooms where the markers are a
+fixed screen size while the buildings shrink. Most glyphs are **filled**
+silhouettes; `referral` (handshake) and `not_qualified` (a customer
+figure with a diagonal slash) are inherently line art and render as
+white **strokes**. `do_not_contact` uses a near-black fill (`#0f172a`) —
+its glow reads as a plain dark circle behind the white skull.
 
 Customer markers share the same treatment with a fixed two-state
 palette: red (`#dc2626`) for one-time / non-subscription customers,
@@ -1310,7 +1312,7 @@ Source: `makeMarkerElement` and `makeCustomerMarkerElement` in
 | ---------------- | ------------------------------------------------------------------------------------------------------------------ |
 | Diameter         | 26px                                                                                                               |
 | Background       | `PIN_STATUS[status].color`                                                                                         |
-| Icon             | `filledGlyphSvg(status, textColor, 15)` — filled solid glyph (not Lucide outline)                                  |
+| Icon             | `filledGlyphSvg(status, textColor, 18)` — filled solid glyph (stroke line art for `referral` / `not_qualified`)    |
 | Icon color       | `PIN_STATUS[status].textColor` — `#fff` for every status                                                           |
 | Outline          | None                                                                                                               |
 | Glow             | `0 0 0 1px {c}, 0 0 5px 1px {c}99, 0 1px 3px rgba(0,0,0,0.4)` where `{c}` is the status color                       |
@@ -1324,7 +1326,7 @@ glow (`0 0 12px 2px {c}cc, 0 0 24px 4px {c}55`) as a selection emphasis
 share the map markers' tightened always-on glow above. The small status chips on Knocking Stats (`SalesStatsClient`
 `PinTile`) and the Reports table header (`ReportsClient`) also fill
 solid in `color` but keep the Lucide outline icon in `textColor`, since
-a filled glyph is illegible at those sizes (≤14px).
+a filled glyph is illegible at those small chip sizes.
 
 The Lucide outline icons attached to each `PIN_STATUS` entry remain the
 source for the icon strip (`MapIconStrip`), the pin popup title, and the

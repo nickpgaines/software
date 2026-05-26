@@ -193,7 +193,7 @@ export default function MapDoorKnockSheet({
                         opacity: active ? 1 : 0.6,
                       }}
                       dangerouslySetInnerHTML={{
-                        __html: filledGlyphSvg(key, meta.textColor, 18),
+                        __html: filledGlyphSvg(key, meta.textColor, 23),
                       }}
                     />
                     <span className="text-[11px] font-medium text-zinc-300 text-center leading-tight">
