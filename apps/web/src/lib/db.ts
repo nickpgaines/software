@@ -742,6 +742,11 @@ async function init(): Promise<void> {
     await alterAddColumn("estimates", "sms_consent_text", "TEXT", estimateCols);
     await alterAddColumn("estimates", "sms_consent_at", "TEXT", estimateCols);
     await alterAddColumn("estimates", "sms_consent_ip", "TEXT", estimateCols);
+    await alterAddColumn("estimates", "accept_token", "TEXT", estimateCols);
+    await _db.exec(
+      `CREATE UNIQUE INDEX IF NOT EXISTS idx_estimates_accept_token
+         ON estimates(accept_token) WHERE accept_token IS NOT NULL`
+    );
   }
 
   await _db.exec(`
@@ -1176,6 +1181,7 @@ async function init(): Promise<void> {
       sms_consent_text TEXT,
       sms_consent_at TEXT,
       sms_consent_ip TEXT,
+      accept_token   TEXT,
       sold_by_id     INTEGER REFERENCES staff(id) ON DELETE SET NULL,
       lead_source    TEXT,
       created_by     TEXT,
@@ -1184,6 +1190,8 @@ async function init(): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS idx_estimates_customer ON estimates(customer_id);
     CREATE INDEX IF NOT EXISTS idx_estimates_status ON estimates(status);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_estimates_accept_token
+      ON estimates(accept_token) WHERE accept_token IS NOT NULL;
 
     CREATE TABLE IF NOT EXISTS estimate_items (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2527,6 +2535,7 @@ export type Estimate = {
   sms_consent_text: string | null;
   sms_consent_at: string | null;
   sms_consent_ip: string | null;
+  accept_token: string | null;
   sold_by_id: number | null;
   lead_source: string | null;
   created_by: string | null;

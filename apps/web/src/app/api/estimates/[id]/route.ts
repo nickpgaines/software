@@ -8,6 +8,7 @@ import {
 import { getSessionContext } from "@/lib/auth";
 import { buildSmsConsentText } from "@/lib/sms-consent";
 import { normalizeUSPhone } from "@/lib/sms";
+import { randomBytes } from "node:crypto";
 
 export const dynamic = "force-dynamic";
 
@@ -48,7 +49,23 @@ export async function GET(
       .get<{ name: string }>(estimate.sold_by_id);
     sold_by_name = s?.name ?? null;
   }
-  return NextResponse.json({ ...estimate, items, sold_by_name });
+  // Ensure an opaque accept token exists so the detail page can link to the
+  // public signature/acceptance page (rep's device in person, or sent link).
+  let acceptToken = estimate.accept_token;
+  if (!acceptToken) {
+    acceptToken = randomBytes(24).toString("base64url");
+    await db
+      .prepare(
+        "UPDATE estimates SET accept_token = ? WHERE id = ? AND company_id = ?"
+      )
+      .run(acceptToken, id, ctx.companyId);
+  }
+  return NextResponse.json({
+    ...estimate,
+    accept_token: acceptToken,
+    items,
+    sold_by_name,
+  });
 }
 
 export async function PUT(

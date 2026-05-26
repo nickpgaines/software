@@ -1058,6 +1058,23 @@ slots without losing the canonical defaults.
 so the library's structural CSS (grid layout, focus rings) is applied;
 all visual styling is overridden via the `classNames` prop.
 
+#### 8.15.17 `SignaturePad`
+
+Defined: `components/ui/signature-pad.tsx`. Hand-authored (no shadcn
+registry) — captures a drawn signature on a `<canvas>` via Pointer
+Events, so one path covers mouse, touch (tablet at the door), and
+stylus. Used by the public estimate acceptance page
+(`/estimates/accept/[token]`).
+
+**Canonical visual**: `w-full h-40 rounded-xl border border-line-strong
+bg-black` canvas (form-control radius §6) with white 2px strokes for
+visibility on the dark surface, plus a ghost `Clear` button (§8.15.1)
+right-aligned beneath it.
+
+**Props**: `onChange(dataUrl: string | null)` — fires a PNG data URL on
+each completed stroke and `null` on clear; optional `className` on the
+wrapper.
+
 ### 8.16 `LineItemsSection`
 
 Defined: `components/LineItemsSection.tsx`. The shared "Line Items"
