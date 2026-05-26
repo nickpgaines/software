@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import CustomerCard from "@/components/jobs/CustomerCard";
 
 type Invoice = {
   id: number;
@@ -40,6 +40,10 @@ type Customer = {
   name: string;
   phone: string | null;
   email: string | null;
+  address: string | null;
+  formatted_address: string | null;
+  latitude: number | null;
+  longitude: number | null;
 };
 
 function formatPrice(cents: number) {
@@ -143,33 +147,14 @@ export default function InvoiceDetailClient({ id }: { id: number }) {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 items-start">
         <div className="space-y-4">
-          <Card>
-            <CardHeader>
-              <h2 className="text-base font-extrabold text-white tracking-tight">
-                Customer
-              </h2>
-            </CardHeader>
-            {customer ? (
-              <div className="space-y-1 text-sm">
-                <Link
-                  href={`/customers/${customer.id}`}
-                  className="font-bold text-white tracking-tight hover:underline"
-                >
-                  {customer.name}
-                </Link>
-                {customer.phone && (
-                  <div className="text-zinc-400">{customer.phone}</div>
-                )}
-                {customer.email && (
-                  <div className="text-zinc-400">{customer.email}</div>
-                )}
-              </div>
-            ) : (
-              <div className="text-sm text-zinc-400">—</div>
-            )}
-          </Card>
+          {customer && (
+            <CustomerCard
+              customer={customer}
+              href={`/customers/${customer.id}`}
+            />
+          )}
 
           {(invoice.sold_by_name || invoice.lead_source) && (
             <Card>
