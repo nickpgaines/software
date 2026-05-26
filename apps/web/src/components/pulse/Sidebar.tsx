@@ -130,7 +130,7 @@ export function PulseSidebar({ initialMe = null }: { initialMe?: Me | null }) {
 
   return (
     <aside
-      className={`fixed left-0 top-0 bottom-0 w-60 z-40 flex flex-col px-3 py-4 transition-transform duration-200 ease-out md:translate-x-0 ${
+      className={`fixed left-0 top-0 bottom-0 w-60 z-40 flex flex-col px-3 pb-4 pt-[calc(env(safe-area-inset-top)+1rem)] transition-transform duration-200 ease-out md:translate-x-0 ${
         mobileOpen ? "translate-x-0" : "-translate-x-full"
       }`}
       style={{ background: PULSE.sidebar, borderRight: `1px solid ${PULSE.divider}` }}

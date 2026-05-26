@@ -31,17 +31,39 @@ export function MarketingFooter() {
             <Link href="/signup" className="hover:text-white transition-colors">
               Get Started
             </Link>
+            <Link href="/about" className="hover:text-white transition-colors">
+              About
+            </Link>
             <Link href="/terms" className="hover:text-white transition-colors">
               Terms
             </Link>
             <Link href="/privacy" className="hover:text-white transition-colors">
               Privacy
             </Link>
+            <Link
+              href="/sms-terms"
+              className="hover:text-white transition-colors"
+            >
+              SMS Terms
+            </Link>
+            <Link
+              href="/sms-consent"
+              className="hover:text-white transition-colors"
+            >
+              SMS Consent
+            </Link>
           </nav>
         </div>
 
         <div className="mt-10 pt-6 border-t border-line text-xs font-bold text-zinc-600">
-          © {new Date().getFullYear()} Forge. All rights reserved.
+          © {new Date().getFullYear()} NG Ventures, LLC. Forge is a product of
+          NG Ventures, LLC · Myrtle Beach, SC ·{" "}
+          <a
+            href="mailto:support@forgecrm.app"
+            className="hover:text-white transition-colors"
+          >
+            support@forgecrm.app
+          </a>
         </div>
       </div>
     </footer>

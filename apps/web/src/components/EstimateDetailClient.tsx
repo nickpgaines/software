@@ -22,6 +22,8 @@ type Estimate = {
   sold_by_name: string | null;
   sent_at: string | null;
   accepted_at: string | null;
+  accept_token: string | null;
+  terms: string | null;
   items: {
     id: number;
     title: string;
@@ -117,6 +119,21 @@ export default function EstimateDetailClient({ id }: { id: number }) {
           >
             Send Estimate
           </Button>
+          {estimate.accept_token && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() =>
+                window.open(
+                  `/estimates/accept/${estimate.accept_token}`,
+                  "_blank"
+                )
+              }
+              className="h-auto inline-flex items-center gap-1.5 border border-line bg-card hover:bg-black text-white rounded-full px-5 py-2.5 text-sm font-bold"
+            >
+              Signature Page
+            </Button>
+          )}
           {!isAccepted && (
             <Button
               type="button"

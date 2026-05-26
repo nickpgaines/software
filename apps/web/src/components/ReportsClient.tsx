@@ -782,11 +782,13 @@ const PIN_STATUS_COLS: {
   key: PinStatus;
   label: string;
   color: string;
+  textColor: string;
   status: PinStatus;
 }[] = PIN_STATUS_KEYS.map((key) => ({
   key,
   label: PIN_STATUS[key].label,
   color: PIN_STATUS[key].color,
+  textColor: PIN_STATUS[key].textColor,
   status: key,
 }));
 
@@ -996,11 +998,11 @@ function SalesPanel({ qs }: { qs: string }) {
                           <span
                             className="w-4 h-4 rounded-full inline-flex items-center justify-center"
                             style={{
-                              background: `${c.color}1F`,
-                              border: `1px solid ${c.color}55`,
+                              background: c.color,
+                              boxShadow: `0 0 0 1px ${c.color}, 0 0 6px ${c.color}aa`,
                             }}
                           >
-                            <Icon className="w-2.5 h-2.5" style={{ color: c.color }} />
+                            <Icon className="w-2.5 h-2.5" style={{ color: c.textColor }} />
                           </span>
                           {c.label}
                         </span>

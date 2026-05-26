@@ -1058,6 +1058,23 @@ slots without losing the canonical defaults.
 so the library's structural CSS (grid layout, focus rings) is applied;
 all visual styling is overridden via the `classNames` prop.
 
+#### 8.15.17 `SignaturePad`
+
+Defined: `components/ui/signature-pad.tsx`. Hand-authored (no shadcn
+registry) — captures a drawn signature on a `<canvas>` via Pointer
+Events, so one path covers mouse, touch (tablet at the door), and
+stylus. Used by the public estimate acceptance page
+(`/estimates/accept/[token]`).
+
+**Canonical visual**: `w-full h-40 rounded-xl border border-line-strong
+bg-black` canvas (form-control radius §6) with white 2px strokes for
+visibility on the dark surface, plus a ghost `Clear` button (§8.15.1)
+right-aligned beneath it.
+
+**Props**: `onChange(dataUrl: string | null)` — fires a PNG data URL on
+each completed stroke and `null` on clear; optional `className` on the
+wrapper.
+
 ### 8.16 `LineItemsSection`
 
 Defined: `components/LineItemsSection.tsx`. The shared "Line Items"
@@ -1268,13 +1285,14 @@ mobile behavior).
 
 The markers rendered on `/map` for each door-knock pin status follow a
 "Flyra-style" treatment: a flat 26px filled circle in the status color,
-a **filled** white (or `#0f172a` on yellow) glyph at ~15px, no border,
-and a soft outer glow built from layered `box-shadow` rings using the
-status color at decreasing opacity. The glow is intentionally tight — a
-single small ring plus a drop shadow — so a pin reads at roughly its own
-26px footprint rather than ballooning into an ~80px halo that dwarfs the
-house it sits on, especially at lower zooms where the markers are a
-fixed screen size while the buildings shrink.
+a **filled** white glyph (`textColor` = `#fff` for every status) at
+~15px, no border, and a soft outer glow built from layered `box-shadow`
+rings using the status color at decreasing opacity. The glow is
+intentionally tight — a 1px color ring, one small blurred ring, and a
+drop shadow — so a pin reads at roughly its own 26px footprint rather
+than ballooning into an ~80px halo that dwarfs the house it sits on,
+especially at lower zooms where the markers are a fixed screen size
+while the buildings shrink.
 
 Customer markers share the same treatment with a fixed two-state
 palette: red (`#dc2626`) for one-time / non-subscription customers,
@@ -1293,15 +1311,24 @@ Source: `makeMarkerElement` and `makeCustomerMarkerElement` in
 | Diameter         | 26px                                                                                                               |
 | Background       | `PIN_STATUS[status].color`                                                                                         |
 | Icon             | `filledGlyphSvg(status, textColor, 15)` — filled solid glyph (not Lucide outline)                                  |
-| Icon color       | `PIN_STATUS[status].textColor` (`#fff` everywhere except `not_home` which uses `#0f172a` on the yellow background) |
+| Icon color       | `PIN_STATUS[status].textColor` — `#fff` for every status                                                           |
 | Outline          | None                                                                                                               |
-| Glow (customer)  | `0 0 0 1px {c}, 0 0 5px 1px {c}99, 0 1px 3px rgba(0,0,0,0.4)` where `{c}` is the status color                       |
-| Glow (door-knock)| `0 0 5px {c}55, 0 1px 3px rgba(0,0,0,0.4)` (paired with the translucent `{c}26` fill + `1.5px {c}` border)          |
+| Glow             | `0 0 0 1px {c}, 0 0 5px 1px {c}99, 0 1px 3px rgba(0,0,0,0.4)` where `{c}` is the status color                       |
 
-The Lucide outline icons still attached to each `PIN_STATUS` entry
-remain the source for surrounding UI chrome — the icon strip
-(`MapIconStrip`), drop modal (`MapPinDropModal`), and pin popup title.
-Only the map markers themselves use the filled glyphs.
+The same solid-fill treatment is mirrored on the pin swatches in the
+drop modal (`MapPinDropModal`) and the door-knock detail sheet
+(`MapDoorKnockSheet`): both render `filledGlyphSvg(status, textColor)`
+on a solid `color` circle. The active swatch keeps the fuller layered
+glow (`0 0 12px 2px {c}cc, 0 0 24px 4px {c}55`) as a selection emphasis
+— those are fixed-size pickers, not the zoomable map, so they don't
+share the map markers' tightened always-on glow above. The small status chips on Knocking Stats (`SalesStatsClient`
+`PinTile`) and the Reports table header (`ReportsClient`) also fill
+solid in `color` but keep the Lucide outline icon in `textColor`, since
+a filled glyph is illegible at those sizes (≤14px).
+
+The Lucide outline icons attached to each `PIN_STATUS` entry remain the
+source for the icon strip (`MapIconStrip`), the pin popup title, and the
+small stat/report chips above.
 
 To add a new pin status: add a row to `PIN_STATUS` with its color/icon
 plus a matching `case` in `filledGlyphSvg` returning the solid-fill

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { OBJECTIONS } from "@/lib/map-status";
-import { PIN_STATUS, PIN_STATUS_KEYS } from "@/lib/map-pin-colors";
+import { PIN_STATUS, PIN_STATUS_KEYS, filledGlyphSvg } from "@/lib/map-pin-colors";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -164,7 +164,13 @@ export default function MapDoorKnockSheet({
               {PIN_STATUS_KEYS.map((key) => {
                 const meta = PIN_STATUS[key];
                 const active = status === key;
-                const Icon = meta.icon;
+                // Solid-fill swatch mirroring the map marker (§8.21): solid
+                // colored circle, filled glyph, layered glow when active.
+                const glow =
+                  `0 0 0 1px ${meta.color},` +
+                  `0 0 12px 2px ${meta.color}cc,` +
+                  `0 0 24px 4px ${meta.color}55,` +
+                  `0 2px 4px rgba(0,0,0,0.45)`;
                 return (
                   <Button
                     key={key}
@@ -181,17 +187,15 @@ export default function MapDoorKnockSheet({
                     <span
                       className="w-9 h-9 rounded-full flex items-center justify-center transition-all"
                       style={{
-                        background: `${meta.color}26`,
-                        border: `1.5px solid ${meta.color}`,
-                        color: meta.color,
-                        boxShadow: active
-                          ? `0 0 16px ${meta.color}80`
-                          : "none",
+                        backgroundColor: meta.color,
+                        color: meta.textColor,
+                        boxShadow: active ? glow : "none",
                         opacity: active ? 1 : 0.6,
                       }}
-                    >
-                      <Icon className="w-4 h-4" />
-                    </span>
+                      dangerouslySetInnerHTML={{
+                        __html: filledGlyphSvg(key, meta.textColor, 18),
+                      }}
+                    />
                     <span className="text-[11px] font-medium text-zinc-300 text-center leading-tight">
                       {meta.label}
                     </span>
