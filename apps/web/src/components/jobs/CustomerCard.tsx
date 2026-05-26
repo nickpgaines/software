@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { APIProvider, Map, Marker } from "@vis.gl/react-google-maps";
 import { Button } from "@/components/ui/button";
 
@@ -69,9 +70,14 @@ async function geocode(
 export default function CustomerCard({
   customer,
   onRemove,
+  href,
 }: {
   customer: CustomerCardCustomer;
-  onRemove: () => void;
+  // Optional: when omitted (e.g. on the estimate detail page) the Remove
+  // control is hidden and the card reads as a fixed customer summary.
+  onRemove?: () => void;
+  // Optional: links the customer name to their profile.
+  href?: string;
 }) {
   const [geo, setGeo] = useState<GeocodeState>({ status: "idle" });
 
@@ -145,19 +151,30 @@ export default function CustomerCard({
         <div className="p-5 space-y-3">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <h3 className="text-page-title text-white truncate">
-                {customer.name || "Customer"}
-              </h3>
+              {href ? (
+                <Link
+                  href={href}
+                  className="text-page-title text-white truncate hover:underline block"
+                >
+                  {customer.name || "Customer"}
+                </Link>
+              ) : (
+                <h3 className="text-page-title text-white truncate">
+                  {customer.name || "Customer"}
+                </h3>
+              )}
             </div>
-            <Button
-              variant="ghost"
-              type="button"
-              onClick={onRemove}
-              className="h-auto p-0 text-xs text-zinc-400 hover:text-rose-600 border border-line hover:border-rose-200 rounded-full px-3 py-1.5 whitespace-nowrap"
-              aria-label="Remove selected customer"
-            >
-              Remove
-            </Button>
+            {onRemove && (
+              <Button
+                variant="ghost"
+                type="button"
+                onClick={onRemove}
+                className="h-auto p-0 text-xs text-zinc-400 hover:text-rose-600 border border-line hover:border-rose-200 rounded-full px-3 py-1.5 whitespace-nowrap"
+                aria-label="Remove selected customer"
+              >
+                Remove
+              </Button>
+            )}
           </div>
 
           <dl className="space-y-2.5 text-sm">
