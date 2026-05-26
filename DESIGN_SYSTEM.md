@@ -1285,7 +1285,7 @@ mobile behavior).
 
 The markers rendered on `/map` for each door-knock pin status follow a
 "Flyra-style" treatment: a flat 26px filled circle in the status color,
-a white glyph (`textColor` = `#fff` for every status) at ~18px, no
+a white glyph (`textColor` = `#fff` for every status) at ~16px, no
 border, and a tight outer glow — a 1px color ring, one small blurred
 ring, and a drop shadow — kept tight so a pin reads at roughly its own
 26px footprint rather than ballooning into an ~80px halo that dwarfs the
@@ -1312,7 +1312,7 @@ Source: `makeMarkerElement` and `makeCustomerMarkerElement` in
 | ---------------- | ------------------------------------------------------------------------------------------------------------------ |
 | Diameter         | 26px                                                                                                               |
 | Background       | `PIN_STATUS[status].color`                                                                                         |
-| Icon             | `filledGlyphSvg(status, textColor, 18)` — filled solid glyph (stroke line art for `referral` / `not_qualified`)    |
+| Icon             | `filledGlyphSvg(status, textColor, 16)` — filled solid glyph (stroke line art for `referral` / `not_qualified`)    |
 | Icon color       | `PIN_STATUS[status].textColor` — `#fff` for every status                                                           |
 | Outline          | None                                                                                                               |
 | Glow             | `0 0 0 1px {c}, 0 0 5px 1px {c}99, 0 1px 3px rgba(0,0,0,0.4)` where `{c}` is the status color                       |

@@ -162,7 +162,7 @@ export default function MapPinDropModal({
                       opacity: active ? 1 : 0.45,
                     }}
                     dangerouslySetInnerHTML={{
-                      __html: filledGlyphSvg(key, meta.textColor, 28),
+                      __html: filledGlyphSvg(key, meta.textColor, 25),
                     }}
                   />
                   <span
