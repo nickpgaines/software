@@ -180,6 +180,11 @@ export default function JobForm({
   const prefillTechId = !job
     ? Number(searchParams?.get("tech") ?? "") || null
     : null;
+  // Approving an estimate routes here with ?customer=<id> so the new job is
+  // pre-attached to the customer the estimate was for. Only consulted on create.
+  const prefillCustomerId = !job
+    ? Number(searchParams?.get("customer") ?? "") || null
+    : null;
 
   const initialStart = job
     ? { date: toDateInput(job.scheduled_at), time: toTimeInput(job.scheduled_at) }
@@ -191,7 +196,7 @@ export default function JobForm({
     : defaultEnd(initialStart);
 
   const [customerId, setCustomerId] = useState<number | null>(
-    job?.customer_id ?? null
+    job?.customer_id ?? prefillCustomerId
   );
   const [customerQuery, setCustomerQuery] = useState(job?.customer_name ?? "");
   const [showNewCustomer, setShowNewCustomer] = useState(false);

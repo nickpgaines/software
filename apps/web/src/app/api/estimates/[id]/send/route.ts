@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { randomBytes } from "node:crypto";
 import { getDb, type Estimate } from "@/lib/db";
 import { getSessionContext } from "@/lib/auth";
+import { getAppOrigin } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +11,7 @@ function formatPrice(cents: number) {
 }
 
 export async function POST(
-  _req: Request,
+  req: Request,
   { params }: { params: { id: string } }
 ) {
   const ctx = await getSessionContext();
@@ -32,6 +34,19 @@ export async function POST(
     return NextResponse.json({ error: "customer missing" }, { status: 404 });
   }
 
+  // Ensure an opaque accept token exists so the customer can open the public
+  // review-and-sign page from the link below.
+  let acceptToken = estimate.accept_token;
+  if (!acceptToken) {
+    acceptToken = randomBytes(24).toString("base64url");
+    await db
+      .prepare(
+        `UPDATE estimates SET accept_token = ? WHERE id = ? AND company_id = ?`
+      )
+      .run(acceptToken, id, companyId);
+  }
+  const acceptUrl = `${getAppOrigin(req)}/estimates/accept/${acceptToken}`;
+
   const now = new Date().toISOString();
   await db
     .prepare(
@@ -45,8 +60,8 @@ export async function POST(
 
   const messageBody =
     `Hi ${customer.name}! Here's your estimate:\n` +
-    `Total: ${formatPrice(estimate.total_cents)}` +
-    `\nReply YES to accept.`;
+    `Total: ${formatPrice(estimate.total_cents)}\n` +
+    `Review & sign: ${acceptUrl}`;
   await db
     .prepare(
       `INSERT INTO messages (company_id, customer_id, body, direction)
