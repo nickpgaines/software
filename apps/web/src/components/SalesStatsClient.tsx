@@ -52,13 +52,19 @@ const PRESETS: { key: Exclude<Range, "custom">; label: string }[] = [
   { key: "year", label: "This Year" },
 ];
 
-const PIN_DEFS: { key: string; label: string; color: string; icon: LucideIcon }[] =
-  PIN_STATUS_KEYS.map((key) => ({
-    key,
-    label: PIN_STATUS[key].label,
-    color: PIN_STATUS[key].color,
-    icon: PIN_STATUS[key].icon,
-  }));
+const PIN_DEFS: {
+  key: string;
+  label: string;
+  color: string;
+  textColor: string;
+  icon: LucideIcon;
+}[] = PIN_STATUS_KEYS.map((key) => ({
+  key,
+  label: PIN_STATUS[key].label,
+  color: PIN_STATUS[key].color,
+  textColor: PIN_STATUS[key].textColor,
+  icon: PIN_STATUS[key].icon,
+}));
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/);
@@ -340,6 +346,7 @@ export default function SalesStatsClient({
               <PinTile
                 key={p.key}
                 color={p.color}
+                textColor={p.textColor}
                 label={p.label}
                 count={count}
                 pct={pct}
@@ -439,12 +446,14 @@ function ChartCard({
 
 function PinTile({
   color,
+  textColor,
   label,
   count,
   pct,
   icon: Icon,
 }: {
   color: string;
+  textColor: string;
   label: string;
   count: number;
   pct: number;
@@ -462,11 +471,11 @@ function PinTile({
         <span
           className="w-7 h-7 rounded-full flex items-center justify-center"
           style={{
-            background: `${color}1F`,
-            border: `1px solid ${color}33`,
+            background: color,
+            boxShadow: `0 0 0 1px ${color}, 0 0 10px 1px ${color}aa, 0 1px 3px rgba(0,0,0,0.4)`,
           }}
         >
-          <Icon className="w-3.5 h-3.5" style={{ color }} />
+          <Icon className="w-3.5 h-3.5" style={{ color: textColor }} />
         </span>
         <span
           className="text-xs font-bold tabular-nums"

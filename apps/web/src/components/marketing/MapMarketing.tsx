@@ -131,8 +131,8 @@ export function MapMarketing() {
         <div className="absolute inset-0 bg-[#0a0a0c]" />
       )}
 
-      {/* Holographic pins — same visual treatment as `makeMarkerElement` in
-          MapClient (`bg ${color}26`, border `${color}`, color icon). */}
+      {/* Solid-fill pins — same Flyra-style treatment as `makeMarkerElement`
+          in MapClient (solid `color` circle, filled `textColor` glyph, glow). */}
       {PINS.map((p, i) => {
         const meta = PIN_STATUS[p.status];
         return (
@@ -143,24 +143,21 @@ export function MapMarketing() {
               left: `${p.x}%`,
               top: `${p.y}%`,
               transform: "translate(-50%, -50%)",
-              width: 30,
-              height: 30,
+              width: 28,
+              height: 28,
               borderRadius: "50%",
-              background: `${meta.color}26`,
-              border: `1.5px solid ${meta.color}`,
-              color: meta.color,
-              backdropFilter: "blur(6px)",
-              WebkitBackdropFilter: "blur(6px)",
-              boxShadow: `0 0 14px ${meta.color}66, 0 2px 6px rgba(0,0,0,0.45)`,
+              background: meta.color,
+              color: meta.textColor,
+              boxShadow: `0 0 0 1px ${meta.color}, 0 0 12px 2px ${meta.color}cc, 0 0 24px 4px ${meta.color}55, 0 2px 4px rgba(0,0,0,0.45)`,
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
             }}
             // The icon SVG comes from the same `filledGlyphSvg` the live
-            // map uses for its DOM markers, so the icon stroke + viewbox
-            // match exactly.
+            // map uses for its DOM markers, so the glyph + viewbox match
+            // exactly.
             dangerouslySetInnerHTML={{
-              __html: filledGlyphSvg(p.status, meta.color, 16),
+              __html: filledGlyphSvg(p.status, meta.textColor, 16),
             }}
           />
         );
