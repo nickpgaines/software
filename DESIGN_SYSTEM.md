@@ -1534,6 +1534,68 @@ tabs + `RangePills`), `components/SettingsTabs.tsx` (underline),
 `components/CalendarClient.tsx`, `components/LeaderboardClient.tsx`,
 `components/RevenueChart.tsx` (all pill).
 
+### 9.7 Roster tables collapse to a contact list on mobile
+
+A multi-column roster `<Table>` (§9.4) crams unreadably on a phone — the
+columns either overflow the locked viewport (§9.6 forbids horizontal
+page scroll) or squeeze each cell to a few characters. Wide roster
+tables therefore ship **two renderings of the same filtered data**: the
+desktop `<Table>` and a mobile contact list, toggled with the
+`md:hidden` / `hidden md:block` breakpoint — not a horizontally
+scrolling table.
+
+```tsx
+{/* Mobile: contact-list rows. Tap a row to open the record. */}
+<Card className="overflow-hidden divide-y divide-line md:hidden">
+  {rows.map((r) => (
+    <Link key={r.id} href={r.href} className="flex items-center gap-3 px-4 py-3 active:bg-black/40">
+      <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full border border-line bg-elevated text-[13px] font-bold text-zinc-300">
+        {r.photoUrl ? <img src={r.photoUrl} … /> : initials(r.title)}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block truncate text-[15px] font-bold text-white">{r.title}</span>
+        {/* up to ~3 supporting lines, each truncate */}
+        <span className="block truncate text-[13px] font-semibold text-zinc-400">{r.line}</span>
+        <span className="block truncate text-[13px] font-semibold text-zinc-500">{r.dimLine}</span>
+      </span>
+    </Link>
+  ))}
+</Card>
+
+{/* Desktop: full table. */}
+<Card className="hidden overflow-hidden md:block"><Table>…</Table></Card>
+```
+
+Rules:
+
+1. **Row = whole-row `Link`** to the record's detail/edit page. No
+   inline action buttons in the mobile row (Call / Edit / Delete live on
+   the detail page) — those re-cram the row that this pattern exists to
+   uncram. The desktop table keeps its inline actions.
+2. **Avatar** — `h-11 w-11 rounded-full border border-line`, photo if
+   present else `initials()` (first + last initial, uppercased). Surface
+   is `bg-elevated` for record types with no photo (customers),
+   `bg-black` for photo-capable ones (employees). `13px font-bold
+   text-zinc-300` for the initials glyph.
+3. **Text stack** — title `text-[15px] font-bold text-white`; supporting
+   lines `text-[13px] font-semibold` in `text-zinc-400` (primary
+   contact info) then `text-zinc-500` (dimmer: address, etc.). Every
+   line `truncate`; the column lives in a `min-w-0 flex-1` wrapper so
+   truncation works. Omit a line when its value is empty.
+4. **Container** — `Card` with `divide-y divide-line`, rows at
+   `px-4 py-3`, `active:bg-black/40` press feedback (no hover tint —
+   it's a touch surface).
+5. **Header** — title row and search collapse with
+   `flex flex-col gap-4 md:flex-row md:items-center md:justify-between`.
+   On mobile the primary action is a `h-10 w-10 rounded-full bg-primary`
+   icon button beside the title (full-text button is `hidden md:inline-flex`);
+   search is a full-width `rounded-full` `Input` with a leading
+   `Search` icon (`absolute left-3 … h-4 w-4 text-zinc-500`, input
+   `pl-9`).
+
+Reference call sites: `app/(app)/customers/page.tsx`,
+`app/(app)/employees/EmployeesClient.tsx`.
+
 ---
 
 ## 10. Inconsistencies (resolved)

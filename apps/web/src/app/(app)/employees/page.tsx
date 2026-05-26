@@ -1,17 +1,7 @@
-import Link from "next/link";
-import { Plus, User } from "lucide-react";
 import { getDb, syncReplica, type Staff, type CustomRole } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
-import { Card } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { BUILT_IN_ROLE_LABELS } from "@/lib/permissions";
+import EmployeesClient, { type EmployeeRow } from "./EmployeesClient";
 
 export const dynamic = "force-dynamic";
 
@@ -60,107 +50,19 @@ export default async function EmployeesPage() {
     customRoles.map((r) => [r.id, r.name])
   );
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-page-title text-white">Employees</h1>
-        <Link
-          href="/employees/new"
-          className="inline-flex items-center gap-2 bg-primary hover:opacity-90 text-primary-foreground rounded-md px-4 py-2 text-sm font-bold"
-        >
-          <span className="w-5 h-5 rounded-full bg-card/15 flex items-center justify-center">
-            <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
-          </span>
-          Add Employee
-        </Link>
-      </div>
+  const rows: EmployeeRow[] = employees.map((e) => ({
+    id: e.id,
+    name: displayName(e),
+    role: e.custom_role_id
+      ? customRoleNames.get(e.custom_role_id) || "Custom"
+      : BUILT_IN_ROLE_LABELS[
+          e.permission_level as keyof typeof BUILT_IN_ROLE_LABELS
+        ] || "Admin",
+    phone: formatPhone(e.phone),
+    email: e.email || "",
+    photoUrl: e.photo_url ?? null,
+    created: formatDate(e.created_at),
+  }));
 
-      <Card className="overflow-hidden">
-        {employees.length === 0 ? (
-          <div className="p-12 text-center text-sm text-zinc-400 font-bold">
-            No employees yet. Click &ldquo;Add Employee&rdquo; to add your
-            first team member.
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="border-b border-line text-left hover:bg-transparent">
-                <TableHead className="h-auto px-4 py-3 w-14"></TableHead>
-                <TableHead className="h-auto px-4 py-3 text-xs font-bold text-zinc-500">
-                  Name
-                </TableHead>
-                <TableHead className="h-auto px-4 py-3 text-xs font-bold text-zinc-500">
-                  Role
-                </TableHead>
-                <TableHead className="h-auto px-4 py-3 text-xs font-bold text-zinc-500">
-                  Phone
-                </TableHead>
-                <TableHead className="h-auto px-4 py-3 text-xs font-bold text-zinc-500">
-                  Email
-                </TableHead>
-                <TableHead className="h-auto px-4 py-3 text-xs font-bold text-zinc-500">
-                  Created
-                </TableHead>
-                <TableHead className="h-auto px-4 py-3 w-20"></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {employees.map((e) => {
-                const role = e.custom_role_id
-                  ? customRoleNames.get(e.custom_role_id) || "Custom"
-                  : BUILT_IN_ROLE_LABELS[
-                      e.permission_level as keyof typeof BUILT_IN_ROLE_LABELS
-                    ] || "Admin";
-                return (
-                  <TableRow
-                    key={e.id}
-                    className="border-b border-line last:border-0 hover:bg-black"
-                  >
-                    <TableCell className="px-4 py-4">
-                      <div className="w-10 h-10 rounded-full bg-black border border-line flex items-center justify-center overflow-hidden">
-                        {e.photo_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={e.photo_url}
-                            alt={displayName(e)}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <User
-                            className="w-5 h-5 text-zinc-500"
-                            strokeWidth={1.5}
-                          />
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-4 py-4 text-sm font-extrabold text-white tracking-tight">
-                      {displayName(e)}
-                    </TableCell>
-                    <TableCell className="px-4 py-4 text-sm text-zinc-400 font-bold">{role}</TableCell>
-                    <TableCell className="px-4 py-4 text-sm text-zinc-400 font-bold">
-                      {formatPhone(e.phone)}
-                    </TableCell>
-                    <TableCell className="px-4 py-4 text-sm text-zinc-400 font-bold">
-                      {e.email || "—"}
-                    </TableCell>
-                    <TableCell className="px-4 py-4 text-sm text-zinc-400 font-bold">
-                      {formatDate(e.created_at)}
-                    </TableCell>
-                    <TableCell className="px-4 py-4 text-right">
-                      <Link
-                        href={`/employees/${e.id}/edit`}
-                        className="text-sm text-white hover:underline"
-                      >
-                        Edit
-                      </Link>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
-        )}
-      </Card>
-    </div>
-  );
+  return <EmployeesClient employees={rows} />;
 }

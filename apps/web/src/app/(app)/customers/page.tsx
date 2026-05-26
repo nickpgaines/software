@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
+import { Plus, Search, Upload } from "lucide-react";
 import ImportModal from "@/components/customers/ImportModal";
 import CustomerForm from "@/components/customers/CustomerForm";
 import { usePhone } from "@/components/PhoneClient";
@@ -39,6 +40,13 @@ type Customer = {
 
 function fullName(c: { first_name: string | null; last_name: string | null }) {
   return `${c.first_name ?? ""} ${c.last_name ?? ""}`.trim();
+}
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0][0]!.toUpperCase();
+  return (parts[0][0]! + parts[parts.length - 1][0]!).toUpperCase();
 }
 
 export default function CustomersPageWrapper() {
@@ -121,120 +129,181 @@ function CustomersPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-page-title text-white">Customers</h1>
-          <p className="text-sm text-zinc-400 mt-3 font-bold">
-            People you clean windows for.
-          </p>
+    <div className="space-y-4 md:space-y-6">
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h1 className="text-page-title text-white">Customers</h1>
+            <p className="hidden text-sm text-zinc-400 mt-3 font-bold md:block">
+              People you clean windows for.
+            </p>
+          </div>
+          <div className="flex items-center gap-2 md:hidden">
+            <Button
+              variant="ghost"
+              onClick={() => setImporting(true)}
+              aria-label="Import customers"
+              className="h-10 w-10 shrink-0 rounded-full border border-line-strong bg-card hover:bg-black text-zinc-300 p-0"
+            >
+              <Upload className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              onClick={() => setCreating(true)}
+              aria-label="Add customer"
+              className="h-10 w-10 shrink-0 rounded-full bg-primary hover:opacity-90 text-primary-foreground p-0"
+            >
+              <Plus className="h-5 w-5" strokeWidth={2.5} />
+            </Button>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <Input
-            ref={searchInputRef}
-            type="search"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search customers (⌘K)"
-            className="h-auto w-64 border-line-strong rounded px-3 py-2 text-sm"
-          />
+          <div className="relative flex-1 md:flex-none md:w-64">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
+            <Input
+              ref={searchInputRef}
+              type="search"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Search customers"
+              className="w-full rounded-full pl-9 text-sm"
+            />
+          </div>
           <Button
             variant="ghost"
             onClick={() => setImporting(true)}
-            className="h-auto text-sm border border-line-strong bg-card hover:bg-black text-zinc-300 rounded px-3 py-2 font-bold"
+            className="hidden h-auto text-sm border border-line-strong bg-card hover:bg-black text-zinc-300 rounded px-3 py-2 font-bold md:inline-flex"
           >
             Import
           </Button>
           <Button
             variant="ghost"
             onClick={() => setCreating(true)}
-            className="h-auto text-sm bg-primary hover:opacity-90 text-primary-foreground rounded px-3 py-2 font-bold"
+            className="hidden h-auto text-sm bg-primary hover:opacity-90 text-primary-foreground rounded px-3 py-2 font-bold md:inline-flex"
           >
             + Customer
           </Button>
         </div>
       </div>
 
-      <Card className="overflow-hidden">
-        {customers.length === 0 ? (
-          <div className="p-8 text-center text-sm text-zinc-400 font-bold">
-            No customers yet.
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="p-8 text-center text-sm text-zinc-400 font-bold">
-            No customers match &ldquo;{query}&rdquo;.
-          </div>
-        ) : (
-          <Table>
-            <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-line">
-              <TableRow className="hover:bg-transparent">
-                <TableHead className="h-auto text-left px-4 py-2 text-xs font-bold text-zinc-500">Name</TableHead>
-                <TableHead className="h-auto text-left px-4 py-2 text-xs font-bold text-zinc-500">Address</TableHead>
-                <TableHead className="h-auto text-left px-4 py-2 text-xs font-bold text-zinc-500">Phone</TableHead>
-                <TableHead className="h-auto text-left px-4 py-2 text-xs font-bold text-zinc-500">Email</TableHead>
-                <TableHead className="h-auto px-4 py-2" />
-              </TableRow>
-            </TableHeader>
-            <TableBody className="divide-y divide-line">
-              {filtered.map((c) => (
-                <TableRow
-                  key={c.id}
-                  className="border-0 hover:bg-black/40 cursor-pointer"
-                  onClick={() => router.push(`/customers/${c.id}`)}
-                >
-                  <TableCell className="px-4 py-2 font-bold text-white tracking-tight">
-                    <Link
-                      href={`/customers/${c.id}`}
-                      onClick={(e) => e.stopPropagation()}
-                      className="hover:underline"
-                    >
-                      {fullName(c) || "—"}
-                    </Link>
-                  </TableCell>
-                  <TableCell className="px-4 py-2 text-zinc-300 font-bold">{c.address || "—"}</TableCell>
-                  <TableCell className="px-4 py-2 text-zinc-300 font-bold">{c.phone || "—"}</TableCell>
-                  <TableCell className="px-4 py-2 text-zinc-300 font-bold">{c.email || "—"}</TableCell>
-                  <TableCell
-                    className="px-4 py-2 text-right"
-                    onClick={(e) => e.stopPropagation()}
+      {customers.length === 0 ? (
+        <Card className="p-8 text-center text-sm text-zinc-400 font-bold">
+          No customers yet.
+        </Card>
+      ) : filtered.length === 0 ? (
+        <Card className="p-8 text-center text-sm text-zinc-400 font-bold">
+          No customers match &ldquo;{query}&rdquo;.
+        </Card>
+      ) : (
+        <>
+          {/* Mobile: contact-list rows. Tap a row to open the customer. */}
+          <Card className="overflow-hidden divide-y divide-line md:hidden">
+            {filtered.map((c) => (
+              <Link
+                key={c.id}
+                href={`/customers/${c.id}`}
+                className="flex items-center gap-3 px-4 py-3 active:bg-black/40"
+              >
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-elevated text-[13px] font-bold text-zinc-300">
+                  {initials(fullName(c) || c.name)}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-[15px] font-bold text-white">
+                    {fullName(c) || c.name || "—"}
+                  </span>
+                  {c.phone && (
+                    <span className="block truncate text-[13px] font-semibold text-zinc-400">
+                      {c.phone}
+                    </span>
+                  )}
+                  {c.email && (
+                    <span className="block truncate text-[13px] font-semibold text-zinc-400">
+                      {c.email}
+                    </span>
+                  )}
+                  {(c.address || c.formatted_address) && (
+                    <span className="block truncate text-[13px] font-semibold text-zinc-500">
+                      {c.address || c.formatted_address}
+                    </span>
+                  )}
+                </span>
+              </Link>
+            ))}
+          </Card>
+
+          {/* Desktop: full table with inline actions. */}
+          <Card className="hidden overflow-hidden md:block">
+            <Table>
+              <TableHeader className="bg-black [&_tr]:border-b [&_tr]:border-line">
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="h-auto text-left px-4 py-2 text-xs font-bold text-zinc-500">Name</TableHead>
+                  <TableHead className="h-auto text-left px-4 py-2 text-xs font-bold text-zinc-500">Address</TableHead>
+                  <TableHead className="h-auto text-left px-4 py-2 text-xs font-bold text-zinc-500">Phone</TableHead>
+                  <TableHead className="h-auto text-left px-4 py-2 text-xs font-bold text-zinc-500">Email</TableHead>
+                  <TableHead className="h-auto px-4 py-2" />
+                </TableRow>
+              </TableHeader>
+              <TableBody className="divide-y divide-line">
+                {filtered.map((c) => (
+                  <TableRow
+                    key={c.id}
+                    className="border-0 hover:bg-black/40 cursor-pointer"
+                    onClick={() => router.push(`/customers/${c.id}`)}
                   >
-                    {phone.configured && c.phone && (
+                    <TableCell className="px-4 py-2 font-bold text-white tracking-tight">
+                      <Link
+                        href={`/customers/${c.id}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="hover:underline"
+                      >
+                        {fullName(c) || "—"}
+                      </Link>
+                    </TableCell>
+                    <TableCell className="px-4 py-2 text-zinc-300 font-bold">{c.address || "—"}</TableCell>
+                    <TableCell className="px-4 py-2 text-zinc-300 font-bold">{c.phone || "—"}</TableCell>
+                    <TableCell className="px-4 py-2 text-zinc-300 font-bold">{c.email || "—"}</TableCell>
+                    <TableCell
+                      className="px-4 py-2 text-right"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {phone.configured && c.phone && (
+                        <Button
+                          variant="ghost"
+                          onClick={() =>
+                            phone.startCall({
+                              customerId: c.id,
+                              customerName: fullName(c) || c.name,
+                              toPhone: c.phone || "",
+                            })
+                          }
+                          disabled={phone.state.kind !== "idle"}
+                          className="h-auto p-0 text-xs font-bold text-emerald-400 hover:text-emerald-300 hover:bg-transparent mr-4"
+                        >
+                          Call
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
-                        onClick={() =>
-                          phone.startCall({
-                            customerId: c.id,
-                            customerName: fullName(c) || c.name,
-                            toPhone: c.phone || "",
-                          })
-                        }
-                        disabled={phone.state.kind !== "idle"}
-                        className="h-auto p-0 text-xs font-bold text-emerald-400 hover:text-emerald-300 hover:bg-transparent mr-4"
+                        onClick={() => setEditing(c)}
+                        className="h-auto p-0 text-xs font-bold text-zinc-400 hover:text-white hover:bg-transparent mr-4"
                       >
-                        Call
+                        Edit
                       </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      onClick={() => setEditing(c)}
-                      className="h-auto p-0 text-xs font-bold text-zinc-400 hover:text-white hover:bg-transparent mr-4"
-                    >
-                      Edit
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => del(c.id)}
-                      className="h-auto p-0 text-xs font-bold text-red-400 hover:text-red-300 hover:bg-transparent"
-                    >
-                      Delete
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
-      </Card>
+                      <Button
+                        variant="ghost"
+                        onClick={() => del(c.id)}
+                        className="h-auto p-0 text-xs font-bold text-red-400 hover:text-red-300 hover:bg-transparent"
+                      >
+                        Delete
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        </>
+      )}
 
       {(creating || editing) && (
         <CustomerForm
