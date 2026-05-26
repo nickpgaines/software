@@ -51,14 +51,26 @@ export async function GET(
   }
   // Ensure an opaque accept token exists so the detail page can link to the
   // public signature/acceptance page (rep's device in person, or sent link).
-  let acceptToken = estimate.accept_token;
+  // Best-effort: minting the token must never break loading the estimate. A DB
+  // that hasn't run the accept_token migration yet simply renders without the
+  // Signature Page link until it has.
+  let acceptToken = estimate.accept_token ?? null;
   if (!acceptToken) {
-    acceptToken = randomBytes(24).toString("base64url");
-    await db
-      .prepare(
-        "UPDATE estimates SET accept_token = ? WHERE id = ? AND company_id = ?"
-      )
-      .run(acceptToken, id, ctx.companyId);
+    try {
+      const minted = randomBytes(24).toString("base64url");
+      await db
+        .prepare(
+          "UPDATE estimates SET accept_token = ? WHERE id = ? AND company_id = ?"
+        )
+        .run(minted, id, ctx.companyId);
+      acceptToken = minted;
+    } catch (e) {
+      console.warn(
+        "[estimates] could not mint accept_token:",
+        (e as Error).message
+      );
+      acceptToken = null;
+    }
   }
   return NextResponse.json({
     ...estimate,
