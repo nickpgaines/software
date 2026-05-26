@@ -110,10 +110,10 @@ export default function MarketingHome() {
           <SectionSubhead className="mt-6">
             Still have questions? Email{" "}
             <a
-              href="mailto:support@forgecrm.io"
+              href="mailto:support@forgecrm.app"
               className="text-white underline underline-offset-4"
             >
-              support@forgecrm.io
+              support@forgecrm.app
             </a>{" "}
             and we&apos;ll get back to you.
           </SectionSubhead>
