@@ -475,7 +475,7 @@ function PinTile({
             boxShadow: `0 0 0 1px ${color}, 0 0 10px 1px ${color}aa, 0 1px 3px rgba(0,0,0,0.4)`,
           }}
         >
-          <Icon className="w-3.5 h-3.5" style={{ color: textColor }} />
+          <Icon className="w-4 h-4" style={{ color: textColor }} />
         </span>
         <span
           className="text-xs font-bold tabular-nums"
