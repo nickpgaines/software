@@ -16,18 +16,15 @@ import {
 // icons stay aligned across the app.
 //
 // Visual treatment is "solid-fill" (Flyra-style): a solid circle in the
-// status color, a filled glyph in `textColor`, and a soft layered colored
-// glow. `textColor` is `#0f172a` (dark slate) on the light fills
-// (not_home, not_qualified, do_not_contact, revisit) and `#ffffff` on the
-// saturated ones, so the glyph always reads against its background. See
-// DESIGN_SYSTEM.md §8.21 "Door-knock map pins".
+// status color, a filled white glyph (`textColor`), and a soft layered
+// colored glow. See DESIGN_SYSTEM.md §8.21 "Door-knock map pins".
 export const PIN_STATUS = {
   sale:           { label: "Sale",           color: "#22c55e", textColor: "#ffffff", icon: DollarSign },
-  not_home:       { label: "Not Home",       color: "#f59e0b", textColor: "#0f172a", icon: Home },
+  not_home:       { label: "Not Home",       color: "#f59e0b", textColor: "#ffffff", icon: Home },
   not_interested: { label: "Not Interested", color: "#ef4444", textColor: "#ffffff", icon: Ban },
-  not_qualified:  { label: "Not Qualified",  color: "#a78bfa", textColor: "#0f172a", icon: ShieldX },
-  do_not_contact: { label: "Do Not Contact", color: "#94a3b8", textColor: "#0f172a", icon: Skull },
-  revisit:        { label: "Revisit",        color: "#22d3ee", textColor: "#0f172a", icon: RotateCcw },
+  not_qualified:  { label: "Not Qualified",  color: "#a78bfa", textColor: "#ffffff", icon: ShieldX },
+  do_not_contact: { label: "Do Not Contact", color: "#94a3b8", textColor: "#ffffff", icon: Skull },
+  revisit:        { label: "Revisit",        color: "#22d3ee", textColor: "#ffffff", icon: RotateCcw },
   referral:       { label: "Referral",       color: "#ec4899", textColor: "#ffffff", icon: UserPlus },
   quote:          { label: "Quote",          color: "#3b82f6", textColor: "#ffffff", icon: FileText },
 } as const satisfies Record<string, { label: string; color: string; textColor: string; icon: LucideIcon }>;
