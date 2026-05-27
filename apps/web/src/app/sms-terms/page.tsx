@@ -59,13 +59,14 @@ export default function SmsTermsPage() {
             How consent is collected
           </h2>
           <p>
-            Recipients provide express written consent at the point of sale,
-            when they sign to accept a Business&rsquo;s service estimate or
-            agreement. Those signed terms include an SMS consent clause
-            naming the specific Business and authorizing transactional and
+            Recipients provide express written consent at the point of sale
+            by checking a dedicated, optional SMS consent checkbox on the
+            Business&rsquo;s service estimate — separate from approving the
+            estimate and never required to purchase the service. The checkbox
+            names the specific Business and authorizes transactional and
             promotional SMS to the phone number the Recipient provided. Each
-            signed acceptance is timestamped and stored per Business and is
-            auditable on request. See a sample of the consent disclosure at{" "}
+            opt-in is timestamped and stored per Business and is auditable on
+            request. See a sample of the consent disclosure at{" "}
             <Link
               href="/sms-consent"
               className="text-violet-400 hover:text-violet-300 font-extrabold"

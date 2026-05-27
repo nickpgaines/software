@@ -61,12 +61,12 @@ export default function AboutPage() {
             </p>
             <p className="mt-3">
               End-customer consent is captured at the point of sale. When a
-              business customer presents a service estimate or agreement to
-              their end customer, the end customer signs to accept that
-              business&rsquo;s terms; those terms include an SMS consent clause
-              naming the specific business and authorizing transactional and
-              promotional messages. Each signed acceptance is timestamped and
-              stored per business inside Forge CRM and is auditable on
+              business presents a service estimate to their customer, the
+              estimate includes a dedicated, optional SMS consent checkbox —
+              separate from approving the estimate and never required to buy
+              the service — that names the specific business and authorizes
+              its service and promotional messages. Each opt-in is timestamped
+              and stored per business inside Forge CRM and is auditable on
               request.
             </p>
             <p className="mt-3">
