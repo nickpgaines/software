@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import { usePhone } from "@/components/PhoneClient";
 import InboxTabs from "@/components/InboxTabs";
+import { PulseIcon } from "@/components/pulse/Icon";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Table,
   TableBody,
@@ -69,7 +72,21 @@ export default function CallsClient() {
   const [calls, setCalls] = useState<CallRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [mounted, setMounted] = useState(false);
+  const [number, setNumber] = useState("");
   const phone = usePhone();
+
+  const digits = number.replace(/\D/g, "");
+  const canCall =
+    phone.configured && phone.state.kind === "idle" && digits.length >= 10;
+
+  function dial() {
+    if (!canCall) return;
+    void phone.startCall({
+      customerId: null,
+      customerName: null,
+      toPhone: number.trim(),
+    });
+  }
 
   useEffect(() => {
     setMounted(true);
@@ -110,6 +127,29 @@ export default function CallsClient() {
           Calling not configured. Connect Twilio Voice in Settings → Calling.
         </Badge>
       )}
+
+      <div className="bg-card border border-line rounded-2xl p-4 md:p-5">
+        <div className="text-xs font-bold text-zinc-500 mb-2">New call</div>
+        <div className="flex items-center gap-2">
+          <Input
+            type="tel"
+            inputMode="tel"
+            autoComplete="off"
+            placeholder="Enter a phone number"
+            value={number}
+            onChange={(e) => setNumber(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") dial();
+            }}
+            disabled={!phone.configured || phone.state.kind !== "idle"}
+            className="flex-1 max-w-xs"
+          />
+          <Button type="button" onClick={dial} disabled={!canCall} className="gap-1.5">
+            <PulseIcon name="phone" className="w-4 h-4" />
+            Call
+          </Button>
+        </div>
+      </div>
 
       <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
         {loading ? (
