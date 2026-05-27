@@ -96,19 +96,11 @@ function validate(body: FormPayload): string | null {
     ["postal_code", "Postal code"],
     ["business_email", "Business email"],
     ["business_phone", "Business phone"],
-    ["industry", "Industry"],
     ["entity_type", "Business entity type"],
     ["monthly_volume", "Estimated monthly volume"],
-    ["business_description", "Business description"],
-    ["auth_rep_name", "Authorized representative name"],
-    ["auth_rep_title", "Authorized representative title"],
-    ["auth_rep_email", "Authorized representative email"],
   ];
   for (const [k, label] of required) {
     if (!s(body[k])) return `${label} is required.`;
-  }
-  if (s(body.business_description).length < 40) {
-    return "Business description must be at least 40 characters.";
   }
   if (!VOLUMES.includes(s(body.monthly_volume) as SmsMonthlyVolume)) {
     return "Choose a valid monthly volume estimate.";
@@ -141,8 +133,18 @@ export async function POST(req: Request) {
     )
     .get<{ id: number }>(companyId);
 
+  // Defaulted server-side now that the form no longer collects them: home-
+  // service tenants are always low-volume "Home services," the description is
+  // templated from the business name, and the authorized rep is the account
+  // owner (an admin on this company).
+  const legalName = s(body.legal_company_name);
+  const owner = await db
+    .prepare(
+      "SELECT name, email FROM staff WHERE company_id = ? AND permission_level = 'admin' ORDER BY id ASC LIMIT 1"
+    )
+    .get<{ name: string | null; email: string | null }>(companyId);
   const fields = {
-    legal_company_name: s(body.legal_company_name),
+    legal_company_name: legalName,
     dba: s(body.dba) || null,
     ein: s(body.ein),
     address_line1: s(body.address_line1),
@@ -154,13 +156,16 @@ export async function POST(req: Request) {
     business_email: s(body.business_email),
     business_phone: s(body.business_phone),
     business_website: s(body.business_website) || null,
-    industry: s(body.industry),
+    industry: s(body.industry) || "Home services",
     entity_type: s(body.entity_type),
-    monthly_volume: s(body.monthly_volume),
-    business_description: s(body.business_description),
-    auth_rep_name: s(body.auth_rep_name),
-    auth_rep_title: s(body.auth_rep_title),
-    auth_rep_email: s(body.auth_rep_email),
+    monthly_volume: s(body.monthly_volume) || "under_1k",
+    business_description:
+      s(body.business_description) ||
+      `${legalName} is a home-service business that sends appointment confirmations, reminders, receipts, and service follow-ups by text to its own existing customers who have given express consent.`,
+    auth_rep_name: s(body.auth_rep_name) || owner?.name?.trim() || legalName,
+    auth_rep_title: s(body.auth_rep_title) || "Owner",
+    auth_rep_email:
+      s(body.auth_rep_email) || owner?.email?.trim() || s(body.business_email),
     confirmed_authorized: body.confirmed_authorized ? 1 : 0,
     confirmed_aup_tcpa: body.confirmed_aup_tcpa ? 1 : 0,
     confirmed_consent: body.confirmed_consent ? 1 : 0,
