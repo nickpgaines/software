@@ -30,14 +30,131 @@ export async function getEmailSettings(
         from_address: null,
         from_name: null,
         reply_to: null,
+        platform_local_part: null,
         updated_at: "",
       }
     );
   });
 }
 
-export function isEmailConfigured(s: EmailSettings): boolean {
-  return !!(s.api_key && s.from_address);
+export type ResolvedSender = {
+  apiKey: string;
+  fromAddress: string;
+  fromName: string | null;
+  replyTo: string | null;
+  viaPlatform: boolean;
+};
+
+function slugifyCompanyName(name: string | null | undefined): string {
+  const slug = (name ?? "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 40)
+    .replace(/-+$/g, "");
+  return slug || "company";
+}
+
+async function getCompanySendingIdentity(
+  companyId: number
+): Promise<{ name: string | null; email: string | null }> {
+  const db = await getDb();
+  const row = (await db
+    .prepare("SELECT name, email FROM company WHERE id = ? LIMIT 1")
+    .get(companyId)) as
+    | { name: string | null; email: string | null }
+    | undefined;
+  return row ?? { name: null, email: null };
+}
+
+// Assign (once) and return this tenant's local-part on the shared platform
+// domain. Persisted on email_settings so the from-address stays stable across
+// company renames, and de-duped so two same-named tenants don't collide.
+async function ensurePlatformLocalPart(
+  companyId: number,
+  companyName: string | null
+): Promise<string> {
+  const db = await getDb();
+  const existing = (await db
+    .prepare(
+      "SELECT id, platform_local_part FROM email_settings WHERE company_id = ? LIMIT 1"
+    )
+    .get(companyId)) as
+    | { id: number; platform_local_part: string | null }
+    | undefined;
+  if (existing?.platform_local_part) return existing.platform_local_part;
+
+  const base = slugifyCompanyName(companyName);
+  let candidate = base;
+  for (let n = 2; n < 1000; n++) {
+    const clash = (await db
+      .prepare(
+        "SELECT 1 AS x FROM email_settings WHERE platform_local_part = ? AND company_id != ? LIMIT 1"
+      )
+      .get(candidate, companyId)) as { x: number } | undefined;
+    if (!clash) break;
+    candidate = `${base}-${n}`;
+  }
+
+  if (existing?.id) {
+    await db
+      .prepare(
+        "UPDATE email_settings SET platform_local_part = ? WHERE id = ? AND platform_local_part IS NULL"
+      )
+      .run(candidate, existing.id);
+  } else {
+    await db
+      .prepare(
+        "INSERT INTO email_settings (company_id, provider, platform_local_part, updated_at) VALUES (?, 'resend', ?, datetime('now'))"
+      )
+      .run(companyId, candidate);
+  }
+
+  // Re-read so a concurrent writer's value wins consistently for both callers.
+  const after = (await db
+    .prepare(
+      "SELECT platform_local_part FROM email_settings WHERE company_id = ? LIMIT 1"
+    )
+    .get(companyId)) as { platform_local_part: string | null } | undefined;
+  return after?.platform_local_part || candidate;
+}
+
+// Resolve the effective sending identity for a tenant. Prefers a tenant's own
+// connected Resend (BYO); otherwise falls back to the platform Resend account,
+// sending from the shared domain (PLATFORM_EMAIL_DOMAIN) as
+// `{company-slug}@<domain>` with replies routed to the tenant's company email.
+// Returns null only when neither path is available (no BYO key and no platform
+// fallback configured) — callers treat that as "email not configured".
+export async function resolveEmailSender(
+  companyId: number
+): Promise<ResolvedSender | null> {
+  const settings = await getEmailSettings(companyId);
+  if (settings.api_key && settings.from_address) {
+    return {
+      apiKey: settings.api_key,
+      fromAddress: settings.from_address,
+      fromName: settings.from_name,
+      replyTo: settings.reply_to,
+      viaPlatform: false,
+    };
+  }
+
+  const platformKey = process.env.RESEND_API_KEY?.trim();
+  const platformDomain = process.env.PLATFORM_EMAIL_DOMAIN?.trim();
+  if (platformKey && platformDomain) {
+    const company = await getCompanySendingIdentity(companyId);
+    const localPart = await ensurePlatformLocalPart(companyId, company.name);
+    return {
+      apiKey: platformKey,
+      fromAddress: `${localPart}@${platformDomain}`,
+      fromName: company.name,
+      replyTo: settings.reply_to ?? company.email ?? null,
+      viaPlatform: true,
+    };
+  }
+
+  return null;
 }
 
 function tokenSecret(): string {
@@ -222,7 +339,7 @@ export async function countAudience(
 }
 
 type EmailSendInput = {
-  settings: EmailSettings;
+  sender: ResolvedSender;
   to: string;
   subject: string;
   html: string;
@@ -235,13 +352,10 @@ type EmailSendInput = {
 export async function sendEmailViaResend(
   input: EmailSendInput
 ): Promise<SendEmailResult> {
-  const { settings, to, subject, html, text, unsubscribeUrl, replyTo } = input;
-  if (!isEmailConfigured(settings)) {
-    return { ok: false, error: "Email is not configured" };
-  }
-  const fromValue = settings.from_name
-    ? `${settings.from_name} <${settings.from_address}>`
-    : settings.from_address!;
+  const { sender, to, subject, html, text, unsubscribeUrl, replyTo } = input;
+  const fromValue = sender.fromName
+    ? `${sender.fromName} <${sender.fromAddress}>`
+    : sender.fromAddress;
   const headers: Record<string, string> = {};
   if (unsubscribeUrl) {
     headers["List-Unsubscribe"] = `<${unsubscribeUrl}>`;
@@ -252,7 +366,7 @@ export async function sendEmailViaResend(
     res = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${settings.api_key}`,
+        Authorization: `Bearer ${sender.apiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
@@ -261,7 +375,7 @@ export async function sendEmailViaResend(
         subject,
         html,
         text,
-        reply_to: replyTo || settings.reply_to || undefined,
+        reply_to: replyTo || sender.replyTo || undefined,
         headers: Object.keys(headers).length ? headers : undefined,
       }),
     });
@@ -364,8 +478,8 @@ export async function sendAutomationToAudience(
   origin: string
 ): Promise<AutomationSendSummary> {
   const companyId = automation.company_id;
-  const settings = await getEmailSettings(companyId);
-  if (!isEmailConfigured(settings)) {
+  const sender = await resolveEmailSender(companyId);
+  if (!sender) {
     return { attempted: 0, sent: 0, failed: 0, blastId: null, skipped: "not_configured" };
   }
   const subject = automation.subject.trim();
@@ -395,8 +509,8 @@ export async function sendAutomationToAudience(
       automation.audience,
       subject,
       html,
-      settings.from_address,
-      settings.from_name,
+      sender.fromAddress,
+      sender.fromName,
       recipients.length,
       `automation:${automation.key}`
     );
@@ -422,7 +536,7 @@ export async function sendAutomationToAudience(
     )}`;
     const fullHtml = applyEmailFooter({ bodyHtml: html, unsubscribeUrl, company });
     const result = await sendEmailViaResend({
-      settings,
+      sender,
       to: r.email,
       subject,
       html: fullHtml,
@@ -500,8 +614,8 @@ export async function sendWelcomeToCustomer(
   if (!subject || !html) {
     return { attempted: 0, sent: 0, failed: 0, blastId: null, skipped: "empty" };
   }
-  const settings = await getEmailSettings(companyId);
-  if (!isEmailConfigured(settings)) {
+  const sender = await resolveEmailSender(companyId);
+  if (!sender) {
     return { attempted: 0, sent: 0, failed: 0, blastId: null, skipped: "not_configured" };
   }
   const customer = (await db
@@ -532,7 +646,7 @@ export async function sendWelcomeToCustomer(
   const fullHtml = applyEmailFooter({ bodyHtml: html, unsubscribeUrl, company });
 
   const result = await sendEmailViaResend({
-    settings,
+    sender,
     to: customer.email,
     subject,
     html: fullHtml,

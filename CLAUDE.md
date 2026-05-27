@@ -2,6 +2,16 @@
 
 Project guidance for Claude Code sessions on this repo.
 
+## Communication style (Nick's preference — follow in every reply)
+
+- Lead with the answer or the steps. No preamble, no recap of what was just read.
+- When something needs doing, give numbered step-by-step instructions, not prose.
+- Keep explanations minimal; expand only when explicitly asked.
+- No multi-paragraph end-of-turn summaries.
+- When telling Nick to add an environment variable, always state whether to
+  mark it sensitive (secrets/keys/tokens = sensitive; plain config like a
+  domain or public ID = not sensitive).
+
 ## Stack
 
 - Next.js (App Router) + React + Tailwind in `apps/web`
