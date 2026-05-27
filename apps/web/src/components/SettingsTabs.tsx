@@ -2153,19 +2153,6 @@ type RegistrationStatus = {
   };
 };
 
-const INDUSTRY_OPTIONS = [
-  "Home services",
-  "Construction",
-  "Real estate",
-  "Retail",
-  "Healthcare",
-  "Education",
-  "Hospitality",
-  "Professional services",
-  "Technology",
-  "Other",
-];
-
 const ENTITY_TYPE_OPTIONS = [
   "Sole proprietorship",
   "Partnership",
@@ -2491,106 +2478,22 @@ function MessagingPanel() {
                 className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
               />
             </Field>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Industry">
-                {/* Native select kept: Radix Select forbids empty-string item values. */}
-                <select
-                  value={form.industry}
-                  onChange={(e) => set("industry", e.target.value)}
-                  disabled={loading || saving}
-                  className="h-auto w-full border border-line rounded-lg px-3 py-2 text-sm bg-card text-white"
-                >
-                  <option value="">Select industry</option>
-                  {INDUSTRY_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-              <Field label="Business Entity Type">
-                {/* Native select kept: Radix Select forbids empty-string item values. */}
-                <select
-                  value={form.entity_type}
-                  onChange={(e) => set("entity_type", e.target.value)}
-                  disabled={loading || saving}
-                  className="h-auto w-full border border-line rounded-lg px-3 py-2 text-sm bg-card text-white"
-                >
-                  <option value="">Select entity type</option>
-                  {ENTITY_TYPE_OPTIONS.map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}
-                    </option>
-                  ))}
-                </select>
-              </Field>
-            </div>
-            <Field label="Estimated Monthly SMS Volume">
-              <div className="flex gap-3 text-sm text-zinc-300">
-                {(
-                  [
-                    ["under_1k", "Under 1,000"],
-                    ["1k_6k", "1,000 – 6,000"],
-                    ["6k_plus", "6,000+"],
-                  ] as const
-                ).map(([val, label]) => (
-                  <label
-                    key={val}
-                    className="flex items-center gap-2 cursor-pointer"
-                  >
-                    {/* Native radio kept: no Radio primitive in design system yet. */}
-                    <input
-                      type="radio"
-                      name="monthly_volume"
-                      value={val}
-                      checked={form.monthly_volume === val}
-                      onChange={() => set("monthly_volume", val)}
-                      disabled={loading || saving}
-                    />
-                    {label}
-                  </label>
-                ))}
-              </div>
-            </Field>
-            <Field label="Business Description (min 40 characters)">
-              <Textarea
-                value={form.business_description}
-                onChange={(e) => set("business_description", e.target.value)}
+            <Field label="Business Entity Type">
+              {/* Native select kept: Radix Select forbids empty-string item values. */}
+              <select
+                value={form.entity_type}
+                onChange={(e) => set("entity_type", e.target.value)}
                 disabled={loading || saving}
-                rows={3}
-                className="w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
-              />
-              <div className="mt-1 text-xs text-zinc-500">
-                {form.business_description.length} / 40
-              </div>
+                className="h-auto w-full border border-line rounded-lg px-3 py-2 text-sm bg-card text-white"
+              >
+                <option value="">Select entity type</option>
+                {ENTITY_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
             </Field>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <Field label="Authorized Rep Name">
-                <Input
-                  value={form.auth_rep_name}
-                  onChange={(e) => set("auth_rep_name", e.target.value)}
-                  disabled={loading || saving}
-                  className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
-                />
-              </Field>
-              <Field label="Title">
-                <Input
-                  value={form.auth_rep_title}
-                  onChange={(e) => set("auth_rep_title", e.target.value)}
-                  disabled={loading || saving}
-                  className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
-                />
-              </Field>
-              <Field label="Email">
-                <Input
-                  type="email"
-                  value={form.auth_rep_email}
-                  onChange={(e) => set("auth_rep_email", e.target.value)}
-                  disabled={loading || saving}
-                  className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
-                />
-              </Field>
-            </div>
 
             <div className="space-y-2 pt-2">
               <label className="flex items-start gap-2 text-sm text-zinc-300 cursor-pointer">
