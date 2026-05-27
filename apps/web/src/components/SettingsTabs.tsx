@@ -2866,6 +2866,8 @@ type EmailStatus = {
   from_name: string | null;
   reply_to: string | null;
   configured: boolean;
+  effective_from: string | null;
+  using_platform: boolean;
 };
 
 function EmailPanel() {
@@ -2927,8 +2929,10 @@ function EmailPanel() {
       <div>
         <h2 className="text-lg font-extrabold text-white tracking-tight">Email</h2>
         <p className="text-sm text-zinc-400 mt-3 font-bold">
-          Connect your Resend account to send email blasts to customers,
-          subscribers, and prospects.
+          Email to your customers — blasts, automations, and receipts — works
+          out of the box. By default it sends from Forge&apos;s shared domain,
+          with replies routed to your company email. Want mail to come from your
+          own domain instead? Connect your Resend account below.
         </p>
       </div>
 
@@ -2946,16 +2950,33 @@ function EmailPanel() {
             (status?.configured ? "bg-emerald-500" : "bg-slate-400")
           }
         />
-        {status?.configured ? "Connected" : "Not connected"}
-        {status?.from_address && (
+        {status?.configured
+          ? status?.using_platform
+            ? "Active"
+            : "Connected"
+          : "Not connected"}
+        {status?.effective_from && (
           <span className="text-zinc-400 font-normal">
-            · {status.from_address}
+            · {status.effective_from}
           </span>
         )}
       </div>
 
+      {status?.using_platform && (
+        <p className="text-xs text-zinc-500">
+          Sending on Forge&apos;s shared domain. Replies go to your company
+          email. Connect your own Resend below to send from your own domain.
+        </p>
+      )}
+
       <div className="rounded-xl border border-line bg-black p-4 space-y-3 text-sm">
-        <div className="font-bold text-white tracking-tight">Setup steps</div>
+        <div className="font-bold text-white tracking-tight">
+          Optional — send from your own domain
+        </div>
+        <p className="text-zinc-400">
+          Skip this unless you want mail to come from your own domain instead of
+          Forge&apos;s shared one.
+        </p>
         <ol className="list-decimal list-inside space-y-1 text-zinc-400">
           <li>
             Sign up at{" "}

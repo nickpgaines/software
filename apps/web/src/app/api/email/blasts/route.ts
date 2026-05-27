@@ -5,8 +5,7 @@ import {
   buildUnsubscribeToken,
   fetchAudience,
   getCompanyForFooter,
-  getEmailSettings,
-  isEmailConfigured,
+  resolveEmailSender,
   sendEmailViaResend,
 } from "@/lib/email";
 import { getDb, type EmailAudience, type EmailBlast } from "@/lib/db";
@@ -50,10 +49,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const companyId = ctx.companyId;
-  const settings = await getEmailSettings(companyId);
-  if (!isEmailConfigured(settings)) {
+  const sender = await resolveEmailSender(companyId);
+  if (!sender) {
     return NextResponse.json(
-      { error: "Email is not configured. Connect Resend in Settings → Email." },
+      { error: "Email isn't configured yet. Check Settings → Email." },
       { status: 503 }
     );
   }
@@ -104,7 +103,7 @@ export async function POST(req: Request) {
       company,
     });
     const result = await sendEmailViaResend({
-      settings,
+      sender,
       to: testEmail,
       subject,
       html: fullHtml,
@@ -139,8 +138,8 @@ export async function POST(req: Request) {
       subject,
       html,
       body.body_text?.trim() || null,
-      settings.from_address,
-      settings.from_name,
+      sender.fromAddress,
+      sender.fromName,
       recipients.length,
       ctx.identity
     );
@@ -176,7 +175,7 @@ export async function POST(req: Request) {
       body.body_text?.trim() || buildPlainTextFallback(fullHtml);
 
     const result = await sendEmailViaResend({
-      settings,
+      sender,
       to: r.email,
       subject,
       html: fullHtml,

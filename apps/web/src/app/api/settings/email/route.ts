@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, type EmailSettings } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
+import { resolveEmailSender } from "@/lib/email";
 
 export const dynamic = "force-dynamic";
 
@@ -17,9 +18,21 @@ type PublicEmailSettings = {
   from_name: string | null;
   reply_to: string | null;
   configured: boolean;
+  // The address mail actually goes out as (a tenant's own from-address, or the
+  // shared platform domain). `using_platform` is true when sending on the
+  // shared Forge domain rather than a tenant's own connected Resend.
+  effective_from: string | null;
+  using_platform: boolean;
 };
 
-function toPublic(s: EmailSettings): PublicEmailSettings {
+function toPublic(
+  s: EmailSettings,
+  eff: {
+    configured: boolean;
+    effective_from: string | null;
+    using_platform: boolean;
+  }
+): PublicEmailSettings {
   return {
     provider: s.provider,
     api_key_set: !!s.api_key,
@@ -28,7 +41,9 @@ function toPublic(s: EmailSettings): PublicEmailSettings {
     from_address: s.from_address,
     from_name: s.from_name,
     reply_to: s.reply_to,
-    configured: !!(s.api_key && s.from_address),
+    configured: eff.configured,
+    effective_from: eff.effective_from,
+    using_platform: eff.using_platform,
   };
 }
 
@@ -50,6 +65,7 @@ async function readSettings(companyId: number): Promise<EmailSettings> {
         from_address: null,
         from_name: null,
         reply_to: null,
+        platform_local_part: null,
         updated_at: "",
       }
     );
@@ -59,7 +75,15 @@ async function readSettings(companyId: number): Promise<EmailSettings> {
 export async function GET() {
   const companyId = await requireCompanyId();
   const s = await readSettings(companyId);
-  return NextResponse.json(toPublic(s), { headers: NO_CACHE_HEADERS });
+  const sender = await resolveEmailSender(companyId);
+  return NextResponse.json(
+    toPublic(s, {
+      configured: !!sender,
+      effective_from: sender?.fromAddress ?? null,
+      using_platform: !!sender?.viaPlatform,
+    }),
+    { headers: NO_CACHE_HEADERS }
+  );
 }
 
 export async function PUT(req: Request) {
@@ -140,7 +164,17 @@ export async function PUT(req: Request) {
     from_address: nextFromAddress,
     from_name: nextFromName,
     reply_to: nextReplyTo,
+    platform_local_part: current.platform_local_part,
     updated_at: new Date().toISOString(),
   };
-  return NextResponse.json(toPublic(updated), { headers: NO_CACHE_HEADERS });
+  // A successful PUT always sets a tenant's own key + from-address, so the
+  // effective sender is their own connected Resend, not the shared domain.
+  return NextResponse.json(
+    toPublic(updated, {
+      configured: true,
+      effective_from: nextFromAddress,
+      using_platform: false,
+    }),
+    { headers: NO_CACHE_HEADERS }
+  );
 }

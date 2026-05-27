@@ -1,8 +1,7 @@
 import {
   buildPlainTextFallback,
   getCompanyForFooter,
-  getEmailSettings,
-  isEmailConfigured,
+  resolveEmailSender,
   sendEmailViaResend,
 } from "@/lib/email";
 import {
@@ -116,8 +115,8 @@ export async function sendPaymentReceipt(input: SendReceiptInput): Promise<void>
 
   if (input.sendEmail && customer.email && customer.email.trim()) {
     try {
-      const settings = await getEmailSettings(input.companyId);
-      if (isEmailConfigured(settings)) {
+      const sender = await resolveEmailSender(input.companyId);
+      if (sender) {
         const html = buildReceiptHtml({
           customerName: customer.name,
           companyName: company.name,
@@ -130,7 +129,7 @@ export async function sendPaymentReceipt(input: SendReceiptInput): Promise<void>
         // footer to avoid implying customers can opt out of payment confirmations.
         const text = buildPlainTextFallback(html);
         await sendEmailViaResend({
-          settings,
+          sender,
           to: customer.email.trim(),
           subject: `Payment received${company.name ? ` — ${company.name}` : ""}`,
           html,

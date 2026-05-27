@@ -1748,6 +1748,19 @@ async function init(): Promise<void> {
     );
   }
 
+  // Per-tenant local-part for the shared platform sending domain. Assigned once
+  // (slug of the company name, de-duped across tenants) and reused, so a
+  // tenant's shared-domain from-address stays stable even if they rename.
+  const emailSettingsCols = await _db
+    .prepare("PRAGMA table_info(email_settings)")
+    .all<{ name: string }>();
+  await alterAddColumn(
+    "email_settings",
+    "platform_local_part",
+    "TEXT",
+    emailSettingsCols
+  );
+
   // email_unsubscribes: the legacy schema had a single global UNIQUE(email)
   // index, which prevented two tenants from each tracking an opt-out for the
   // same address. Replace it with a per-tenant UNIQUE(company_id, email) so
@@ -2293,6 +2306,7 @@ export type EmailSettings = {
   from_address: string | null;
   from_name: string | null;
   reply_to: string | null;
+  platform_local_part: string | null;
   updated_at: string;
 };
 
