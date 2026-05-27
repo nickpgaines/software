@@ -8,6 +8,9 @@ Project guidance for Claude Code sessions on this repo.
 - When something needs doing, give numbered step-by-step instructions, not prose.
 - Keep explanations minimal; expand only when explicitly asked.
 - No multi-paragraph end-of-turn summaries.
+- When telling Nick to add an environment variable, always state whether to
+  mark it sensitive (secrets/keys/tokens = sensitive; plain config like a
+  domain or public ID = not sensitive).
 
 ## Stack
 
