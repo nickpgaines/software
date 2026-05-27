@@ -2,6 +2,14 @@
 
 Project guidance for Claude Code sessions on this repo.
 
+## Product identity
+
+- The product is **Forge CRM**; its canonical domain is **forgecrm.app**.
+- `nick360` is a deprecated pre-launch codename (still the `apps/web`
+  package `name`). Do **not** use "nick360" for anything user-facing —
+  branding, bundle IDs, marketing copy, or new identifiers. Always
+  refer to the product as Forge CRM.
+
 ## Stack
 
 - Next.js (App Router) + React + Tailwind in `apps/web`
