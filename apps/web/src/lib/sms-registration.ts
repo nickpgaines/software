@@ -276,7 +276,13 @@ async function step(companyId: number): Promise<{
   // 1. Create Secondary Customer Profile (+ EndUsers + Address + submit)
   if (state === "not_started" || state === "customer_profile_failed") {
     try {
-      let cpSid = company.twilio_customer_profile_sid;
+      // On a failed retry, start a brand-new Customer Profile. Reusing the
+      // failed one re-attaches a second business-info / rep / address to the
+      // same bundle, and Twilio rejects the duplicate customer_profile_address.
+      let cpSid =
+        state === "customer_profile_failed"
+          ? null
+          : company.twilio_customer_profile_sid;
       if (!cpSid) {
         const cp = await createSecondaryCustomerProfile({
         creds,
@@ -400,7 +406,12 @@ async function step(companyId: number): Promise<{
     state === "trust_product_failed"
   ) {
     try {
-      let tpSid = company.twilio_trust_product_sid;
+      // Same idempotency fix as the Customer Profile: a failed retry starts a
+      // fresh Trust Product instead of re-attaching to the old one.
+      let tpSid =
+        state === "trust_product_failed"
+          ? null
+          : company.twilio_trust_product_sid;
       if (!tpSid) {
         const tp = await createA2pTrustProduct({
         creds,
