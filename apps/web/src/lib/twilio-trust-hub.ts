@@ -258,6 +258,28 @@ export async function attachToCustomerProfile(args: {
   );
 }
 
+export type SupportingDocumentResource = { sid: string; status: string };
+
+// Wrap a raw Address (AD…) in a customer_profile_address supporting document.
+// A Customer Profile bundle rejects a bare Address (error 70002); it accepts
+// the supporting document that references the address instead.
+export async function createAddressSupportingDocument(args: {
+  creds: TwilioCreds;
+  friendlyName: string;
+  addressSid: string;
+}): Promise<SupportingDocumentResource> {
+  return twilioRequest<SupportingDocumentResource>(
+    args.creds,
+    "POST",
+    `${TRUST_HUB_BASE}/v1/SupportingDocuments`,
+    {
+      FriendlyName: args.friendlyName,
+      Type: "customer_profile_address",
+      Attributes: JSON.stringify({ address_sids: args.addressSid }),
+    }
+  );
+}
+
 export type TrustProductResource = { sid: string; status: string };
 
 export async function createA2pTrustProduct(args: {
