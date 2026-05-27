@@ -4,6 +4,7 @@ import {
   ensureRollingVisits,
   startDateToIso,
 } from "@/lib/subscription-schedule";
+import { firstChargeOnOrAfter } from "@/lib/subscription-billing";
 
 export const dynamic = "force-dynamic";
 
@@ -52,6 +53,12 @@ export async function POST(
   }
 
   const now = new Date().toISOString();
+  // First recurring charge lands on the start date (per billing policy); the
+  // daily auto-biller takes it from there.
+  const nextChargeAt = firstChargeOnOrAfter(
+    startDateToIso(sub.start_date || now),
+    sub.interval
+  );
 
   await db
     .prepare(
@@ -60,10 +67,19 @@ export async function POST(
              accepted_at = COALESCE(accepted_at, ?),
              signature_data = COALESCE(signature_data, ?),
              signature_name = COALESCE(signature_name, ?),
-             signed_at = COALESCE(signed_at, ?)
+             signed_at = COALESCE(signed_at, ?),
+             next_charge_at = COALESCE(next_charge_at, ?)
        WHERE id = ? AND company_id = ?`
     )
-    .run(now, signatureData, signatureName, now, sub.id, sub.company_id);
+    .run(
+      now,
+      signatureData,
+      signatureName,
+      now,
+      nextChargeAt,
+      sub.id,
+      sub.company_id
+    );
 
   await ensureRollingVisits(db, {
     subscriptionId: sub.id,

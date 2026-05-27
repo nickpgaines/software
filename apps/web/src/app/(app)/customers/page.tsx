@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Plus, Search, Upload } from "lucide-react";
 import ImportModal from "@/components/customers/ImportModal";
+import SubscriptionImportModal from "@/components/subscriptions/SubscriptionImportModal";
 import CustomerForm from "@/components/customers/CustomerForm";
 import { usePhone } from "@/components/PhoneClient";
 import { Button } from "@/components/ui/button";
@@ -63,6 +64,7 @@ function CustomersPage() {
   const [creating, setCreating] = useState(false);
   const [attachPinId, setAttachPinId] = useState<number | null>(null);
   const [importing, setImporting] = useState(false);
+  const [importingSubs, setImportingSubs] = useState(false);
   const [query, setQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const searchParams = useSearchParams();
@@ -175,6 +177,13 @@ function CustomersPage() {
             className="hidden h-auto text-sm border border-line-strong bg-card hover:bg-black text-zinc-300 rounded px-3 py-2 font-bold md:inline-flex"
           >
             Import
+          </Button>
+          <Button
+            variant="ghost"
+            onClick={() => setImportingSubs(true)}
+            className="hidden h-auto text-sm border border-line-strong bg-card hover:bg-black text-zinc-300 rounded px-3 py-2 font-bold md:inline-flex"
+          >
+            Import subs
           </Button>
           <Button
             variant="ghost"
@@ -335,6 +344,15 @@ function CustomersPage() {
       {importing && (
         <ImportModal
           onClose={() => setImporting(false)}
+          onImported={async () => {
+            await load();
+          }}
+        />
+      )}
+
+      {importingSubs && (
+        <SubscriptionImportModal
+          onClose={() => setImportingSubs(false)}
           onImported={async () => {
             await load();
           }}

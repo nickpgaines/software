@@ -359,7 +359,7 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
 // Bump when init() gains migrations that must run on existing deploys.
 // First call after deploy runs the full init; subsequent cold starts hit
 // the fast-path below (one SELECT) and skip the ~150 DDL statements.
-const SCHEMA_VERSION = 10;
+const SCHEMA_VERSION = 11;
 
 async function init(): Promise<void> {
   // Fast path: if the schema is already at the current version, skip the
@@ -690,6 +690,11 @@ async function init(): Promise<void> {
     ["sms_daily_send_count", "INTEGER NOT NULL DEFAULT 0"],
     ["sms_daily_send_date", "TEXT"],
     ["sms_daily_send_limit", "INTEGER NOT NULL DEFAULT 0"],
+    // Company-wide default sales-tax rate (basis points). Applied to new
+    // subscriptions/jobs only when tax_applied_by_default is on; both default
+    // to 0/off so nothing is taxed until the merchant opts in.
+    ["default_tax_rate_bps", "INTEGER NOT NULL DEFAULT 0"],
+    ["tax_applied_by_default", "INTEGER NOT NULL DEFAULT 0"],
   ];
   for (const [col, def] of companyAdds) {
     await alterAddColumn("company", col, def, companyCols);
@@ -1530,6 +1535,72 @@ async function init(): Promise<void> {
     INSERT OR IGNORE INTO payroll_settings (id) VALUES (1);
   `);
 
+  // Make payments.job_id nullable so subscription auto-charges can be recorded
+  // without anchoring to a service visit — recurring plans bill on their own
+  // cadence, independent of job dates. SQLite can't drop NOT NULL in place, so
+  // rebuild the table preserving every row + column. Guarded by detecting the
+  // NOT NULL in the live DDL, so it runs exactly once. The old data is kept
+  // under payments__old until the final step, so a mid-script failure can
+  // never lose payment rows.
+  const payTableSql = await _db
+    .prepare(
+      "SELECT sql FROM sqlite_master WHERE type='table' AND name='payments'"
+    )
+    .get<{ sql: string }>();
+  if (
+    payTableSql?.sql &&
+    /job_id\s+INTEGER\s+NOT\s+NULL/i.test(payTableSql.sql)
+  ) {
+    const payColsNow = await _db
+      .prepare("PRAGMA table_info(payments)")
+      .all<{ name: string }>();
+    const payColNames = payColsNow.map((c) => c.name).join(", ");
+    const newPayDdl = payTableSql.sql
+      .replace(
+        /CREATE\s+TABLE\s+(?:IF\s+NOT\s+EXISTS\s+)?["'`]?payments["'`]?/i,
+        "CREATE TABLE payments__new"
+      )
+      .replace(/job_id\s+INTEGER\s+NOT\s+NULL/i, "job_id INTEGER");
+    await _db.exec(`
+      DROP TABLE IF EXISTS payments__new;
+      DROP TABLE IF EXISTS payments__old;
+      ${newPayDdl};
+      INSERT INTO payments__new (${payColNames}) SELECT ${payColNames} FROM payments;
+      ALTER TABLE payments RENAME TO payments__old;
+      ALTER TABLE payments__new RENAME TO payments;
+      DROP TABLE payments__old;
+      CREATE INDEX IF NOT EXISTS idx_payments_job_id     ON payments(job_id);
+      CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments(created_at);
+    `);
+  }
+
+  // Audit log of every recurring auto-charge attempt (success + failure), so
+  // the subscription UI can show a dunning history. The partial unique index
+  // guarantees at most one succeeded charge per billing period — belt-and-
+  // suspenders against double-charging on top of the next_charge_at advance.
+  await _db.exec(`
+    CREATE TABLE IF NOT EXISTS subscription_charge_attempts (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      company_id      INTEGER NOT NULL REFERENCES company(id) ON DELETE CASCADE,
+      subscription_id INTEGER NOT NULL REFERENCES customer_subscriptions(id) ON DELETE CASCADE,
+      period_key      TEXT,
+      amount_cents    INTEGER NOT NULL,
+      tax_cents       INTEGER NOT NULL DEFAULT 0,
+      status          TEXT NOT NULL CHECK (status IN ('succeeded','failed','requires_action')),
+      stripe_payment_intent_id TEXT,
+      payment_id      INTEGER,
+      error           TEXT,
+      created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_sub_charge_attempts_sub
+      ON subscription_charge_attempts(subscription_id);
+    CREATE INDEX IF NOT EXISTS idx_sub_charge_attempts_company
+      ON subscription_charge_attempts(company_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_sub_charge_attempts_period
+      ON subscription_charge_attempts(subscription_id, period_key)
+      WHERE status = 'succeeded' AND period_key IS NOT NULL;
+  `);
+
   const tplCols = await _db
     .prepare("PRAGMA table_info(subscription_templates)")
     .all<{ name: string }>();
@@ -1560,6 +1631,17 @@ async function init(): Promise<void> {
     ["default_payment_method_id", "TEXT"],
     ["last_charged_at", "TEXT"],
     ["next_charge_at", "TEXT"],
+    // Recurring auto-billing. status tracks the agreement lifecycle
+    // (pending/active/declined/canceled); billing_status tracks payment
+    // health independently so a card decline doesn't change the agreement.
+    ["billing_status", "TEXT NOT NULL DEFAULT 'current'"],
+    ["auto_bill", "INTEGER NOT NULL DEFAULT 1"],
+    ["failed_charge_count", "INTEGER NOT NULL DEFAULT 0"],
+    ["last_charge_error", "TEXT"],
+    ["last_charge_attempt_at", "TEXT"],
+    // Migration provenance — lets an import batch be reviewed or rolled back.
+    ["imported_from", "TEXT"],
+    ["import_batch", "TEXT"],
   ];
   for (const [col, def] of subAdds) {
     await alterAddColumn("customer_subscriptions", col, def, subCols);
@@ -2185,6 +2267,8 @@ export type Company = {
   stripe_payouts_enabled: number;
   stripe_details_submitted: number;
   stripe_account_type: "express" | "standard" | null;
+  default_tax_rate_bps: number;
+  tax_applied_by_default: number;
   twilio_subaccount_sid: string | null;
   twilio_subaccount_auth_token: string | null;
   platform_phone_number: string | null;
@@ -2418,6 +2502,10 @@ export type CustomerSubscriptionStatus =
   | "declined"
   | "canceled";
 
+// Payment health, tracked independently of the agreement status above so a
+// card decline never mutates the agreement lifecycle.
+export type SubscriptionBillingStatus = "current" | "past_due";
+
 export type CustomerSubscription = {
   id: number;
   company_id: number;
@@ -2445,6 +2533,32 @@ export type CustomerSubscription = {
   default_payment_method_id: string | null;
   last_charged_at: string | null;
   next_charge_at: string | null;
+  billing_status: SubscriptionBillingStatus;
+  auto_bill: number;
+  failed_charge_count: number;
+  last_charge_error: string | null;
+  last_charge_attempt_at: string | null;
+  imported_from: string | null;
+  import_batch: string | null;
+  created_at: string;
+};
+
+export type SubscriptionChargeAttemptStatus =
+  | "succeeded"
+  | "failed"
+  | "requires_action";
+
+export type SubscriptionChargeAttempt = {
+  id: number;
+  company_id: number;
+  subscription_id: number;
+  period_key: string | null;
+  amount_cents: number;
+  tax_cents: number;
+  status: SubscriptionChargeAttemptStatus;
+  stripe_payment_intent_id: string | null;
+  payment_id: number | null;
+  error: string | null;
   created_at: string;
 };
 
@@ -2748,7 +2862,7 @@ export type PaymentSource = "job" | "subscription" | "tip" | "other";
 export type Payment = {
   id: number;
   company_id: number;
-  job_id: number;
+  job_id: number | null;
   amount_cents: number;
   tip_cents: number;
   method: PaymentMethod;

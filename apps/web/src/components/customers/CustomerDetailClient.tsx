@@ -189,6 +189,7 @@ export default function CustomerDetailClient({
   const [data, setData] = useState<DetailResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
+  const [chargingId, setChargingId] = useState<number | null>(null);
 
   async function load() {
     const res = await fetch(`/api/customers/${customer.id}`);
@@ -200,6 +201,27 @@ export default function CustomerDetailClient({
     setData(json);
     setCustomer(json.customer);
     setLoading(false);
+  }
+
+  // Manually run a subscription's recurring charge now (vs. waiting for the
+  // daily auto-biller). Shares the exact billing path, so it's idempotent.
+  async function chargeSubscriptionNow(subId: number) {
+    if (chargingId) return;
+    setChargingId(subId);
+    try {
+      const res = await fetch(`/api/customer-subscriptions/${subId}/charge`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: "{}",
+      });
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        window.alert(j.error || "Charge failed");
+      }
+      await load();
+    } finally {
+      setChargingId(null);
+    }
   }
 
   useEffect(() => {
@@ -613,12 +635,22 @@ export default function CustomerDetailClient({
                   <Empty label="No subscriptions yet." />
                 ) : (
                   <Table>
-                    <Th cols={["Plan", "Cadence", "Price", "Started", "Status"]} />
+                    <Th cols={["Plan", "Cadence", "Price", "Next charge", "Status", ""]} />
                     <TableBody className="divide-y divide-line">
                       {data.subscriptions.map((s) => (
                         <TableRow key={s.id} className="border-0">
                           <TableCell className="px-4 py-2 text-zinc-200 font-bold">
                             {s.name}
+                            {s.status === "active" && (
+                              <span
+                                className={
+                                  "ml-2 text-[10px] font-bold " +
+                                  (s.auto_bill ? "text-emerald-400" : "text-zinc-500")
+                                }
+                              >
+                                {s.auto_bill ? "AUTO" : "MANUAL"}
+                              </span>
+                            )}
                           </TableCell>
                           <TableCell className="px-4 py-2 text-zinc-300 font-bold capitalize">
                             {s.interval}
@@ -627,10 +659,31 @@ export default function CustomerDetailClient({
                             {formatCents(s.price_cents)}
                           </TableCell>
                           <TableCell className="px-4 py-2 text-zinc-300 font-bold">
-                            {formatDate(s.start_date || s.accepted_at || s.created_at)}
+                            {s.status === "active" && s.next_charge_at
+                              ? formatDate(s.next_charge_at)
+                              : "—"}
                           </TableCell>
                           <TableCell className="px-4 py-2">
-                            {statusBadge(s.status)}
+                            <div className="flex items-center gap-1.5">
+                              {statusBadge(s.status)}
+                              {s.billing_status === "past_due" && (
+                                <span className="rounded px-1.5 py-0.5 text-[10px] font-bold bg-amber-500/15 text-amber-400">
+                                  Past due
+                                </span>
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell className="px-4 py-2 text-right">
+                            {s.status === "active" && (
+                              <Button
+                                variant="ghost"
+                                onClick={() => chargeSubscriptionNow(s.id)}
+                                disabled={chargingId === s.id}
+                                className="h-auto text-xs border border-line-strong bg-card hover:bg-black text-zinc-300 rounded px-2 py-1 font-bold disabled:opacity-50"
+                              >
+                                {chargingId === s.id ? "Charging…" : "Charge now"}
+                              </Button>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))}
