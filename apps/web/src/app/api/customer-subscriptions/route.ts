@@ -12,6 +12,7 @@ import {
   ensureRollingVisits,
   startDateToIso,
 } from "@/lib/subscription-schedule";
+import { firstChargeOnOrAfter } from "@/lib/subscription-billing";
 
 function makeAcceptToken() {
   return randomBytes(24).toString("base64url");
@@ -268,6 +269,18 @@ export async function POST(req: Request) {
   const subscriptionId = Number(result.lastInsertRowid);
 
   if (action === "accept") {
+    // Schedule the first recurring charge on the start date (per billing
+    // policy), then the daily auto-biller takes over. Card is locked
+    // separately via the accept setup-intent flow; auto_bill defaults on.
+    const nextChargeAt = firstChargeOnOrAfter(
+      startDateToIso(startDate),
+      interval
+    );
+    await db
+      .prepare(
+        `UPDATE customer_subscriptions SET next_charge_at = ? WHERE id = ? AND company_id = ?`
+      )
+      .run(nextChargeAt, subscriptionId, companyId);
     try {
       await ensureRollingVisits(db, {
         subscriptionId,
