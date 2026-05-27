@@ -32,6 +32,7 @@ import {
   attachToTrustProduct,
   createA2pTrustProduct,
   createAddress,
+  createAddressSupportingDocument,
   createAuthorizedRepEndUser,
   createBrandRegistration,
   createBusinessInformationEndUser,
@@ -333,10 +334,17 @@ async function step(companyId: number): Promise<{
         postalCode: registration.postal_code,
         isoCountry: registration.iso_country,
       });
+      // A bare Address can't be attached to the profile bundle (error 70002);
+      // wrap it in a customer_profile_address supporting document first.
+      const addrDoc = await createAddressSupportingDocument({
+        creds,
+        friendlyName: `tenant-${companyId}-address`,
+        addressSid: addr.sid,
+      });
       await attachToCustomerProfile({
         creds,
         customerProfileSid: cpSid,
-        objectSid: addr.sid,
+        objectSid: addrDoc.sid,
       });
 
       await submitCustomerProfile({ creds, sid: cpSid });
