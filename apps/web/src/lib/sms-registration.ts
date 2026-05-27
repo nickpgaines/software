@@ -75,11 +75,10 @@ const CAMPAIGN_HELP_MESSAGE =
   "For help, contact the business that sent you this message. Reply STOP to unsubscribe.";
 
 const CAMPAIGN_MESSAGE_FLOW =
-  "End users opt in to receive SMS in three ways, and we keep a timestamped record of each. " +
-  "Most opt-ins happen in person — when a service business sells a job at the door, the homeowner provides their phone number on a digital form and agrees to receive text messages from that business by checking an 'I agree to receive SMS messages' box before the form can be submitted, with date, time, and disclosure language recorded. " +
-  "Some opt-ins happen by phone, where the representative reads a disclosure covering message types, frequency, and opt-out, then logs the customer's verbal agreement with a timestamp. " +
-  "The remaining opt-ins come through the business's website booking form with the same disclosure and consent checkbox. " +
-  "Recipients can reply STOP to unsubscribe at any time or HELP for assistance. We retain consent records and never share numbers with third parties.";
+  "End users opt in by checking a dedicated SMS consent checkbox when they review and sign a service business's estimate — shown in person on the rep's tablet at the point of sale, or opened from a secure estimate link sent to the customer. " +
+  "The checkbox is separate from approving the estimate and is not required to purchase service. The disclosure names the specific business and states the message types, that frequency varies, that message and data rates may apply, and that the recipient can reply STOP to opt out or HELP for help. " +
+  "Each opt-in is recorded with a timestamp, the signer's name and mobile number, the originating business, the IP address, and the exact disclosure text agreed to. " +
+  "Recipients can reply STOP to unsubscribe at any time or HELP for assistance, and we never share numbers with third parties.";
 
 export type AdvanceResult = {
   state: A2pRegistrationState;

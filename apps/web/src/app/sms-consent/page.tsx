@@ -40,58 +40,60 @@ export default function SmsConsentDisclosurePage() {
             Where consent is collected
           </h2>
           <p>
-            Consent is collected at the point of sale, inside the Business&rsquo;s
-            service estimate or agreement. When a Business presents an
-            estimate to a Recipient — typically in person, on a tablet during
-            the on-site sale of a service — the Recipient reviews the
-            estimate&rsquo;s terms and signs to accept them. Those terms
-            include an SMS consent clause that names the specific Business
-            and authorizes the categories of SMS the Recipient is
-            consenting to.
+            Consent is collected at the point of sale, on the Business&rsquo;s
+            service estimate. When a Business presents an estimate to a
+            Recipient — typically in person, on a tablet during the on-site
+            sale, or via a secure estimate link — the estimate includes a
+            dedicated SMS consent checkbox, separate from approving the
+            estimate. The Recipient affirmatively checks that box to opt in.
+            The box names the specific Business and is not required to accept
+            the estimate or to purchase the service.
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
-            What the Recipient sees and signs
+            What the Recipient sees and checks
           </h2>
           <p>
-            The following text appears in the signed estimate. The placeholder{" "}
+            The following text appears next to the SMS consent checkbox. The
+            placeholder{" "}
             <em>{"{Business Name}"}</em> is replaced with the legal or
             trade name of the Business presenting the estimate:
           </p>
           <blockquote className="border-l-4 border-violet-500 pl-4 py-2 my-4 bg-zinc-950/60 text-zinc-200 italic">
-            Communications consent. By approving this estimate, you authorize{" "}
+            I agree to receive calls and text messages from{" "}
             <strong className="text-white not-italic">
               {"{Business Name}"}
             </strong>{" "}
-            to contact you by phone and text message (SMS) at the number you
-            provided, including service messages (scheduling, reminders,
-            receipts, follow-ups) and occasional promotional or
-            re-engagement messages. Message frequency varies. Message and
-            data rates may apply. Reply{" "}
+            at the phone number I provided.{" "}
+            <strong className="text-white not-italic">
+              {"{Business Name}"}
+            </strong>{" "}
+            sends appointment confirmations, reminders, on-the-way and arrival
+            notifications, receipts, follow-ups, two-way replies, and
+            occasional promotional or re-engagement messages. Message
+            frequency varies. Message and data rates may apply. Reply{" "}
             <strong className="text-white not-italic">STOP</strong> to opt
             out at any time, or{" "}
             <strong className="text-white not-italic">HELP</strong> for help.
             Consent is not a condition of purchase.
           </blockquote>
           <p>
-            The Recipient affirmatively signs the estimate to accept its
-            terms in their entirety, including the SMS consent clause
-            above. Consent is voluntary — Recipients may decline the
-            estimate or strike the clause prior to signing, and the
-            Business is required to honor that.
+            Checking this box is entirely optional and separate from approving
+            the estimate. A Recipient can accept the estimate and decline SMS —
+            consent is never a condition of purchase. Only Recipients who
+            actively check the box are opted in.
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
             How consent is recorded
           </h2>
           <p>
-            Each signed estimate is stored inside Forge CRM with the
-            timestamp of acceptance, the Recipient&rsquo;s identifying
-            information, the originating Business, the IP address from
-            which the signature was captured, and the exact text the
-            Recipient agreed to (including the SMS consent clause as
-            rendered above with the Business name filled in). These records
-            are produced on request in response to a carrier audit, a
+            When a Recipient checks the box, Forge CRM records the opt-in
+            with the timestamp, the Recipient&rsquo;s identifying information,
+            the originating Business, the IP address from which it was
+            submitted, and the exact disclosure text the Recipient agreed to
+            (the text shown above, with the Business name filled in). These
+            records are produced on request in response to a carrier audit, a
             regulatory inquiry, or a consumer dispute.
           </p>
 
