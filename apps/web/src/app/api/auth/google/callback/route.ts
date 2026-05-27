@@ -23,6 +23,11 @@ function loginError(req: Request, code: string) {
   url.searchParams.set("error", code);
   const res = NextResponse.redirect(url);
   res.cookies.delete(OAUTH_STATE_COOKIE);
+  // Clear any pre-existing session too. Otherwise a failed Google sign-in
+  // leaves the visitor's old session intact, the middleware sees them as
+  // authed and bounces /login -> /dashboard, and the error is never shown —
+  // so the attempt silently looks like it logged them into their old account.
+  res.cookies.delete(SESSION_COOKIE);
   return res;
 }
 
