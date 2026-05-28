@@ -38,6 +38,7 @@ import {
   createBusinessInformationEndUser,
   createCampaign,
   createMessagingService,
+  createPrimaryCustomerProfileLinkEndUser,
   createSecondaryCustomerProfile,
   fetchBrandRegistration,
   fetchCampaign,
@@ -323,6 +324,14 @@ async function step(companyId: number): Promise<{
 
   // 1. Create Secondary Customer Profile (+ EndUsers + Address + submit)
   if (state === "not_started" || state === "customer_profile_failed") {
+    const primaryCpSid =
+      process.env.TWILIO_PRIMARY_CUSTOMER_PROFILE_SID?.trim();
+    if (!primaryCpSid) {
+      const msg =
+        "TWILIO_PRIMARY_CUSTOMER_PROFILE_SID is not configured — set it to the ISV master account's approved Primary Customer Profile SID (BU…) in the environment.";
+      await persistState(companyId, "customer_profile_failed", msg);
+      return { state: "customer_profile_failed", error: msg, recurse: false };
+    }
     try {
       // On a failed retry, start a brand-new Customer Profile. Reusing the
       // failed one re-attaches a second business-info / rep / address to the
@@ -343,6 +352,20 @@ async function step(companyId: number): Promise<{
           twilio_customer_profile_sid: cpSid,
         });
       }
+
+      // Twilio requires every Secondary CP to point back at the ISV's approved
+      // Primary CP. Without this link, the bundle eval fails with
+      // "primary_customer_profile_type_business: Primary customer profile bundle is null".
+      const primaryLink = await createPrimaryCustomerProfileLinkEndUser({
+        creds,
+        friendlyName: `tenant-${companyId}-primary-link`,
+        primaryCustomerProfileSid: primaryCpSid,
+      });
+      await attachToCustomerProfile({
+        creds,
+        customerProfileSid: cpSid,
+        objectSid: primaryLink.sid,
+      });
 
       const bi = await createBusinessInformationEndUser({
         creds,
