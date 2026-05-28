@@ -2133,7 +2133,6 @@ type RegistrationStatus = {
     business_phone: string;
     business_website: string | null;
     industry: string;
-    entity_type: string;
     monthly_volume: "under_1k" | "1k_6k" | "6k_plus";
     business_description: string;
     auth_rep_name: string;
@@ -2152,15 +2151,6 @@ type RegistrationStatus = {
     twilio_campaign_sid: string | null;
   };
 };
-
-const ENTITY_TYPE_OPTIONS = [
-  "Sole proprietorship",
-  "Partnership",
-  "LLC",
-  "Corporation (private)",
-  "Corporation (public)",
-  "Non-profit",
-];
 
 const STATE_LABELS: Record<string, string> = {
   not_started: "Not submitted",
@@ -2198,7 +2188,6 @@ function MessagingPanel() {
     business_phone: "",
     business_website: "",
     industry: "",
-    entity_type: "",
     monthly_volume: "under_1k" as "under_1k" | "1k_6k" | "6k_plus",
     business_description: "",
     auth_rep_name: "",
@@ -2233,7 +2222,6 @@ function MessagingPanel() {
           business_phone: s.registration!.business_phone,
           business_website: s.registration!.business_website ?? "",
           industry: s.registration!.industry,
-          entity_type: s.registration!.entity_type,
           monthly_volume: s.registration!.monthly_volume,
           business_description: s.registration!.business_description,
           auth_rep_name: s.registration!.auth_rep_name,
@@ -2477,22 +2465,6 @@ function MessagingPanel() {
                 placeholder="https://example.com"
                 className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
               />
-            </Field>
-            <Field label="Business Entity Type">
-              {/* Native select kept: Radix Select forbids empty-string item values. */}
-              <select
-                value={form.entity_type}
-                onChange={(e) => set("entity_type", e.target.value)}
-                disabled={loading || saving}
-                className="h-auto w-full border border-line rounded-lg px-3 py-2 text-sm bg-card text-white"
-              >
-                <option value="">Select entity type</option>
-                {ENTITY_TYPE_OPTIONS.map((opt) => (
-                  <option key={opt} value={opt}>
-                    {opt}
-                  </option>
-                ))}
-              </select>
             </Field>
 
             <div className="space-y-2 pt-2">
