@@ -42,7 +42,9 @@ import {
   fetchBrandRegistration,
   fetchCampaign,
   fetchCustomerProfile,
+  fetchCustomerProfileEvaluations,
   fetchTrustProduct,
+  summarizeEvaluationFailures,
   findAvailableLocalNumber,
   purchasePhoneNumber,
   submitCustomerProfile,
@@ -114,6 +116,17 @@ function volumeLabel(v: string): string {
   if (v === "1k_6k") return "1,000-6,000";
   if (v === "6k_plus") return "6,000+";
   return "under 1,000";
+}
+
+// Twilio Trust Hub rejects non-E.164 phone numbers on the authorized rep
+// end-user. The user-facing form accepts loose input ("8435045474",
+// "(843) 504-5474"), so normalize before handing off.
+function toE164US(raw: string): string {
+  const digits = raw.replace(/\D/g, "");
+  if (digits.length === 10) return `+1${digits}`;
+  if (digits.length === 11 && digits.startsWith("1")) return `+${digits}`;
+  if (raw.trim().startsWith("+")) return raw.trim();
+  return raw;
 }
 
 function buildCampaignDescription(name: string): string {
@@ -300,7 +313,7 @@ async function step(companyId: number): Promise<{
         creds,
         friendlyName: `tenant-${companyId}-business-info`,
         legalCompanyName: registration.legal_company_name,
-        ein: registration.ein,
+        ein: registration.ein.replace(/\D/g, ""),
         entityType: companyType,
         industry: registration.industry,
         website: registration.business_website,
@@ -320,7 +333,7 @@ async function step(companyId: number): Promise<{
         firstName,
         lastName,
         email: registration.auth_rep_email,
-        phone: registration.business_phone,
+        phone: toE164US(registration.business_phone),
         title: registration.auth_rep_title,
         businessTitle: registration.auth_rep_title,
       });
@@ -375,14 +388,18 @@ async function step(companyId: number): Promise<{
         return { state: "customer_profile_approved", error: null, recurse: true };
       }
       if (isFailed(cp.status)) {
-        await persistState(
-          companyId,
-          "customer_profile_failed",
-          `Customer Profile rejected by Twilio (status=${cp.status})`
-        );
+        const evals = await fetchCustomerProfileEvaluations({
+          creds,
+          sid: company.twilio_customer_profile_sid,
+        }).catch(() => []);
+        const reason = summarizeEvaluationFailures(evals);
+        const msg = reason
+          ? `Customer Profile rejected by Twilio: ${reason}`
+          : `Customer Profile rejected by Twilio (status=${cp.status})`;
+        await persistState(companyId, "customer_profile_failed", msg);
         return {
           state: "customer_profile_failed",
-          error: `status=${cp.status}`,
+          error: msg,
           recurse: false,
         };
       }
