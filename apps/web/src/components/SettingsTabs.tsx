@@ -2626,27 +2626,25 @@ type CallingStatus = {
   has_account_credentials: boolean;
   has_business_number: boolean;
   business_number: string | null;
+  has_dedicated_number: boolean;
+  dedicated_number: string | null;
+  capability_verified: boolean;
+  caller_id_name: string | null;
+  has_voicemail_greeting: boolean;
 };
 
 function CallingPanel() {
+  const router = useRouter();
   const [status, setStatus] = useState<CallingStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [savedAt, setSavedAt] = useState<number | null>(null);
+  const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const [apiKeySid, setApiKeySid] = useState("");
-  const [apiKeySecret, setApiKeySecret] = useState("");
-  const [twimlAppSid, setTwimlAppSid] = useState("");
-  const [recordCalls, setRecordCalls] = useState(true);
-  const [twimlVoiceUrl, setTwimlVoiceUrl] = useState("");
 
   async function load() {
     const res = await fetch("/api/settings/voice", { cache: "no-store" });
     if (res.ok) {
       const s = (await res.json()) as CallingStatus;
       setStatus(s);
-      setRecordCalls(s.record_calls);
     }
     setLoading(false);
   }
@@ -2655,178 +2653,502 @@ function CallingPanel() {
     load();
   }, []);
 
-  useEffect(() => {
-    if (typeof window !== "undefined") {
-      setTwimlVoiceUrl(`${window.location.origin}/api/voice/outbound`);
-    }
-  }, []);
-
-  async function save(e: React.FormEvent) {
-    e.preventDefault();
+  async function checkCapability() {
+    setBusy(true);
     setError(null);
-    setSaving(true);
-    const res = await fetch("/api/settings/voice", {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        api_key_sid: apiKeySid || undefined,
-        api_key_secret: apiKeySecret || undefined,
-        twiml_app_sid: twimlAppSid || undefined,
-        record_calls: recordCalls,
-      }),
-    });
-    setSaving(false);
-    if (!res.ok) {
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
-      setError(data.error || "Could not save");
-      return;
+    try {
+      const res = await fetch("/api/settings/voice/check-capability", {
+        method: "POST",
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        voice?: boolean;
+        error?: string;
+      };
+      if (!res.ok) setError(data.error || "Capability check failed");
+      else if (!data.voice)
+        setError("This number does not support voice calling.");
+      await load();
+    } finally {
+      setBusy(false);
     }
-    const s = (await res.json()) as CallingStatus;
-    setStatus(s);
-    setApiKeySid("");
-    setApiKeySecret("");
-    setTwimlAppSid("");
-    setSavedAt(Date.now());
   }
 
+  async function enableCalling() {
+    setBusy(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/settings/voice/enable", { method: "POST" });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) setError(data.error || "Could not enable calling");
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function disableCalling() {
+    if (!confirm("Remove phone calling? You can re-enable any time.")) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await fetch("/api/settings/voice/disable", { method: "POST" });
+      await load();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (loading) {
+    return <p className="text-sm text-zinc-400">Loading…</p>;
+  }
+  if (!status) {
+    return (
+      <p className="text-sm text-rose-500">Could not load calling status.</p>
+    );
+  }
+
+  const noNumber = !status.has_dedicated_number;
+  const verified = status.capability_verified;
+  const enabled = status.configured;
+  const number = status.dedicated_number;
+  const displayNumber = number ? formatUSPhone(number) : "";
+
   return (
-    <form onSubmit={save} className="space-y-5">
+    <div className="space-y-5">
       <div>
-        <h2 className="text-lg font-extrabold text-white tracking-tight">Calling</h2>
+        <h2 className="text-lg font-extrabold text-white tracking-tight">
+          Phone Calling
+        </h2>
         <p className="text-sm text-zinc-400 mt-3 font-bold">
-          Place and receive calls from the browser using your Twilio number.
-          Calls can be recorded automatically and saved to the call log.
+          Enable inbound and outbound calling on your business number.
         </p>
       </div>
 
-      <div
-        className={
-          "flex items-center gap-2 text-xs font-bold rounded-full px-3 py-1 w-fit " +
-          (status?.configured
-            ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
-            : "bg-black text-zinc-400 border border-line")
-        }
-      >
-        <span
-          className={
-            "w-1.5 h-1.5 rounded-full " +
-            (status?.configured ? "bg-emerald-500" : "bg-slate-400")
-          }
-        />
-        {status?.configured ? "Connected" : "Not connected"}
-        {status?.business_number && (
-          <span className="text-zinc-400 font-normal">
-            · {status.business_number}
-          </span>
-        )}
-      </div>
-
-      {!status?.has_account_credentials && (
-        <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
-          Connect your Twilio account in <strong>Settings → Messaging</strong>{" "}
-          first. Calling reuses the same Account SID, Auth Token, and number.
+      {noNumber && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 space-y-3">
+          <p className="font-bold">Complete 10DLC registration first.</p>
+          <p className="text-amber-800">
+            Calling reuses your approved business number. Finish the
+            registration in <strong>Settings → Messaging</strong> to claim a
+            dedicated number, then come back here to enable calling.
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => router.replace("/settings?tab=messaging")}
+            className="h-auto text-sm bg-primary hover:opacity-90 text-primary-foreground rounded-full px-4 py-2 font-bold"
+          >
+            Go to Messaging
+          </Button>
         </div>
       )}
 
-      <div className="rounded-xl border border-line bg-black p-4 space-y-3 text-sm">
-        <div className="font-bold text-white tracking-tight">Setup steps</div>
-        <ol className="list-decimal list-inside space-y-1 text-zinc-400">
-          <li>
-            In the Twilio Console, go to{" "}
-            <span className="font-bold">Account → API keys & tokens</span>{" "}
-            and click <strong>Create API key</strong>. Type:{" "}
-            <span className="font-mono">Standard</span>. Copy the{" "}
-            <span className="font-mono">SID</span> (starts with{" "}
-            <span className="font-mono">SK</span>) and the{" "}
-            <span className="font-mono">Secret</span>. The Secret is only shown
-            once.
-          </li>
-          <li>
-            In Twilio, go to <span className="font-bold">Voice → Manage → TwiML Apps</span>{" "}
-            and click <strong>Create new TwiML App</strong>. Set the{" "}
-            <span className="font-bold">Voice → Request URL</span> to the
-            URL below (HTTP POST). Save and copy the App SID (starts with{" "}
-            <span className="font-mono">AP</span>).
-          </li>
-          <li>Paste all three values below.</li>
-        </ol>
-        <div>
-          <div className="text-xs font-bold text-zinc-500 mb-1.5">
-            TwiML App Voice URL
+      {!noNumber && !enabled && !verified && (
+        <div className="rounded-xl border border-line bg-card p-5 space-y-4">
+          <div className="flex items-center gap-3">
+            <span className="w-10 h-10 rounded-xl bg-black border border-line flex items-center justify-center">
+              <PulseIcon name="phone" className="w-5 h-5 text-zinc-300" />
+            </span>
+            <div>
+              <div className="text-base font-extrabold text-white tracking-tight">
+                Phone Calling
+              </div>
+              <div className="text-xs text-zinc-400 mt-0.5">
+                Enable inbound and outbound calling on your business number
+              </div>
+            </div>
           </div>
-          <Input
-            type="text"
-            readOnly
-            value={twimlVoiceUrl}
-            onFocus={(e) => e.currentTarget.select()}
-            className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card font-mono text-xs"
+          <div className="rounded-xl border border-line bg-black/40 p-4 space-y-3">
+            <p className="text-sm text-zinc-300">
+              Before enabling calling, we need to verify your number{" "}
+              <span className="font-bold text-white">{displayNumber}</span>{" "}
+              supports voice.
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={checkCapability}
+              disabled={busy}
+              className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-2 font-bold"
+            >
+              {busy ? "Checking…" : "Check Voice Capability"}
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {!noNumber && !enabled && verified && (
+        <>
+          <div className="rounded-xl border border-emerald-900/40 bg-emerald-950/30 p-4 text-sm text-emerald-100">
+            <div className="flex items-center gap-2">
+              <PulseIcon name="check" className="w-4 h-4 text-emerald-400" />
+              <span>
+                Your number{" "}
+                <span className="font-bold text-emerald-200">
+                  {displayNumber}
+                </span>{" "}
+                supports voice calling.
+              </span>
+            </div>
+          </div>
+          <div className="rounded-xl border border-line bg-card p-5 space-y-3">
+            <div className="text-base font-extrabold text-white tracking-tight">
+              Phone Calling
+            </div>
+            <p className="text-sm text-zinc-400">
+              Make and receive calls from your business number on the mobile
+              app and web dashboard. Includes call recording and voicemail.
+            </p>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={enableCalling}
+              disabled={busy}
+              className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-2 font-bold"
+            >
+              {busy ? "Enabling…" : "Enable Phone Calling"}
+            </Button>
+          </div>
+        </>
+      )}
+
+      {enabled && (
+        <>
+          <div className="rounded-xl border border-line bg-card p-5">
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="w-10 h-10 rounded-xl bg-emerald-950/40 border border-emerald-900/40 flex items-center justify-center">
+                  <PulseIcon
+                    name="phone"
+                    className="w-5 h-5 text-emerald-300"
+                  />
+                </span>
+                <div>
+                  <div className="text-base font-extrabold text-white tracking-tight">
+                    Phone Calling
+                  </div>
+                  <div className="text-xs text-zinc-400 mt-0.5">
+                    Make and receive calls from your business number
+                  </div>
+                </div>
+              </div>
+              <span className="text-xs font-bold rounded-full px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
+                Active
+              </span>
+            </div>
+            <div className="mt-4 flex items-center gap-2 text-sm text-zinc-300">
+              <PulseIcon name="check" className="w-4 h-4 text-emerald-400" />
+              <span>
+                Calls are active on{" "}
+                <span className="font-bold text-white">{displayNumber}</span>
+              </span>
+            </div>
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={disableCalling}
+              disabled={busy}
+              className="h-auto mt-3 text-xs text-rose-400 hover:text-rose-300 hover:bg-transparent underline font-bold px-0"
+            >
+              {busy ? "Working…" : "Remove phone calling"}
+            </Button>
+          </div>
+
+          <CallerIdCard initialName={status.caller_id_name} />
+          <VoicemailGreetingCard
+            initialHasGreeting={status.has_voicemail_greeting}
           />
+        </>
+      )}
+
+      {error && <p className="text-sm text-rose-500">{error}</p>}
+    </div>
+  );
+}
+
+function CallerIdCard({ initialName }: { initialName: string | null }) {
+  const [name, setName] = useState(initialName ?? "");
+  const [savedName, setSavedName] = useState(initialName ?? "");
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
+
+  useEffect(() => {
+    setName(initialName ?? "");
+    setSavedName(initialName ?? "");
+  }, [initialName]);
+
+  async function save() {
+    setError(null);
+    setSaving(true);
+    try {
+      const res = await fetch("/api/settings/voice/caller-id", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        name?: string;
+        error?: string;
+      };
+      if (!res.ok) {
+        setError(data.error || "Could not save");
+        return;
+      }
+      const next = data.name ?? "";
+      setName(next);
+      setSavedName(next);
+      setSavedAt(Date.now());
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const dirty = savedName !== name;
+
+  return (
+    <div className="rounded-xl border border-line bg-card p-5 space-y-3">
+      <div className="flex items-center gap-3">
+        <span className="w-10 h-10 rounded-xl bg-black border border-line flex items-center justify-center">
+          <PulseIcon name="user" className="w-5 h-5 text-zinc-300" />
+        </span>
+        <div>
+          <div className="text-base font-extrabold text-white tracking-tight">
+            Caller ID
+          </div>
+          <div className="text-xs text-zinc-400 mt-0.5">
+            The name that appears when you call customers
+          </div>
         </div>
       </div>
-
-      <Field label="API Key SID">
-        <Input
-          type="text"
-          value={apiKeySid}
-          disabled={loading}
-          onChange={(e) => setApiKeySid(e.target.value)}
-          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card font-mono"
-          placeholder={
-            status?.api_key_sid_masked || "SKxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-          }
-        />
+      <Field label="Business Name">
+        <div className="flex gap-2">
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value.slice(0, 15))}
+            maxLength={15}
+            placeholder="Acme Window C"
+            className="h-auto flex-1 border-line rounded-full px-4 py-2 text-sm bg-card"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={save}
+            disabled={saving || !dirty}
+            className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-2 font-bold"
+          >
+            {saving ? "Saving…" : "Save"}
+          </Button>
+        </div>
       </Field>
-      <Field label="API Key Secret">
-        <Input
-          type="password"
-          value={apiKeySecret}
-          disabled={loading}
-          onChange={(e) => setApiKeySecret(e.target.value)}
-          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card font-mono"
-          placeholder={
-            status?.api_key_secret_set
-              ? "•••••••••••••••• (saved)"
-              : "API Key Secret"
-          }
-        />
-      </Field>
-      <Field label="TwiML App SID">
-        <Input
-          type="text"
-          value={twimlAppSid}
-          disabled={loading}
-          onChange={(e) => setTwimlAppSid(e.target.value)}
-          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card font-mono"
-          placeholder={
-            status?.twiml_app_sid_masked || "APxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-          }
-        />
-      </Field>
-
-      <Label className="flex items-center gap-2 text-zinc-300">
-        <Checkbox
-          checked={recordCalls}
-          onCheckedChange={(c) => setRecordCalls(c === true)}
-          className="rounded border-line-strong text-white focus:ring-zinc-500"
-        />
-        Record calls
-      </Label>
-
-      {error && <p className="text-sm text-rose-600">{error}</p>}
-      <div className="flex items-center gap-3 pt-2">
-        <Button
-          variant="ghost"
-          type="submit"
-          disabled={saving || loading}
-          className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-2 font-bold"
-        >
-          {saving ? "Saving…" : "Save changes"}
-        </Button>
-        {savedAt && !saving && (
-          <span className="text-xs text-emerald-600">Saved</span>
-        )}
+      <div className="text-xs text-zinc-500">
+        {name.trim().length}/15 characters
       </div>
-    </form>
+      <p className="text-xs text-zinc-500">
+        Max 15 characters — letters, numbers, and spaces only. May take 24–48
+        hours to propagate.
+      </p>
+      {error && <p className="text-xs text-rose-500">{error}</p>}
+      {savedAt && !error && !dirty && (
+        <p className="text-xs text-emerald-500">Saved</p>
+      )}
+    </div>
+  );
+}
+
+function VoicemailGreetingCard({
+  initialHasGreeting,
+}: {
+  initialHasGreeting: boolean;
+}) {
+  const [hasGreeting, setHasGreeting] = useState(initialHasGreeting);
+  const [recording, setRecording] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const fileRef = useRef<HTMLInputElement>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+
+  useEffect(() => {
+    setHasGreeting(initialHasGreeting);
+  }, [initialHasGreeting]);
+
+  async function uploadDataUrl(dataUrl: string) {
+    setError(null);
+    setUploading(true);
+    try {
+      const res = await fetch("/api/settings/voice/voicemail-greeting", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ greeting: dataUrl }),
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        has_greeting?: boolean;
+      };
+      if (!res.ok) {
+        setError(data.error || "Could not save greeting");
+        return;
+      }
+      setHasGreeting(true);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function onFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("audio/")) {
+      setError("Please choose an audio file");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = String(reader.result || "");
+      void uploadDataUrl(dataUrl);
+    };
+    reader.onerror = () => setError("Could not read audio file");
+    reader.readAsDataURL(file);
+  }
+
+  async function startRecording() {
+    setError(null);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const rec = new MediaRecorder(stream);
+      chunksRef.current = [];
+      rec.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      rec.onstop = () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(chunksRef.current, {
+          type: rec.mimeType || "audio/webm",
+        });
+        const reader = new FileReader();
+        reader.onload = () => {
+          const dataUrl = String(reader.result || "");
+          void uploadDataUrl(dataUrl);
+        };
+        reader.readAsDataURL(blob);
+      };
+      recorderRef.current = rec;
+      rec.start();
+      setRecording(true);
+    } catch (e) {
+      setError(
+        (e as Error).message ||
+          "Microphone access denied. Allow mic permission and try again."
+      );
+    }
+  }
+
+  function stopRecording() {
+    recorderRef.current?.stop();
+    recorderRef.current = null;
+    setRecording(false);
+  }
+
+  async function removeGreeting() {
+    if (!confirm("Remove voicemail greeting and use the default?")) return;
+    setError(null);
+    setUploading(true);
+    try {
+      await fetch("/api/settings/voice/voicemail-greeting", {
+        method: "DELETE",
+      });
+      setHasGreeting(false);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div className="rounded-xl border border-line bg-card p-5 space-y-3">
+      <div className="flex items-center gap-3">
+        <span className="w-10 h-10 rounded-xl bg-black border border-line flex items-center justify-center">
+          <PulseIcon name="settings" className="w-5 h-5 text-zinc-300" />
+        </span>
+        <div>
+          <div className="text-base font-extrabold text-white tracking-tight">
+            Call Settings
+          </div>
+          <div className="text-xs text-zinc-400 mt-0.5">
+            Customize your voicemail greeting
+          </div>
+        </div>
+      </div>
+      <div>
+        <div className="text-xs font-bold text-zinc-500 mb-1">
+          Voicemail Greeting
+        </div>
+        <p className="text-xs text-zinc-400 mb-3">
+          {hasGreeting
+            ? "Custom greeting saved. Upload or record again to replace it."
+            : "Using default greeting. Upload an audio file or record one directly."}
+        </p>
+        <div className="flex flex-wrap gap-2">
+          {/* Native <input type="file"> kept: no FileInput primitive in design system; matches the existing logo / photo upload pattern. */}
+          <input
+            ref={fileRef}
+            type="file"
+            accept="audio/*"
+            onChange={onFile}
+            className="hidden"
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => fileRef.current?.click()}
+            disabled={uploading || recording}
+            className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-4 py-2 font-bold"
+          >
+            Upload File
+          </Button>
+          {!recording ? (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={startRecording}
+              disabled={uploading}
+              className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-4 py-2 font-bold gap-1.5"
+            >
+              <PulseIcon name="mic" className="w-3.5 h-3.5" />
+              Record
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={stopRecording}
+              className="h-auto text-sm bg-rose-600 hover:bg-rose-700 text-white rounded-full px-4 py-2 font-bold gap-1.5"
+            >
+              <PulseIcon name="mic-off" className="w-3.5 h-3.5" />
+              Stop
+            </Button>
+          )}
+          {hasGreeting && (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={removeGreeting}
+              disabled={uploading || recording}
+              className="h-auto text-sm text-zinc-400 font-bold hover:text-white hover:bg-transparent"
+            >
+              Remove
+            </Button>
+          )}
+        </div>
+        {(uploading || recording) && (
+          <p className="text-xs text-zinc-400 mt-2">
+            {recording ? "Recording…" : "Saving…"}
+          </p>
+        )}
+        {error && <p className="text-xs text-rose-500 mt-2">{error}</p>}
+      </div>
+    </div>
   );
 }
 

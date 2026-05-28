@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { getDb, type MessagingSettings } from "@/lib/db";
+import { getDb, type Company, type MessagingSettings } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
+import { emptyVoiceSettings } from "@/lib/voice";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,11 @@ type PublicVoiceSettings = {
   has_account_credentials: boolean;
   has_business_number: boolean;
   business_number: string | null;
+  has_dedicated_number: boolean;
+  dedicated_number: string | null;
+  capability_verified: boolean;
+  caller_id_name: string | null;
+  has_voicemail_greeting: boolean;
 };
 
 function mask(sid: string | null): string | null {
@@ -26,7 +32,10 @@ function mask(sid: string | null): string | null {
   return `${sid.slice(0, 4)}…${sid.slice(-4)}`;
 }
 
-function toPublic(s: MessagingSettings): PublicVoiceSettings {
+function toPublic(
+  s: MessagingSettings,
+  company: Company | null
+): PublicVoiceSettings {
   return {
     api_key_sid_masked: mask(s.voice_api_key_sid),
     api_key_secret_set: !!s.voice_api_key_secret,
@@ -42,6 +51,13 @@ function toPublic(s: MessagingSettings): PublicVoiceSettings {
     has_account_credentials: !!(s.account_sid && s.auth_token),
     has_business_number: !!s.from_number,
     business_number: s.from_number,
+    has_dedicated_number: !!(
+      company?.sms_dedicated_number && company?.sms_dedicated_number_sid
+    ),
+    dedicated_number: company?.sms_dedicated_number ?? null,
+    capability_verified: s.voice_capability_verified === 1,
+    caller_id_name: s.voice_caller_id_name,
+    has_voicemail_greeting: !!s.voice_voicemail_greeting_data_url,
   };
 }
 
@@ -64,27 +80,25 @@ async function readSettings(companyId: number): Promise<MessagingSettings> {
       .get(companyId)) as MessagingSettings | undefined;
     if (retry) row = retry;
   }
+  return row ?? emptyVoiceSettings(companyId);
+}
+
+async function readCompany(companyId: number): Promise<Company | null> {
+  const db = await getDb();
   return (
-    row ?? {
-      id: 0,
-      company_id: companyId,
-      provider: "twilio",
-      account_sid: null,
-      auth_token: null,
-      from_number: null,
-      voice_api_key_sid: null,
-      voice_api_key_secret: null,
-      voice_twiml_app_sid: null,
-      voice_record_calls: 1,
-      updated_at: "",
-    }
+    (await db
+      .prepare("SELECT * FROM company WHERE id = ? LIMIT 1")
+      .get<Company>(companyId)) ?? null
   );
 }
 
 export async function GET() {
   const companyId = await requireCompanyId();
-  const s = await readSettings(companyId);
-  return NextResponse.json(toPublic(s), { headers: NO_CACHE_HEADERS });
+  const [s, company] = await Promise.all([
+    readSettings(companyId),
+    readCompany(companyId),
+  ]);
+  return NextResponse.json(toPublic(s, company), { headers: NO_CACHE_HEADERS });
 }
 
 export async function PUT(req: Request) {
@@ -166,5 +180,8 @@ export async function PUT(req: Request) {
     voice_record_calls: nextRecord,
     updated_at: new Date().toISOString(),
   };
-  return NextResponse.json(toPublic(updated), { headers: NO_CACHE_HEADERS });
+  const company = await readCompany(companyId);
+  return NextResponse.json(toPublic(updated, company), {
+    headers: NO_CACHE_HEADERS,
+  });
 }
