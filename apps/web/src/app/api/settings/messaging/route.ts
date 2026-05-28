@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb, type Company, type MessagingSettings } from "@/lib/db";
 import { normalizeUSPhone } from "@/lib/sms";
 import { requireCompanyId } from "@/lib/auth";
+import { emptyVoiceSettings } from "@/lib/voice";
 
 export const dynamic = "force-dynamic";
 
@@ -68,21 +69,7 @@ async function readSettings(companyId: number): Promise<MessagingSettings> {
         "SELECT * FROM messaging_settings WHERE company_id = ? LIMIT 1"
       )
       .get(companyId)) as MessagingSettings | undefined;
-    return (
-      row ?? {
-        id: 0,
-        company_id: companyId,
-        provider: "twilio",
-        account_sid: null,
-        auth_token: null,
-        from_number: null,
-        voice_api_key_sid: null,
-        voice_api_key_secret: null,
-        voice_twiml_app_sid: null,
-        voice_record_calls: 1,
-        updated_at: "",
-      }
-    );
+    return row ?? emptyVoiceSettings(companyId);
   });
 }
 
