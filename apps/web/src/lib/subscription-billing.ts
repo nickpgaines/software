@@ -9,11 +9,7 @@ import {
   type SubscriptionInterval,
 } from "./db";
 import { getStripe, getCompany } from "./stripe";
-import {
-  getEmailSettings,
-  isEmailConfigured,
-  sendEmailViaResend,
-} from "./email";
+import { resolveEmailSender, sendEmailViaResend } from "./email";
 
 // How many calendar months each interval advances. weekly/biweekly are handled
 // separately as day offsets.
@@ -407,8 +403,8 @@ async function notifyChargeFailure(
     .prepare("SELECT name, email FROM company WHERE id = ?")
     .get<{ name: string | null; email: string | null }>(companyId);
   if (!company?.email) return;
-  const settings = await getEmailSettings(companyId);
-  if (!isEmailConfigured(settings)) return;
+  const sender = await resolveEmailSender(companyId);
+  if (!sender) return;
   const cust = await db
     .prepare("SELECT name FROM customers WHERE id = ?")
     .get<{ name: string | null }>(sub.customer_id);
@@ -416,7 +412,7 @@ async function notifyChargeFailure(
   const amount = `$${(total / 100).toFixed(2)}`;
   const who = cust?.name || "a customer";
   await sendEmailViaResend({
-    settings,
+    sender,
     to: company.email,
     subject: `Subscription payment failed — ${who}`,
     html:
