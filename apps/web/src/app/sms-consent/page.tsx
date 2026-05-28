@@ -178,6 +178,9 @@ export default function SmsConsentDisclosurePage() {
         </div>
 
         <div className="mt-12 pt-6 border-t border-line text-sm text-zinc-500 font-bold space-x-4">
+          <Link href="/sms-opt-in" className="hover:text-zinc-300">
+            SMS Opt-In
+          </Link>
           <Link href="/sms-terms" className="hover:text-zinc-300">
             SMS Terms
           </Link>
