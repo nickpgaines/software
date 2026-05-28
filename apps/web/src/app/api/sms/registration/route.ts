@@ -96,6 +96,7 @@ function validate(body: FormPayload): string | null {
     ["postal_code", "Postal code"],
     ["business_email", "Business email"],
     ["business_phone", "Business phone"],
+    ["business_website", "Business website"],
     ["monthly_volume", "Estimated monthly volume"],
   ];
   for (const [k, label] of required) {
