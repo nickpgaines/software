@@ -243,29 +243,6 @@ export async function createBusinessInformationEndUser(args: {
   );
 }
 
-// Each Secondary Customer Profile must point at the ISV's approved Primary
-// Customer Profile via an EndUser of type primary_customer_profile_type_business
-// whose `bundle_sid` is the primary CP's SID. Without this link, the secondary
-// CP evaluation fails with "Primary customer profile bundle is null".
-export async function createPrimaryCustomerProfileLinkEndUser(args: {
-  creds: TwilioCreds;
-  friendlyName: string;
-  primaryCustomerProfileSid: string;
-}): Promise<EndUserResource> {
-  return twilioRequest<EndUserResource>(
-    args.creds,
-    "POST",
-    `${TRUST_HUB_BASE}/v1/EndUsers`,
-    {
-      FriendlyName: args.friendlyName,
-      Type: "primary_customer_profile_type_business",
-      Attributes: JSON.stringify({
-        bundle_sid: args.primaryCustomerProfileSid,
-      }),
-    }
-  );
-}
-
 export async function createAuthorizedRepEndUser(args: {
   creds: TwilioCreds;
   friendlyName: string;

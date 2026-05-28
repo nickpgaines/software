@@ -38,7 +38,6 @@ import {
   createBusinessInformationEndUser,
   createCampaign,
   createMessagingService,
-  createPrimaryCustomerProfileLinkEndUser,
   createSecondaryCustomerProfile,
   fetchBrandRegistration,
   fetchCampaign,
@@ -354,17 +353,14 @@ async function step(companyId: number): Promise<{
       }
 
       // Twilio requires every Secondary CP to point back at the ISV's approved
-      // Primary CP. Without this link, the bundle eval fails with
-      // "primary_customer_profile_type_business: Primary customer profile bundle is null".
-      const primaryLink = await createPrimaryCustomerProfileLinkEndUser({
-        creds,
-        friendlyName: `tenant-${companyId}-primary-link`,
-        primaryCustomerProfileSid: primaryCpSid,
-      });
+      // Primary CP. Attach the Primary CP's BU SID directly via
+      // EntityAssignments — there is no wrapper EndUser. Without this link,
+      // the bundle eval fails with "primary_customer_profile_type_business:
+      // Primary customer profile bundle is null".
       await attachToCustomerProfile({
         creds,
         customerProfileSid: cpSid,
-        objectSid: primaryLink.sid,
+        objectSid: primaryCpSid,
       });
 
       const bi = await createBusinessInformationEndUser({
