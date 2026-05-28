@@ -96,7 +96,6 @@ function validate(body: FormPayload): string | null {
     ["postal_code", "Postal code"],
     ["business_email", "Business email"],
     ["business_phone", "Business phone"],
-    ["entity_type", "Business entity type"],
     ["monthly_volume", "Estimated monthly volume"],
   ];
   for (const [k, label] of required) {
@@ -157,7 +156,7 @@ export async function POST(req: Request) {
     business_phone: s(body.business_phone),
     business_website: s(body.business_website) || null,
     industry: s(body.industry) || "Home services",
-    entity_type: s(body.entity_type),
+    entity_type: s(body.entity_type) || "LLC",
     monthly_volume: s(body.monthly_volume) || "under_1k",
     business_description:
       s(body.business_description) ||
