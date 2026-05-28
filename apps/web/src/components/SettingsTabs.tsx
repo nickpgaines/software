@@ -2457,12 +2457,12 @@ function MessagingPanel() {
                 />
               </Field>
             </div>
-            <Field label="Business Website (optional)">
+            <Field label="Business Website">
               <Input
                 value={form.business_website}
                 onChange={(e) => set("business_website", e.target.value)}
                 disabled={loading || saving}
-                placeholder="https://example.com"
+                placeholder="https://example.com or social media URL"
                 className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
               />
             </Field>

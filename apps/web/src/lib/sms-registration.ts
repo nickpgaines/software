@@ -38,6 +38,7 @@ import {
   createBusinessInformationEndUser,
   createCampaign,
   createMessagingService,
+  createPrimaryCustomerProfileLinkEndUser,
   createSecondaryCustomerProfile,
   fetchBrandRegistration,
   fetchCampaign,
@@ -98,19 +99,52 @@ function buildWebhookUrl(path: string): string | null {
 function entityTypeToA2p(formEntityType: string): {
   brandType: "STANDARD" | "SOLE_PROPRIETOR";
   companyType: string;
+  businessType: string;
 } {
   const v = formEntityType.toLowerCase();
   if (v.includes("sole")) {
-    return { brandType: "SOLE_PROPRIETOR", companyType: "private" };
-  }
-  if (v.includes("public") || v.includes("non-profit") || v.includes("nonprofit")) {
     return {
-      brandType: "STANDARD",
-      companyType: v.includes("non") ? "non-profit" : "public",
+      brandType: "SOLE_PROPRIETOR",
+      companyType: "private",
+      businessType: "Sole Proprietorship",
     };
   }
-  return { brandType: "STANDARD", companyType: "private" };
+  if (v.includes("public")) {
+    return {
+      brandType: "STANDARD",
+      companyType: "public",
+      businessType: "Corporation",
+    };
+  }
+  if (v.includes("non-profit") || v.includes("nonprofit")) {
+    return {
+      brandType: "STANDARD",
+      companyType: "non-profit",
+      businessType: "Non-Profit Corporation",
+    };
+  }
+  if (v.includes("partnership")) {
+    return {
+      brandType: "STANDARD",
+      companyType: "private",
+      businessType: "Partnership",
+    };
+  }
+  // Default LLC (form removed entity_type and defaults to LLC server-side).
+  return {
+    brandType: "STANDARD",
+    companyType: "private",
+    businessType: "Limited Liability Corporation",
+  };
 }
+
+// Twilio Trust Hub business_industry enum. Home-service tenants land on
+// PROFESSIONAL_SERVICES (cleaners, pest control, lawn, HVAC, etc.).
+const TWILIO_BUSINESS_INDUSTRY = "PROFESSIONAL_SERVICES";
+
+// Twilio Trust Hub job_position enum (Job Level). Default for owner-operated
+// home-service businesses where the signer is the owner.
+const TWILIO_JOB_POSITION = "Director";
 
 function volumeLabel(v: string): string {
   if (v === "1k_6k") return "1,000-6,000";
@@ -258,7 +292,9 @@ async function step(companyId: number): Promise<{
   }
 
   const state = company.a2p_registration_state;
-  const { brandType, companyType } = entityTypeToA2p(registration.entity_type);
+  const { brandType, companyType, businessType } = entityTypeToA2p(
+    registration.entity_type
+  );
   const cpCallback = buildWebhookUrl(
     "/api/twilio/webhooks/customer-profile-status"
   );
@@ -288,6 +324,14 @@ async function step(companyId: number): Promise<{
 
   // 1. Create Secondary Customer Profile (+ EndUsers + Address + submit)
   if (state === "not_started" || state === "customer_profile_failed") {
+    const primaryCpSid =
+      process.env.TWILIO_PRIMARY_CUSTOMER_PROFILE_SID?.trim();
+    if (!primaryCpSid) {
+      const msg =
+        "TWILIO_PRIMARY_CUSTOMER_PROFILE_SID is not configured — set it to the ISV master account's approved Primary Customer Profile SID (BU…) in the environment.";
+      await persistState(companyId, "customer_profile_failed", msg);
+      return { state: "customer_profile_failed", error: msg, recurse: false };
+    }
     try {
       // On a failed retry, start a brand-new Customer Profile. Reusing the
       // failed one re-attaches a second business-info / rep / address to the
@@ -309,13 +353,27 @@ async function step(companyId: number): Promise<{
         });
       }
 
+      // Twilio requires every Secondary CP to point back at the ISV's approved
+      // Primary CP. Without this link, the bundle eval fails with
+      // "primary_customer_profile_type_business: Primary customer profile bundle is null".
+      const primaryLink = await createPrimaryCustomerProfileLinkEndUser({
+        creds,
+        friendlyName: `tenant-${companyId}-primary-link`,
+        primaryCustomerProfileSid: primaryCpSid,
+      });
+      await attachToCustomerProfile({
+        creds,
+        customerProfileSid: cpSid,
+        objectSid: primaryLink.sid,
+      });
+
       const bi = await createBusinessInformationEndUser({
         creds,
         friendlyName: `tenant-${companyId}-business-info`,
         legalCompanyName: registration.legal_company_name,
         ein: registration.ein.replace(/\D/g, ""),
-        entityType: companyType,
-        industry: registration.industry,
+        entityType: businessType,
+        industry: TWILIO_BUSINESS_INDUSTRY,
         website: registration.business_website,
         description: registration.business_description,
       });
@@ -334,7 +392,7 @@ async function step(companyId: number): Promise<{
         lastName,
         email: registration.auth_rep_email,
         phone: toE164US(registration.business_phone),
-        title: registration.auth_rep_title,
+        title: TWILIO_JOB_POSITION,
         businessTitle: registration.auth_rep_title,
       });
       await attachToCustomerProfile({
