@@ -118,8 +118,11 @@ export async function fetchTwilioRecording(args: {
 }
 
 // Resolve the Twilio account that owns the tenant's dedicated number. The
-// number is purchased on the tenant's subaccount once their A2P campaign is
-// approved, so subaccount creds are what we use to manage it.
+// standard path is per-tenant: the number lives on the tenant's subaccount,
+// purchased once the A2P campaign approves. Legacy tenants (configured by
+// hand before that flow existed) instead have credentials + the number's
+// E.164 on messaging_settings; we look the PhoneNumber SID up live in that
+// case so they can still enable calling.
 type CallingContext =
   | {
       ok: true;
@@ -128,49 +131,89 @@ type CallingContext =
       phoneNumber: string;
       phoneNumberSid: string;
     }
-  | { ok: false; reason: "no_subaccount" | "no_number" };
+  | { ok: false; reason: "no_subaccount" | "no_number" | "lookup_failed"; error?: string };
 
-export function resolveCallingContext(
+export async function resolveCallingContext(
   company: Pick<
     Company,
     | "twilio_subaccount_sid"
     | "twilio_subaccount_auth_token"
     | "sms_dedicated_number"
     | "sms_dedicated_number_sid"
-  >
-): CallingContext {
+  >,
+  settings: MessagingSettings
+): Promise<CallingContext> {
+  // Preferred path: number lives on the tenant's subaccount and we already
+  // have its SID on the company row.
   if (
-    !company.twilio_subaccount_sid ||
-    !company.twilio_subaccount_auth_token
+    company.twilio_subaccount_sid &&
+    company.twilio_subaccount_auth_token &&
+    company.sms_dedicated_number &&
+    company.sms_dedicated_number_sid
   ) {
+    return {
+      ok: true,
+      accountSid: company.twilio_subaccount_sid,
+      authToken: company.twilio_subaccount_auth_token,
+      phoneNumber: company.sms_dedicated_number,
+      phoneNumberSid: company.sms_dedicated_number_sid,
+    };
+  }
+
+  // Legacy path: messaging_settings holds account creds + the number's E.164,
+  // so we can look up the SID against Twilio.
+  if (settings.account_sid && settings.auth_token && settings.from_number) {
+    try {
+      const client = twilio(settings.account_sid, settings.auth_token);
+      const numbers = await client.incomingPhoneNumbers.list({
+        phoneNumber: settings.from_number,
+        limit: 1,
+      });
+      if (numbers.length === 0) {
+        return {
+          ok: false,
+          reason: "no_number",
+          error: `Number ${settings.from_number} not found on Twilio account`,
+        };
+      }
+      return {
+        ok: true,
+        accountSid: settings.account_sid,
+        authToken: settings.auth_token,
+        phoneNumber: settings.from_number,
+        phoneNumberSid: numbers[0].sid,
+      };
+    } catch (e) {
+      return {
+        ok: false,
+        reason: "lookup_failed",
+        error: (e as Error).message || "Twilio lookup failed",
+      };
+    }
+  }
+
+  if (!company.twilio_subaccount_sid) {
     return { ok: false, reason: "no_subaccount" };
   }
-  if (!company.sms_dedicated_number || !company.sms_dedicated_number_sid) {
-    return { ok: false, reason: "no_number" };
-  }
-  return {
-    ok: true,
-    accountSid: company.twilio_subaccount_sid,
-    authToken: company.twilio_subaccount_auth_token,
-    phoneNumber: company.sms_dedicated_number,
-    phoneNumberSid: company.sms_dedicated_number_sid,
-  };
+  return { ok: false, reason: "no_number" };
 }
 
 export async function checkVoiceCapability(
-  company: Parameters<typeof resolveCallingContext>[0]
+  company: Parameters<typeof resolveCallingContext>[0],
+  settings: MessagingSettings
 ): Promise<
   | { ok: true; voice: boolean; phoneNumber: string }
   | { ok: false; error: string }
 > {
-  const ctx = resolveCallingContext(company);
+  const ctx = await resolveCallingContext(company, settings);
   if (!ctx.ok) {
     return {
       ok: false,
       error:
-        ctx.reason === "no_subaccount"
+        ctx.error ??
+        (ctx.reason === "no_subaccount"
           ? "Tenant has no Twilio subaccount"
-          : "Tenant has no dedicated business number",
+          : "Tenant has no dedicated business number"),
     };
   }
   try {
@@ -221,23 +264,25 @@ export async function enableVoiceForCompany(args: {
     .get<Company>(companyId);
   if (!company) return { ok: false, error: "Company not found" };
 
-  const ctx = resolveCallingContext(company);
+  // Load any partially-persisted settings so we can resume after a failed run
+  // and so legacy contexts can be resolved from messaging_settings.
+  const existing = await getVoiceSettings(companyId);
+
+  const ctx = await resolveCallingContext(company, existing);
   if (!ctx.ok) {
     return {
       ok: false,
       error:
-        ctx.reason === "no_subaccount"
+        ctx.error ??
+        (ctx.reason === "no_subaccount"
           ? "Connect Twilio first (Settings → Messaging)"
-          : "Complete 10DLC registration in Settings → Messaging first",
+          : "Complete 10DLC registration in Settings → Messaging first"),
     };
   }
 
   const outboundUrl = `${appBaseUrl}/api/voice/outbound`;
   const inboundUrl = `${appBaseUrl}/api/voice/inbound`;
   const statusUrl = `${appBaseUrl}/api/voice/status`;
-
-  // Load any partially-persisted settings so we can resume after a failed run.
-  const existing = await getVoiceSettings(companyId);
 
   const client = twilio(ctx.accountSid, ctx.authToken);
 
