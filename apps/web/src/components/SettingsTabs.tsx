@@ -2707,10 +2707,14 @@ function CallingPanel() {
     );
   }
 
-  const noNumber = !status.has_dedicated_number;
+  // Legacy tenants configured Twilio by hand before the A2P flow existed --
+  // their `messaging_settings.from_number` is set but `company.sms_dedicated_number*`
+  // are not, so we fall back to `business_number` for both the gate and the
+  // display.
+  const number = status.dedicated_number || status.business_number;
+  const noNumber = !status.has_dedicated_number && !number;
   const verified = status.capability_verified;
   const enabled = status.configured;
-  const number = status.dedicated_number;
   const displayNumber = number ? formatUSPhone(number) : "";
 
   return (
@@ -2843,15 +2847,27 @@ function CallingPanel() {
                 <span className="font-bold text-white">{displayNumber}</span>
               </span>
             </div>
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={disableCalling}
-              disabled={busy}
-              className="h-auto mt-3 text-xs text-rose-400 hover:text-rose-300 hover:bg-transparent underline font-bold px-0"
-            >
-              {busy ? "Working…" : "Remove phone calling"}
-            </Button>
+            <div className="mt-3 flex flex-wrap items-center gap-4">
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={enableCalling}
+                disabled={busy}
+                className="h-auto text-xs text-zinc-300 hover:text-white hover:bg-transparent underline font-bold px-0"
+                title="Re-create the Twilio API Key + TwiML App and re-point the number's voice webhook. Fixes legacy configurations where the inbound webhook was never set correctly."
+              >
+                {busy ? "Working…" : "Re-sync calling"}
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={disableCalling}
+                disabled={busy}
+                className="h-auto text-xs text-rose-400 hover:text-rose-300 hover:bg-transparent underline font-bold px-0"
+              >
+                {busy ? "Working…" : "Remove phone calling"}
+              </Button>
+            </div>
           </div>
 
           <CallerIdCard initialName={status.caller_id_name} />
@@ -2892,7 +2908,7 @@ function CallerIdCard({ initialName }: { initialName: string | null }) {
         error?: string;
       };
       if (!res.ok) {
-        setError(data.error || "Could not save");
+        setError(data.error || `Could not save (HTTP ${res.status})`);
         return;
       }
       const next = data.name ?? "";
