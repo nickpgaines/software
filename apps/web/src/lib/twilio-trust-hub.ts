@@ -138,6 +138,65 @@ export async function fetchCustomerProfile(args: {
   );
 }
 
+// Pull the most recent evaluation result for a Customer Profile so we can
+// surface the actual rejection reason ("EIN does not match business name",
+// "address could not be verified", etc.) instead of a bare "twilio-rejected".
+export type EvaluationResource = {
+  sid: string;
+  status: string;
+  results?: Array<{
+    object_type?: string;
+    valid?: boolean;
+    failure_reason?: string;
+    error_code?: number;
+    fields?: Array<{
+      object_field?: string;
+      passed?: boolean;
+      failure_reason?: string;
+      error_code?: number;
+    }>;
+  }>;
+};
+
+export async function fetchCustomerProfileEvaluations(args: {
+  creds: TwilioCreds;
+  sid: string;
+}): Promise<EvaluationResource[]> {
+  const data = await twilioRequest<{ results?: EvaluationResource[] }>(
+    args.creds,
+    "GET",
+    `${TRUST_HUB_BASE}/v1/CustomerProfiles/${encodeURIComponent(
+      args.sid
+    )}/Evaluations`
+  );
+  return data.results ?? [];
+}
+
+export function summarizeEvaluationFailures(
+  evals: EvaluationResource[]
+): string | null {
+  for (const ev of evals) {
+    if (ev.status !== "noncompliant") continue;
+    const reasons: string[] = [];
+    for (const r of ev.results ?? []) {
+      if (r.valid) continue;
+      const where = r.object_type ?? "field";
+      if (r.failure_reason) {
+        reasons.push(`${where}: ${r.failure_reason}`);
+      }
+      for (const f of r.fields ?? []) {
+        if (f.passed === false && f.failure_reason) {
+          reasons.push(
+            `${where}.${f.object_field ?? "field"}: ${f.failure_reason}`
+          );
+        }
+      }
+    }
+    if (reasons.length) return reasons.join("; ");
+  }
+  return null;
+}
+
 export async function submitCustomerProfile(args: {
   creds: TwilioCreds;
   sid: string;
