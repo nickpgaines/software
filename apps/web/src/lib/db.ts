@@ -572,6 +572,9 @@ async function init(): Promise<void> {
     ["voice_api_key_secret", "TEXT"],
     ["voice_twiml_app_sid", "TEXT"],
     ["voice_record_calls", "INTEGER NOT NULL DEFAULT 1"],
+    ["voice_caller_id_name", "TEXT"],
+    ["voice_voicemail_greeting_data_url", "TEXT"],
+    ["voice_capability_verified", "INTEGER NOT NULL DEFAULT 0"],
   ];
   for (const [col, def] of messagingSettingsAdds) {
     await alterAddColumn("messaging_settings", col, def, messagingSettingsCols);
@@ -2260,6 +2263,9 @@ export type MessagingSettings = {
   voice_api_key_secret: string | null;
   voice_twiml_app_sid: string | null;
   voice_record_calls: number;
+  voice_caller_id_name: string | null;
+  voice_voicemail_greeting_data_url: string | null;
+  voice_capability_verified: number;
   updated_at: string;
 };
 
