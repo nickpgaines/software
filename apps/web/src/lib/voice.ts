@@ -127,6 +127,15 @@ type CallingContext =
   | {
       ok: true;
       accountSid: string;
+      // For Basic Auth against the Twilio REST API. May be either the
+      // account auth token (authUsername == accountSid) or an API Key SID
+      // (authUsername == "SK…"). Either authenticates calls scoped to
+      // accountSid.
+      authUsername: string;
+      authPassword: string;
+      // Plain auth token if we have one, "" if we only had API key creds.
+      // Used for endpoints that require the literal token (e.g. recording
+      // playback via Basic Auth on api.twilio.com).
       authToken: string;
       phoneNumber: string;
       phoneNumberSid: string;
@@ -154,42 +163,69 @@ export async function resolveCallingContext(
     return {
       ok: true,
       accountSid: company.twilio_subaccount_sid,
+      authUsername: company.twilio_subaccount_sid,
+      authPassword: company.twilio_subaccount_auth_token,
       authToken: company.twilio_subaccount_auth_token,
       phoneNumber: company.sms_dedicated_number,
       phoneNumberSid: company.sms_dedicated_number_sid,
     };
   }
 
-  // Legacy path: messaging_settings holds account creds + the number's E.164,
-  // so we can look up the SID against Twilio.
-  if (settings.account_sid && settings.auth_token && settings.from_number) {
-    try {
-      const client = twilio(settings.account_sid, settings.auth_token);
-      const numbers = await client.incomingPhoneNumbers.list({
-        phoneNumber: settings.from_number,
-        limit: 1,
-      });
-      if (numbers.length === 0) {
-        return {
-          ok: false,
-          reason: "no_number",
-          error: `Number ${settings.from_number} not found on Twilio account`,
-        };
-      }
-      return {
-        ok: true,
-        accountSid: settings.account_sid,
+  // Legacy path: messaging_settings holds account creds + the number's
+  // E.164. Auth-token-backed creds are preferred (they let us mint new API
+  // keys, change number config, etc.), but lots of legacy tenants only ever
+  // pasted an SK/Secret pair -- so when auth_token is missing we sign Twilio
+  // requests with the API Key creds against the same Account SID.
+  if (settings.account_sid && settings.from_number) {
+    const credPairs: { username: string; password: string; authToken?: string }[] = [];
+    if (settings.auth_token) {
+      credPairs.push({
+        username: settings.account_sid,
+        password: settings.auth_token,
         authToken: settings.auth_token,
-        phoneNumber: settings.from_number,
-        phoneNumberSid: numbers[0].sid,
-      };
-    } catch (e) {
+      });
+    }
+    if (settings.voice_api_key_sid && settings.voice_api_key_secret) {
+      credPairs.push({
+        username: settings.voice_api_key_sid,
+        password: settings.voice_api_key_secret,
+      });
+    }
+    if (credPairs.length === 0) {
       return {
         ok: false,
-        reason: "lookup_failed",
-        error: (e as Error).message || "Twilio lookup failed",
+        reason: "no_subaccount",
+        error: "Twilio credentials are missing (auth token or API Key)",
       };
     }
+    let lastError = "";
+    for (const cred of credPairs) {
+      try {
+        const client = twilio(cred.username, cred.password, {
+          accountSid: settings.account_sid,
+        });
+        const numbers = await client.incomingPhoneNumbers.list({
+          phoneNumber: settings.from_number,
+          limit: 1,
+        });
+        if (numbers.length === 0) {
+          lastError = `Number ${settings.from_number} not found on Twilio account`;
+          continue;
+        }
+        return {
+          ok: true,
+          accountSid: settings.account_sid,
+          authUsername: cred.username,
+          authPassword: cred.password,
+          authToken: cred.authToken ?? "",
+          phoneNumber: settings.from_number,
+          phoneNumberSid: numbers[0].sid,
+        };
+      } catch (e) {
+        lastError = (e as Error).message || "Twilio lookup failed";
+      }
+    }
+    return { ok: false, reason: "lookup_failed", error: lastError };
   }
 
   if (!company.twilio_subaccount_sid) {
@@ -217,7 +253,9 @@ export async function checkVoiceCapability(
     };
   }
   try {
-    const client = twilio(ctx.accountSid, ctx.authToken);
+    const client = twilio(ctx.authUsername, ctx.authPassword, {
+      accountSid: ctx.accountSid,
+    });
     const num = await client
       .incomingPhoneNumbers(ctx.phoneNumberSid)
       .fetch();
@@ -284,7 +322,9 @@ export async function enableVoiceForCompany(args: {
   const inboundUrl = `${appBaseUrl}/api/voice/inbound`;
   const statusUrl = `${appBaseUrl}/api/voice/status`;
 
-  const client = twilio(ctx.accountSid, ctx.authToken);
+  const client = twilio(ctx.authUsername, ctx.authPassword, {
+    accountSid: ctx.accountSid,
+  });
 
   // 1. TwiML App -- the SID the Voice SDK uses for outbound calls.
   let twimlAppSid = existing.voice_twiml_app_sid;
@@ -357,7 +397,10 @@ export async function enableVoiceForCompany(args: {
 
   // 4. Persist everything onto messaging_settings so the existing voice
   //    routes (token, outbound TwiML) pick it up. Upsert so this works
-  //    whether or not the row already existed.
+  //    whether or not the row already existed. Preserve any existing
+  //    auth_token if the new context didn't include one (API-key-only
+  //    legacy path) -- we don't want to wipe out a working credential.
+  const nextAuthToken = ctx.authToken || existing.auth_token;
   if (existing.id) {
     await db
       .prepare(
@@ -370,7 +413,7 @@ export async function enableVoiceForCompany(args: {
       )
       .run(
         ctx.accountSid,
-        ctx.authToken,
+        nextAuthToken,
         ctx.phoneNumber,
         apiKeySid,
         apiKeySecret,
@@ -390,7 +433,7 @@ export async function enableVoiceForCompany(args: {
       .run(
         companyId,
         ctx.accountSid,
-        ctx.authToken,
+        nextAuthToken,
         ctx.phoneNumber,
         apiKeySid,
         apiKeySecret,
