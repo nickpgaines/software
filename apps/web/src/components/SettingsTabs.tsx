@@ -2639,6 +2639,7 @@ function CallingPanel() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [statusMsg, setStatusMsg] = useState<string | null>(null);
 
   async function load() {
     const res = await fetch("/api/settings/voice", { cache: "no-store" });
@@ -2676,10 +2677,15 @@ function CallingPanel() {
   async function enableCalling() {
     setBusy(true);
     setError(null);
+    setStatusMsg(null);
     try {
       const res = await fetch("/api/settings/voice/enable", { method: "POST" });
       const data = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) setError(data.error || "Could not enable calling");
+      if (!res.ok) {
+        setError(data.error || `Could not enable calling (HTTP ${res.status})`);
+      } else {
+        setStatusMsg("Re-sync complete -- Twilio webhook updated.");
+      }
       await load();
     } finally {
       setBusy(false);
@@ -2690,6 +2696,7 @@ function CallingPanel() {
     if (!confirm("Remove phone calling? You can re-enable any time.")) return;
     setBusy(true);
     setError(null);
+    setStatusMsg(null);
     try {
       await fetch("/api/settings/voice/disable", { method: "POST" });
       await load();
@@ -2868,6 +2875,13 @@ function CallingPanel() {
                 {busy ? "Working…" : "Remove phone calling"}
               </Button>
             </div>
+            <TwilioConfigDiagnostic
+              expectedInbound={
+                typeof window !== "undefined"
+                  ? `${window.location.origin}/api/voice/inbound`
+                  : "/api/voice/inbound"
+              }
+            />
           </div>
 
           <CallerIdCard initialName={status.caller_id_name} />
@@ -2878,6 +2892,155 @@ function CallingPanel() {
       )}
 
       {error && <p className="text-sm text-rose-500">{error}</p>}
+      {statusMsg && !error && (
+        <p className="text-sm text-emerald-500">{statusMsg}</p>
+      )}
+    </div>
+  );
+}
+
+function TwilioConfigDiagnostic({ expectedInbound }: { expectedInbound: string }) {
+  type Config = {
+    account_sid: string;
+    phone_number: string;
+    phone_number_sid: string;
+    friendly_name: string | null;
+    voice_url: string | null;
+    voice_method: string | null;
+    voice_application_sid: string | null;
+    sms_url: string | null;
+    capabilities: { voice?: boolean; sms?: boolean; mms?: boolean } | null;
+  };
+  const [open, setOpen] = useState(false);
+  const [config, setConfig] = useState<Config | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function load() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/settings/voice/twilio-config", {
+        cache: "no-store",
+      });
+      const data = (await res.json().catch(() => ({}))) as
+        | Config
+        | { error?: string };
+      if (!res.ok) {
+        setError(
+          (data as { error?: string }).error ||
+            `Could not fetch Twilio config (HTTP ${res.status})`
+        );
+        setConfig(null);
+        return;
+      }
+      setConfig(data as Config);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    if (open && !config && !loading) void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
+  const voiceUrlOk =
+    config?.voice_url && config.voice_url.startsWith(expectedInbound);
+
+  return (
+    <div className="mt-4 border-t border-line pt-3">
+      <Button
+        type="button"
+        variant="ghost"
+        onClick={() => setOpen((v) => !v)}
+        className="h-auto text-xs text-zinc-400 hover:text-white hover:bg-transparent px-0 font-bold"
+      >
+        {open ? "Hide" : "Show"} Twilio webhook config
+      </Button>
+      {open && (
+        <div className="mt-2 rounded-lg border border-line bg-black/40 p-3 text-xs space-y-2 font-mono">
+          {loading && <p className="text-zinc-400">Fetching from Twilio…</p>}
+          {error && <p className="text-rose-400 break-all">{error}</p>}
+          {config && (
+            <>
+              <div>
+                <span className="text-zinc-500">Number SID:</span>{" "}
+                <span className="text-zinc-200 break-all">
+                  {config.phone_number_sid}
+                </span>
+              </div>
+              <div>
+                <span className="text-zinc-500">Account SID:</span>{" "}
+                <span className="text-zinc-200 break-all">
+                  {config.account_sid}
+                </span>
+              </div>
+              <div>
+                <span className="text-zinc-500">Voice URL:</span>{" "}
+                <span
+                  className={
+                    "break-all " +
+                    (voiceUrlOk ? "text-emerald-300" : "text-amber-300")
+                  }
+                >
+                  {config.voice_url || "(not set)"}
+                </span>
+              </div>
+              <div>
+                <span className="text-zinc-500">Voice Method:</span>{" "}
+                <span className="text-zinc-200">
+                  {config.voice_method || "(none)"}
+                </span>
+              </div>
+              {config.voice_application_sid && (
+                <div>
+                  <span className="text-zinc-500">Voice App SID:</span>{" "}
+                  <span className="text-zinc-200 break-all">
+                    {config.voice_application_sid}
+                  </span>
+                </div>
+              )}
+              <div>
+                <span className="text-zinc-500">SMS URL:</span>{" "}
+                <span className="text-zinc-200 break-all">
+                  {config.sms_url || "(not set)"}
+                </span>
+              </div>
+              <div>
+                <span className="text-zinc-500">Capabilities:</span>{" "}
+                <span className="text-zinc-200">
+                  voice={String(config.capabilities?.voice ?? false)}, sms=
+                  {String(config.capabilities?.sms ?? false)}, mms=
+                  {String(config.capabilities?.mms ?? false)}
+                </span>
+              </div>
+              <div className="pt-1 border-t border-line">
+                <span className="text-zinc-500">Expected Voice URL:</span>{" "}
+                <span className="text-zinc-300 break-all">
+                  {expectedInbound}
+                </span>
+                {!voiceUrlOk && (
+                  <p className="mt-1 text-amber-300 font-sans not-italic">
+                    Voice URL doesn&apos;t match. Click <strong>Re-sync calling</strong>{" "}
+                    to repoint it. If that fails, paste this entire block into
+                    chat so we can diagnose.
+                  </p>
+                )}
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={load}
+                disabled={loading}
+                className="h-auto text-xs text-zinc-400 hover:text-white hover:bg-transparent underline font-bold px-0 font-sans not-italic"
+              >
+                {loading ? "Loading…" : "Refresh"}
+              </Button>
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 }
