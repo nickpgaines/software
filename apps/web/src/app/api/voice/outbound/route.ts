@@ -24,6 +24,30 @@ export async function POST(req: Request) {
   const raw = await req.text();
   const params = new URLSearchParams(raw);
 
+  // Legacy A2P-provisioned numbers had voiceUrl set to /api/voice/outbound
+  // at purchase time (the only voice handler that existed back then). When
+  // a PSTN caller dials such a number, Twilio sends Direction=inbound to
+  // this route; treat that as an inbound call and bounce to the proper
+  // handler instead of trying to dial out -- which would loop the call
+  // back to the same number and fail. Newly-enabled tenants get voiceUrl
+  // set directly to /api/voice/inbound and skip the redirect entirely.
+  const direction = params.get("Direction") || "";
+  if (direction === "inbound") {
+    const url = new URL(req.url);
+    const proto =
+      req.headers.get("x-forwarded-proto") || url.protocol.replace(":", "");
+    const host =
+      req.headers.get("x-forwarded-host") || req.headers.get("host") || url.host;
+    const inboundUrl = `${proto}://${host}/api/voice/inbound`;
+    const xml = `<?xml version="1.0" encoding="UTF-8"?><Response><Redirect method="POST">${inboundUrl
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")}</Redirect></Response>`;
+    return new NextResponse(xml, {
+      status: 200,
+      headers: { "Content-Type": "text/xml" },
+    });
+  }
+
   // Tenant identification: Twilio sends AccountSid on every webhook. Look up
   // the messaging_settings row that holds it; that row's company_id is the
   // tenant whose Voice SDK app fired this request.
