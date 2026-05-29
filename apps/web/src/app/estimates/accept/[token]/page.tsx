@@ -1,5 +1,8 @@
 import { getDb, type Estimate, type EstimateItem } from "@/lib/db";
-import { buildSmsConsentText } from "@/lib/sms-consent";
+import {
+  buildPromotionalSmsConsentText,
+  buildTransactionalSmsConsentText,
+} from "@/lib/sms-consent";
 import AcceptClient from "./AcceptClient";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +59,8 @@ export default async function EstimateAcceptPage({
         token={params.token}
         companyName={companyName}
         terms={estimate.terms}
-        consentText={buildSmsConsentText(companyName)}
+        promoConsentText={buildPromotionalSmsConsentText(companyName)}
+        transactionalConsentText={buildTransactionalSmsConsentText(companyName)}
         total={estimate.total_cents}
         items={items.map((it) => ({
           id: it.id,

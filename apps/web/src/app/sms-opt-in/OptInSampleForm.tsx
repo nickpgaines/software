@@ -7,15 +7,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
 export default function OptInSampleForm({
-  consentText,
+  transactionalConsentText,
+  promoConsentText,
 }: {
-  consentText: string;
+  transactionalConsentText: string;
+  promoConsentText: string;
 }) {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [consent, setConsent] = useState(false);
+  const [transactionalConsent, setTransactionalConsent] = useState(false);
+  const [promoConsent, setPromoConsent] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -30,6 +33,13 @@ export default function OptInSampleForm({
   }
 
   if (submitted) {
+    const picks: string[] = [];
+    if (transactionalConsent) picks.push("transactional/service messages");
+    if (promoConsent) picks.push("marketing/promotional messages");
+    const summary =
+      picks.length === 0
+        ? "You did not check either SMS consent box, and the form still submitted — consent is never required."
+        : `You opted in to: ${picks.join(" and ")}.`;
     return (
       <div className="text-center">
         <div className="mb-2 text-2xl text-emerald-500">✓</div>
@@ -38,10 +48,7 @@ export default function OptInSampleForm({
         </h2>
         <p className="mt-3 text-sm font-bold text-zinc-400">
           Thanks, {firstName.trim()}. This is a demonstration page — no
-          information was stored and no messages will be sent.
-          {consent
-            ? " You checked the SMS consent box."
-            : " You did not check the SMS consent box, and the form still submitted — consent is never required."}
+          information was stored and no messages will be sent. {summary}
         </p>
         <Button
           type="button"
@@ -51,7 +58,8 @@ export default function OptInSampleForm({
             setLastName("");
             setPhone("");
             setEmail("");
-            setConsent(false);
+            setTransactionalConsent(false);
+            setPromoConsent(false);
             setSubmitted(false);
           }}
           className="mt-5 h-auto rounded-full bg-primary px-5 py-3 text-sm font-bold text-primary-foreground hover:opacity-90"
@@ -121,26 +129,46 @@ export default function OptInSampleForm({
         </div>
       </div>
 
-      <div className="mt-6 rounded-xl border border-line p-4">
-        <div className="flex items-start gap-3">
-          <Checkbox
-            id="sms-consent"
-            checked={consent}
-            onCheckedChange={(v) => setConsent(v === true)}
-            className="mt-0.5"
-          />
-          <Label
-            htmlFor="sms-consent"
-            className="cursor-pointer text-xs font-bold leading-relaxed text-zinc-300"
-          >
-            {consentText}
-          </Label>
+      <div className="mt-6 space-y-3">
+        <div className="rounded-xl border border-line p-4">
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="sms-consent-transactional"
+              checked={transactionalConsent}
+              onCheckedChange={(v) => setTransactionalConsent(v === true)}
+              className="mt-0.5"
+            />
+            <Label
+              htmlFor="sms-consent-transactional"
+              className="cursor-pointer text-xs font-bold leading-relaxed text-zinc-300"
+            >
+              {transactionalConsentText}
+            </Label>
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-line p-4">
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="sms-consent-promo"
+              checked={promoConsent}
+              onCheckedChange={(v) => setPromoConsent(v === true)}
+              className="mt-0.5"
+            />
+            <Label
+              htmlFor="sms-consent-promo"
+              className="cursor-pointer text-xs font-bold leading-relaxed text-zinc-300"
+            >
+              {promoConsentText}
+            </Label>
+          </div>
         </div>
       </div>
 
       <p className="mt-3 text-xs font-bold text-zinc-500">
-        Checking this box is optional. You can submit this form without it,
-        and consent is never a condition of purchase.
+        Both checkboxes are optional and independent. You can submit this
+        form without either of them, and consent is never a condition of
+        purchase.
       </p>
 
       {err && <p className="mt-4 text-sm font-bold text-rose-400">{err}</p>}

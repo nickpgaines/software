@@ -1,15 +1,17 @@
 import { NextResponse } from "next/server";
 import { getDb, type Estimate } from "@/lib/db";
-import { buildSmsConsentText } from "@/lib/sms-consent";
+import {
+  buildPromotionalSmsConsentText,
+  buildTransactionalSmsConsentText,
+} from "@/lib/sms-consent";
 import { normalizeUSPhone } from "@/lib/sms";
 
 export const dynamic = "force-dynamic";
 
 // Public, token-authed estimate acceptance. The opaque accept_token is the
-// credential (no session), so this is reachable by the homeowner from a sent
-// link or by the rep on their device at the door. Records the signature and,
-// if the customer checked the optional box, the SMS consent — with the
-// canonical disclosure text, a timestamp, and the request IP.
+// credential (no session). Records the signature and, for whichever of the
+// two optional consent boxes the customer checked, the SMS consent — each
+// with its canonical disclosure text, a timestamp, and the request IP.
 export async function POST(
   req: Request,
   { params }: { params: { token: string } }
@@ -26,6 +28,7 @@ export async function POST(
     signature_data: string;
     signature_name: string;
     sms_consent: boolean;
+    sms_transactional_consent: boolean;
   }>;
   const signatureData =
     typeof body.signature_data === "string" && body.signature_data.trim()
@@ -43,23 +46,44 @@ export async function POST(
   }
 
   const now = new Date().toISOString();
-  const recordingConsent = body.sms_consent === true && !estimate.sms_consent;
+  const recordingPromo = body.sms_consent === true && !estimate.sms_consent;
+  const recordingTx =
+    body.sms_transactional_consent === true &&
+    !estimate.sms_transactional_consent;
+
   let smsConsent = estimate.sms_consent;
   let smsConsentText = estimate.sms_consent_text;
   let smsConsentAt = estimate.sms_consent_at;
   let smsConsentIp = estimate.sms_consent_ip;
-  if (recordingConsent) {
+  let txConsent = estimate.sms_transactional_consent;
+  let txConsentText = estimate.sms_transactional_consent_text;
+  let txConsentAt = estimate.sms_transactional_consent_at;
+  let txConsentIp = estimate.sms_transactional_consent_ip;
+
+  let businessName: string | null = null;
+  let ip: string | null = null;
+  if (recordingPromo || recordingTx) {
     const companyRow = await db
       .prepare("SELECT name FROM company WHERE id = ?")
       .get<{ name: string | null }>(estimate.company_id);
+    businessName = companyRow?.name || "this business";
     const fwd = req.headers.get("x-forwarded-for");
-    smsConsent = 1;
-    smsConsentText = buildSmsConsentText(companyRow?.name || "this business");
-    smsConsentAt = now;
-    smsConsentIp =
+    ip =
       (fwd ? fwd.split(",")[0]?.trim() : null) ||
       req.headers.get("x-real-ip") ||
       null;
+  }
+  if (recordingPromo) {
+    smsConsent = 1;
+    smsConsentText = buildPromotionalSmsConsentText(businessName || "this business");
+    smsConsentAt = now;
+    smsConsentIp = ip;
+  }
+  if (recordingTx) {
+    txConsent = 1;
+    txConsentText = buildTransactionalSmsConsentText(businessName || "this business");
+    txConsentAt = now;
+    txConsentIp = ip;
   }
 
   await db
@@ -71,6 +95,8 @@ export async function POST(
              signed_at = COALESCE(signed_at, ?),
              sms_consent = ?, sms_consent_text = ?,
              sms_consent_at = ?, sms_consent_ip = ?,
+             sms_transactional_consent = ?, sms_transactional_consent_text = ?,
+             sms_transactional_consent_at = ?, sms_transactional_consent_ip = ?,
              updated_at = datetime('now')
        WHERE id = ? AND accept_token = ?`
     )
@@ -83,11 +109,15 @@ export async function POST(
       smsConsentText,
       smsConsentAt,
       smsConsentIp,
+      txConsent,
+      txConsentText,
+      txConsentAt,
+      txConsentIp,
       estimate.id,
       params.token
     );
 
-  if (recordingConsent) {
+  if (recordingPromo || recordingTx) {
     const cust = await db
       .prepare("SELECT phone FROM customers WHERE id = ? AND company_id = ?")
       .get<{ phone: string | null }>(estimate.customer_id, estimate.company_id);

@@ -1,5 +1,8 @@
 import Link from "next/link";
-import { buildSmsConsentText } from "@/lib/sms-consent";
+import {
+  buildPromotionalSmsConsentText,
+  buildTransactionalSmsConsentText,
+} from "@/lib/sms-consent";
 import OptInSampleForm from "./OptInSampleForm";
 
 export const metadata = {
@@ -9,7 +12,8 @@ export const metadata = {
 };
 
 export default function SmsOptInPage() {
-  const consentText = buildSmsConsentText("Forge CRM");
+  const transactionalConsentText = buildTransactionalSmsConsentText("Forge CRM");
+  const promoConsentText = buildPromotionalSmsConsentText("Forge CRM");
 
   return (
     <div className="min-h-screen bg-black px-6 py-12 md:py-16">
@@ -41,10 +45,13 @@ export default function SmsOptInPage() {
             re-engagement messages.
           </p>
           <p>
-            The form below is the SMS opt-in checkbox and disclosure that a
-            customer sees and affirmatively checks when accepting a service
-            estimate. It is reproduced here so anyone can view the opt-in
-            language without first receiving an estimate.
+            The form below reproduces the two SMS opt-in checkboxes a
+            customer sees on every estimate — one for transactional and
+            informational messages (appointment confirmations, reminders,
+            on-the-way and arrival notifications, receipts, replies), and a
+            separate one for marketing and promotional messages. Neither box
+            is pre-selected, the boxes are independent, and neither is a
+            condition of accepting the estimate or purchasing the service.
           </p>
         </div>
 
@@ -62,7 +69,10 @@ export default function SmsOptInPage() {
           </p>
 
           <div className="mt-6">
-            <OptInSampleForm consentText={consentText} />
+            <OptInSampleForm
+              transactionalConsentText={transactionalConsentText}
+              promoConsentText={promoConsentText}
+            />
           </div>
         </div>
 

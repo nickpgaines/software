@@ -6,7 +6,10 @@ import {
   type EstimateStatus,
 } from "@/lib/db";
 import { getSessionContext } from "@/lib/auth";
-import { buildSmsConsentText } from "@/lib/sms-consent";
+import {
+  buildPromotionalSmsConsentText,
+  buildTransactionalSmsConsentText,
+} from "@/lib/sms-consent";
 import { normalizeUSPhone } from "@/lib/sms";
 import { randomBytes } from "node:crypto";
 
@@ -102,6 +105,7 @@ export async function PUT(
     signature_name: string;
     terms: string;
     sms_consent: boolean;
+    sms_transactional_consent: boolean;
   }>;
   if (!body.status || !VALID_STATUSES.includes(body.status)) {
     return NextResponse.json({ error: "invalid status" }, { status: 400 });
@@ -130,26 +134,45 @@ export async function PUT(
 
   const terms = typeof body.terms === "string" ? body.terms : existing.terms;
 
-  // SMS consent is recorded once, server-side, with the canonical disclosure
-  // text (never trust client-supplied copy) plus a timestamp and the request
-  // IP — the auditable record a carrier asks for to verify the opt-in CTA.
-  const recordingConsent = body.sms_consent === true && !existing.sms_consent;
+  // SMS consent is recorded once per type, server-side, with the canonical
+  // disclosure text (never trust client-supplied copy) plus a timestamp and
+  // the request IP — the auditable record a carrier asks for to verify the
+  // opt-in CTA. Promotional and transactional consent are tracked separately,
+  // each via its own checkbox.
+  const recordingPromo = body.sms_consent === true && !existing.sms_consent;
+  const recordingTx =
+    body.sms_transactional_consent === true &&
+    !existing.sms_transactional_consent;
   let smsConsent = existing.sms_consent;
   let smsConsentText = existing.sms_consent_text;
   let smsConsentAt = existing.sms_consent_at;
   let smsConsentIp = existing.sms_consent_ip;
-  if (recordingConsent) {
+  let txConsent = existing.sms_transactional_consent;
+  let txConsentText = existing.sms_transactional_consent_text;
+  let txConsentAt = existing.sms_transactional_consent_at;
+  let txConsentIp = existing.sms_transactional_consent_ip;
+  if (recordingPromo || recordingTx) {
     const companyRow = await db
       .prepare("SELECT name FROM company WHERE id = ?")
       .get<{ name: string | null }>(ctx.companyId);
+    const businessName = companyRow?.name || "this business";
     const fwd = req.headers.get("x-forwarded-for");
-    smsConsent = 1;
-    smsConsentText = buildSmsConsentText(companyRow?.name || "this business");
-    smsConsentAt = now;
-    smsConsentIp =
+    const ip =
       (fwd ? fwd.split(",")[0]?.trim() : null) ||
       req.headers.get("x-real-ip") ||
       null;
+    if (recordingPromo) {
+      smsConsent = 1;
+      smsConsentText = buildPromotionalSmsConsentText(businessName);
+      smsConsentAt = now;
+      smsConsentIp = ip;
+    }
+    if (recordingTx) {
+      txConsent = 1;
+      txConsentText = buildTransactionalSmsConsentText(businessName);
+      txConsentAt = now;
+      txConsentIp = ip;
+    }
   }
 
   await db
@@ -159,6 +182,8 @@ export async function PUT(
              signature_data = ?, signature_name = ?, signed_at = ?,
              terms = ?, sms_consent = ?, sms_consent_text = ?,
              sms_consent_at = ?, sms_consent_ip = ?,
+             sms_transactional_consent = ?, sms_transactional_consent_text = ?,
+             sms_transactional_consent_at = ?, sms_transactional_consent_ip = ?,
              updated_at = datetime('now')
        WHERE id = ? AND company_id = ?`
     )
@@ -174,13 +199,19 @@ export async function PUT(
       smsConsentText,
       smsConsentAt,
       smsConsentIp,
+      txConsent,
+      txConsentText,
+      txConsentAt,
+      txConsentIp,
       id,
       ctx.companyId
     );
 
-  // On a fresh opt-in, mark the customer's phone as consented (not opted out)
-  // for this company, so the messaging layer and audit have a per-phone record.
-  if (recordingConsent) {
+  // On a fresh opt-in (either type), mark the customer's phone as consented
+  // (not opted out) for this company, so the messaging layer and audit have a
+  // per-phone record. STOP opts out of all message types, so the consent flag
+  // here is intentionally type-agnostic.
+  if (recordingPromo || recordingTx) {
     const cust = await db
       .prepare("SELECT phone FROM customers WHERE id = ? AND company_id = ?")
       .get<{ phone: string | null }>(existing.customer_id, ctx.companyId);
