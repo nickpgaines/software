@@ -23,20 +23,23 @@ export default function AcceptClient({
   token,
   companyName,
   terms,
-  consentText,
+  promoConsentText,
+  transactionalConsentText,
   total,
   items,
 }: {
   token: string;
   companyName: string;
   terms: string | null;
-  consentText: string;
+  promoConsentText: string;
+  transactionalConsentText: string;
   total: number;
   items: Item[];
 }) {
   const [name, setName] = useState("");
   const [signature, setSignature] = useState<string | null>(null);
-  const [consent, setConsent] = useState(false);
+  const [transactionalConsent, setTransactionalConsent] = useState(false);
+  const [promoConsent, setPromoConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -58,7 +61,8 @@ export default function AcceptClient({
       body: JSON.stringify({
         signature_data: signature,
         signature_name: name.trim(),
-        sms_consent: consent,
+        sms_consent: promoConsent,
+        sms_transactional_consent: transactionalConsent,
       }),
     });
     setSubmitting(false);
@@ -130,24 +134,51 @@ export default function AcceptClient({
         </div>
       )}
 
-      {/* Separate, optional SMS opt-in — affirmative and never a condition of
-          acceptance. The signature below accepts the estimate; this box is its
-          own choice. */}
-      <div className="mt-6 rounded-xl border border-line p-4">
-        <div className="flex items-start gap-3">
-          <Checkbox
-            id="sms-consent"
-            checked={consent}
-            onCheckedChange={(v) => setConsent(v === true)}
-            className="mt-0.5"
-          />
-          <Label
-            htmlFor="sms-consent"
-            className="cursor-pointer text-xs font-bold leading-relaxed text-zinc-300"
-          >
-            {consentText}
-          </Label>
+      {/* Two separate, optional SMS opt-ins — A2P 10DLC requires
+          transactional and promotional consent to be collected via
+          independent checkboxes, neither pre-selected and neither a
+          condition of accepting the estimate. The signature below accepts
+          the estimate; these boxes are each their own choice. */}
+      <div className="mt-6 space-y-3">
+        <div className="rounded-xl border border-line p-4">
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="sms-consent-transactional"
+              checked={transactionalConsent}
+              onCheckedChange={(v) => setTransactionalConsent(v === true)}
+              className="mt-0.5"
+            />
+            <Label
+              htmlFor="sms-consent-transactional"
+              className="cursor-pointer text-xs font-bold leading-relaxed text-zinc-300"
+            >
+              {transactionalConsentText}
+            </Label>
+          </div>
         </div>
+
+        <div className="rounded-xl border border-line p-4">
+          <div className="flex items-start gap-3">
+            <Checkbox
+              id="sms-consent-promo"
+              checked={promoConsent}
+              onCheckedChange={(v) => setPromoConsent(v === true)}
+              className="mt-0.5"
+            />
+            <Label
+              htmlFor="sms-consent-promo"
+              className="cursor-pointer text-xs font-bold leading-relaxed text-zinc-300"
+            >
+              {promoConsentText}
+            </Label>
+          </div>
+        </div>
+
+        <p className="text-xs font-bold text-zinc-500">
+          Both checkboxes are optional and independent. You can leave either
+          or both unchecked — consent is never a condition of accepting this
+          estimate.
+        </p>
       </div>
 
       <div className="mt-6">

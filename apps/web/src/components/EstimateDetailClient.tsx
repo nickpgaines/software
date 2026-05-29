@@ -16,7 +16,10 @@ import {
 } from "@/components/ui/dialog";
 import CustomerCard from "@/components/jobs/CustomerCard";
 import EstimateDocumentPreview from "@/components/EstimateDocumentPreview";
-import { buildSmsConsentText } from "@/lib/sms-consent";
+import {
+  buildPromotionalSmsConsentText,
+  buildTransactionalSmsConsentText,
+} from "@/lib/sms-consent";
 import {
   DEFAULT_CUSTOMIZATIONS,
   type CustomizationConfig,
@@ -39,6 +42,7 @@ type Estimate = {
   signature_name: string | null;
   signed_at: string | null;
   sms_consent: number;
+  sms_transactional_consent: number;
   created_at: string;
   items: {
     id: number;
@@ -279,6 +283,10 @@ export default function EstimateDetailClient({ id }: { id: number }) {
                   </div>
                 )}
                 <div className="text-xs text-zinc-500">
+                  SMS transactional consent:{" "}
+                  {estimate.sms_transactional_consent ? "Granted" : "Not granted"}
+                </div>
+                <div className="text-xs text-zinc-500">
                   SMS marketing consent:{" "}
                   {estimate.sms_consent ? "Granted" : "Not granted"}
                 </div>
@@ -443,7 +451,8 @@ function ApproveDialog({
 }) {
   const [name, setName] = useState("");
   const [signature, setSignature] = useState<string | null>(null);
-  const [consent, setConsent] = useState(false);
+  const [transactionalConsent, setTransactionalConsent] = useState(false);
+  const [promoConsent, setPromoConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
@@ -462,7 +471,8 @@ function ApproveDialog({
     setSubmitting(true);
     const body: Record<string, unknown> = {
       status: "accepted",
-      sms_consent: consent,
+      sms_consent: promoConsent,
+      sms_transactional_consent: transactionalConsent,
     };
     if (!opts.bypass) {
       body.signature_data = signature;
@@ -510,21 +520,44 @@ function ApproveDialog({
           <SignaturePad className="mt-1.5" onChange={setSignature} />
         </div>
 
-        <div className="mt-4 rounded-xl border border-line p-4">
-          <div className="flex items-start gap-3">
-            <Checkbox
-              id="approve-consent"
-              checked={consent}
-              onCheckedChange={(v) => setConsent(v === true)}
-              className="mt-0.5"
-            />
-            <Label
-              htmlFor="approve-consent"
-              className="cursor-pointer text-xs font-bold leading-relaxed text-zinc-300"
-            >
-              {buildSmsConsentText(companyName)}
-            </Label>
+        <div className="mt-4 space-y-3">
+          <div className="rounded-xl border border-line p-4">
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="approve-consent-transactional"
+                checked={transactionalConsent}
+                onCheckedChange={(v) => setTransactionalConsent(v === true)}
+                className="mt-0.5"
+              />
+              <Label
+                htmlFor="approve-consent-transactional"
+                className="cursor-pointer text-xs font-bold leading-relaxed text-zinc-300"
+              >
+                {buildTransactionalSmsConsentText(companyName)}
+              </Label>
+            </div>
           </div>
+          <div className="rounded-xl border border-line p-4">
+            <div className="flex items-start gap-3">
+              <Checkbox
+                id="approve-consent-promo"
+                checked={promoConsent}
+                onCheckedChange={(v) => setPromoConsent(v === true)}
+                className="mt-0.5"
+              />
+              <Label
+                htmlFor="approve-consent-promo"
+                className="cursor-pointer text-xs font-bold leading-relaxed text-zinc-300"
+              >
+                {buildPromotionalSmsConsentText(companyName)}
+              </Label>
+            </div>
+          </div>
+          <p className="text-xs font-bold text-zinc-500">
+            Both checkboxes are optional and independent. The customer can
+            leave either or both unchecked — consent is never a condition of
+            approval.
+          </p>
         </div>
 
         {err && <p className="mt-4 text-sm font-bold text-rose-400">{err}</p>}

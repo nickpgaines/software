@@ -43,58 +43,93 @@ export default function SmsConsentDisclosurePage() {
             Consent is collected at the point of sale, on the Business&rsquo;s
             service estimate. When a Business presents an estimate to a
             Recipient — typically in person, on a tablet during the on-site
-            sale, or via a secure estimate link — the estimate includes a
-            dedicated SMS consent checkbox, separate from approving the
-            estimate. The Recipient affirmatively checks that box to opt in.
-            The box names the specific Business and is not required to accept
-            the estimate or to purchase the service.
+            sale, or via a secure estimate link — the estimate includes two
+            dedicated SMS consent checkboxes, separate from approving the
+            estimate: one for transactional and informational messages and a
+            separate one for marketing and promotional messages. The
+            Recipient affirmatively checks whichever box(es) they want to opt
+            in to. The boxes name the specific Business, are independent of
+            each other, and neither is a condition of accepting the estimate
+            or purchasing the service. A live, publicly viewable sample is at{" "}
+            <Link
+              href="/sms-opt-in"
+              className="text-violet-400 hover:text-violet-300 font-extrabold"
+            >
+              /sms-opt-in
+            </Link>
+            .
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
             What the Recipient sees and checks
           </h2>
           <p>
-            The following text appears next to the SMS consent checkbox. The
-            placeholder{" "}
-            <em>{"{Business Name}"}</em> is replaced with the legal or
-            trade name of the Business presenting the estimate:
+            The following two disclosures appear next to the two SMS consent
+            checkboxes. The placeholder <em>{"{Business Name}"}</em> is
+            replaced with the legal or trade name of the Business presenting
+            the estimate.
           </p>
-          <blockquote className="border-l-4 border-violet-500 pl-4 py-2 my-4 bg-zinc-950/60 text-zinc-200 italic">
-            I agree to receive calls and text messages from{" "}
+
+          <p className="pt-2">
+            <strong className="text-white">
+              1) Transactional / informational messages
+            </strong>
+          </p>
+          <blockquote className="border-l-4 border-violet-500 pl-4 py-2 my-2 bg-zinc-950/60 text-zinc-200 italic">
+            I agree to receive transactional and informational text messages
+            from{" "}
             <strong className="text-white not-italic">
               {"{Business Name}"}
             </strong>{" "}
-            at the phone number I provided.{" "}
-            <strong className="text-white not-italic">
-              {"{Business Name}"}
-            </strong>{" "}
-            sends appointment confirmations, reminders, on-the-way and arrival
-            notifications, receipts, follow-ups, two-way replies, and
-            occasional promotional or re-engagement messages. Message
-            frequency varies. Message and data rates may apply. Reply{" "}
+            at the phone number I provided — appointment confirmations,
+            reminders, on-the-way and arrival notifications, receipts,
+            follow-ups, and two-way replies about my job. Message frequency
+            varies. Message and data rates may apply. Reply{" "}
             <strong className="text-white not-italic">STOP</strong> to opt
-            out at any time, or{" "}
+            out at any time or{" "}
+            <strong className="text-white not-italic">HELP</strong> for help.
+            Consent is not a condition of purchase.
+          </blockquote>
+
+          <p className="pt-2">
+            <strong className="text-white">
+              2) Marketing / promotional messages
+            </strong>
+          </p>
+          <blockquote className="border-l-4 border-violet-500 pl-4 py-2 my-2 bg-zinc-950/60 text-zinc-200 italic">
+            I agree to receive marketing and promotional text messages from{" "}
+            <strong className="text-white not-italic">
+              {"{Business Name}"}
+            </strong>{" "}
+            at the phone number I provided — occasional offers, seasonal
+            service reminders, and re-engagement messages. Message frequency
+            varies. Message and data rates may apply. Reply{" "}
+            <strong className="text-white not-italic">STOP</strong> to opt
+            out at any time or{" "}
             <strong className="text-white not-italic">HELP</strong> for help.
             Consent is not a condition of purchase.
           </blockquote>
           <p>
-            Checking this box is entirely optional and separate from approving
-            the estimate. A Recipient can accept the estimate and decline SMS —
-            consent is never a condition of purchase. Only Recipients who
-            actively check the box are opted in.
+            Each checkbox is entirely optional, separate from approving the
+            estimate, and independent of the other. A Recipient can accept
+            the estimate and decline either or both — consent is never a
+            condition of purchase. Only Recipients who actively check a box
+            are opted in to the message type that box covers.
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
             How consent is recorded
           </h2>
           <p>
-            When a Recipient checks the box, Forge CRM records the opt-in
-            with the timestamp, the Recipient&rsquo;s identifying information,
-            the originating Business, the IP address from which it was
-            submitted, and the exact disclosure text the Recipient agreed to
-            (the text shown above, with the Business name filled in). These
-            records are produced on request in response to a carrier audit, a
-            regulatory inquiry, or a consumer dispute.
+            When a Recipient checks a box, Forge CRM records that specific
+            opt-in with the timestamp, the Recipient&rsquo;s identifying
+            information, the originating Business, the IP address from which
+            it was submitted, and the exact disclosure text the Recipient
+            agreed to (the corresponding text shown above, with the Business
+            name filled in). Transactional and promotional consents are
+            recorded as independent records. These records are produced on
+            request in response to a carrier audit, a regulatory inquiry, or
+            a consumer dispute.
           </p>
 
           <h2 className="text-xl font-extrabold tracking-tight text-white pt-4">
