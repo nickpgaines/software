@@ -46,6 +46,7 @@ import {
   fetchTrustProduct,
   summarizeEvaluationFailures,
   findAvailableLocalNumber,
+  listCustomerProfiles,
   purchasePhoneNumber,
   submitCustomerProfile,
   submitTrustProduct,
@@ -436,7 +437,27 @@ async function step(companyId: number): Promise<{
       return { state: "not_started", error: null, recurse: true };
     }
     try {
-      const cp = await fetchCustomerProfile({ creds, sid: company.twilio_customer_profile_sid });
+      let cp = await fetchCustomerProfile({ creds, sid: company.twilio_customer_profile_sid });
+
+      // Self-heal: if our stored CP is stuck in draft (we created it but
+      // never finished setup before the orchestrator caught an error and
+      // started fresh on the next retry), check the subaccount for the
+      // CP we actually submitted. There can be several orphan drafts;
+      // we pick any approved one first, otherwise the most recent
+      // in-review / pending-review one.
+      if (cp.status === "draft") {
+        const all = await listCustomerProfiles({ creds }).catch(() => []);
+        const approved = all.find((c) => isApproved(c.status));
+        const inReview = all.find((c) => isPending(c.status));
+        const target = approved ?? inReview;
+        if (target && target.sid !== company.twilio_customer_profile_sid) {
+          await persistState(companyId, "customer_profile_pending", null, {
+            twilio_customer_profile_sid: target.sid,
+          });
+          cp = target;
+        }
+      }
+
       if (isApproved(cp.status)) {
         await persistState(companyId, "customer_profile_approved", null);
         return { state: "customer_profile_approved", error: null, recurse: true };

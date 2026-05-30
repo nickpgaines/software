@@ -138,6 +138,23 @@ export async function fetchCustomerProfile(args: {
   );
 }
 
+// List all Customer Profiles in the current subaccount. Used by the
+// orchestrator to self-heal: when our stored cpSid points at an orphaned
+// draft (we created the CP but couldn't finish setup) the user can have
+// several CPs in their subaccount, only one of which is the real submitted
+// one. We pick the approved (or in-review) one and sync the stored SID to
+// it.
+export async function listCustomerProfiles(args: {
+  creds: TwilioCreds;
+}): Promise<CustomerProfileResource[]> {
+  const data = await twilioRequest<{ results?: CustomerProfileResource[] }>(
+    args.creds,
+    "GET",
+    `${TRUST_HUB_BASE}/v1/CustomerProfiles?PageSize=50`
+  );
+  return data.results ?? [];
+}
+
 // Pull the most recent evaluation result for a Customer Profile so we can
 // surface the actual rejection reason ("EIN does not match business name",
 // "address could not be verified", etc.) instead of a bare "twilio-rejected".
