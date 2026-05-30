@@ -24,6 +24,7 @@ type PublicVoiceSettings = {
   capability_verified: boolean;
   caller_id_name: string | null;
   has_voicemail_greeting: boolean;
+  a2p_approved: boolean;
 };
 
 function mask(sid: string | null): string | null {
@@ -58,6 +59,13 @@ function toPublic(
     capability_verified: s.voice_capability_verified === 1,
     caller_id_name: s.voice_caller_id_name,
     has_voicemail_greeting: !!s.voice_voicemail_greeting_data_url,
+    // Calling rides on the 10DLC-approved number, so it cannot be active
+    // until the campaign is approved AND we have a real number SID on file.
+    // Without that, the messaging_settings row may have stale or hand-pasted
+    // values that don't map to a number the tenant actually owns.
+    a2p_approved:
+      company?.a2p_registration_state === "campaign_approved" &&
+      !!(company?.sms_dedicated_number && company?.sms_dedicated_number_sid),
   };
 }
 
