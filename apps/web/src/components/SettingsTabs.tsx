@@ -2631,6 +2631,7 @@ type CallingStatus = {
   capability_verified: boolean;
   caller_id_name: string | null;
   has_voicemail_greeting: boolean;
+  a2p_approved: boolean;
 };
 
 function CallingPanel() {
@@ -2714,14 +2715,15 @@ function CallingPanel() {
     );
   }
 
-  // Legacy tenants configured Twilio by hand before the A2P flow existed --
-  // their `messaging_settings.from_number` is set but `company.sms_dedicated_number*`
-  // are not, so we fall back to `business_number` for both the gate and the
-  // display.
-  const number = status.dedicated_number || status.business_number;
-  const noNumber = !status.has_dedicated_number && !number;
+  // Calling rides on the 10DLC-approved number. Until the campaign is
+  // approved AND a number has actually been provisioned, no other state is
+  // valid -- a stale messaging_settings row could otherwise have us showing
+  // Active for a number that doesn't exist on Twilio, which is what kept
+  // producing "application error" on inbound calls.
+  const noNumber = !status.a2p_approved;
+  const number = status.dedicated_number;
   const verified = status.capability_verified;
-  const enabled = status.configured;
+  const enabled = status.configured && status.a2p_approved;
   const displayNumber = number ? formatUSPhone(number) : "";
 
   return (
