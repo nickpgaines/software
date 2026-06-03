@@ -50,6 +50,12 @@ function formatDateLabel(dateInput: string | null) {
   });
 }
 
+type SetupIntentInfo = {
+  client_secret: string;
+  setup_intent_id: string;
+  stripe_account: string;
+};
+
 export default function AcceptClient({
   subscription,
   customerName,
@@ -73,108 +79,49 @@ export default function AcceptClient({
 }) {
   const router = useRouter();
   const requireSignature = subscription.require_signature === 1;
-  const isPending = subscription.status === "pending";
+  const alreadyAccepted = subscription.status !== "pending";
 
-  const [signatureData, setSignatureData] = useState<string | null>(
-    subscription.signature_data
-  );
-  const [signatureName, setSignatureName] = useState(
-    subscription.signature_name || ""
-  );
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [setupIntent, setSetupIntent] = useState<SetupIntentInfo | null>(null);
+  const [setupError, setSetupError] = useState<string | null>(null);
+  const [done, setDone] = useState(false);
 
-  // Phase: signature/accept → card collection → finished. Once the
-  // subscription is accepted we mint a SetupIntent and let the customer
-  // save a card via the PaymentElement (Apple Pay / Google Pay surface
-  // automatically when the device supports them).
-  type Phase = "accept" | "card" | "card_failed" | "done";
-  const [phase, setPhase] = useState<Phase>(
-    subscription.status === "active" ? "card" : "accept"
-  );
-  const [setupIntent, setSetupIntent] = useState<{
-    client_secret: string;
-    setup_intent_id: string;
-    stripe_account: string;
-  } | null>(null);
-
-  async function startCardCollection() {
-    setError(null);
-    const r = await fetch(
-      `/api/subscriptions/accept/${subscription.accept_token}/setup-intent`,
-      { method: "POST" }
-    );
-    const data = (await r.json().catch(() => ({}))) as Partial<{
-      client_secret: string;
-      setup_intent_id: string;
-      stripe_account: string;
-      error: string;
-    }>;
-    if (!r.ok || !data.client_secret || !data.setup_intent_id) {
-      // Surface the real reason and stay on the card phase so the customer
-      // sees the error instead of a misleading "card is on file" success.
-      // The agreement itself is accepted (the earlier POST stuck), but the
-      // billing setup is incomplete — admin will need to follow up.
-      setError(
-        data.error ||
-          "We saved your agreement but couldn't reach payments. Please contact us so we can finish setting up your card."
-      );
-      setPhase("card_failed");
-      return;
-    }
-    setSetupIntent({
-      client_secret: data.client_secret,
-      setup_intent_id: data.setup_intent_id,
-      stripe_account: data.stripe_account || "",
-    });
-    setPhase("card");
-  }
-
-  async function accept() {
-    if (requireSignature && !signatureData) {
-      setError("Please sign before accepting.");
-      return;
-    }
-    setSubmitting(true);
-    setError(null);
-    const res = await fetch(
-      `/api/subscriptions/accept/${subscription.accept_token}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          signature_data: signatureData,
-          signature_name: signatureName.trim() || null,
-        }),
-      }
-    );
-    setSubmitting(false);
-    if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      setError(j.error || "Could not accept the subscription.");
-      return;
-    }
-    // Now collect the card so future visits can be billed automatically.
-    if (PUBLISHABLE_KEY) {
-      await startCardCollection();
-    } else {
-      setPhase("done");
-    }
-    router.refresh();
-  }
-
-  // If the page was loaded with an already-active subscription, jump
-  // straight into card collection on mount (covers the "I clicked accept
-  // earlier but never finished card setup" flow).
+  // Mint the SetupIntent on mount so the card form renders alongside the
+  // signature pad — single page, single submit. If this fails (Stripe not
+  // configured on the merchant, etc.) we surface the error in place of the
+  // card form so the customer isn't lied to about their card being saved.
   useEffect(() => {
-    if (
-      phase === "card" &&
-      !setupIntent &&
-      PUBLISHABLE_KEY &&
-      subscription.status === "active"
-    ) {
-      void startCardCollection();
+    if (subscription.status === "canceled" || subscription.status === "declined") {
+      return;
     }
+    let cancelled = false;
+    (async () => {
+      const r = await fetch(
+        `/api/subscriptions/accept/${subscription.accept_token}/setup-intent`,
+        { method: "POST" }
+      );
+      const data = (await r.json().catch(() => ({}))) as Partial<{
+        client_secret: string;
+        setup_intent_id: string;
+        stripe_account: string;
+        error: string;
+      }>;
+      if (cancelled) return;
+      if (!r.ok || !data.client_secret || !data.setup_intent_id) {
+        setSetupError(
+          data.error ||
+            "We couldn't reach payments right now. Please contact us so we can finish setting up your card."
+        );
+        return;
+      }
+      setSetupIntent({
+        client_secret: data.client_secret,
+        setup_intent_id: data.setup_intent_id,
+        stripe_account: data.stripe_account || "",
+      });
+    })();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -189,9 +136,7 @@ export default function AcceptClient({
     <main className="min-h-screen bg-black text-white px-4 py-10">
       <div className="mx-auto max-w-xl space-y-6">
         <header className="space-y-1">
-          <p className="text-xs font-bold text-zinc-500">
-            {companyName}
-          </p>
+          <p className="text-xs font-bold text-zinc-500">{companyName}</p>
           <h1 className="text-3xl font-extrabold tracking-tight">
             {subscription.name}
           </h1>
@@ -249,113 +194,97 @@ export default function AcceptClient({
           </section>
         )}
 
-        {requireSignature && phase === "accept" && (
-          <section className="rounded-2xl border border-line bg-card p-5 space-y-3">
-            <h2 className="text-base font-extrabold tracking-tight">
-              Signature
-            </h2>
-            <SignaturePad value={signatureData} onChange={setSignatureData} />
-            <Label className="block text-xs font-bold text-zinc-500">
-              Printed name
-            </Label>
-            <Input
-              type="text"
-              value={signatureName}
-              onChange={(e) => setSignatureName(e.target.value)}
-              placeholder={customerName}
-              className="w-full border-line rounded-xl px-4 py-2 text-sm bg-card h-auto"
-            />
-          </section>
-        )}
-
-        {phase === "card" && setupIntent && (
-          <section className="rounded-2xl border border-line bg-card p-5 space-y-3">
-            <h2 className="text-base font-extrabold tracking-tight">
-              Save a card on file
-            </h2>
-            <p className="text-xs text-zinc-400">
-              {companyName} will use this card to bill each upcoming visit
-              automatically. Apple Pay and Google Pay will appear below if
-              your device supports them.
-            </p>
-            <Elements
-              stripe={stripePromise(setupIntent.stripe_account || null)}
-              options={{
-                clientSecret: setupIntent.client_secret,
-                appearance: { theme: "night" },
-              }}
-            >
-              <SaveCardForm
-                token={subscription.accept_token!}
-                setupIntentId={setupIntent.setup_intent_id}
-                onSaved={() => setPhase("done")}
-              />
-            </Elements>
-          </section>
-        )}
-
-        {error && (
-          <p className="text-sm text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-xl px-4 py-3">
-            {error}
+        {done ? (
+          <p className="text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-3">
+            Thanks {customerName.split(" ")[0]} — your subscription is
+            active and your card is on file. {companyName} will be in touch
+            about your first visit.
           </p>
+        ) : setupError ? (
+          <p className="text-sm text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-xl px-4 py-3">
+            {setupError}
+          </p>
+        ) : !setupIntent ? (
+          <p className="text-sm text-zinc-400">Preparing secure payment…</p>
+        ) : (
+          <Elements
+            stripe={stripePromise(setupIntent.stripe_account || null)}
+            options={{
+              clientSecret: setupIntent.client_secret,
+              appearance: { theme: "night" },
+            }}
+          >
+            <AcceptForm
+              token={subscription.accept_token!}
+              setupIntentId={setupIntent.setup_intent_id}
+              requireSignature={requireSignature && !alreadyAccepted}
+              alreadyAccepted={alreadyAccepted}
+              initialSignatureData={subscription.signature_data}
+              initialSignatureName={subscription.signature_name}
+              customerName={customerName}
+              onDone={() => {
+                setDone(true);
+                router.refresh();
+              }}
+            />
+          </Elements>
         )}
-
-        <div className="flex flex-col sm:flex-row items-stretch gap-3">
-          {phase === "done" ? (
-            <p className="text-sm text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-xl px-4 py-3 flex-1">
-              Thanks {customerName.split(" ")[0]} — your subscription is
-              active and your card is on file. {companyName} will be in
-              touch about your first visit.
-            </p>
-          ) : phase === "card" || phase === "card_failed" ? null : (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={accept}
-              disabled={submitting || !isPending}
-              className="flex-1 h-auto bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 text-white rounded-full px-5 py-3 text-sm font-bold"
-            >
-              {submitting
-                ? "Accepting…"
-                : !isPending
-                  ? "Already accepted"
-                  : "Accept subscription"}
-            </Button>
-          )}
-        </div>
-
       </div>
     </main>
   );
 }
 
-function SaveCardForm({
+function AcceptForm({
   token,
   setupIntentId,
-  onSaved,
+  requireSignature,
+  alreadyAccepted,
+  initialSignatureData,
+  initialSignatureName,
+  customerName,
+  onDone,
 }: {
   token: string;
   setupIntentId: string;
-  onSaved: () => void;
+  requireSignature: boolean;
+  alreadyAccepted: boolean;
+  initialSignatureData: string | null;
+  initialSignatureName: string | null;
+  customerName: string;
+  onDone: () => void;
 }) {
   const stripe = useStripe();
   const elements = useElements();
+  const [signatureData, setSignatureData] = useState<string | null>(
+    initialSignatureData
+  );
+  const [signatureName, setSignatureName] = useState(
+    initialSignatureName || ""
+  );
+  const [paymentReady, setPaymentReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     if (!stripe || !elements) return;
-    setSubmitting(true);
+    if (requireSignature && !signatureData) {
+      setError("Please sign before confirming.");
+      return;
+    }
     setError(null);
+    setSubmitting(true);
+
+    // Step 1: confirm the SetupIntent on Stripe (collects the card details).
     const { error: confirmError, setupIntent: confirmed } =
       await stripe.confirmSetup({
         elements,
         confirmParams: {
-          // No redirect for cards/wallets. Bank-debit methods may
-          // redirect; we stay on this page on the happy path.
-          return_url: typeof window !== "undefined" ? window.location.href : "",
+          return_url:
+            typeof window !== "undefined" ? window.location.href : "",
+          payment_method_data: {
+            billing_details: { name: customerName },
+          },
         },
         redirect: "if_required",
       });
@@ -364,46 +293,117 @@ function SaveCardForm({
       setError(confirmError.message || "Could not save card");
       return;
     }
-    const pmId =
+    const paymentMethodId =
       typeof confirmed?.payment_method === "string"
         ? confirmed.payment_method
         : confirmed?.payment_method?.id || null;
-    // Persist on the server. Either id is acceptable; sending both is
-    // belt + suspenders against transient failures.
-    const r = await fetch(
+    if (!paymentMethodId) {
+      setSubmitting(false);
+      setError(
+        "Card setup completed but no payment method id was returned."
+      );
+      return;
+    }
+
+    // Step 2: if the agreement hasn't been accepted yet, accept it now so
+    // the row flips to active and the visit schedule seeds. Skipped for
+    // returning customers who already signed but didn't finish card setup.
+    if (!alreadyAccepted) {
+      const acceptRes = await fetch(
+        `/api/subscriptions/accept/${token}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            signature_data: signatureData,
+            signature_name: signatureName.trim() || null,
+          }),
+        }
+      );
+      if (!acceptRes.ok) {
+        const j = await acceptRes.json().catch(() => ({}));
+        setSubmitting(false);
+        setError(j.error || "Could not accept the subscription.");
+        return;
+      }
+    }
+
+    // Step 3: save the PaymentMethod server-side + create the Stripe
+    // Subscription. This is what actually starts the recurring billing.
+    const saveRes = await fetch(
       `/api/subscriptions/accept/${token}/setup-intent`,
       {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           setup_intent_id: setupIntentId,
-          payment_method_id: pmId,
+          payment_method_id: paymentMethodId,
         }),
       }
     );
     setSubmitting(false);
-    if (!r.ok) {
-      const j = await r.json().catch(() => ({}));
+    if (!saveRes.ok) {
+      const j = await saveRes.json().catch(() => ({}));
       setError(j.error || "Card was authorized but we couldn't save it.");
       return;
     }
-    onSaved();
+    onDone();
   }
 
   return (
-    <form onSubmit={submit} className="space-y-3">
-      <PaymentElement
-        onReady={() => setReady(true)}
-        options={{ layout: "tabs" }}
-      />
-      {error && <p className="text-sm text-rose-400">{error}</p>}
+    <form onSubmit={submit} className="space-y-4">
+      {requireSignature && (
+        <section className="rounded-2xl border border-line bg-card p-5 space-y-3">
+          <h2 className="text-base font-extrabold tracking-tight">Signature</h2>
+          <SignaturePad value={signatureData} onChange={setSignatureData} />
+          <Label className="block text-xs font-bold text-zinc-500">
+            Printed name
+          </Label>
+          <Input
+            type="text"
+            value={signatureName}
+            onChange={(e) => setSignatureName(e.target.value)}
+            placeholder={customerName}
+            className="w-full border-line rounded-xl px-4 py-2 text-sm bg-card h-auto"
+          />
+        </section>
+      )}
+
+      <section className="rounded-2xl border border-line bg-card p-5 space-y-3">
+        <h2 className="text-base font-extrabold tracking-tight">
+          Payment details
+        </h2>
+        <PaymentElement
+          onReady={() => setPaymentReady(true)}
+          options={{
+            // Hide billing-detail collection — we pass the customer's name
+            // explicitly on confirmSetup, and the SetupIntent is locked to
+            // card-only so address/country aren't needed.
+            fields: { billingDetails: "never" },
+            // No Apple/Google Pay buttons in the panel; keeps the look
+            // single-field and minimal.
+            wallets: { applePay: "never", googlePay: "never" },
+          }}
+        />
+      </section>
+
+      {error && (
+        <p className="text-sm text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-xl px-4 py-3">
+          {error}
+        </p>
+      )}
+
       <Button
         type="submit"
         variant="ghost"
-        disabled={!stripe || !elements || !ready || submitting}
-        className="w-full h-auto bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-3 text-sm font-bold"
+        disabled={!stripe || !elements || !paymentReady || submitting}
+        className="w-full h-auto bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 disabled:cursor-not-allowed text-white rounded-full px-5 py-3 text-sm font-bold"
       >
-        {submitting ? "Saving…" : "Save card on file"}
+        {submitting
+          ? "Confirming…"
+          : alreadyAccepted
+            ? "Save card on file"
+            : "Confirm subscription"}
       </Button>
     </form>
   );
@@ -412,9 +412,7 @@ function SaveCardForm({
 function SummaryRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-start justify-between gap-4 px-4 py-2.5">
-      <dt className="text-xs font-bold text-zinc-500 shrink-0">
-        {label}
-      </dt>
+      <dt className="text-xs font-bold text-zinc-500 shrink-0">{label}</dt>
       <dd className="text-xs text-zinc-300 text-right">{value}</dd>
     </div>
   );
