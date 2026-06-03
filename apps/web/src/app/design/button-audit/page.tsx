@@ -1,454 +1,338 @@
 "use client";
 
-// Visual audit of every button that doesn't conform to the design system.
-// Left column = current (violating) markup copied from source, rendered
-// with the exact classes from the source file.
-// Right column = canonical replacement using the <Button> primitive
-// variants from components/ui/button.tsx.
+// Visual audit: rectangular (rounded-xl) buttons vs pill (rounded-full) buttons.
+// Nick wants to standardize everything on pill. Left column shows the current
+// rectangular shape; right column shows what it would look like as a pill.
+// Every row below is currently rectangular in source.
 
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { Plus, Trash2, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type Row = {
   line: number;
-  what: string;
-  why: string;
-  current: React.ReactNode;
-  canonical: React.ReactNode;
+  label: string;
+  variant:
+    | "primary"
+    | "outline"
+    | "ghost"
+    | "destructive"
+    | "primary-icon"
+    | "outline-icon";
+  /** Override for the actual displayed label component (if non-trivial). */
+  node?: React.ReactNode;
 };
 
 type Group = {
   file: string;
+  surface: string;
   rows: Row[];
 };
 
-const GROUPS: Group[] = [
+// Every entry below is CURRENTLY rectangular (`rounded-xl` from the Button
+// primitive default). The pill column shows the proposed `rounded-full` swap.
+const RECTANGULAR_GROUPS: Group[] = [
   {
-    file: "components/customers/ImportModal.tsx",
+    file: "app/(app)/customers/page.tsx",
+    surface: "Customers page header (desktop)",
     rows: [
+      { line: 174, label: "Import", variant: "outline" },
+      { line: 181, label: "Import subs", variant: "outline" },
       {
-        line: 255,
-        what: "Cancel (upload step)",
-        why: "rounded px-3 py-2 h-auto, manual outline",
-        current: (
-          <button className="h-auto text-sm border border-line-strong bg-card hover:bg-black rounded px-3 py-2 font-bold">
-            Cancel
-          </button>
+        line: 188,
+        label: "Customer",
+        variant: "primary",
+        node: (
+          <>
+            <Plus className="mr-1 h-4 w-4" strokeWidth={2.5} />
+            Customer
+          </>
         ),
-        canonical: <Button variant="outline">Cancel</Button>,
-      },
-      {
-        line: 281,
-        what: "Next: preview",
-        why: "Manual primary on ghost variant",
-        current: (
-          <button className="h-auto text-sm bg-primary text-primary-foreground rounded px-3 py-2 font-bold">
-            Next: preview
-          </button>
-        ),
-        canonical: <Button>Next: preview</Button>,
-      },
-      {
-        line: 316,
-        what: "Importing… (disabled)",
-        why: "Legacy bg-slate-400 (pre-design system)",
-        current: (
-          <button
-            disabled
-            className="h-auto text-sm bg-slate-400 text-white rounded px-3 py-2 font-bold"
-          >
-            Importing…
-          </button>
-        ),
-        canonical: <Button disabled>Importing…</Button>,
       },
     ],
   },
   {
-    file: "components/subscriptions/SubscriptionImportModal.tsx",
+    file: "app/(app)/customers/page.tsx",
+    surface: "Customer table row actions",
     rows: [
-      {
-        line: 380,
-        what: "Cancel",
-        why: "rounded px-3 py-2 h-auto, manual outline",
-        current: (
-          <button className="h-auto text-sm border border-line-strong bg-card hover:bg-black rounded px-3 py-2 font-bold">
-            Cancel
-          </button>
-        ),
-        canonical: <Button variant="outline">Cancel</Button>,
-      },
-      {
-        line: 389,
-        what: "Import",
-        why: "Manual primary on ghost variant",
-        current: (
-          <button className="h-auto text-sm bg-primary text-primary-foreground rounded px-3 py-2 font-bold">
-            Import
-          </button>
-        ),
-        canonical: <Button>Import</Button>,
-      },
-    ],
-  },
-  {
-    file: "components/customers/CustomerDetailClient.tsx",
-    rows: [
-      {
-        line: 453,
-        what: "Edit",
-        why: "rounded px-3 py-2 h-auto, manual primary",
-        current: (
-          <button className="h-auto text-sm bg-primary text-primary-foreground rounded px-3 py-2 font-bold">
-            Edit
-          </button>
-        ),
-        canonical: <Button>Edit</Button>,
-      },
-      {
-        line: 460,
-        what: "Delete",
-        why: "rounded px-3 py-2 h-auto, manual outline",
-        current: (
-          <button className="h-auto text-sm border border-line-strong bg-card hover:bg-black text-zinc-300 rounded px-3 py-2 font-bold">
-            Delete
-          </button>
-        ),
-        canonical: <Button variant="outline">Delete</Button>,
-      },
-      {
-        line: 342,
-        what: "Add note (small)",
-        why: "rounded px-3 py-1.5 h-auto",
-        current: (
-          <button className="h-auto text-xs font-bold border border-line-strong bg-card hover:bg-black text-zinc-300 rounded px-3 py-1.5">
-            Add note
-          </button>
-        ),
-        canonical: (
-          <Button variant="outline" size="sm">
-            Add note
-          </Button>
-        ),
-      },
+      { line: 279, label: "Call", variant: "ghost" },
+      { line: 294, label: "Edit", variant: "ghost" },
+      { line: 301, label: "Delete", variant: "ghost" },
     ],
   },
   {
     file: "app/(app)/employees/EmployeesClient.tsx",
+    surface: "Employees page header",
     rows: [
       {
-        line: 77,
-        what: "Add Employee (desktop)",
-        why: "rounded-md (DS wants rounded-xl); raw <a> instead of Button",
-        current: (
-          <a
-            href="#"
-            onClick={(e) => e.preventDefault()}
-            className="hidden items-center gap-2 bg-primary hover:opacity-90 text-primary-foreground rounded-md px-4 py-2 text-sm font-bold md:inline-flex"
-          >
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-card/15">
-              <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
-            </span>
+        line: 78,
+        label: "Add Employee",
+        variant: "primary",
+        node: (
+          <>
+            <Plus className="mr-1 h-4 w-4" strokeWidth={2.5} />
             Add Employee
-          </a>
-        ),
-        canonical: (
-          <Button asChild>
-            <Link href="#" onClick={(e) => e.preventDefault()}>
-              <Plus className="mr-1 h-4 w-4" strokeWidth={2.5} />
-              Add Employee
-            </Link>
-          </Button>
+          </>
         ),
       },
     ],
   },
   {
-    file: "components/LeaderboardClient.tsx",
+    file: "components/customers/ImportModal.tsx",
+    surface: "Import customers modal footer",
     rows: [
-      {
-        line: 170,
-        what: "Start new sprint",
-        why: "rounded-full px-4 py-2 h-auto (pill misused on form action)",
-        current: (
-          <button className="h-auto text-sm font-bold border border-line bg-card hover:bg-black text-zinc-300 rounded-full px-4 py-2">
-            Start new sprint
-          </button>
-        ),
-        canonical: <Button variant="outline">Start new sprint</Button>,
-      },
+      { line: 252, label: "Cancel", variant: "outline" },
+      { line: 269, label: "Back", variant: "outline" },
+      { line: 278, label: "Next: preview", variant: "primary" },
+      { line: 291, label: "Back", variant: "outline" },
+      { line: 297, label: "Import 12 rows", variant: "primary" },
+      { line: 309, label: "Importing…", variant: "primary" },
+      { line: 318, label: "Close", variant: "primary" },
     ],
   },
   {
-    file: "components/JobForm.tsx",
+    file: "components/subscriptions/SubscriptionImportModal.tsx",
+    surface: "Import subscriptions modal footer",
     rows: [
-      {
-        line: 519,
-        what: "Create Job (header)",
-        why: "rounded-full px-5 py-2 h-auto, manual primary",
-        current: (
-          <button className="text-sm bg-primary hover:opacity-90 text-primary-foreground rounded-full px-5 py-2 font-bold shadow-sm h-auto">
-            Create Job
-          </button>
-        ),
-        canonical: <Button>Create Job</Button>,
-      },
-      {
-        line: 511,
-        what: "Cancel (header link)",
-        why: "rounded-full px-4 py-2 raw <a>",
-        current: (
-          <a
-            href="#"
-            onClick={(e) => e.preventDefault()}
-            className="text-sm border border-line bg-card hover:bg-black rounded-full px-4 py-2 text-zinc-300"
-          >
-            Cancel
-          </a>
-        ),
-        canonical: (
-          <Button asChild variant="outline">
-            <Link href="#" onClick={(e) => e.preventDefault()}>
-              Cancel
-            </Link>
-          </Button>
-        ),
-      },
-      {
-        line: 568,
-        what: "Add line item (chip)",
-        why: "rounded-full whitespace-nowrap h-auto",
-        current: (
-          <button className="text-sm border border-line bg-card hover:bg-black rounded-full px-4 py-2 text-zinc-300 whitespace-nowrap h-auto">
-            + Add Item
-          </button>
-        ),
-        canonical: <Button variant="outline">+ Add Item</Button>,
-      },
+      { line: 362, label: "Done", variant: "primary" },
+      { line: 374, label: "Cancel", variant: "outline" },
+      { line: 379, label: "Import 12 subscriptions", variant: "primary" },
     ],
   },
   {
-    file: "components/NewEstimateForm.tsx",
+    file: "components/customers/CustomerForm.tsx",
+    surface: "New / edit customer dialog footer",
     rows: [
-      {
-        line: 138,
-        what: "Send Estimate",
-        why: "rounded-full px-5 py-2.5 h-auto, manual primary",
-        current: (
-          <button className="text-sm bg-primary hover:opacity-90 text-primary-foreground rounded-full px-5 py-2.5 font-bold shadow-sm h-auto">
-            Send Estimate
-          </button>
-        ),
-        canonical: <Button>Send Estimate</Button>,
-      },
+      { line: 169, label: "Cancel", variant: "outline" },
+      { line: 172, label: "Save", variant: "primary" },
     ],
   },
   {
-    file: "components/JobDetailClient.tsx",
+    file: "components/customers/CustomerDetailClient.tsx",
+    surface: "Customer detail — name row + action trio",
     rows: [
-      {
-        line: 500,
-        what: "Modal action (Mark complete)",
-        why: "rounded-2xl px-4 py-3 h-auto (overrides primitive sizing)",
-        current: (
-          <button className="h-auto rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground">
-            Mark Complete
-          </button>
-        ),
-        canonical: <Button>Mark Complete</Button>,
-      },
+      { line: 340, label: "Edit", variant: "outline" },
+      { line: 448, label: "+ Job", variant: "primary" },
+      { line: 455, label: "+ Estimate", variant: "outline" },
+      { line: 461, label: "Message", variant: "outline" },
     ],
   },
   {
-    file: "components/jobs/CheckoutModal.tsx (Stripe)",
+    file: "components/jobs/PaymentsSection.tsx",
+    surface: "Payments section row action",
     rows: [
-      {
-        line: 98,
-        what: "Checkout action",
-        why: "rounded-2xl px-4 py-3 h-auto, manual primary",
-        current: (
-          <button className="h-auto rounded-2xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground">
-            Charge Card
-          </button>
-        ),
-        canonical: <Button>Charge Card</Button>,
-      },
-    ],
-  },
-  {
-    file: "components/jobs/RecordPaymentModal.tsx (Stripe)",
-    rows: [
-      {
-        line: 506,
-        what: "Record payment",
-        why: "rounded-full px-5 py-2 h-auto",
-        current: (
-          <button className="h-auto rounded-full bg-primary px-5 py-2 text-sm font-bold text-primary-foreground">
-            Record Payment
-          </button>
-        ),
-        canonical: <Button>Record Payment</Button>,
-      },
-      {
-        line: 514,
-        what: "Cancel",
-        why: "rounded-full px-4 py-2 h-auto",
-        current: (
-          <button className="h-auto rounded-full border border-line bg-card px-4 py-2 text-sm font-bold text-zinc-300">
-            Cancel
-          </button>
-        ),
-        canonical: <Button variant="outline">Cancel</Button>,
-      },
-    ],
-  },
-  {
-    file: "components/jobs/PaymentsSection.tsx (Stripe)",
-    rows: [
-      {
-        line: 81,
-        what: "Add payment",
-        why: "rounded-full px-4 py-1.5 h-auto",
-        current: (
-          <button className="h-auto rounded-full bg-primary px-4 py-1.5 text-sm font-bold text-primary-foreground">
-            + Add Payment
-          </button>
-        ),
-        canonical: <Button>+ Add Payment</Button>,
-      },
-    ],
-  },
-  {
-    file: "components/NewInvoiceForm.tsx (Stripe)",
-    rows: [
-      {
-        line: 0,
-        what: "Send Invoice",
-        why: "rounded-full px-5 py-2.5 h-auto",
-        current: (
-          <button className="h-auto rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-sm">
-            Send Invoice
-          </button>
-        ),
-        canonical: <Button>Send Invoice</Button>,
-      },
-    ],
-  },
-  {
-    file: "components/NewSubscriptionForm.tsx (Stripe)",
-    rows: [
-      {
-        line: 0,
-        what: "Create Subscription",
-        why: "rounded-full px-5 py-2.5 h-auto",
-        current: (
-          <button className="h-auto rounded-full bg-primary px-5 py-2.5 text-sm font-bold text-primary-foreground shadow-sm">
-            Create Subscription
-          </button>
-        ),
-        canonical: <Button>Create Subscription</Button>,
-      },
-    ],
-  },
-  {
-    file: "components/SmsWelcomeModal.tsx (Stripe/messaging)",
-    rows: [
-      {
-        line: 71,
-        what: "I agree",
-        why: "rounded-full px-6 py-2.5 h-auto",
-        current: (
-          <button className="h-auto rounded-full bg-primary px-6 py-2.5 text-sm font-bold text-primary-foreground">
-            I agree
-          </button>
-        ),
-        canonical: <Button>I agree</Button>,
-      },
+      { line: 140, label: "Delete", variant: "ghost" },
     ],
   },
 ];
 
-const BILLING_FILES = new Set([
-  "components/jobs/CheckoutModal.tsx (Stripe)",
-  "components/jobs/RecordPaymentModal.tsx (Stripe)",
-  "components/jobs/PaymentsSection.tsx (Stripe)",
-  "components/NewInvoiceForm.tsx (Stripe)",
-  "components/NewSubscriptionForm.tsx (Stripe)",
-  "components/SmsWelcomeModal.tsx (Stripe/messaging)",
-]);
+// A handful of pill examples already in production, for reference / contrast.
+const PILL_REFERENCES: Group[] = [
+  {
+    file: "components/JobForm.tsx",
+    surface: "Job form header (already pill — Nick likes this)",
+    rows: [
+      { line: 511, label: "Cancel", variant: "outline" },
+      { line: 519, label: "Create Job", variant: "primary" },
+    ],
+  },
+  {
+    file: "components/EstimateDetailClient.tsx",
+    surface: "Approve & schedule (already pill)",
+    rows: [
+      { line: 571, label: "Approve & Schedule Job", variant: "primary" },
+      { line: 580, label: "Approve without signature", variant: "outline" },
+    ],
+  },
+  {
+    file: "components/jobs/RecordPaymentModal.tsx",
+    surface: "Record payment modal (already pill)",
+    rows: [
+      { line: 506, label: "Record Payment", variant: "primary" },
+      { line: 514, label: "Cancel", variant: "outline" },
+    ],
+  },
+];
+
+function renderCurrent(r: Row) {
+  // Render with the canonical Button primitive (which is rounded-xl by default).
+  const content = r.node ?? r.label;
+  switch (r.variant) {
+    case "primary":
+      return <Button>{content}</Button>;
+    case "outline":
+      return <Button variant="outline">{content}</Button>;
+    case "ghost":
+      return <Button variant="ghost">{content}</Button>;
+    case "destructive":
+      return <Button variant="destructive">{content}</Button>;
+    case "primary-icon":
+      return (
+        <Button size="icon" aria-label={r.label}>
+          {content}
+        </Button>
+      );
+    case "outline-icon":
+      return (
+        <Button size="icon" variant="outline" aria-label={r.label}>
+          {content}
+        </Button>
+      );
+  }
+}
+
+function renderPill(r: Row) {
+  const content = r.node ?? r.label;
+  switch (r.variant) {
+    case "primary":
+      return <Button className="rounded-full">{content}</Button>;
+    case "outline":
+      return (
+        <Button variant="outline" className="rounded-full">
+          {content}
+        </Button>
+      );
+    case "ghost":
+      return (
+        <Button variant="ghost" className="rounded-full">
+          {content}
+        </Button>
+      );
+    case "destructive":
+      return (
+        <Button variant="destructive" className="rounded-full">
+          {content}
+        </Button>
+      );
+    case "primary-icon":
+      return (
+        <Button size="icon" className="rounded-full" aria-label={r.label}>
+          {content}
+        </Button>
+      );
+    case "outline-icon":
+      return (
+        <Button
+          size="icon"
+          variant="outline"
+          className="rounded-full"
+          aria-label={r.label}
+        >
+          {content}
+        </Button>
+      );
+  }
+}
+
+function renderPillReference(r: Row) {
+  // Already-pill buttons — render as pill in both columns so they don't
+  // look like they need a change.
+  return renderPill(r);
+}
+
+function GroupCard({
+  group,
+  reference,
+}: {
+  group: Group;
+  reference?: boolean;
+}) {
+  return (
+    <section>
+      <div className="mb-4">
+        <h2 className="text-[15px] font-extrabold tracking-tight text-white">
+          {group.file}
+        </h2>
+        <p className="mt-1 text-xs font-bold text-zinc-500">{group.surface}</p>
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-line bg-card">
+        <div className="grid grid-cols-[1fr_auto_1fr_2fr] gap-4 border-b border-line bg-black px-5 py-2 text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">
+          <div>{reference ? "Pill (current)" : "Rectangular (current)"}</div>
+          <div></div>
+          <div>{reference ? "Pill (no change)" : "Pill (proposed)"}</div>
+          <div>Button</div>
+        </div>
+        {group.rows.map((row, i) => (
+          <div
+            key={i}
+            className="grid grid-cols-[1fr_auto_1fr_2fr] items-center gap-4 border-b border-line px-5 py-5 last:border-0"
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              {reference ? renderPillReference(row) : renderCurrent(row)}
+            </div>
+            <div className="text-zinc-500">→</div>
+            <div className="flex flex-wrap items-center gap-2">
+              {reference ? renderPillReference(row) : renderPill(row)}
+            </div>
+            <div className="text-xs font-bold">
+              <div className="text-white">{row.label}</div>
+              <div className="mt-1 text-zinc-500">
+                L{row.line} — {row.variant}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
 
 export default function ButtonAuditPage() {
   return (
-    <div className="min-h-screen bg-black text-white px-8 py-10">
+    <div className="min-h-screen bg-black px-8 py-10 text-white">
       <div className="mx-auto max-w-6xl space-y-10">
         <header>
-          <h1 className="text-page-title text-white">Button audit</h1>
-          <p className="mt-3 text-sm font-bold text-zinc-400">
-            Every button in the CRM that does not match the design system.
-            Left column is the current rendered output; right column is the
-            canonical replacement using the <code>&lt;Button&gt;</code>{" "}
-            primitive variants (default / outline / sm).
+          <h1 className="text-page-title text-white">
+            Rectangular → Pill audit
+          </h1>
+          <p className="mt-3 max-w-3xl text-sm font-bold text-zinc-400">
+            Every button that&rsquo;s currently rectangular (
+            <code>rounded-xl</code> from the canonical{" "}
+            <code>&lt;Button&gt;</code> primitive). Left column is the current
+            shape; right column is the proposed pill (
+            <code>rounded-full</code>). Below that, a reference section of
+            buttons already shipping as pills.
           </p>
-          <div className="mt-3 flex items-center gap-3 text-xs font-bold">
-            <span className="rounded-md bg-zinc-800 px-2 py-1 text-zinc-300">
-              Safe to fix
-            </span>
-            <span className="rounded-md bg-amber-500/15 px-2 py-1 text-amber-400">
-              Stripe / billing surface (visual swap only)
-            </span>
-          </div>
         </header>
 
-        {GROUPS.map((group) => {
-          const isBilling = BILLING_FILES.has(group.file);
-          return (
-            <section key={group.file}>
-              <div className="mb-4 flex items-center gap-3">
-                <h2 className="text-[15px] font-extrabold tracking-tight text-white">
-                  {group.file}
-                </h2>
-                {isBilling && (
-                  <span className="rounded-md bg-amber-500/15 px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.18em] text-amber-400">
-                    Stripe
-                  </span>
-                )}
-              </div>
-              <div className="overflow-hidden rounded-2xl border border-line bg-card">
-                <div className="grid grid-cols-[1fr_auto_1fr_2fr] gap-4 border-b border-line bg-black px-5 py-2 text-xs font-bold uppercase tracking-[0.16em] text-zinc-500">
-                  <div>Current</div>
-                  <div></div>
-                  <div>Canonical</div>
-                  <div>Why</div>
-                </div>
-                {group.rows.map((row, i) => (
-                  <div
-                    key={i}
-                    className="grid grid-cols-[1fr_auto_1fr_2fr] items-center gap-4 border-b border-line px-5 py-5 last:border-0"
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      {row.current}
-                    </div>
-                    <div className="text-zinc-500">→</div>
-                    <div className="flex flex-wrap items-center gap-2">
-                      {row.canonical}
-                    </div>
-                    <div className="text-xs font-bold text-zinc-400">
-                      <div className="text-white">{row.what}</div>
-                      <div className="mt-1 text-zinc-500">
-                        L{row.line} — {row.why}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </section>
-          );
-        })}
+        <div className="space-y-10">
+          <h2 className="text-2xl font-extrabold tracking-tight">
+            Rectangular → would become pill
+          </h2>
+          {RECTANGULAR_GROUPS.map((g) => (
+            <GroupCard key={`${g.file}-${g.surface}`} group={g} />
+          ))}
+        </div>
+
+        <div className="space-y-10 border-t border-line pt-10">
+          <div>
+            <h2 className="text-2xl font-extrabold tracking-tight">
+              Already pill (reference)
+            </h2>
+            <p className="mt-2 text-sm font-bold text-zinc-500">
+              These ship as pills today. Showing them here so you can see the
+              visual target.
+            </p>
+          </div>
+          {PILL_REFERENCES.map((g) => (
+            <GroupCard
+              key={`${g.file}-${g.surface}`}
+              group={g}
+              reference
+            />
+          ))}
+        </div>
 
         <footer className="border-t border-line pt-6 text-xs font-bold text-zinc-500">
-          Total violations across the codebase: 39 (capped). This page shows
-          the representative button per pattern per file.
+          <p>
+            If we go pill-everywhere, the cleanest fix is to flip the{" "}
+            <code>&lt;Button&gt;</code> primitive&rsquo;s default radius from{" "}
+            <code>rounded-xl</code> to <code>rounded-full</code> in{" "}
+            <code>components/ui/button.tsx</code>. Every call site that
+            doesn&rsquo;t override <code>rounded-*</code> would update
+            automatically; the existing <code>rounded-full</code> overrides
+            become no-ops and can be stripped later.
+          </p>
         </footer>
       </div>
     </div>
