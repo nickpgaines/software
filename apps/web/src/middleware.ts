@@ -80,6 +80,14 @@ function sameOrigin(req: NextRequest): boolean {
 
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+
+  // MCP connector endpoint authenticates via OAuth bearer token, not the
+  // cookie session. Skip the cookie check so Claude (which has no cookie)
+  // can reach it; the route handler enforces auth itself.
+  if (pathname === "/api/mcp") {
+    return NextResponse.next();
+  }
+
   const token = req.cookies.get(COOKIE_NAME)?.value;
   const authed = await isValid(token);
 
@@ -115,6 +123,6 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/|favicon.ico|favicon.png|manifest.json|sw.js|icons/|privacy|terms|sms-terms|sms-consent|sms-opt-in|about|data-deletion|api/login|api/signup|api/auth/|api/messages/webhook|api/twilio/|api/voice/outbound|api/voice/status|api/voice/recording|api/email/unsubscribe|api/stripe/webhook|api/integrations/meta/webhook|invoices/pay/|api/invoices/pay/|estimates/accept/|api/estimates/accept/).*)",
+    "/((?!_next/|favicon.ico|favicon.png|manifest.json|sw.js|icons/|privacy|terms|sms-terms|sms-consent|sms-opt-in|about|data-deletion|connect-claude|\\.well-known/|api/login|api/signup|api/auth/|api/messages/webhook|api/twilio/|api/voice/outbound|api/voice/status|api/voice/recording|api/email/unsubscribe|api/stripe/webhook|api/integrations/meta/webhook|api/mcp/oauth/register|api/mcp/oauth/token|api/mcp/oauth/revoke|invoices/pay/|api/invoices/pay/|estimates/accept/|api/estimates/accept/).*)",
   ],
 };
