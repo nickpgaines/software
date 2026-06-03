@@ -186,6 +186,10 @@ export default function NewSubscriptionForm() {
   const [billingMode, setBillingMode] = useState<BillingMode>("with_service");
 
   const [acceptMode, setAcceptMode] = useState<AcceptMode>("send");
+  // One-off override for the "Accept for customer" path: if true, the sub is
+  // marked Active even when there's no card on file / no Stripe Sub wired up.
+  // Default off — the strict flow requires a card before activating.
+  const [skipCardRequirement, setSkipCardRequirement] = useState(false);
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
@@ -276,8 +280,8 @@ export default function NewSubscriptionForm() {
         sold_by_id: soldById || null,
       }),
     });
-    setSubmitting(false);
     if (!res.ok) {
+      setSubmitting(false);
       const text = await res.text().catch(() => "");
       let serverMsg = "";
       try {
@@ -293,6 +297,22 @@ export default function NewSubscriptionForm() {
       );
       return;
     }
+    // If the merchant chose "Accept for customer" + skip-card override, the
+    // POST above inserted the row as pending (no card → no Stripe Sub).
+    // Force-activate it now so the row reads Active despite no recurring
+    // billing being wired. The merchant has explicitly chosen this for
+    // out-of-band payment arrangements.
+    if (acceptMode === "accept" && skipCardRequirement) {
+      const created = (await res.json().catch(() => null)) as {
+        id?: number;
+      } | null;
+      if (created?.id) {
+        await fetch(`/api/customer-subscriptions/${created.id}/activate`, {
+          method: "POST",
+        });
+      }
+    }
+    setSubmitting(false);
     router.push("/settings?tab=subscriptions");
   }
 
@@ -442,6 +462,27 @@ export default function NewSubscriptionForm() {
                 title="Accept for customer"
                 description="Enter payment information and accept this plan on behalf of your customer."
               />
+              {acceptMode === "accept" && (
+                <label className="flex items-start gap-2 ml-7 mt-1 text-xs text-zinc-400 cursor-pointer">
+                  {/* Native <input type="checkbox"> kept: matches the rest of the form. */}
+                  <input
+                    type="checkbox"
+                    checked={skipCardRequirement}
+                    onChange={(e) =>
+                      setSkipCardRequirement(e.target.checked)
+                    }
+                    className="mt-0.5 h-3.5 w-3.5"
+                  />
+                  <span>
+                    <span className="font-bold text-zinc-300">
+                      Activate without card on file
+                    </span>{" "}
+                    — use for one-off cash or check arrangements. The
+                    subscription will be marked Active but won&apos;t bill
+                    automatically; you collect payment yourself each period.
+                  </span>
+                </label>
+              )}
               {acceptMode === "accept" && requireSignature && (
                 <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                   This template requires a signature. After creating the
