@@ -1,8 +1,4 @@
 import { getDb, syncReplica, type Estimate, type EstimateItem } from "@/lib/db";
-import {
-  buildPromotionalSmsConsentText,
-  buildTransactionalSmsConsentText,
-} from "@/lib/sms-consent";
 import AcceptClient from "./AcceptClient";
 
 export const dynamic = "force-dynamic";
@@ -33,7 +29,9 @@ export default async function EstimateAcceptPage({
   if (!estimate) {
     return (
       <Shell>
-        <h1 className="text-page-title text-white">Estimate not found</h1>
+        <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-page-title">
+          Estimate not found
+        </h1>
         <p className="mt-3 text-sm font-bold text-zinc-400">
           This link may be incorrect, or the estimate was removed.
         </p>
@@ -50,7 +48,9 @@ export default async function EstimateAcceptPage({
     return (
       <Shell>
         <div className="mb-2 text-2xl text-emerald-500">✓</div>
-        <h1 className="text-page-title text-white">Estimate accepted</h1>
+        <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-page-title">
+          Estimate accepted
+        </h1>
         <p className="mt-3 text-sm font-bold text-zinc-400">
           Thanks
           {estimate.signature_name ? `, ${estimate.signature_name}` : ""} —{" "}
@@ -72,8 +72,6 @@ export default async function EstimateAcceptPage({
         token={params.token}
         companyName={companyName}
         terms={estimate.terms}
-        promoConsentText={buildPromotionalSmsConsentText(companyName)}
-        transactionalConsentText={buildTransactionalSmsConsentText(companyName)}
         total={estimate.total_cents}
         items={items.map((it) => ({
           id: it.id,
