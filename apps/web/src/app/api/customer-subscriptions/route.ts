@@ -12,7 +12,7 @@ import {
   ensureRollingVisits,
   startDateToIso,
 } from "@/lib/subscription-schedule";
-import { firstChargeOnOrAfter } from "@/lib/subscription-billing";
+import { createStripeSubscriptionForRow } from "@/lib/stripe-subscriptions";
 
 function makeAcceptToken() {
   return randomBytes(24).toString("base64url");
@@ -269,18 +269,41 @@ export async function POST(req: Request) {
   const subscriptionId = Number(result.lastInsertRowid);
 
   if (action === "accept") {
-    // Schedule the first recurring charge on the start date (per billing
-    // policy), then the daily auto-biller takes over. Card is locked
-    // separately via the accept setup-intent flow; auto_bill defaults on.
-    const nextChargeAt = firstChargeOnOrAfter(
-      startDateToIso(startDate),
-      interval
-    );
-    await db
-      .prepare(
-        `UPDATE customer_subscriptions SET next_charge_at = ? WHERE id = ? AND company_id = ?`
-      )
-      .run(nextChargeAt, subscriptionId, companyId);
+    // Create the Stripe Subscription that will run the recurring billing on
+    // its own schedule. Best-effort: if Stripe creation fails (typically
+    // no_card for merchant-initiated activation before the customer has
+    // saved a card), the row stays active and admin can retry once a card
+    // is on file. The visit schedule still seeds.
+    const stripeResult = await createStripeSubscriptionForRow({
+      companyId,
+      customerId,
+      subscriptionRowId: subscriptionId,
+      productName: name,
+      productDescription: description,
+      amountCents: price_cents,
+      interval,
+      startDateIso: startDateToIso(startDate),
+    });
+    if (stripeResult.ok) {
+      await db
+        .prepare(
+          `UPDATE customer_subscriptions
+             SET stripe_subscription_id = ?,
+                 stripe_subscription_status = ?
+           WHERE id = ? AND company_id = ?`
+        )
+        .run(
+          stripeResult.stripeSubscriptionId,
+          stripeResult.stripeStatus,
+          subscriptionId,
+          companyId
+        );
+    } else {
+      console.error(
+        `Stripe Subscription creation failed for sub ${subscriptionId}:`,
+        stripeResult.error
+      );
+    }
     try {
       await ensureRollingVisits(db, {
         subscriptionId,

@@ -1,493 +1,426 @@
 import { NextResponse } from "next/server";
-import { randomBytes } from "crypto";
+import type Stripe from "stripe";
 import {
   getDb,
+  type Customer,
   type SubscriptionInterval,
-  type CustomerSubscriptionStatus,
-  type SubscriptionBillingStatus,
 } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
 import {
   getStripe,
   isStripeConfigured,
   getCompany,
-  savePaymentMethodForCustomer,
 } from "@/lib/stripe";
-import { firstChargeOnOrAfter } from "@/lib/subscription-billing";
 
 export const dynamic = "force-dynamic";
 
-// One source row from a Homebase360 (or similar) subscriptions export. The
-// client parses the CSV and may join the customer's email/phone from the
-// customers export to improve Stripe matching.
-type ImportSubRow = {
-  customer_name?: string | null;
-  address?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  plan_name?: string | null;
-  amount_cents?: number | null;
-  interval?: string | null; // raw frequency text, mapped here
-  status?: string | null; // raw source status, mapped here
-  start_date?: string | null; // MM/DD/YYYY or ISO
-  sold_by?: string | null;
-};
+/**
+ * Subscription import: connect Forge to an existing book of Stripe
+ * Subscriptions (typically from a previous CRM like Homebase360 or Jobber
+ * that already drives billing through this same Stripe Connect account).
+ *
+ *   GET  → list every Stripe Subscription on this connected account that
+ *          isn't already linked to a Forge row, with a best-guess match to
+ *          a Forge customer (by email, then phone, then name).
+ *   POST → for each {stripe_subscription_id, customer_id} pair, insert a
+ *          customer_subscriptions row that points at the existing Stripe
+ *          Sub. No new Stripe billing is created and the existing
+ *          schedule is not touched — Stripe keeps charging on its cadence;
+ *          Forge just becomes the system of record for that customer.
+ *
+ * Importing is reversible (delete the customer_subscriptions row; the
+ * Stripe Sub itself stays untouched), and never causes duplicate billing
+ * because Forge never bills a sub that has a stripe_subscription_id.
+ */
 
-type Confidence = "auto" | "review" | "none";
+type ImportInterval = SubscriptionInterval;
 
-type ReportRow = {
-  row: number;
-  customer_name: string;
-  plan_name: string;
-  amount_cents: number;
-  interval: SubscriptionInterval;
-  status: CustomerSubscriptionStatus;
-  billing_status: SubscriptionBillingStatus;
-  needs_card: boolean;
-  customer_id: number | null;
-  customer_will_be_created: boolean;
-  stripe_customer_id: string | null;
-  payment_method_id: string | null;
-  card: { brand: string | null; last4: string | null } | null;
-  sold_by_id: number | null;
-  next_charge_at: string | null;
-  confidence: Confidence;
-  issues: string[];
-  skipped?: string; // set in commit mode when the row was not written
-  created_subscription_id?: number;
-};
-
-function clean(v: unknown): string {
-  return typeof v === "string" ? v.trim() : "";
-}
-function norm(v: unknown): string {
-  return clean(v).toLowerCase().replace(/\s+/g, " ");
-}
-
-function mapInterval(raw: string): { interval: SubscriptionInterval; ok: boolean } {
-  const s = norm(raw).replace(/[-_]/g, " ");
-  if (/(^|\b)(weekly|every week)\b/.test(s)) return { interval: "weekly", ok: true };
-  if (/(biweekly|bi weekly|every 2 weeks|fortnight)/.test(s))
-    return { interval: "biweekly", ok: true };
-  if (/(quarter)/.test(s)) return { interval: "quarterly", ok: true };
-  if (/(6 month|six month|semi annual|semiannual|bi annual|biannual|twice a year)/.test(s))
-    return { interval: "semiannually", ok: true };
-  if (/(4 month|four month|tri annual|triannual)/.test(s))
-    return { interval: "triannually", ok: true };
-  if (/(year|annual)/.test(s)) return { interval: "yearly", ok: true };
-  if (/(month)/.test(s)) return { interval: "monthly", ok: true };
-  return { interval: "monthly", ok: false };
-}
-
-function mapStatus(raw: string): {
-  status: CustomerSubscriptionStatus;
-  billing: SubscriptionBillingStatus;
-} {
-  const s = norm(raw);
-  if (s === "active") return { status: "active", billing: "current" };
-  if (s === "past_due" || s === "pastdue" || s === "past due")
-    return { status: "active", billing: "past_due" };
-  if (s === "canceled" || s === "cancelled")
-    return { status: "canceled", billing: "current" };
-  if (s === "declined") return { status: "declined", billing: "current" };
-  return { status: "pending", billing: "current" }; // "sent" and unknowns
-}
-
-// MM/DD/YYYY -> YYYY-MM-DD; passes through ISO/other parseable dates.
-function parseStartDate(raw: string): string | null {
-  const s = clean(raw);
-  if (!s) return null;
-  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  if (m) {
-    const [, mm, dd, yyyy] = m;
-    return `${yyyy}-${mm.padStart(2, "0")}-${dd.padStart(2, "0")}`;
-  }
-  const d = new Date(s);
-  if (!isNaN(d.getTime())) return d.toISOString().slice(0, 10);
+function mapStripeInterval(
+  interval: Stripe.Price.Recurring.Interval | undefined,
+  intervalCount: number | undefined
+): ImportInterval | null {
+  if (!interval || !intervalCount) return null;
+  if (interval === "week" && intervalCount === 1) return "weekly";
+  if (interval === "week" && intervalCount === 2) return "biweekly";
+  if (interval === "month" && intervalCount === 1) return "monthly";
+  if (interval === "month" && intervalCount === 3) return "quarterly";
+  if (interval === "month" && intervalCount === 4) return "triannually";
+  if (interval === "month" && intervalCount === 6) return "semiannually";
+  if (interval === "year" && intervalCount === 1) return "yearly";
   return null;
 }
 
-export async function POST(req: Request) {
-  const companyId = await requireCompanyId();
-  const db = await getDb();
-  const body = (await req.json().catch(() => ({}))) as {
-    mode?: "reconcile" | "commit";
-    rows?: ImportSubRow[];
-    approve?: number[];
-  };
-  const mode = body.mode === "commit" ? "commit" : "reconcile";
-  const rows = Array.isArray(body.rows) ? body.rows : [];
-  if (rows.length === 0) {
-    return NextResponse.json({ error: "rows array is required" }, { status: 400 });
-  }
-  if (rows.length > 1000) {
+function normalizePhone(p: string | null | undefined): string {
+  return (p || "").replace(/\D+/g, "");
+}
+
+export async function GET() {
+  if (!isStripeConfigured()) {
     return NextResponse.json(
-      { error: "Too many rows in one batch (max 1000)" },
+      { error: "Stripe is not configured" },
+      { status: 503 }
+    );
+  }
+  const companyId = await requireCompanyId();
+  const company = await getCompany(companyId);
+  if (!company.stripe_account_id || !company.stripe_charges_enabled) {
+    return NextResponse.json(
+      { error: "Connect a Stripe account before importing subscriptions." },
       { status: 400 }
     );
   }
-  const approve = new Set<number>(Array.isArray(body.approve) ? body.approve : []);
+  const stripe = getStripe();
+  const db = await getDb();
 
-  const company = await getCompany(companyId);
-  const stripeReady = Boolean(
-    isStripeConfigured() &&
-      company.stripe_account_id &&
-      company.stripe_charges_enabled
-  );
-  const stripeAccountId = company.stripe_account_id || "";
-  const defaultTaxBps = company.tax_applied_by_default
-    ? company.default_tax_rate_bps || 0
-    : 0;
+  // Page through every Stripe Sub on the connected account. 22-customer
+  // accounts return in one page; larger books paginate via starting_after.
+  // Cap iterations defensively.
+  const stripeSubs: Stripe.Subscription[] = [];
+  let startingAfter: string | undefined = undefined;
+  for (let page = 0; page < 20; page++) {
+    const params: Stripe.SubscriptionListParams = {
+      limit: 100,
+      status: "all",
+      expand: [
+        "data.customer",
+        "data.default_payment_method",
+        "data.items.data.price.product",
+      ],
+    };
+    if (startingAfter) params.starting_after = startingAfter;
+    const res = await stripe.subscriptions.list(params, {
+      stripeAccount: company.stripe_account_id,
+    });
+    for (const s of res.data) stripeSubs.push(s);
+    if (!res.has_more || res.data.length === 0) break;
+    startingAfter = res.data[res.data.length - 1].id;
+  }
 
-  // Existing customers for name/email/phone matching.
-  const existingCustomers = (await db
+  // Build a lookup for Forge customers (small N — full table scan is fine
+  // for the company sizes that hit this endpoint).
+  const customers = (await db
     .prepare(
       "SELECT id, name, email, phone FROM customers WHERE company_id = ?"
     )
-    .all(companyId)) as {
-    id: number;
-    name: string | null;
-    email: string | null;
-    phone: string | null;
-  }[];
-  const byName = new Map<string, number[]>();
+    .all(companyId)) as Pick<Customer, "id" | "name" | "email" | "phone">[];
+
   const byEmail = new Map<string, number>();
   const byPhone = new Map<string, number>();
-  for (const c of existingCustomers) {
-    if (c.name) {
-      const k = norm(c.name);
-      byName.set(k, [...(byName.get(k) || []), c.id]);
-    }
-    if (c.email) byEmail.set(norm(c.email), c.id);
-    if (c.phone) byPhone.set(c.phone.replace(/\D/g, ""), c.id);
+  const byName = new Map<string, number>();
+  for (const c of customers) {
+    if (c.email) byEmail.set(c.email.trim().toLowerCase(), c.id);
+    const ph = normalizePhone(c.phone);
+    if (ph) byPhone.set(ph, c.id);
+    if (c.name) byName.set(c.name.trim().toLowerCase(), c.id);
   }
 
-  const staff = (await db
-    .prepare("SELECT id, name, first_name, last_name FROM staff WHERE company_id = ?")
-    .all(companyId)) as {
-    id: number;
-    name: string | null;
-    first_name: string | null;
-    last_name: string | null;
-  }[];
-  function matchStaff(name: string): number | null {
-    const n = norm(name);
-    if (!n) return null;
-    for (const s of staff) {
-      const full = norm(s.name || `${s.first_name || ""} ${s.last_name || ""}`);
-      if (full && full === n) return s.id;
-    }
-    return null;
-  }
+  // Which Stripe Sub IDs are already linked? The unique index on
+  // stripe_subscription_id enforces this at the DB layer, but we surface
+  // the flag in the UI so users don't try.
+  const alreadyLinkedRows = (await db
+    .prepare(
+      `SELECT stripe_subscription_id FROM customer_subscriptions
+        WHERE company_id = ? AND stripe_subscription_id IS NOT NULL`
+    )
+    .all(companyId)) as { stripe_subscription_id: string }[];
+  const alreadyLinked = new Set(
+    alreadyLinkedRows.map((r) => r.stripe_subscription_id)
+  );
 
-  const stripe = stripeReady ? getStripe() : null;
-  // Cache Stripe lookups within the batch so repeated customers don't re-hit.
-  const stripeCustCache = new Map<string, string | null>();
+  const report = stripeSubs.map((sub) => {
+    const stripeCustomer =
+      sub.customer && typeof sub.customer !== "string" ? sub.customer : null;
+    const isDeleted =
+      stripeCustomer !== null &&
+      (stripeCustomer as Stripe.DeletedCustomer).deleted;
+    const customerName = !isDeleted
+      ? (stripeCustomer as Stripe.Customer | null)?.name ?? null
+      : null;
+    const customerEmail = !isDeleted
+      ? (stripeCustomer as Stripe.Customer | null)?.email ?? null
+      : null;
+    const customerPhone = !isDeleted
+      ? (stripeCustomer as Stripe.Customer | null)?.phone ?? null
+      : null;
 
-  async function findStripeCustomer(
-    customerId: number | null,
-    email: string,
-    name: string
-  ): Promise<{ id: string | null; ambiguous: boolean }> {
-    // Already linked?
-    if (customerId) {
-      const linked = (await db
-        .prepare(
-          "SELECT stripe_customer_id FROM stripe_customers WHERE company_id = ? AND customer_id = ? LIMIT 1"
-        )
-        .get(companyId, customerId)) as { stripe_customer_id: string } | undefined;
-      if (linked?.stripe_customer_id)
-        return { id: linked.stripe_customer_id, ambiguous: false };
-    }
-    if (!stripe) return { id: null, ambiguous: false };
-    const cacheKey = `${email}|${name}`;
-    if (stripeCustCache.has(cacheKey))
-      return { id: stripeCustCache.get(cacheKey)!, ambiguous: false };
+    const item = sub.items.data[0];
+    const price = item?.price;
+    const amountCents = price?.unit_amount ?? 0;
+    const recurring = price?.recurring;
+    const interval = mapStripeInterval(
+      recurring?.interval,
+      recurring?.interval_count
+    );
 
-    try {
-      if (email) {
-        const list = await stripe.customers.list(
-          { email, limit: 2 },
-          { stripeAccount: stripeAccountId }
-        );
-        if (list.data.length === 1) {
-          stripeCustCache.set(cacheKey, list.data[0].id);
-          return { id: list.data[0].id, ambiguous: false };
-        }
-        if (list.data.length > 1) return { id: null, ambiguous: true };
+    // Best-guess Forge customer: email > phone > name. None of these are
+    // certain — UI shows the suggestion and lets the user override.
+    let matchId: number | null = null;
+    let matchConfidence: "email" | "phone" | "name" | null = null;
+    if (customerEmail) {
+      const id = byEmail.get(customerEmail.trim().toLowerCase());
+      if (id) {
+        matchId = id;
+        matchConfidence = "email";
       }
-      if (name) {
-        const search = await stripe.customers.search(
-          { query: `name:"${name.replace(/"/g, "")}"`, limit: 2 },
-          { stripeAccount: stripeAccountId }
-        );
-        if (search.data.length === 1) {
-          stripeCustCache.set(cacheKey, search.data[0].id);
-          return { id: search.data[0].id, ambiguous: false };
-        }
-        if (search.data.length > 1) return { id: null, ambiguous: true };
-      }
-    } catch {
-      // Stripe lookup failure shouldn't abort the whole import — surface as
-      // "needs review" for this row.
-      return { id: null, ambiguous: true };
     }
-    stripeCustCache.set(cacheKey, null);
-    return { id: null, ambiguous: false };
-  }
-
-  async function findDefaultCard(
-    stripeCustomerId: string
-  ): Promise<{ id: string; brand: string | null; last4: string | null } | null> {
-    if (!stripe) return null;
-    try {
-      const cust = (await stripe.customers.retrieve(stripeCustomerId, undefined, {
-        stripeAccount: stripeAccountId,
-      })) as { invoice_settings?: { default_payment_method?: string | null } };
-      const defaultPm = cust.invoice_settings?.default_payment_method || null;
-      const pms = await stripe.paymentMethods.list(
-        { customer: stripeCustomerId, type: "card", limit: 10 },
-        { stripeAccount: stripeAccountId }
-      );
-      if (pms.data.length === 0) return null;
-      const chosen =
-        pms.data.find((p) => p.id === defaultPm) || pms.data[0];
-      return {
-        id: chosen.id,
-        brand: chosen.card?.brand ?? null,
-        last4: chosen.card?.last4 ?? null,
-      };
-    } catch {
-      return null;
-    }
-  }
-
-  const report: ReportRow[] = [];
-  const batchId = `hb360-${new Date().toISOString().slice(0, 10)}-${randomBytes(4).toString("hex")}`;
-
-  for (let i = 0; i < rows.length; i++) {
-    const raw = rows[i];
-    const issues: string[] = [];
-    const customerName = clean(raw.customer_name);
-    const planName = clean(raw.plan_name) || "Subscription";
-    const email = clean(raw.email);
-    const phone = clean(raw.phone);
-    const amountCents = Math.max(0, Math.round(Number(raw.amount_cents) || 0));
-    const { interval, ok: intervalOk } = mapInterval(clean(raw.interval));
-    if (!intervalOk && clean(raw.interval))
-      issues.push(`Unrecognized frequency "${clean(raw.interval)}" — defaulted to monthly`);
-    const { status, billing } = mapStatus(clean(raw.status));
-    const startDate = parseStartDate(clean(raw.start_date));
-    const soldById = matchStaff(clean(raw.sold_by));
-    // Card needed only for agreements that bill (active / past_due).
-    const needsCard = status === "active";
-
-    if (!customerName) issues.push("Missing customer name");
-    if (amountCents <= 0) issues.push("Missing or zero amount");
-
-    // Match the customer.
-    let customerId: number | null = null;
-    if (email && byEmail.has(norm(email))) customerId = byEmail.get(norm(email))!;
-    if (!customerId && phone) {
-      const digits = phone.replace(/\D/g, "");
-      if (digits && byPhone.has(digits)) customerId = byPhone.get(digits)!;
-    }
-    let nameAmbiguous = false;
-    if (!customerId && customerName) {
-      const matches = byName.get(norm(customerName)) || [];
-      if (matches.length === 1) customerId = matches[0];
-      else if (matches.length > 1) nameAmbiguous = true;
-    }
-    if (nameAmbiguous)
-      issues.push("Multiple existing customers match this name — pick one");
-    const willCreate = !customerId && !nameAmbiguous && !!customerName;
-
-    // Resolve Stripe customer + card for billing agreements.
-    let stripeCustomerId: string | null = null;
-    let card: { brand: string | null; last4: string | null } | null = null;
-    let paymentMethodId: string | null = null;
-    if (needsCard) {
-      if (!stripeReady) {
-        issues.push("Stripe account not connected — can't locate the saved card");
-      } else {
-        const found = await findStripeCustomer(customerId, email, customerName);
-        if (found.ambiguous) {
-          issues.push("Couldn't uniquely match a Stripe customer — needs review");
-        } else if (found.id) {
-          stripeCustomerId = found.id;
-          const c = await findDefaultCard(found.id);
-          if (c) {
-            card = { brand: c.brand, last4: c.last4 };
-            paymentMethodId = c.id;
-          } else {
-            issues.push("Stripe customer found but no saved card on file");
-          }
-        } else {
-          issues.push("No matching Stripe customer found");
+    if (!matchId) {
+      const ph = normalizePhone(customerPhone);
+      if (ph) {
+        const id = byPhone.get(ph);
+        if (id) {
+          matchId = id;
+          matchConfidence = "phone";
         }
       }
     }
+    if (!matchId && customerName) {
+      const id = byName.get(customerName.trim().toLowerCase());
+      if (id) {
+        matchId = id;
+        matchConfidence = "name";
+      }
+    }
 
-    const nextChargeAt =
-      status === "active" && startDate
-        ? firstChargeOnOrAfter(`${startDate}T12:00:00.000Z`, interval)
+    const pm =
+      sub.default_payment_method &&
+      typeof sub.default_payment_method !== "string"
+        ? sub.default_payment_method
+        : null;
+    const card = pm?.card ?? null;
+
+    const productName =
+      typeof price?.product === "object" &&
+      price?.product &&
+      !("deleted" in price.product)
+        ? (price.product as Stripe.Product).name
         : null;
 
-    let confidence: Confidence;
-    if (issues.some((s) => s.startsWith("Missing"))) confidence = "none";
-    else if (needsCard && !paymentMethodId) confidence = nameAmbiguous ? "review" : "none";
-    else if (nameAmbiguous) confidence = "review";
-    else confidence = "auto";
+    // Stripe SDK v22 moved current_period_end onto each subscription item.
+    // For our single-price subs the first item carries the period boundary.
+    const periodEndSec = item?.current_period_end ?? null;
 
-    const rowReport: ReportRow = {
-      row: i + 1,
-      customer_name: customerName,
-      plan_name: planName,
+    return {
+      stripe_subscription_id: sub.id,
+      status: sub.status,
+      cancel_at_period_end: sub.cancel_at_period_end,
+      current_period_end: periodEndSec
+        ? new Date(periodEndSec * 1000).toISOString()
+        : null,
       amount_cents: amountCents,
+      currency: price?.currency ?? "usd",
       interval,
-      status,
-      billing_status: billing,
-      needs_card: needsCard,
-      customer_id: customerId,
-      customer_will_be_created: willCreate,
-      stripe_customer_id: stripeCustomerId,
-      payment_method_id: paymentMethodId,
-      card,
-      sold_by_id: soldById,
-      next_charge_at: nextChargeAt,
-      confidence,
-      issues,
+      interval_raw:
+        recurring?.interval && recurring?.interval_count
+          ? `${recurring.interval_count} × ${recurring.interval}`
+          : null,
+      name:
+        productName ||
+        sub.metadata?.product_name ||
+        `Subscription ${sub.id.slice(-8)}`,
+      stripe_customer_id:
+        typeof sub.customer === "string"
+          ? sub.customer
+          : sub.customer?.id ?? null,
+      customer_name: customerName,
+      customer_email: customerEmail,
+      customer_phone: customerPhone,
+      payment_method_brand: card?.brand ?? null,
+      payment_method_last4: card?.last4 ?? null,
+      matched_forge_customer_id: matchId,
+      matched_by: matchConfidence,
+      already_imported: alreadyLinked.has(sub.id),
     };
-
-    if (mode === "commit") {
-      const shouldWrite = approve.size === 0 ? confidence === "auto" : approve.has(i);
-      if (!shouldWrite) {
-        rowReport.skipped = "not approved";
-        report.push(rowReport);
-        continue;
-      }
-      if (issues.some((s) => s.startsWith("Missing"))) {
-        rowReport.skipped = "missing required fields";
-        report.push(rowReport);
-        continue;
-      }
-      try {
-        // Resolve / create the customer.
-        let cid = customerId;
-        if (!cid) {
-          const res = await db
-            .prepare(
-              `INSERT INTO customers (company_id, name, phone, email, address, address_line1, formatted_address)
-               VALUES (?, ?, ?, ?, ?, ?, ?)`
-            )
-            .run(
-              companyId,
-              customerName,
-              phone || null,
-              email || null,
-              clean(raw.address) || null,
-              clean(raw.address) || null,
-              clean(raw.address) || null
-            );
-          cid = Number(res.lastInsertRowid);
-        }
-
-        // Skip if this customer already has a subscription with the same plan
-        // name (idempotent re-runs).
-        const dupe = (await db
-          .prepare(
-            "SELECT id FROM customer_subscriptions WHERE company_id = ? AND customer_id = ? AND name = ? LIMIT 1"
-          )
-          .get(companyId, cid, planName)) as { id: number } | undefined;
-        if (dupe) {
-          rowReport.customer_id = cid;
-          rowReport.skipped = "already imported";
-          report.push(rowReport);
-          continue;
-        }
-
-        // Link Stripe customer + save the card so off-session charges work.
-        let lockedPmId: string | null = null;
-        if (stripeCustomerId && paymentMethodId) {
-          await db
-            .prepare(
-              `INSERT OR IGNORE INTO stripe_customers (company_id, customer_id, stripe_customer_id)
-               VALUES (?, ?, ?)`
-            )
-            .run(companyId, cid, stripeCustomerId);
-          try {
-            await savePaymentMethodForCustomer({
-              companyId,
-              customerId: cid,
-              stripeAccountId,
-              stripePaymentMethodId: paymentMethodId,
-              makeDefault: true,
-            });
-            lockedPmId = paymentMethodId;
-          } catch (e) {
-            rowReport.issues.push(
-              `Card link failed: ${e instanceof Error ? e.message : String(e)}`
-            );
-          }
-        }
-
-        // Auto-bill only when an active agreement has a usable card.
-        const autoBill = status === "active" && lockedPmId ? 1 : 0;
-        const acceptToken = randomBytes(24).toString("base64url");
-        const acceptedAt = status === "active" ? new Date().toISOString() : null;
-
-        const res = await db
-          .prepare(
-            `INSERT INTO customer_subscriptions
-               (company_id, customer_id, name, description, price_cents, interval,
-                service_interval, status, billing_status, auto_bill, accepted_at,
-                created_by, start_date, sold_by_id, tax_rate_bps, accept_token,
-                default_payment_method_id, next_charge_at, imported_from, import_batch)
-             VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?, ?, ?, 'import', ?, ?, ?, ?, ?, ?, 'homebase360', ?)`
-          )
-          .run(
-            companyId,
-            cid,
-            planName,
-            amountCents,
-            interval,
-            interval,
-            status,
-            billing,
-            autoBill,
-            acceptedAt,
-            startDate,
-            soldById,
-            defaultTaxBps,
-            acceptToken,
-            lockedPmId,
-            nextChargeAt,
-            batchId
-          );
-        rowReport.customer_id = cid;
-        rowReport.created_subscription_id = Number(res.lastInsertRowid);
-      } catch (e) {
-        rowReport.skipped = `error: ${e instanceof Error ? e.message : String(e)}`;
-      }
-    }
-
-    report.push(rowReport);
-  }
-
-  const summary = {
-    total: report.length,
-    auto: report.filter((r) => r.confidence === "auto").length,
-    review: report.filter((r) => r.confidence === "review").length,
-    none: report.filter((r) => r.confidence === "none").length,
-    created: report.filter((r) => r.created_subscription_id).length,
-    skipped: report.filter((r) => r.skipped).length,
-  };
+  });
 
   return NextResponse.json({
-    mode,
-    batch_id: mode === "commit" ? batchId : null,
-    stripe_ready: stripeReady,
-    summary,
-    rows: report,
+    stripe_subscriptions: report,
+    forge_customers: customers,
+  });
+}
+
+export async function POST(req: Request) {
+  if (!isStripeConfigured()) {
+    return NextResponse.json(
+      { error: "Stripe is not configured" },
+      { status: 503 }
+    );
+  }
+  const companyId = await requireCompanyId();
+  const company = await getCompany(companyId);
+  if (!company.stripe_account_id) {
+    return NextResponse.json(
+      { error: "Connect a Stripe account before importing subscriptions." },
+      { status: 400 }
+    );
+  }
+  const db = await getDb();
+  const stripe = getStripe();
+
+  const body = (await req.json().catch(() => ({}))) as Partial<{
+    links: { stripe_subscription_id: string; customer_id: number }[];
+  }>;
+  const links = Array.isArray(body.links) ? body.links : [];
+  if (links.length === 0) {
+    return NextResponse.json(
+      { error: "No subscriptions selected to import" },
+      { status: 400 }
+    );
+  }
+
+  type LinkResult =
+    | { ok: true; stripe_subscription_id: string; row_id: number }
+    | { ok: false; stripe_subscription_id: string; error: string };
+  const results: LinkResult[] = [];
+
+  // One batch tag per import run so an admin can review or roll back later.
+  const batchTag = `stripe-link-${Date.now()}-${Math.random()
+    .toString(36)
+    .slice(2, 8)}`;
+
+  for (const link of links) {
+    const stripeSubId = String(link.stripe_subscription_id || "").trim();
+    const customerId = Number(link.customer_id);
+    if (!stripeSubId || !Number.isFinite(customerId) || customerId <= 0) {
+      results.push({
+        ok: false,
+        stripe_subscription_id: stripeSubId,
+        error: "Invalid stripe_subscription_id or customer_id",
+      });
+      continue;
+    }
+
+    const customer = await db
+      .prepare(
+        "SELECT id FROM customers WHERE id = ? AND company_id = ? LIMIT 1"
+      )
+      .get<{ id: number }>(customerId, companyId);
+    if (!customer) {
+      results.push({
+        ok: false,
+        stripe_subscription_id: stripeSubId,
+        error: "Customer not found",
+      });
+      continue;
+    }
+
+    const existing = await db
+      .prepare(
+        `SELECT id FROM customer_subscriptions
+          WHERE company_id = ? AND stripe_subscription_id = ? LIMIT 1`
+      )
+      .get<{ id: number }>(companyId, stripeSubId);
+    if (existing) {
+      results.push({
+        ok: false,
+        stripe_subscription_id: stripeSubId,
+        error: "Already imported",
+      });
+      continue;
+    }
+
+    let stripeSub: Stripe.Subscription;
+    try {
+      stripeSub = await stripe.subscriptions.retrieve(
+        stripeSubId,
+        { expand: ["items.data.price.product"] },
+        { stripeAccount: company.stripe_account_id }
+      );
+    } catch (e) {
+      results.push({
+        ok: false,
+        stripe_subscription_id: stripeSubId,
+        error: e instanceof Error ? e.message : "Stripe subscription not found",
+      });
+      continue;
+    }
+
+    const item = stripeSub.items.data[0];
+    const price = item?.price;
+    const amountCents = price?.unit_amount ?? 0;
+    const interval = mapStripeInterval(
+      price?.recurring?.interval,
+      price?.recurring?.interval_count
+    );
+    if (!interval) {
+      results.push({
+        ok: false,
+        stripe_subscription_id: stripeSubId,
+        error:
+          "Stripe sub uses an interval Forge can't represent (only weekly, biweekly, monthly, quarterly, 4-monthly, 6-monthly, yearly)",
+      });
+      continue;
+    }
+    if (amountCents <= 0) {
+      results.push({
+        ok: false,
+        stripe_subscription_id: stripeSubId,
+        error: "Stripe sub has no recurring amount",
+      });
+      continue;
+    }
+
+    const productName =
+      typeof price?.product === "object" &&
+      price?.product &&
+      !("deleted" in price.product)
+        ? (price.product as Stripe.Product).name
+        : `Subscription ${stripeSub.id.slice(-8)}`;
+
+    const startDateIso = stripeSub.start_date
+      ? new Date(stripeSub.start_date * 1000).toISOString().slice(0, 10)
+      : null;
+
+    const forgeStatus =
+      stripeSub.status === "canceled" ? "canceled" : "active";
+    const billingStatus =
+      stripeSub.status === "past_due" ? "past_due" : "current";
+
+    try {
+      const res = await db
+        .prepare(
+          `INSERT INTO customer_subscriptions
+             (company_id, customer_id, name, description, price_cents,
+              interval, service_interval, status, accepted_at,
+              start_date, tax_rate_bps,
+              stripe_subscription_id, stripe_subscription_status,
+              billing_status, auto_bill,
+              imported_from, import_batch, created_by)
+           VALUES (?, ?, ?, NULL, ?, ?, ?, ?, datetime('now'), ?, 0, ?, ?, ?, 0, 'stripe', ?, 'import')`
+        )
+        .run(
+          companyId,
+          customerId,
+          productName,
+          amountCents,
+          interval,
+          interval,
+          forgeStatus,
+          startDateIso,
+          stripeSub.id,
+          stripeSub.status,
+          billingStatus,
+          batchTag
+        );
+      results.push({
+        ok: true,
+        stripe_subscription_id: stripeSubId,
+        row_id: Number(res.lastInsertRowid),
+      });
+    } catch (e) {
+      results.push({
+        ok: false,
+        stripe_subscription_id: stripeSubId,
+        error: e instanceof Error ? e.message : "Insert failed",
+      });
+    }
+  }
+
+  const imported = results.filter((r) => r.ok).length;
+  const failed = results.filter((r) => !r.ok).length;
+  return NextResponse.json({
+    batch: batchTag,
+    imported,
+    failed,
+    results,
   });
 }
