@@ -1,12 +1,21 @@
 import { NextResponse } from "next/server";
-import { runDueSubscriptionCharges } from "@/lib/subscription-billing";
-import { isStripeConfigured } from "@/lib/stripe";
 
 export const dynamic = "force-dynamic";
 
-// Charges every active, auto-billing subscription whose next charge is due,
-// and retries past-due ones (throttled). Intended to run daily. Idempotent:
-// a billing period that already has a succeeded charge is never charged twice.
+/**
+ * Subscription billing cron — DEPRECATED no-op.
+ *
+ * Forge subscriptions are now real Stripe Subscriptions; Stripe runs the
+ * recurring schedule itself and notifies Forge via the
+ * /api/stripe/webhook endpoint. There is no remaining work for an external
+ * cron to do here. The route is preserved (rather than deleted) so any
+ * existing scheduler still pointed at it gets a clean 200 instead of a
+ * 404 alarm.
+ *
+ * If you're wiring up a NEW Forge instance, do NOT configure a cron against
+ * this endpoint. Configure the Stripe webhook instead — see the route header
+ * in /api/stripe/webhook/route.ts for the event list.
+ */
 export async function POST(req: Request) {
   const cronSecret = process.env.CRON_SECRET;
   if (cronSecret) {
@@ -15,14 +24,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
   }
-  if (!isStripeConfigured()) {
-    return NextResponse.json(
-      { ok: false, error: "Stripe is not configured" },
-      { status: 503 }
-    );
-  }
-  const result = await runDueSubscriptionCharges();
-  return NextResponse.json({ ok: true, ...result });
+  return NextResponse.json({
+    ok: true,
+    noop: true,
+    reason:
+      "Subscription billing moved to Stripe Subscriptions; this cron is no longer used.",
+  });
 }
 
 export async function GET(req: Request) {

@@ -1689,10 +1689,28 @@ async function init(): Promise<void> {
     // Migration provenance — lets an import batch be reviewed or rolled back.
     ["imported_from", "TEXT"],
     ["import_batch", "TEXT"],
+    // Stripe Subscription this Forge sub is linked to. When set, Stripe runs
+    // the recurring billing on its own schedule; Forge syncs state via webhooks
+    // and never creates PaymentIntents directly. Subs without this ID are
+    // pre-Stripe-Sub legacy rows; they should not exist in prod going forward.
+    ["stripe_subscription_id", "TEXT"],
+    // Mirror of the Stripe Subscription's last known status (active, past_due,
+    // canceled, paused, etc.). Updated by the webhook handler. Independent from
+    // Forge's local `status` (agreement lifecycle) and `billing_status` so we
+    // don't lose either signal.
+    ["stripe_subscription_status", "TEXT"],
   ];
   for (const [col, def] of subAdds) {
     await alterAddColumn("customer_subscriptions", col, def, subCols);
   }
+  // Unique index on stripe_subscription_id (when set) prevents the same Stripe
+  // Sub being linked to two Forge rows by accident — a double-billing bug
+  // disguised as a UI duplication.
+  await _db.exec(
+    `CREATE UNIQUE INDEX IF NOT EXISTS idx_customer_subscriptions_stripe_sub
+       ON customer_subscriptions(stripe_subscription_id)
+       WHERE stripe_subscription_id IS NOT NULL`
+  );
 
   // Widen the customer_subscriptions.interval CHECK to allow new intervals
   // (triannually, semiannually). SQLite can't ALTER a CHECK in place, so
@@ -2696,6 +2714,8 @@ export type CustomerSubscription = {
   last_charge_attempt_at: string | null;
   imported_from: string | null;
   import_batch: string | null;
+  stripe_subscription_id: string | null;
+  stripe_subscription_status: string | null;
   created_at: string;
 };
 

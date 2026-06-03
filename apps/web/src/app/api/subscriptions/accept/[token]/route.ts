@@ -4,7 +4,7 @@ import {
   ensureRollingVisits,
   startDateToIso,
 } from "@/lib/subscription-schedule";
-import { firstChargeOnOrAfter } from "@/lib/subscription-billing";
+import { createStripeSubscriptionForRow } from "@/lib/stripe-subscriptions";
 
 export const dynamic = "force-dynamic";
 
@@ -53,12 +53,6 @@ export async function POST(
   }
 
   const now = new Date().toISOString();
-  // First recurring charge lands on the start date (per billing policy); the
-  // daily auto-biller takes it from there.
-  const nextChargeAt = firstChargeOnOrAfter(
-    startDateToIso(sub.start_date || now),
-    sub.interval
-  );
 
   await db
     .prepare(
@@ -67,8 +61,7 @@ export async function POST(
              accepted_at = COALESCE(accepted_at, ?),
              signature_data = COALESCE(signature_data, ?),
              signature_name = COALESCE(signature_name, ?),
-             signed_at = COALESCE(signed_at, ?),
-             next_charge_at = COALESCE(next_charge_at, ?)
+             signed_at = COALESCE(signed_at, ?)
        WHERE id = ? AND company_id = ?`
     )
     .run(
@@ -76,10 +69,49 @@ export async function POST(
       signatureData,
       signatureName,
       now,
-      nextChargeAt,
       sub.id,
       sub.company_id
     );
+
+  // Create the Stripe Subscription that will run the recurring billing.
+  // The PM was saved on the accept page via SetupIntent before this call,
+  // so the customer's default saved card is available. If creation fails
+  // (Stripe unconfigured, no card raced, etc.) we log and proceed — the
+  // Forge row is active and the visit schedule still seeds; an admin can
+  // retry from the customer detail page. Without this we'd block customers
+  // mid-flow on transient Stripe issues, which is worse than the alternative.
+  const stripeResult = await createStripeSubscriptionForRow({
+    companyId: sub.company_id,
+    customerId: sub.customer_id,
+    subscriptionRowId: sub.id,
+    productName: sub.name,
+    productDescription: sub.description,
+    amountCents: sub.price_cents,
+    interval: sub.interval,
+    startDateIso: sub.start_date
+      ? startDateToIso(sub.start_date)
+      : null,
+  });
+  if (stripeResult.ok) {
+    await db
+      .prepare(
+        `UPDATE customer_subscriptions
+           SET stripe_subscription_id = ?,
+               stripe_subscription_status = ?
+         WHERE id = ? AND company_id = ?`
+      )
+      .run(
+        stripeResult.stripeSubscriptionId,
+        stripeResult.stripeStatus,
+        sub.id,
+        sub.company_id
+      );
+  } else {
+    console.error(
+      `Stripe Subscription creation failed for sub ${sub.id}:`,
+      stripeResult.error
+    );
+  }
 
   await ensureRollingVisits(db, {
     subscriptionId: sub.id,

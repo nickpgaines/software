@@ -3,18 +3,19 @@ import { getDb, type CustomerSubscription, type Payment } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
 import { isStripeConfigured } from "@/lib/stripe";
 import { chargeSubscription } from "@/lib/subscription-billing";
+import { chargeStripeSubscriptionNow } from "@/lib/stripe-subscriptions";
 
 export const dynamic = "force-dynamic";
 
 /**
- * Manually charge a subscription's saved card for the current due period —
- * "charge now" instead of waiting for the daily cron. Shares the exact billing
- * path as the auto-biller (lib/subscription-billing), so it advances the
- * schedule and is idempotent per period. Body: { amount_cents? } to override
- * the amount for this one charge.
+ * Manually charge a subscription off-cycle ("charge now") for the current
+ * billing amount. For subs linked to a Stripe Subscription, this creates an
+ * off-cycle invoice item + invoice on Stripe and immediately attempts payment,
+ * so the charge shows on the same Stripe Sub's history. The recurring schedule
+ * is unaffected. For legacy rows without a Stripe Sub, falls back to the
+ * direct PaymentIntent path (the pre-Stripe-Sub billing model).
  *
- * Returns the created payment row, or 402 + requires_action if the card needs
- * 3DS (the caller must then re-collect on-session).
+ * Body: { amount_cents? } to override the amount for this one charge.
  */
 export async function POST(
   req: Request,
@@ -49,6 +50,59 @@ export async function POST(
       ? Number(body.amount_cents)
       : undefined;
 
+  if (sub.stripe_subscription_id) {
+    const amount = Math.round(
+      amountCentsOverride != null ? amountCentsOverride : sub.price_cents
+    );
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return NextResponse.json(
+        { error: "Amount must be greater than zero" },
+        { status: 400 }
+      );
+    }
+    const customer = await db
+      .prepare("SELECT name FROM customers WHERE id = ? AND company_id = ?")
+      .get<{ name: string | null }>(sub.customer_id, companyId);
+    const description =
+      `Subscription #${sub.id} (${sub.name}) — ${customer?.name ?? ""}`.trim();
+    const result = await chargeStripeSubscriptionNow({
+      companyId,
+      stripeSubscriptionId: sub.stripe_subscription_id,
+      amountCents: amount,
+      description,
+    });
+    if (!result.ok) {
+      return NextResponse.json({ error: result.error }, { status: 400 });
+    }
+    // Record the Payment row optimistically so the UI sees it immediately.
+    // The invoice.payment_succeeded webhook will dedupe via the PaymentIntent
+    // ID (see handleSubscriptionInvoicePaid in /api/stripe/webhook/route.ts).
+    const paymentDate = new Date().toISOString().slice(0, 10);
+    const res = await db
+      .prepare(
+        `INSERT INTO payments
+           (company_id, job_id, amount_cents, tip_cents, method, payment_date,
+            notes, send_email, send_sms, stripe_payment_intent_id, source,
+            subscription_id)
+         VALUES (?, NULL, ?, 0, 'card', ?, ?, 0, 0, ?, 'subscription', ?)`
+      )
+      .run(
+        companyId,
+        amount,
+        paymentDate,
+        `Subscription #${sub.id} charge (Stripe invoice ${result.invoiceId})`,
+        result.paymentIntentId,
+        sub.id
+      );
+    const paymentId = Number(res.lastInsertRowid);
+    const created = (await db
+      .prepare("SELECT * FROM payments WHERE id = ? AND company_id = ?")
+      .get(paymentId, companyId)) as Payment;
+    return NextResponse.json(created, { status: 201 });
+  }
+
+  // Legacy path: rows that pre-date the Stripe Subscription model. These
+  // shouldn't be created going forward, but the path stays for safety.
   const result = await chargeSubscription(db, sub, { amountCentsOverride });
 
   if (result.ok && result.status === "charged") {
@@ -78,7 +132,6 @@ export async function POST(
       { status: 400 }
     );
   }
-  // failed
   return NextResponse.json(
     {
       error: result.error,
