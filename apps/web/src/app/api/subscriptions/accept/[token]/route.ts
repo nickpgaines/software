@@ -1,15 +1,14 @@
 import { NextResponse } from "next/server";
 import { getDb, type CustomerSubscription } from "@/lib/db";
-import {
-  ensureRollingVisits,
-  startDateToIso,
-} from "@/lib/subscription-schedule";
 
 export const dynamic = "force-dynamic";
 
 // Public endpoint hit from /subscriptions/accept/[token]. No auth — the
-// token is the proof of authorization. Marks the subscription active,
-// stores signature, seeds the rolling visit window.
+// token is the proof of authorization. Captures the customer's signature
+// and intent to accept, but does NOT flip the agreement to active. That
+// only happens after the card is saved AND the Stripe Subscription is
+// created, in PUT /setup-intent. This keeps "active" a strict invariant:
+// signed + card on file + Stripe Sub linked.
 export async function POST(
   req: Request,
   { params }: { params: { token: string } }
@@ -23,9 +22,9 @@ export async function POST(
   if (!sub) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  if (sub.status !== "pending") {
+  if (sub.status === "canceled" || sub.status === "declined") {
     return NextResponse.json(
-      { error: "Subscription is no longer pending" },
+      { error: "Subscription is no longer collectable" },
       { status: 400 }
     );
   }
@@ -53,11 +52,13 @@ export async function POST(
 
   const now = new Date().toISOString();
 
+  // Store signature + intent-to-accept. Status stays pending. The PUT
+  // setup-intent endpoint flips status to active once the Stripe
+  // Subscription is created.
   await db
     .prepare(
       `UPDATE customer_subscriptions
-         SET status = 'active',
-             accepted_at = COALESCE(accepted_at, ?),
+         SET accepted_at = COALESCE(accepted_at, ?),
              signature_data = COALESCE(signature_data, ?),
              signature_name = COALESCE(signature_name, ?),
              signed_at = COALESCE(signed_at, ?)
@@ -71,24 +72,6 @@ export async function POST(
       sub.id,
       sub.company_id
     );
-
-  // The actual Stripe Subscription is created after the customer's card is
-  // saved, in PUT /api/subscriptions/accept/[token]/setup-intent — Stripe
-  // Subscriptions require a PaymentMethod at creation time, and at this
-  // point the customer hasn't entered card details yet.
-
-  await ensureRollingVisits(db, {
-    subscriptionId: sub.id,
-    customerId: sub.customer_id,
-    companyId: sub.company_id,
-    startDateIso: startDateToIso(sub.start_date || now),
-    serviceInterval: sub.service_interval,
-    pricePerVisitCents: sub.price_cents,
-    visitName: sub.name,
-    visitDescription: sub.description,
-    soldById: sub.sold_by_id,
-    technicianId: null,
-  });
 
   return NextResponse.json({ ok: true });
 }

@@ -8,7 +8,10 @@ import {
   savePaymentMethodForCustomer,
 } from "@/lib/stripe";
 import { createStripeSubscriptionForRow } from "@/lib/stripe-subscriptions";
-import { startDateToIso } from "@/lib/subscription-schedule";
+import {
+  ensureRollingVisits,
+  startDateToIso,
+} from "@/lib/subscription-schedule";
 
 export const dynamic = "force-dynamic";
 
@@ -171,68 +174,115 @@ export async function PUT(
     );
   }
 
-  // Card is now saved. If this sub is active and doesn't yet have a Stripe
-  // Subscription linked, create one now using the just-saved PM. Stripe then
-  // runs the recurring schedule on its own; Forge syncs via webhook.
+  // Card is now saved. If the customer has accepted (accepted_at is set,
+  // and signature_data exists when required) and there's no Stripe Sub yet,
+  // create one now using the just-saved PM, then atomically flip status to
+  // 'active' and seed the rolling visit window. This is the ONLY place an
+  // accept-flow sub becomes active — keeps "active" a strict invariant:
+  // accepted + card on file + Stripe Sub linked.
   //
-  // Re-read the sub so we see status changes from the accept POST that may
-  // have raced (typical client flow is accept → setup intent → confirm →
-  // PUT here, but in-between requests can land in any order on a flaky
-  // network).
+  // Re-read so we see signature/accepted_at writes from the POST that
+  // could have raced this PUT on a flaky network.
   const fresh = (await db
     .prepare(
       "SELECT * FROM customer_subscriptions WHERE id = ? AND company_id = ? LIMIT 1"
     )
     .get(sub.id, sub.company_id)) as CustomerSubscription | undefined;
-  if (
-    fresh &&
-    fresh.status === "active" &&
-    !fresh.stripe_subscription_id
-  ) {
-    const stripeResult = await createStripeSubscriptionForRow({
-      companyId: fresh.company_id,
+  if (!fresh) {
+    return NextResponse.json({ payment_method: saved }, { status: 201 });
+  }
+  if (fresh.stripe_subscription_id) {
+    // Already linked from a prior call — return idempotently.
+    return NextResponse.json({ payment_method: saved }, { status: 201 });
+  }
+  if (!fresh.accepted_at) {
+    // Card was saved but the customer never tapped accept. Don't activate;
+    // they can still come back and complete via the accept page.
+    return NextResponse.json(
+      {
+        payment_method: saved,
+        warning: "Card saved but subscription not yet accepted",
+      },
+      { status: 201 }
+    );
+  }
+  if (fresh.require_signature && !fresh.signature_data) {
+    return NextResponse.json(
+      {
+        payment_method: saved,
+        warning: "Card saved but signature is still required",
+      },
+      { status: 201 }
+    );
+  }
+
+  const stripeResult = await createStripeSubscriptionForRow({
+    companyId: fresh.company_id,
+    customerId: fresh.customer_id,
+    subscriptionRowId: fresh.id,
+    productName: fresh.name,
+    productDescription: fresh.description,
+    amountCents: fresh.price_cents,
+    interval: fresh.interval,
+    paymentMethodId: saved.stripe_payment_method_id,
+    startDateIso: fresh.start_date
+      ? startDateToIso(fresh.start_date)
+      : null,
+  });
+  if (!stripeResult.ok) {
+    // Stripe Sub creation failed — leave the row pending so admin can retry.
+    // Status stays 'pending', no visits seeded, customer sees the error so
+    // they know to follow up. This is the desired strict behavior.
+    console.error(
+      `Stripe Subscription creation failed for sub ${fresh.id} after PM save:`,
+      stripeResult.error
+    );
+    return NextResponse.json(
+      {
+        payment_method: saved,
+        stripe_subscription_error: stripeResult.error,
+      },
+      { status: 201 }
+    );
+  }
+
+  // Atomically: link Stripe Sub, flip status to active. Visit seeding
+  // happens next (best-effort — the row update is the source-of-truth
+  // commit and shouldn't be blocked by visit-scheduler issues).
+  await db
+    .prepare(
+      `UPDATE customer_subscriptions
+         SET stripe_subscription_id = ?,
+             stripe_subscription_status = ?,
+             status = 'active'
+       WHERE id = ? AND company_id = ?`
+    )
+    .run(
+      stripeResult.stripeSubscriptionId,
+      stripeResult.stripeStatus,
+      fresh.id,
+      fresh.company_id
+    );
+
+  try {
+    const now = new Date().toISOString();
+    await ensureRollingVisits(db, {
+      subscriptionId: fresh.id,
       customerId: fresh.customer_id,
-      subscriptionRowId: fresh.id,
-      productName: fresh.name,
-      productDescription: fresh.description,
-      amountCents: fresh.price_cents,
-      interval: fresh.interval,
-      paymentMethodId: saved.stripe_payment_method_id,
-      startDateIso: fresh.start_date
-        ? startDateToIso(fresh.start_date)
-        : null,
+      companyId: fresh.company_id,
+      startDateIso: startDateToIso(fresh.start_date || now),
+      serviceInterval: fresh.service_interval,
+      pricePerVisitCents: fresh.price_cents,
+      visitName: fresh.name,
+      visitDescription: fresh.description,
+      soldById: fresh.sold_by_id,
+      technicianId: null,
     });
-    if (stripeResult.ok) {
-      await db
-        .prepare(
-          `UPDATE customer_subscriptions
-             SET stripe_subscription_id = ?,
-                 stripe_subscription_status = ?
-           WHERE id = ? AND company_id = ?`
-        )
-        .run(
-          stripeResult.stripeSubscriptionId,
-          stripeResult.stripeStatus,
-          fresh.id,
-          fresh.company_id
-        );
-    } else {
-      // Card is on file but the Stripe Sub couldn't be created. Don't fail
-      // the request — the card save itself succeeded, which is the
-      // customer-visible commit. Surface the error so admin tooling can
-      // retry; the customer sees a successful card-save either way.
-      console.error(
-        `Stripe Subscription creation failed for sub ${fresh.id} after PM save:`,
-        stripeResult.error
-      );
-      return NextResponse.json(
-        {
-          payment_method: saved,
-          stripe_subscription_error: stripeResult.error,
-        },
-        { status: 201 }
-      );
-    }
+  } catch (e) {
+    console.error(
+      `ensureRollingVisits failed after activating sub ${fresh.id}:`,
+      e
+    );
   }
 
   return NextResponse.json({ payment_method: saved }, { status: 201 });
