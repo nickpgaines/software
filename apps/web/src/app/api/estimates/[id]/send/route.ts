@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { getDb, type Estimate } from "@/lib/db";
 import { getSessionContext } from "@/lib/auth";
 import { getAppOrigin } from "@/lib/stripe";
+import { sendAndLogCompanySms } from "@/lib/sms";
 
 export const dynamic = "force-dynamic";
 
@@ -62,12 +63,11 @@ export async function POST(
     `Hi ${customer.name}! Here's your estimate:\n` +
     `Total: ${formatPrice(estimate.total_cents)}\n` +
     `Review & sign: ${acceptUrl}`;
-  await db
-    .prepare(
-      `INSERT INTO messages (company_id, customer_id, body, direction)
-       VALUES (?, ?, ?, 'outbound')`
-    )
-    .run(companyId, estimate.customer_id, messageBody);
+  await sendAndLogCompanySms({
+    companyId,
+    customerId: estimate.customer_id,
+    body: messageBody,
+  });
 
   const updated = (await db
     .prepare("SELECT * FROM estimates WHERE id = ? AND company_id = ?")
