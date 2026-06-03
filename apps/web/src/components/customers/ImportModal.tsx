@@ -248,12 +248,7 @@ export default function ImportModal({
         <div className="px-4 py-3 border-t border-line flex items-center justify-between gap-2 shrink-0">
           {step === "upload" && (
             <>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={close}
-                className="h-auto text-sm border border-line-strong bg-card hover:bg-black rounded px-3 py-2 font-bold"
-              >
+              <Button type="button" variant="outline" onClick={close}>
                 Cancel
               </Button>
               <span />
@@ -264,21 +259,18 @@ export default function ImportModal({
             <>
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 onClick={() => {
                   setStep("upload");
                   setError(null);
                 }}
-                className="h-auto text-sm border border-line-strong bg-card hover:bg-black rounded px-3 py-2 font-bold"
               >
                 Back
               </Button>
               <Button
                 type="button"
-                variant="ghost"
                 onClick={() => setStep("preview")}
                 disabled={!firstNameMapped}
-                className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded px-3 py-2 font-bold"
               >
                 Next: preview
               </Button>
@@ -289,18 +281,12 @@ export default function ImportModal({
             <>
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 onClick={() => setStep("mapping")}
-                className="h-auto text-sm border border-line-strong bg-card hover:bg-black rounded px-3 py-2 font-bold"
               >
                 Back
               </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={doImport}
-                className="h-auto text-sm bg-primary hover:opacity-90 text-primary-foreground rounded px-3 py-2 font-bold"
-              >
+              <Button type="button" onClick={doImport}>
                 Import {csvRows.length} {csvRows.length === 1 ? "row" : "rows"}
               </Button>
             </>
@@ -309,12 +295,7 @@ export default function ImportModal({
           {step === "importing" && (
             <>
               <span />
-              <Button
-                type="button"
-                variant="ghost"
-                disabled
-                className="h-auto text-sm bg-slate-400 text-white rounded px-3 py-2 font-bold"
-              >
+              <Button type="button" disabled>
                 Importing…
               </Button>
             </>
@@ -323,12 +304,7 @@ export default function ImportModal({
           {step === "result" && (
             <>
               <span />
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={finishAndRefresh}
-                className="h-auto text-sm bg-primary hover:opacity-90 text-primary-foreground rounded px-3 py-2 font-bold"
-              >
+              <Button type="button" onClick={finishAndRefresh}>
                 Close
               </Button>
             </>

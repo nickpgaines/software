@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { Plus, Search, User } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -72,15 +73,12 @@ export default function EmployeesClient({
               />
             </div>
           )}
-          <Link
-            href="/employees/new"
-            className="hidden items-center gap-2 bg-primary hover:opacity-90 text-primary-foreground rounded-md px-4 py-2 text-sm font-bold md:inline-flex"
-          >
-            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-card/15">
-              <Plus className="h-3.5 w-3.5" strokeWidth={2.5} />
-            </span>
-            Add Employee
-          </Link>
+          <Button asChild className="hidden md:inline-flex">
+            <Link href="/employees/new">
+              <Plus className="mr-1 h-4 w-4" strokeWidth={2.5} />
+              Add Employee
+            </Link>
+          </Button>
         </div>
       </div>
 

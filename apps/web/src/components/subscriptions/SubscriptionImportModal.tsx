@@ -361,32 +361,23 @@ export default function SubscriptionImportModal({
               <span />
               <Button
                 type="button"
-                variant="ghost"
                 onClick={() => {
                   onImported();
                   onClose();
                 }}
-                className="h-auto text-sm bg-primary hover:opacity-90 text-primary-foreground rounded px-3 py-2 font-bold"
               >
                 Done
               </Button>
             </>
           ) : (
             <>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={onClose}
-                className="h-auto text-sm border border-line-strong bg-card hover:bg-black rounded px-3 py-2 font-bold"
-              >
+              <Button type="button" variant="outline" onClick={onClose}>
                 Cancel
               </Button>
               <Button
                 type="button"
-                variant="ghost"
                 onClick={commit}
                 disabled={busy || loading || importable.length === 0}
-                className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded px-3 py-2 font-bold"
               >
                 {busy
                   ? "Importing…"
