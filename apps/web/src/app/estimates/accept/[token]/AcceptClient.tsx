@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { SignaturePad } from "@/components/ui/signature-pad";
@@ -23,23 +22,17 @@ export default function AcceptClient({
   token,
   companyName,
   terms,
-  promoConsentText,
-  transactionalConsentText,
   total,
   items,
 }: {
   token: string;
   companyName: string;
   terms: string | null;
-  promoConsentText: string;
-  transactionalConsentText: string;
   total: number;
   items: Item[];
 }) {
   const [name, setName] = useState("");
   const [signature, setSignature] = useState<string | null>(null);
-  const [transactionalConsent, setTransactionalConsent] = useState(false);
-  const [promoConsent, setPromoConsent] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [done, setDone] = useState(false);
@@ -61,8 +54,6 @@ export default function AcceptClient({
       body: JSON.stringify({
         signature_data: signature,
         signature_name: name.trim(),
-        sms_consent: promoConsent,
-        sms_transactional_consent: transactionalConsent,
       }),
     });
     setSubmitting(false);
@@ -78,7 +69,9 @@ export default function AcceptClient({
     return (
       <div className="text-center">
         <div className="mb-2 text-2xl text-emerald-500">✓</div>
-        <h1 className="text-page-title text-white">Estimate accepted</h1>
+        <h1 className="text-3xl font-extrabold tracking-tight text-white sm:text-page-title">
+          Estimate accepted
+        </h1>
         <p className="mt-3 text-sm font-bold text-zinc-400">
           Thanks, {name.trim()} — {companyName} has been notified.
         </p>
@@ -93,7 +86,9 @@ export default function AcceptClient({
       <p className="text-xs font-bold text-zinc-500">
         Estimate from {companyName}
       </p>
-      <h1 className="text-page-title text-white mt-1">Review &amp; accept</h1>
+      <h1 className="mt-1 text-3xl font-extrabold tracking-tight text-white sm:text-page-title">
+        Review &amp; accept
+      </h1>
 
       <div className="mt-6 space-y-2 border-t border-line pt-4">
         {items.map((it) => (
@@ -133,53 +128,6 @@ export default function AcceptClient({
           </p>
         </div>
       )}
-
-      {/* Two separate, optional SMS opt-ins — A2P 10DLC requires
-          transactional and promotional consent to be collected via
-          independent checkboxes, neither pre-selected and neither a
-          condition of accepting the estimate. The signature below accepts
-          the estimate; these boxes are each their own choice. */}
-      <div className="mt-6 space-y-3">
-        <div className="rounded-xl border border-line p-4">
-          <div className="flex items-start gap-3">
-            <Checkbox
-              id="sms-consent-transactional"
-              checked={transactionalConsent}
-              onCheckedChange={(v) => setTransactionalConsent(v === true)}
-              className="mt-0.5"
-            />
-            <Label
-              htmlFor="sms-consent-transactional"
-              className="cursor-pointer text-xs font-bold leading-relaxed text-zinc-300"
-            >
-              {transactionalConsentText}
-            </Label>
-          </div>
-        </div>
-
-        <div className="rounded-xl border border-line p-4">
-          <div className="flex items-start gap-3">
-            <Checkbox
-              id="sms-consent-promo"
-              checked={promoConsent}
-              onCheckedChange={(v) => setPromoConsent(v === true)}
-              className="mt-0.5"
-            />
-            <Label
-              htmlFor="sms-consent-promo"
-              className="cursor-pointer text-xs font-bold leading-relaxed text-zinc-300"
-            >
-              {promoConsentText}
-            </Label>
-          </div>
-        </div>
-
-        <p className="text-xs font-bold text-zinc-500">
-          Both checkboxes are optional and independent. You can leave either
-          or both unchecked — consent is never a condition of accepting this
-          estimate.
-        </p>
-      </div>
 
       <div className="mt-6">
         <Label htmlFor="sig-name" className="text-sm font-bold text-white">
