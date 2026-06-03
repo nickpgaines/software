@@ -1341,6 +1341,19 @@ async function init(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_lwr_workflow ON lead_workflow_runs(workflow_id);
     CREATE INDEX IF NOT EXISTS idx_lwr_lead ON lead_workflow_runs(lead_id);
 
+    CREATE TABLE IF NOT EXISTS lead_tasks (
+      id           INTEGER PRIMARY KEY AUTOINCREMENT,
+      company_id   INTEGER REFERENCES company(id) ON DELETE CASCADE,
+      lead_id      INTEGER NOT NULL REFERENCES leads(id) ON DELETE CASCADE,
+      title        TEXT NOT NULL,
+      due_at       TEXT,
+      done         INTEGER NOT NULL DEFAULT 0,
+      source       TEXT NOT NULL DEFAULT 'manual',
+      created_at   TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_lead_tasks_lead ON lead_tasks(lead_id);
+    CREATE INDEX IF NOT EXISTS idx_lead_tasks_company ON lead_tasks(company_id);
+
     CREATE TABLE IF NOT EXISTS lead_forms (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
       name         TEXT NOT NULL,
@@ -1375,9 +1388,12 @@ async function init(): Promise<void> {
 
     INSERT OR IGNORE INTO lead_workflows (id, name, trigger, max_per_day, enabled, steps)
     VALUES
-      (1, 'Missed Call Text-Back', 'lead_created', 3, 0, '[]'),
-      (2, 'CRACKED lead follow-up sequence', 'lead_created', 3, 0, '[]'),
-      (3, 'Contact fresh leads', 'lead_created', 3, 0, '[]');
+      (1, 'Missed Call Text-Back', 'missed_call', 3, 0,
+       '[{"type":"send_sms","message":"Hi {{first_name}}, this is {{company_name}} — sorry we missed your call! How can we help?"},{"type":"notify_admin","message":"Missed call from {{first_name}} {{last_name}} ({{phone}}). Auto-text sent."}]'),
+      (2, 'New Lead Follow-up (3-touch)', 'lead_created', 3, 0,
+       '[{"type":"send_sms","message":"Hi {{first_name}}! Thanks for reaching out to {{company_name}}. We got your info and will be in touch shortly."},{"type":"delay","minutes":60},{"type":"send_sms","message":"Hey {{first_name}} — just checking in. Still want to chat about your project? Reply YES and we will give you a call."},{"type":"delay","minutes":1440},{"type":"send_sms","message":"Hi {{first_name}}, last quick follow-up from {{company_name}}. Let us know if there is anything we can help with!"},{"type":"update_stage","stage":"contacted"}]'),
+      (3, 'Estimate Sent Follow-up', 'estimate_sent', 3, 0,
+       '[{"type":"delay","minutes":2880},{"type":"send_sms","message":"Hi {{first_name}}, just following up on the estimate we sent over. Any questions or anything we can clarify?"},{"type":"delay","minutes":4320},{"type":"send_sms","message":"Hey {{first_name}} — circling back on your estimate from {{company_name}}. Happy to walk through it."},{"type":"delay","minutes":7200},{"type":"send_sms","message":"Hi {{first_name}}, last check-in on the estimate. Let us know if we should keep it open or close it out."}]');
 
     CREATE TABLE IF NOT EXISTS sprints (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1823,6 +1839,7 @@ async function init(): Promise<void> {
     "email_automations",
     "leads",
     "lead_workflows",
+    "lead_tasks",
     "lead_forms",
     "sprints",
     "payroll_payouts",
@@ -2827,6 +2844,17 @@ export type LeadWorkflowRun = {
   step_index: number;
   last_step_at: string | null;
   error: string | null;
+  created_at: string;
+};
+
+export type LeadTask = {
+  id: number;
+  company_id: number;
+  lead_id: number;
+  title: string;
+  due_at: string | null;
+  done: number;
+  source: string;
   created_at: string;
 };
 

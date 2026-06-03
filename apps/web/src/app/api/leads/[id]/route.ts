@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, type Lead } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
+import { fireTrigger } from "@/lib/lead-workflows";
 
 export const dynamic = "force-dynamic";
 
@@ -77,6 +78,20 @@ export async function PATCH(
   const updated = (await db
     .prepare("SELECT * FROM leads WHERE id = ? AND company_id = ?")
     .get(id, companyId)) as Lead;
+  if (body.stage && body.stage !== existing.stage) {
+    await fireTrigger({
+      companyId,
+      leadId: id,
+      trigger: "lead_stage_changed",
+    });
+    if (body.stage === "estimate_sent") {
+      await fireTrigger({
+        companyId,
+        leadId: id,
+        trigger: "estimate_sent",
+      });
+    }
+  }
   return NextResponse.json(updated);
 }
 

@@ -1,10 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Plus, ChevronRight } from "lucide-react";
 import type { LeadWorkflow, LeadWorkflowRun } from "@/lib/db";
+import {
+  WORKFLOW_TRIGGERS,
+  type WorkflowTrigger,
+  type WorkflowTemplate,
+} from "@/lib/lead-workflows-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -14,6 +22,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
+const TRIGGER_LABELS: Record<string, string> = Object.fromEntries(
+  WORKFLOW_TRIGGERS.map((t) => [t.value, t.label])
+);
+
 export default function LeadsWorkflowsClient({
   initialWorkflows,
   initialRuns,
@@ -21,10 +33,23 @@ export default function LeadsWorkflowsClient({
   initialWorkflows: LeadWorkflow[];
   initialRuns: LeadWorkflowRun[];
 }) {
+  const router = useRouter();
   const [workflows, setWorkflows] = useState<LeadWorkflow[]>(initialWorkflows);
   const [tab, setTab] = useState<"workflows" | "logs">("workflows");
   const [showNew, setShowNew] = useState(false);
   const [name, setName] = useState("");
+  const [trigger, setTrigger] = useState<WorkflowTrigger>("lead_created");
+  const [templateKey, setTemplateKey] = useState<string>("");
+  const [templates, setTemplates] = useState<WorkflowTemplate[]>([]);
+  const [creating, setCreating] = useState(false);
+
+  useEffect(() => {
+    if (!showNew || templates.length) return;
+    fetch("/api/lead-workflows/templates")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((t: WorkflowTemplate[]) => setTemplates(t))
+      .catch(() => {});
+  }, [showNew, templates.length]);
 
   const total = workflows.length;
   const active = workflows.filter((w) => w.enabled).length;
@@ -47,18 +72,39 @@ export default function LeadsWorkflowsClient({
     }
   }
 
+  function pickTemplate(key: string) {
+    setTemplateKey(key);
+    const tpl = templates.find((t) => t.key === key);
+    if (tpl) {
+      setTrigger(tpl.trigger);
+      if (!name.trim()) setName(tpl.name);
+    }
+  }
+
   async function createWorkflow() {
     if (!name.trim()) return;
-    const res = await fetch("/api/lead-workflows", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: name.trim() }),
-    });
-    if (res.ok) {
-      const created = (await res.json()) as LeadWorkflow;
-      setWorkflows((cur) => [...cur, created]);
-      setName("");
-      setShowNew(false);
+    setCreating(true);
+    try {
+      const res = await fetch("/api/lead-workflows", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: name.trim(),
+          trigger,
+          template_key: templateKey || undefined,
+        }),
+      });
+      if (res.ok) {
+        const created = (await res.json()) as LeadWorkflow;
+        setWorkflows((cur) => [...cur, created]);
+        setName("");
+        setTrigger("lead_created");
+        setTemplateKey("");
+        setShowNew(false);
+        router.push(`/leads/workflows/${created.id}`);
+      }
+    } finally {
+      setCreating(false);
     }
   }
 
@@ -145,17 +191,99 @@ export default function LeadsWorkflowsClient({
             className="bg-card rounded-2xl p-6 w-full max-w-md"
             onClick={(e) => e.stopPropagation()}
           >
-            <h3 className="text-lg font-extrabold text-white tracking-tight mb-4">
-              New workflow
+            <h3 className="text-lg font-extrabold text-white tracking-tight">
+              Add Workflow
             </h3>
-            <Input
-              autoFocus
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Workflow name"
-              className="w-full h-auto border-line rounded-lg px-3 py-2 text-sm focus-visible:ring-line-strong"
-            />
-            <div className="flex justify-end gap-2 mt-4">
+            <p className="text-sm text-zinc-400 font-bold mt-1 mb-4">
+              Pick a trigger and we&rsquo;ll create your first action step.
+            </p>
+
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wide">
+                  Workflow Name
+                </Label>
+                <Input
+                  autoFocus
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="New lead follow-up"
+                  className="h-auto px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wide">
+                  Trigger Event
+                </Label>
+                {/* Native select kept: matches the existing leads page pattern. */}
+                <select
+                  value={trigger}
+                  onChange={(e) => {
+                    setTrigger(e.target.value as WorkflowTrigger);
+                    setTemplateKey("");
+                  }}
+                  className="w-full appearance-none bg-canvas border border-line-strong rounded-xl px-3 py-2 text-sm text-fg font-bold focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  {WORKFLOW_TRIGGERS.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {templates.length > 0 && (
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wide">
+                    Start from a template
+                  </Label>
+                  <div className="space-y-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setTemplateKey("");
+                      }}
+                      className={
+                        "w-full text-left px-3 py-2 rounded-xl border " +
+                        (templateKey === ""
+                          ? "border-primary text-white"
+                          : "border-line text-zinc-300 hover:border-line-strong")
+                      }
+                    >
+                      <div className="text-sm font-bold">Start from scratch</div>
+                      <div className="text-xs text-zinc-400">
+                        Empty workflow you build step by step.
+                      </div>
+                    </button>
+                    {templates.map((t) => (
+                      <button
+                        key={t.key}
+                        type="button"
+                        onClick={() => pickTemplate(t.key)}
+                        className={
+                          "w-full text-left px-3 py-2 rounded-xl border " +
+                          (templateKey === t.key
+                            ? "border-primary text-white"
+                            : "border-line text-zinc-300 hover:border-line-strong")
+                        }
+                      >
+                        <div className="text-sm font-bold">{t.name}</div>
+                        <div className="text-xs text-zinc-400">
+                          {t.description}
+                        </div>
+                        <div className="text-xs text-zinc-500 mt-1">
+                          {t.steps.length} steps ·{" "}
+                          {TRIGGER_LABELS[t.trigger] || t.trigger}
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end gap-2 mt-6">
               <Button
                 type="button"
                 variant="ghost"
@@ -168,9 +296,10 @@ export default function LeadsWorkflowsClient({
                 type="button"
                 variant="ghost"
                 onClick={createWorkflow}
+                disabled={creating || !name.trim()}
                 className="h-auto px-4 py-2 text-sm bg-primary hover:opacity-90 text-primary-foreground rounded-full font-bold"
               >
-                Create
+                {creating ? "Creating…" : "Create"}
               </Button>
             </div>
           </div>
@@ -191,9 +320,7 @@ function Stat({
 }) {
   return (
     <div className="border border-line rounded-2xl p-5">
-      <div className="text-xs font-bold text-zinc-400">
-        {label}
-      </div>
+      <div className="text-xs font-bold text-zinc-400">{label}</div>
       <div className={`text-3xl font-bold mt-2 ${valueClass}`}>{value}</div>
     </div>
   );
@@ -216,48 +343,57 @@ function WorkflowRow({
     }
   })();
   return (
-    <div className="border border-line rounded-2xl p-4 flex items-center justify-between gap-4">
-      <div>
-        <div className="font-extrabold text-white tracking-tight">{workflow.name}</div>
-        <div className="text-xs text-zinc-400 mt-0.5">
-          Trigger: A new lead is created
+    <Link
+      href={`/leads/workflows/${workflow.id}`}
+      className="block border border-line rounded-2xl p-4 hover:border-line-strong"
+    >
+      <div className="flex items-center justify-between gap-4">
+        <div className="min-w-0">
+          <div className="font-extrabold text-white tracking-tight">
+            {workflow.name}
+          </div>
+          <div className="text-xs text-zinc-400 mt-0.5">
+            Trigger: {TRIGGER_LABELS[workflow.trigger] || workflow.trigger}
+          </div>
+          <div className="text-xs text-zinc-400 mt-0.5">
+            {stepCount} steps · Max/day {workflow.max_per_day}
+          </div>
         </div>
-        <div className="text-xs text-zinc-400 mt-0.5">
-          {stepCount} steps &middot; Max/day {workflow.max_per_day}
-        </div>
-      </div>
-      <div className="flex items-center gap-3">
-        <span
-          className={
-            "text-xs px-3 py-1 rounded-full " +
-            (enabled
-              ? "bg-emerald-50 text-emerald-700"
-              : "bg-black text-zinc-400")
-          }
-        >
-          {enabled ? "Active" : "Paused"}
-        </span>
-        <Button
-          type="button"
-          variant="ghost"
-          role="switch"
-          aria-checked={enabled}
-          onClick={() => onToggle(!enabled)}
-          className={
-            "relative w-10 h-6 p-0 rounded-full hover:bg-current " +
-            (enabled ? "bg-emerald-500 hover:bg-emerald-500" : "bg-line-strong hover:bg-line-strong")
-          }
-        >
+        <div className="flex items-center gap-3 shrink-0">
           <span
             className={
-              "absolute top-0.5 left-0.5 w-5 h-5 bg-card rounded-full shadow transition-transform " +
-              (enabled ? "translate-x-4" : "")
+              "text-xs px-3 py-1 rounded-full " +
+              (enabled
+                ? "bg-emerald-50 text-emerald-700"
+                : "bg-black text-zinc-400")
             }
-          />
-        </Button>
-        <ChevronRight className="w-4 h-4 text-zinc-500" />
+          >
+            {enabled ? "Active" : "Paused"}
+          </span>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={enabled}
+            onClick={(e) => {
+              e.preventDefault();
+              onToggle(!enabled);
+            }}
+            className={
+              "relative w-10 h-6 p-0 rounded-full " +
+              (enabled ? "bg-emerald-500" : "bg-line-strong")
+            }
+          >
+            <span
+              className={
+                "absolute top-0.5 left-0.5 w-5 h-5 bg-card rounded-full shadow transition-transform " +
+                (enabled ? "translate-x-4" : "")
+              }
+            />
+          </button>
+          <ChevronRight className="w-4 h-4 text-zinc-500" />
+        </div>
       </div>
-    </div>
+    </Link>
   );
 }
 
@@ -282,22 +418,42 @@ function LogsTable({
       <Table>
         <TableHeader className="bg-black text-xs font-bold text-zinc-400">
           <TableRow className="border-0 hover:bg-transparent">
-            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Workflow</TableHead>
-            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Lead</TableHead>
-            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Step</TableHead>
-            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Status</TableHead>
-            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">Created</TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">
+              Workflow
+            </TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">
+              Lead
+            </TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">
+              Step
+            </TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">
+              Status
+            </TableHead>
+            <TableHead className="h-auto text-left px-4 py-3 text-zinc-400">
+              Created
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {runs.map((r) => (
-            <TableRow key={r.id} className="border-t border-b-0 border-line hover:bg-transparent">
+            <TableRow
+              key={r.id}
+              className="border-t border-b-0 border-line hover:bg-transparent"
+            >
               <TableCell className="px-4 py-3 text-white">
                 {wfMap.get(r.workflow_id) || `#${r.workflow_id}`}
               </TableCell>
-              <TableCell className="px-4 py-3 text-zinc-400">#{r.lead_id}</TableCell>
-              <TableCell className="px-4 py-3 text-zinc-400">{r.step_index}</TableCell>
-              <TableCell className="px-4 py-3 text-zinc-400">{r.status}</TableCell>
+              <TableCell className="px-4 py-3 text-zinc-400">
+                #{r.lead_id}
+              </TableCell>
+              <TableCell className="px-4 py-3 text-zinc-400">
+                {r.step_index}
+              </TableCell>
+              <TableCell className="px-4 py-3 text-zinc-400">
+                {r.status}
+                {r.error ? ` — ${r.error}` : ""}
+              </TableCell>
               <TableCell className="px-4 py-3 text-zinc-400 text-xs">
                 {new Date(r.created_at).toLocaleString()}
               </TableCell>

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, type Lead } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
+import { fireTrigger } from "@/lib/lead-workflows";
 
 export const dynamic = "force-dynamic";
 
@@ -72,5 +73,10 @@ export async function POST(req: Request) {
   const created = (await db
     .prepare("SELECT * FROM leads WHERE id = ? AND company_id = ?")
     .get(result.lastInsertRowid, companyId)) as Lead;
+  await fireTrigger({
+    companyId,
+    leadId: created.id,
+    trigger: "lead_created",
+  });
   return NextResponse.json(created, { status: 201 });
 }

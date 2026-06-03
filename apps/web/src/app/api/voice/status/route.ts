@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { getDb, type Lead } from "@/lib/db";
+import { fireTrigger } from "@/lib/lead-workflows";
+import { normalizeUSPhone } from "@/lib/sms";
 
 export const dynamic = "force-dynamic";
 
@@ -43,6 +45,55 @@ export async function POST(req: Request) {
        WHERE twilio_call_sid = ?`
     )
     .run(status, duration, status, status, callSid);
+
+  // Fire missed_call trigger when an inbound call ended unanswered. Twilio
+  // signals this via DialCallStatus on the parent call when the bridge fails
+  // to connect, or via CallStatus on a no-answer/busy hangup.
+  const isMissed =
+    (params.get("DialCallStatus") &&
+      ["no-answer", "busy", "failed", "canceled"].includes(
+        params.get("DialCallStatus") || ""
+      )) ||
+    (!params.get("DialCallStatus") &&
+      params.get("CallStatus") === "no-answer");
+  if (isMissed) {
+    const call = await db
+      .prepare(
+        `SELECT company_id, customer_id, from_phone, direction FROM calls
+           WHERE twilio_call_sid = ? LIMIT 1`
+      )
+      .get<{
+        company_id: number | null;
+        customer_id: number | null;
+        from_phone: string | null;
+        direction: string;
+      }>(callSid);
+    if (call && call.company_id && call.direction === "inbound") {
+      const fromNorm =
+        normalizeUSPhone(call.from_phone || "") || call.from_phone || "";
+      // Find a lead by customer_id or by matching the inbound phone.
+      const allLeads = (await db
+        .prepare(
+          "SELECT id, phone, customer_id FROM leads WHERE company_id = ?"
+        )
+        .all(call.company_id)) as Pick<
+        Lead,
+        "id" | "phone" | "customer_id"
+      >[];
+      const matched = allLeads.filter(
+        (l) =>
+          (call.customer_id && l.customer_id === call.customer_id) ||
+          (l.phone && normalizeUSPhone(l.phone) === fromNorm)
+      );
+      for (const lead of matched) {
+        await fireTrigger({
+          companyId: call.company_id,
+          leadId: lead.id,
+          trigger: "missed_call",
+        });
+      }
+    }
+  }
 
   return new NextResponse(TWIML_OK, { status: 200, headers: TWIML_HEADERS });
 }
