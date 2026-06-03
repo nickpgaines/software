@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
-import { getDb, type Customer } from "@/lib/db";
+import { getDb, type Customer, type Lead } from "@/lib/db";
 import { normalizeUSPhone, verifyTwilioSignature } from "@/lib/sms";
 import {
   findCompanyByPlatformNumber,
   getPlatformConfig,
 } from "@/lib/twilio-platform";
+import { fireTrigger } from "@/lib/lead-workflows";
 
 // Inbound webhook for SMS sent to platform-managed Twilio numbers. All
 // platform numbers share the master account's AccountSid, so we identify
@@ -95,6 +96,31 @@ export async function POST(req: Request) {
        VALUES (?, ?, ?, 'inbound', 'received', ?, ?, ?)`
     )
     .run(company.id, match.id, body, providerSid, toPhone, normalizedFrom);
+
+  // Fire lead_replied trigger for any leads tied to this customer or matching
+  // the inbound phone directly. Inbound reply is also a cue that whatever
+  // outreach was in flight should stop, so we cancel pending runs for this lead.
+  const allLeads = (await db
+    .prepare("SELECT id, phone, customer_id FROM leads WHERE company_id = ?")
+    .all(company.id)) as Pick<Lead, "id" | "phone" | "customer_id">[];
+  const matchedLeads = allLeads.filter(
+    (l) =>
+      l.customer_id === match.id ||
+      (l.phone && normalizeUSPhone(l.phone) === normalizedFrom)
+  );
+  for (const lead of matchedLeads) {
+    await db
+      .prepare(
+        `UPDATE lead_workflow_runs SET status = 'cancelled'
+           WHERE lead_id = ? AND status = 'pending'`
+      )
+      .run(lead.id);
+    await fireTrigger({
+      companyId: company.id,
+      leadId: lead.id,
+      trigger: "lead_replied",
+    });
+  }
 
   return new NextResponse(TWIML_OK, { status: 200, headers: TWIML_HEADERS });
 }
