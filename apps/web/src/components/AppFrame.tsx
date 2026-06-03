@@ -13,9 +13,14 @@ const FULL_BLEED_PATHS = new Set<string>([
   "/email",
 ]);
 
+const FULL_BLEED_PREFIXES = ["/leads/workflows/"];
+
 export function AppFrame({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const isFullBleed = pathname != null && FULL_BLEED_PATHS.has(pathname);
+  const isFullBleed =
+    pathname != null &&
+    (FULL_BLEED_PATHS.has(pathname) ||
+      FULL_BLEED_PREFIXES.some((p) => pathname.startsWith(p)));
   if (isFullBleed) {
     return <main className="md:ml-60 overflow-x-hidden">{children}</main>;
   }
