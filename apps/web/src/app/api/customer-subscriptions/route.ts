@@ -13,6 +13,7 @@ import {
   startDateToIso,
 } from "@/lib/subscription-schedule";
 import { createStripeSubscriptionForRow } from "@/lib/stripe-subscriptions";
+import { getAppOrigin } from "@/lib/stripe";
 import { sendAndLogCompanySms } from "@/lib/sms";
 
 function makeAcceptToken() {
@@ -329,8 +330,11 @@ export async function POST(req: Request) {
   if (action === "send") {
     const offerLine = `${name} — ${formatPrice(price_cents)} / ${intervalLabel(interval)}`;
     const desc = description ? `\n${description}` : "";
-    const origin = new URL(req.url).origin;
-    const acceptUrl = `${origin}/subscriptions/accept/${acceptToken}`;
+    // Use getAppOrigin so the link respects APP_URL — matches invoices/estimates
+    // sends. Without it, a sub created from a Vercel preview URL would mint a
+    // preview-domain link that points at the preview's database, which then
+    // 404s for the customer on open.
+    const acceptUrl = `${getAppOrigin(req)}/subscriptions/accept/${acceptToken}`;
     const messageBody =
       `Hi! Here's a subscription offer from us:\n${offerLine}${desc}\n` +
       `Tap to review & sign: ${acceptUrl}`;
