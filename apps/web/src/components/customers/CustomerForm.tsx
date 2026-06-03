@@ -6,6 +6,13 @@ import AddressFields, {
   type AddressValue,
 } from "@/components/customers/AddressFields";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -113,28 +120,20 @@ export default function CustomerForm({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div className="bg-card rounded-lg shadow-lg w-full max-w-md">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-line">
-          <h3 className="font-bold">
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>
             {customer ? "Edit customer" : "New customer"}
-          </h3>
-          <Button
-            variant="ghost"
-            onClick={onClose}
-            className="h-auto w-auto p-0 text-zinc-500 hover:text-zinc-300 hover:bg-transparent text-xl leading-none"
-          >
-            ×
-          </Button>
-        </div>
-        <form onSubmit={onSubmit} className="p-4 space-y-3">
+          </DialogTitle>
+        </DialogHeader>
+        <form onSubmit={onSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-3">
             <Field label="First name" required>
               <Input
                 type="text"
                 value={firstName}
                 onChange={(e) => setFirstName(e.target.value)}
-                className="w-full h-auto border-line-strong rounded px-3 py-2 text-sm"
                 autoFocus
                 required
               />
@@ -144,7 +143,6 @@ export default function CustomerForm({
                 type="text"
                 value={lastName}
                 onChange={(e) => setLastName(e.target.value)}
-                className="w-full h-auto border-line-strong rounded px-3 py-2 text-sm"
                 required
               />
             </Field>
@@ -155,7 +153,6 @@ export default function CustomerForm({
                 type="tel"
                 value={phone ?? ""}
                 onChange={(e) => setPhone(e.target.value)}
-                className="w-full h-auto border-line-strong rounded px-3 py-2 text-sm"
               />
             </Field>
             <Field label="Email">
@@ -163,7 +160,6 @@ export default function CustomerForm({
                 type="email"
                 value={email ?? ""}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full h-auto border-line-strong rounded px-3 py-2 text-sm"
               />
             </Field>
           </div>
@@ -173,31 +169,20 @@ export default function CustomerForm({
               value={notes ?? ""}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              className="w-full border-line-strong rounded px-3 py-2 text-sm"
             />
           </Field>
-          {error && <p className="text-sm text-red-600">{error}</p>}
-          <div className="flex justify-end gap-2 pt-2">
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={onClose}
-              className="h-auto text-sm border border-line-strong bg-card hover:bg-black rounded px-3 py-2 font-bold"
-            >
+          {error && <p className="text-sm font-bold text-rose-400">{error}</p>}
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button
-              type="submit"
-              variant="ghost"
-              disabled={saving}
-              className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded px-3 py-2 font-bold"
-            >
+            <Button type="submit" disabled={saving}>
               {saving ? "Saving…" : "Save"}
             </Button>
-          </div>
+          </DialogFooter>
         </form>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -212,9 +197,9 @@ function Field({
 }) {
   return (
     <div>
-      <Label className="block text-xs font-bold text-zinc-500 mb-2">
+      <Label className="mb-2 block text-xs font-bold text-zinc-500">
         {label}
-        {required && <span className="text-red-500 ml-0.5">*</span>}
+        {required && <span className="ml-0.5 text-rose-400">*</span>}
       </Label>
       {children}
     </div>

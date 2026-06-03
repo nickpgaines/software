@@ -172,25 +172,25 @@ function CustomersPage() {
             />
           </div>
           <Button
-            variant="ghost"
+            variant="outline"
             onClick={() => setImporting(true)}
-            className="hidden h-auto text-sm border border-line-strong bg-card hover:bg-black text-zinc-300 rounded px-3 py-2 font-bold md:inline-flex"
+            className="hidden md:inline-flex"
           >
             Import
           </Button>
           <Button
-            variant="ghost"
+            variant="outline"
             onClick={() => setImportingSubs(true)}
-            className="hidden h-auto text-sm border border-line-strong bg-card hover:bg-black text-zinc-300 rounded px-3 py-2 font-bold md:inline-flex"
+            className="hidden md:inline-flex"
           >
             Import subs
           </Button>
           <Button
-            variant="ghost"
             onClick={() => setCreating(true)}
-            className="hidden h-auto text-sm bg-primary hover:opacity-90 text-primary-foreground rounded px-3 py-2 font-bold md:inline-flex"
+            className="hidden md:inline-flex"
           >
-            + Customer
+            <Plus className="mr-1 h-4 w-4" strokeWidth={2.5} />
+            Customer
           </Button>
         </div>
       </div>
