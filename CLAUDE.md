@@ -16,6 +16,23 @@ Project guidance for Claude Code sessions on this repo.
 - libSQL via `@libsql/client` (Turso in prod, local SQLite file in dev)
 - Cookie-based HMAC auth — no OAuth / external auth services
 - Stripe Connect for payments (each company connects its own Stripe account)
+- Capacitor 8 wraps `apps/web` as native iOS + Android apps
+
+## Mobile (Capacitor)
+
+- Bundle ID / Android package name: `app.forgecrm`. Config at
+  `apps/web/capacitor.config.ts`.
+- The native shell loads the hosted Forge CRM URL via `server.url`
+  (Forge is server-rendered Next.js — no static export).
+  `apps/web/mobile-shell/index.html` is the offline fallback only.
+- Plugins installed: `@capacitor/app`, `@capacitor/push-notifications`,
+  `@capacitor/splash-screen`, `@capacitor/status-bar`.
+- Apple Developer + Google Play accounts are both under **NG Ventures LLC**
+  (Organization enrollment). Never commit the APNs `.p8` or the Play upload
+  keystore — keep them in a secure vault.
+- After changing JS deps or `capacitor.config.ts`, run
+  `cd apps/web && npx cap sync`. Open natives with `npx cap open ios` /
+  `npx cap open android` on a Mac.
 
 ## Workflow
 
