@@ -1,4 +1,4 @@
-import { getDb, type Estimate, type EstimateItem } from "@/lib/db";
+import { getDb, syncReplica, type Estimate, type EstimateItem } from "@/lib/db";
 import {
   buildPromotionalSmsConsentText,
   buildTransactionalSmsConsentText,
@@ -13,9 +13,22 @@ export default async function EstimateAcceptPage({
   params: { token: string };
 }) {
   const db = await getDb();
-  const estimate = (await db
-    .prepare("SELECT * FROM estimates WHERE accept_token = ? LIMIT 1")
-    .get(params.token)) as Estimate | undefined;
+  const lookup = () =>
+    db
+      .prepare("SELECT * FROM estimates WHERE accept_token = ? LIMIT 1")
+      .get(params.token) as Promise<Estimate | undefined>;
+  let estimate = await lookup();
+
+  // Embedded-replica miss recovery: the rep's "send" minted the accept_token
+  // and wrote it to the remote primary on a *different* serverless instance.
+  // This customer-facing request can land on an instance whose local replica
+  // hasn't synced that write yet (sync runs on an interval), so a fresh link
+  // would wrongly read as "not found". Pull the latest and retry once before
+  // giving up. See syncReplica() in @/lib/db.
+  if (!estimate) {
+    await syncReplica();
+    estimate = await lookup();
+  }
 
   if (!estimate) {
     return (

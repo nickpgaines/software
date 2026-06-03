@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, type Estimate } from "@/lib/db";
+import { getDb, syncReplica, type Estimate } from "@/lib/db";
 import {
   buildPromotionalSmsConsentText,
   buildTransactionalSmsConsentText,
@@ -17,9 +17,18 @@ export async function POST(
   { params }: { params: { token: string } }
 ) {
   const db = await getDb();
-  const estimate = (await db
-    .prepare("SELECT * FROM estimates WHERE accept_token = ? LIMIT 1")
-    .get(params.token)) as Estimate | undefined;
+  const lookup = () =>
+    db
+      .prepare("SELECT * FROM estimates WHERE accept_token = ? LIMIT 1")
+      .get(params.token) as Promise<Estimate | undefined>;
+  let estimate = await lookup();
+  // Embedded-replica miss recovery: this instance's local replica may not have
+  // synced the minted accept_token yet. Pull the latest and retry once before
+  // 404ing the acceptance. See syncReplica() in @/lib/db.
+  if (!estimate) {
+    await syncReplica();
+    estimate = await lookup();
+  }
   if (!estimate) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
