@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Search, Filter, LayoutGrid, List, Settings, Plus, Sparkles } from "lucide-react";
+import { Search, Filter, LayoutGrid, List, Settings, Plus } from "lucide-react";
 import type { Lead, LeadStage } from "@/lib/db";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -283,9 +283,6 @@ export default function LeadsPipelineClient({
 function EmptyNewHint() {
   return (
     <div className="flex flex-col items-start gap-2 p-2">
-      <div className="w-8 h-8 rounded-lg bg-sky-50 flex items-center justify-center text-sky-500">
-        <Sparkles className="w-4 h-4" />
-      </div>
       <div>
         <p className="font-extrabold text-white tracking-tight text-sm">No leads yet</p>
         <p className="text-xs text-zinc-400 mt-0.5">
