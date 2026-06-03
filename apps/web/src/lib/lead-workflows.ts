@@ -56,8 +56,10 @@ const STAGE_TIMESTAMP: Record<string, string | null> = {
 };
 
 // Enqueue workflow_runs for every enabled workflow on this company that
-// matches the given trigger. Safe to call from API routes — failures here
-// must never break the originating action, so we swallow errors.
+// matches the given trigger, then immediately advance any zero-delay
+// leading steps so the user sees instant action (the daily cron only
+// catches longer-delayed steps after the fact). Safe to call from API
+// routes — failures here must never break the originating action.
 export async function fireTrigger(args: {
   companyId: number;
   leadId: number;
@@ -72,6 +74,7 @@ export async function fireTrigger(args: {
            WHERE company_id = ? AND enabled = 1 AND trigger = ?`
       )
       .all(companyId, trigger)) as LeadWorkflow[];
+    let enrolled = false;
     for (const wf of workflows) {
       const steps = parseSteps(wf.steps);
       if (steps.length === 0) continue;
@@ -91,6 +94,14 @@ export async function fireTrigger(args: {
            VALUES (?, ?, 'pending', 0, datetime('now'))`
         )
         .run(wf.id, leadId);
+      enrolled = true;
+    }
+    if (enrolled) {
+      // Drain immediately so the first SMS / stage-update fires on the
+      // originating request, not on the next daily cron tick.
+      await runPendingWorkflowSteps().catch((e) => {
+        console.error("[lead-workflows] inline drain failed", e);
+      });
     }
   } catch (err) {
     console.error("[lead-workflows] fireTrigger failed", err);
