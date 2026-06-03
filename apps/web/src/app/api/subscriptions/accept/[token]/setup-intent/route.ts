@@ -60,11 +60,14 @@ export async function POST(
   );
 
   const stripe = getStripe();
+  // Lock to card only — no Bank / Cash App / Link tabs in the PaymentElement.
+  // Wallets (Apple/Google Pay) are still surfaced separately on supported
+  // devices via the PaymentElement's wallets option, not via this list.
   const intent = await stripe.setupIntents.create(
     {
       customer: stripeCustomerId,
       usage: "off_session",
-      automatic_payment_methods: { enabled: true },
+      payment_method_types: ["card"],
       metadata: {
         company_id: String(sub.company_id),
         customer_id: String(sub.customer_id),
