@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { loadStripe, type Stripe as StripeJs } from "@stripe/stripe-js";
 import {
+  CardElement,
   Elements,
-  PaymentElement,
   useElements,
   useStripe,
 } from "@stripe/react-stripe-js";
@@ -209,14 +209,11 @@ export default function AcceptClient({
         ) : (
           <Elements
             stripe={stripePromise(setupIntent.stripe_account || null)}
-            options={{
-              clientSecret: setupIntent.client_secret,
-              appearance: { theme: "night" },
-            }}
           >
             <AcceptForm
               token={subscription.accept_token!}
               setupIntentId={setupIntent.setup_intent_id}
+              setupIntentClientSecret={setupIntent.client_secret}
               requireSignature={requireSignature && !alreadyAccepted}
               alreadyAccepted={alreadyAccepted}
               initialSignatureData={subscription.signature_data}
@@ -237,6 +234,7 @@ export default function AcceptClient({
 function AcceptForm({
   token,
   setupIntentId,
+  setupIntentClientSecret,
   requireSignature,
   alreadyAccepted,
   initialSignatureData,
@@ -246,6 +244,7 @@ function AcceptForm({
 }: {
   token: string;
   setupIntentId: string;
+  setupIntentClientSecret: string;
   requireSignature: boolean;
   alreadyAccepted: boolean;
   initialSignatureData: string | null;
@@ -261,7 +260,7 @@ function AcceptForm({
   const [signatureName, setSignatureName] = useState(
     initialSignatureName || ""
   );
-  const [paymentReady, setPaymentReady] = useState(false);
+  const [cardReady, setCardReady] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -272,21 +271,23 @@ function AcceptForm({
       setError("Please sign before confirming.");
       return;
     }
+    const cardElement = elements.getElement(CardElement);
+    if (!cardElement) {
+      setError("Card form failed to load. Please refresh and try again.");
+      return;
+    }
     setError(null);
     setSubmitting(true);
 
     // Step 1: confirm the SetupIntent on Stripe (collects the card details).
+    // CardElement is used instead of PaymentElement so the form is just card
+    // fields — no Link signup, no Bank/CashApp tabs, no wallet buttons.
     const { error: confirmError, setupIntent: confirmed } =
-      await stripe.confirmSetup({
-        elements,
-        confirmParams: {
-          return_url:
-            typeof window !== "undefined" ? window.location.href : "",
-          payment_method_data: {
-            billing_details: { name: customerName },
-          },
+      await stripe.confirmCardSetup(setupIntentClientSecret, {
+        payment_method: {
+          card: cardElement,
+          billing_details: { name: customerName },
         },
-        redirect: "if_required",
       });
     if (confirmError) {
       setSubmitting(false);
@@ -373,18 +374,28 @@ function AcceptForm({
         <h2 className="text-base font-extrabold tracking-tight">
           Payment details
         </h2>
-        <PaymentElement
-          onReady={() => setPaymentReady(true)}
-          options={{
-            // Hide billing-detail collection — we pass the customer's name
-            // explicitly on confirmSetup, and the SetupIntent is locked to
-            // card-only so address/country aren't needed.
-            fields: { billingDetails: "never" },
-            // No Apple/Google Pay buttons in the panel; keeps the look
-            // single-field and minimal.
-            wallets: { applePay: "never", googlePay: "never" },
-          }}
-        />
+        <div className="rounded-xl border border-line-strong bg-card px-4 py-3.5">
+          <CardElement
+            onReady={() => setCardReady(true)}
+            options={{
+              hidePostalCode: false,
+              style: {
+                base: {
+                  fontSize: "16px",
+                  color: "#fafafa",
+                  fontFamily:
+                    "ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, sans-serif",
+                  "::placeholder": { color: "#71717a" },
+                  iconColor: "#a1a1aa",
+                },
+                invalid: { color: "#fda4af", iconColor: "#fda4af" },
+              },
+            }}
+          />
+        </div>
+        <p className="text-[11px] text-zinc-500">
+          Your card is saved securely with Stripe.
+        </p>
       </section>
 
       {error && (
@@ -396,7 +407,7 @@ function AcceptForm({
       <Button
         type="submit"
         variant="ghost"
-        disabled={!stripe || !elements || !paymentReady || submitting}
+        disabled={!stripe || !elements || !cardReady || submitting}
         className="w-full h-auto bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-300 disabled:cursor-not-allowed text-white rounded-full px-5 py-3 text-sm font-bold"
       >
         {submitting
