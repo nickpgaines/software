@@ -219,6 +219,91 @@ export async function sendSms(args: {
   return { ok: true, sid: data.sid || "", status: data.status || "queued" };
 }
 
+/**
+ * Send an outbound SMS to a Forge customer AND log it as a message row so the
+ * conversation thread reflects the send + delivery state. This is what every
+ * "send" workflow (subscription offers, invoices, estimates, …) should call
+ * to actually fire the text — a plain INSERT into `messages` records a row
+ * but does not dispatch to Twilio.
+ *
+ * Mirrors the dispatch+log pattern in `/api/messages` POST (manual replies).
+ * Never throws on Twilio errors: the failure is captured on the message row
+ * so the conversation thread surfaces a "Not delivered" badge, and the caller
+ * gets `ok: false` to act on if it wants.
+ */
+export async function sendAndLogCompanySms(args: {
+  companyId: number;
+  customerId: number;
+  body: string;
+}): Promise<{
+  ok: boolean;
+  messageId: number;
+  status: string;
+  error: string | null;
+}> {
+  const { companyId, customerId, body } = args;
+  const db = await getDb();
+
+  const customer = await db
+    .prepare(
+      "SELECT phone FROM customers WHERE id = ? AND company_id = ? LIMIT 1"
+    )
+    .get<{ phone: string | null }>(customerId, companyId);
+
+  const messaging = await getCompanyMessagingStatus(companyId);
+  const toPhone = customer ? normalizeUSPhone(customer.phone) : null;
+  const fromPhone = messaging.fromPhone;
+
+  let status: string;
+  let errorMsg: string | null = null;
+  let providerSid: string | null = null;
+
+  if (!customer) {
+    status = "failed";
+    errorMsg = "Customer not found";
+  } else if (!messaging.configured) {
+    status = "not_configured";
+    errorMsg =
+      "Messaging is not configured. Your phone number is still being provisioned — try again in a moment, or contact support.";
+  } else if (!toPhone) {
+    status = "failed";
+    errorMsg = "Customer has no valid phone number.";
+  } else {
+    const result = await sendCompanySms({ companyId, to: toPhone, body });
+    if (result.ok) {
+      status = result.status || "queued";
+      providerSid = result.sid;
+    } else {
+      status = "failed";
+      errorMsg = result.error;
+    }
+  }
+
+  const insert = await db
+    .prepare(
+      `INSERT INTO messages
+         (company_id, customer_id, body, direction, status, error, provider_sid, to_phone, from_phone)
+       VALUES (?, ?, ?, 'outbound', ?, ?, ?, ?, ?)`
+    )
+    .run(
+      companyId,
+      customerId,
+      body,
+      status,
+      errorMsg,
+      providerSid,
+      toPhone,
+      fromPhone
+    );
+
+  return {
+    ok: status !== "failed" && status !== "not_configured",
+    messageId: Number(insert.lastInsertRowid),
+    status,
+    error: errorMsg,
+  };
+}
+
 // Twilio computes X-Twilio-Signature as the base64 HMAC-SHA1 of:
 //   fullRequestUrl + concat(sortedKey + value for each POST param)
 // using the auth token as the key.

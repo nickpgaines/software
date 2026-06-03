@@ -7,6 +7,7 @@ import {
   isStripeConfigured,
   getAppOrigin,
 } from "@/lib/stripe";
+import { sendAndLogCompanySms } from "@/lib/sms";
 
 export const dynamic = "force-dynamic";
 
@@ -89,12 +90,11 @@ export async function POST(
     `Amount due: ${formatPrice(invoice.total_cents - invoice.paid_cents)}\n` +
     `Pay online: ${payUrl}\n` +
     `Reply with any questions.`;
-  await db
-    .prepare(
-      `INSERT INTO messages (company_id, customer_id, body, direction)
-       VALUES (?, ?, ?, 'outbound')`
-    )
-    .run(companyId, invoice.customer_id, messageBody);
+  await sendAndLogCompanySms({
+    companyId,
+    customerId: invoice.customer_id,
+    body: messageBody,
+  });
 
   const updated = (await db
     .prepare("SELECT * FROM invoices WHERE id = ? AND company_id = ?")

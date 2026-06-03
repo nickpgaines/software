@@ -13,6 +13,7 @@ import {
   startDateToIso,
 } from "@/lib/subscription-schedule";
 import { createStripeSubscriptionForRow } from "@/lib/stripe-subscriptions";
+import { sendAndLogCompanySms } from "@/lib/sms";
 
 function makeAcceptToken() {
   return randomBytes(24).toString("base64url");
@@ -333,12 +334,11 @@ export async function POST(req: Request) {
     const messageBody =
       `Hi! Here's a subscription offer from us:\n${offerLine}${desc}\n` +
       `Tap to review & sign: ${acceptUrl}`;
-    await db
-      .prepare(
-        `INSERT INTO messages (company_id, customer_id, body, direction)
-         VALUES (?, ?, ?, 'outbound')`
-      )
-      .run(companyId, customerId, messageBody);
+    await sendAndLogCompanySms({
+      companyId,
+      customerId,
+      body: messageBody,
+    });
   }
 
   const row = (await db
