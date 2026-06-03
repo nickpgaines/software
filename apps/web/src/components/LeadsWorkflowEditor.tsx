@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -18,48 +18,236 @@ import {
   Maximize2,
   Zap,
   ChevronDown,
+  Hourglass,
+  GitBranch,
 } from "lucide-react";
 import type { LeadWorkflow, LeadWorkflowRun } from "@/lib/db";
 import {
   STEP_TYPES,
   WORKFLOW_TRIGGERS,
-  defaultStep,
-  parseSteps,
-  type WorkflowStep,
-  type WorkflowStepType,
+  defaultNode,
+  parseGraph,
+  serializeGraph,
+  type WorkflowGraph,
+  type WorkflowNode,
+  type WorkflowNodeType,
   type WorkflowTrigger,
+  type LeadStageSlug,
 } from "@/lib/lead-workflows-types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 
-const STAGES = [
+const STAGES: { value: LeadStageSlug; label: string }[] = [
   { value: "new", label: "New" },
   { value: "contacted", label: "Contacted" },
   { value: "responded", label: "Responded" },
   { value: "estimate_sent", label: "Estimate sent" },
+  { value: "no_response", label: "No response" },
 ];
 
-const STEP_ICONS: Record<WorkflowStepType, typeof MessageSquare> = {
+const STEP_ICONS: Record<WorkflowNodeType, typeof MessageSquare> = {
   send_sms: MessageSquare,
   delay: Clock,
   update_stage: ArrowRightLeft,
   create_task: CheckSquare,
   notify_admin: Bell,
+  wait_for_reply: Hourglass,
+  paths: GitBranch,
 };
 
-// Canvas geometry. Nodes are positioned along a vertical spine; connectors
-// are SVG dashed lines drawn through the midpoint of each gap.
-const NODE_W = 280;
-const NODE_H = 76;
-const NODE_GAP = 64;
-const CANVAS_PAD_Y = 80;
+const NODE_W = 240;
+const NODE_H = 64;
+const ROW_GAP = 56;
+const COL_GAP = 24;
+const CANVAS_PAD = 40;
+
+// Synthetic END nodes are inserted at every dangling edge so the canvas
+// always renders a terminator pill. The string is just a sentinel id; the
+// layout treats it as a leaf.
+const END_ID = "__end__";
 
 type Selection =
   | { kind: "trigger" }
-  | { kind: "step"; index: number }
+  | { kind: "step"; nodeId: string }
   | null;
+
+type LaidNode = {
+  id: string;
+  x: number;
+  y: number;
+  isEnd?: boolean;
+};
+
+type LaidEdge = {
+  fromId: string;
+  toId: string;
+  label: string;
+};
+
+// Tree layout. We treat the trigger as a synthetic super-root whose
+// children are the graph's start_ids. Subtree widths bubble up so each
+// parent sits centered above its children. Shared nodes appear once at
+// the depth of their *first* visit (no DAG re-layout); subsequent edges
+// just draw connectors to the same position.
+function layoutGraph(
+  graph: WorkflowGraph
+): {
+  nodes: Map<string, LaidNode>;
+  edges: LaidEdge[];
+  endNodes: Map<string, LaidNode>;
+  width: number;
+  height: number;
+} {
+  const positions = new Map<string, LaidNode>();
+  const endNodes = new Map<string, LaidNode>();
+  const edges: LaidEdge[] = [];
+  const TRIGGER_ID = "__trigger__";
+
+  // First pass: assign each node a depth (row) by BFS from the trigger.
+  const depth = new Map<string, number>();
+  depth.set(TRIGGER_ID, 0);
+  const queue: { id: string; from: string }[] = graph.start_ids.map((id) => ({
+    id,
+    from: TRIGGER_ID,
+  }));
+  while (queue.length) {
+    const { id, from } = queue.shift()!;
+    if (!graph.nodes[id]) continue;
+    const fromDepth = depth.get(from) ?? 0;
+    if (!depth.has(id)) {
+      depth.set(id, fromDepth + 1);
+      const n = graph.nodes[id];
+      const nexts = childrenOf(n);
+      for (const c of nexts) {
+        if (c.next && graph.nodes[c.next]) {
+          queue.push({ id: c.next, from: id });
+        }
+      }
+    }
+  }
+
+  // Second pass: assign subtree widths by post-order, then x positions by
+  // pre-order. We walk the tree formed by *first* visits — any edge that
+  // points back to an already-visited node is treated as a cross-edge for
+  // edge-drawing only.
+  const visitedForLayout = new Set<string>();
+  type Subtree = { id: string; cols: number; children: Subtree[] };
+
+  function buildSubtree(id: string): Subtree {
+    if (visitedForLayout.has(id)) return { id, cols: 0, children: [] };
+    visitedForLayout.add(id);
+    const node = graph.nodes[id];
+    if (!node) return { id, cols: 1, children: [] };
+    const childInfos = childrenOf(node);
+    const realChildren: Subtree[] = [];
+    let danglingCols = 0;
+    for (const c of childInfos) {
+      if (c.next && graph.nodes[c.next] && !visitedForLayout.has(c.next)) {
+        realChildren.push(buildSubtree(c.next));
+      } else if (!c.next) {
+        // Truly dangling edge: needs a column to terminate with END.
+        danglingCols += 1;
+      }
+      // Edges to already-visited (shared) nodes contribute no column; the
+      // edge is drawn as a connector to the existing layout slot.
+    }
+    const childCols = realChildren.reduce((acc, c) => acc + c.cols, 0);
+    const cols = Math.max(1, childCols + danglingCols);
+    return { id, cols, children: realChildren };
+  }
+
+  // Build the super-tree by buildingSubtree on each start_id and adding a
+  // synthetic root above them.
+  const startSubtrees: Subtree[] = [];
+  for (const sid of graph.start_ids) {
+    if (graph.nodes[sid]) startSubtrees.push(buildSubtree(sid));
+  }
+  const rootCols = Math.max(
+    1,
+    startSubtrees.reduce((acc, s) => acc + s.cols, 0)
+  );
+  const totalCols = rootCols;
+  const totalRows = Math.max(...Array.from(depth.values()), 1) + 1;
+
+  // Lay out by descending the subtree and assigning x = midpoint of allocated columns.
+  function layoutSubtree(s: Subtree, leftCol: number, row: number): void {
+    const x = CANVAS_PAD + (leftCol + s.cols / 2) * (NODE_W + COL_GAP);
+    const y = CANVAS_PAD + row * (NODE_H + ROW_GAP);
+    if (!positions.has(s.id)) {
+      positions.set(s.id, { id: s.id, x, y });
+    }
+    let cursor = leftCol;
+    const node = graph.nodes[s.id];
+    if (!node) return;
+    const childInfos = childrenOf(node);
+    // Walk children in order. For unrecognized / dangling / shared edges,
+    // allocate one column and emit an END placeholder if dangling.
+    for (const c of childInfos) {
+      if (c.next && graph.nodes[c.next]) {
+        const childSubtree = s.children.find((cs) => cs.id === c.next);
+        if (childSubtree) {
+          layoutSubtree(childSubtree, cursor, row + 1);
+          cursor += childSubtree.cols;
+          edges.push({ fromId: s.id, toId: c.next, label: c.label });
+        } else {
+          // Shared node — already laid out elsewhere; just draw an edge.
+          edges.push({ fromId: s.id, toId: c.next, label: c.label });
+          // Don't advance cursor — shared edges share columns visually.
+        }
+      } else {
+        // Dangling: place an END node.
+        const endId = `${END_ID}_${s.id}_${c.label}`;
+        const ex = CANVAS_PAD + (cursor + 0.5) * (NODE_W + COL_GAP);
+        const ey = CANVAS_PAD + (row + 1) * (NODE_H + ROW_GAP);
+        endNodes.set(endId, { id: endId, x: ex, y: ey, isEnd: true });
+        edges.push({ fromId: s.id, toId: endId, label: c.label });
+        cursor += 1;
+      }
+    }
+  }
+
+  let startCursor = 0;
+  for (const s of startSubtrees) {
+    layoutSubtree(s, startCursor, 1);
+    startCursor += s.cols;
+  }
+
+  // Trigger sits row 0, centered over the whole canvas.
+  const triggerX = CANVAS_PAD + (totalCols / 2) * (NODE_W + COL_GAP);
+  positions.set(TRIGGER_ID, { id: TRIGGER_ID, x: triggerX, y: CANVAS_PAD });
+
+  // Trigger → start_ids edges.
+  for (const sid of graph.start_ids) {
+    if (graph.nodes[sid]) {
+      edges.push({ fromId: TRIGGER_ID, toId: sid, label: "" });
+    }
+  }
+
+  const width = CANVAS_PAD * 2 + totalCols * (NODE_W + COL_GAP);
+  const height = CANVAS_PAD * 2 + totalRows * (NODE_H + ROW_GAP) + 40;
+  return { nodes: positions, edges, endNodes, width, height };
+}
+
+function childrenOf(
+  node: WorkflowNode
+): { label: string; next: string | null | undefined }[] {
+  if (node.type === "wait_for_reply") {
+    return [
+      { label: "On Reply", next: node.on_reply },
+      { label: "On Timeout", next: node.on_timeout },
+    ];
+  }
+  if (node.type === "paths") {
+    return [
+      { label: "Yes", next: node.yes_next },
+      { label: "No", next: node.no_next },
+    ];
+  }
+  if ("next" in node) return [{ label: "", next: node.next }];
+  return [];
+}
 
 export default function LeadsWorkflowEditor({
   initialWorkflow,
@@ -74,40 +262,128 @@ export default function LeadsWorkflowEditor({
     (initialWorkflow.trigger as WorkflowTrigger) || "lead_created"
   );
   const [enabled, setEnabled] = useState(!!initialWorkflow.enabled);
-  const [steps, setSteps] = useState<WorkflowStep[]>(() =>
-    parseSteps(initialWorkflow.steps)
+  const [graph, setGraph] = useState<WorkflowGraph>(() =>
+    parseGraph(initialWorkflow.steps)
   );
   const [selection, setSelection] = useState<Selection>({ kind: "trigger" });
-  const [zoom, setZoom] = useState(1);
+  const [zoom, setZoom] = useState(0.8);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
-  const canvasRef = useRef<HTMLDivElement>(null);
 
-  // Auto-clear save toast
   useEffect(() => {
     if (!saved) return;
     const t = setTimeout(() => setSaved(null), 2000);
     return () => clearTimeout(t);
   }, [saved]);
 
-  function updateStep(index: number, patch: Partial<WorkflowStep>) {
-    setSteps((cur) => {
-      const next = cur.slice();
-      next[index] = { ...next[index], ...patch } as WorkflowStep;
-      return next;
-    });
+  const laid = useMemo(() => layoutGraph(graph), [graph]);
+
+  function updateNode(id: string, patch: Partial<WorkflowNode>) {
+    setGraph((g) => ({
+      ...g,
+      nodes: {
+        ...g.nodes,
+        [id]: { ...g.nodes[id], ...patch } as WorkflowNode,
+      },
+    }));
   }
 
-  function appendStep(type: WorkflowStepType) {
-    setSteps((cur) => {
-      const next = [...cur, defaultStep(type)];
-      setSelection({ kind: "step", index: next.length - 1 });
-      return next;
-    });
+  // Find leaf ids: any node whose outgoing edges are all null/missing.
+  // Plus the trigger itself when there are no start_ids.
+  function findLeafIdsForAppend(): string[] {
+    const leaves: string[] = [];
+    if (graph.start_ids.length === 0) return [];
+    for (const id of Object.keys(graph.nodes)) {
+      const n = graph.nodes[id];
+      const kids = childrenOf(n);
+      if (kids.every((c) => !c.next)) leaves.push(id);
+    }
+    return leaves;
   }
 
-  function removeStep(index: number) {
-    setSteps((cur) => cur.filter((_, i) => i !== index));
+  // Append a new node onto the currently-selected node (or the trigger
+  // when nothing's selected). Wires the new node into the first dangling
+  // edge of the parent.
+  function appendNode(type: WorkflowNodeType) {
+    const newNode = defaultNode(type);
+    setGraph((g) => {
+      const nodes = { ...g.nodes, [newNode.id]: newNode };
+      // Determine parent.
+      if (selection?.kind === "step") {
+        const parent = nodes[selection.nodeId];
+        if (parent) {
+          const updated = wireFirstDangling(parent, newNode.id);
+          nodes[parent.id] = updated;
+        }
+        return { ...g, nodes };
+      }
+      // Trigger selected (or nothing): append as a new branch off the trigger.
+      return { start_ids: [...g.start_ids, newNode.id], nodes };
+    });
+    setSelection({ kind: "step", nodeId: newNode.id });
+  }
+
+  function wireFirstDangling(
+    parent: WorkflowNode,
+    childId: string
+  ): WorkflowNode {
+    if (parent.type === "wait_for_reply") {
+      if (!parent.on_reply) return { ...parent, on_reply: childId };
+      if (!parent.on_timeout) return { ...parent, on_timeout: childId };
+      return parent;
+    }
+    if (parent.type === "paths") {
+      if (!parent.yes_next) return { ...parent, yes_next: childId };
+      if (!parent.no_next) return { ...parent, no_next: childId };
+      return parent;
+    }
+    if ("next" in parent) {
+      if (!parent.next) return { ...parent, next: childId };
+      return parent;
+    }
+    return parent;
+  }
+
+  function deleteNode(id: string) {
+    setGraph((g) => {
+      const target = g.nodes[id];
+      if (!target) return g;
+      // Find the first child (its "downstream") and rewire parents to it.
+      const replacement =
+        ("next" in target && target.next) ||
+        (target.type === "paths" && (target.yes_next || target.no_next)) ||
+        (target.type === "wait_for_reply" &&
+          (target.on_timeout || target.on_reply)) ||
+        null;
+      const nodes = { ...g.nodes };
+      delete nodes[id];
+      // Rewire every parent edge pointing at `id` → replacement.
+      for (const nid of Object.keys(nodes)) {
+        const n = nodes[nid];
+        if (n.type === "wait_for_reply") {
+          let changed = { ...n };
+          if (changed.on_reply === id) changed = { ...changed, on_reply: replacement };
+          if (changed.on_timeout === id)
+            changed = { ...changed, on_timeout: replacement };
+          nodes[nid] = changed;
+          continue;
+        }
+        if (n.type === "paths") {
+          let changed = { ...n };
+          if (changed.yes_next === id) changed = { ...changed, yes_next: replacement };
+          if (changed.no_next === id) changed = { ...changed, no_next: replacement };
+          nodes[nid] = changed;
+          continue;
+        }
+        if ("next" in n && n.next === id) {
+          nodes[nid] = { ...n, next: replacement };
+        }
+      }
+      const startIds = g.start_ids
+        .map((sid) => (sid === id ? replacement : sid))
+        .filter((sid): sid is string => !!sid);
+      return { start_ids: startIds, nodes };
+    });
     setSelection({ kind: "trigger" });
   }
 
@@ -122,7 +398,7 @@ export default function LeadsWorkflowEditor({
           name: name.trim(),
           trigger,
           enabled,
-          steps: JSON.stringify(steps),
+          steps: serializeGraph(graph),
         }),
       });
       if (!res.ok) throw new Error();
@@ -143,35 +419,12 @@ export default function LeadsWorkflowEditor({
     if (res.ok) router.push("/leads/workflows");
   }
 
-  function zoomIn() {
-    setZoom((z) => Math.min(2, +(z + 0.1).toFixed(2)));
-  }
-  function zoomOut() {
-    setZoom((z) => Math.max(0.4, +(z - 0.1).toFixed(2)));
-  }
-  function zoomReset() {
-    setZoom(1);
-  }
-
-  // Node Y positions: trigger at top, then steps stacked.
-  const nodePositions = useMemo(() => {
-    const positions: { y: number }[] = [];
-    let y = CANVAS_PAD_Y;
-    positions.push({ y });
-    for (let i = 0; i < steps.length; i += 1) {
-      y += NODE_H + NODE_GAP;
-      positions.push({ y });
-    }
-    return positions;
-  }, [steps.length]);
-
-  const canvasHeight =
-    (nodePositions[nodePositions.length - 1]?.y ?? CANVAS_PAD_Y) +
-    NODE_H +
-    CANVAS_PAD_Y;
+  const zoomIn = () => setZoom((z) => Math.min(2, +(z + 0.1).toFixed(2)));
+  const zoomOut = () => setZoom((z) => Math.max(0.3, +(z - 0.1).toFixed(2)));
+  const zoomReset = () => setZoom(0.8);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-0px)]">
+    <div className="flex flex-col h-screen">
       {/* Header */}
       <div className="shrink-0 border-b border-line px-4 md:px-6 py-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0 flex-1">
@@ -245,9 +498,8 @@ export default function LeadsWorkflowEditor({
         </div>
       </div>
 
-      {/* Three-column body: sidebar | canvas | inspector */}
       <div className="flex-1 flex min-h-0">
-        {/* Left: step type palette */}
+        {/* Left: step palette */}
         <aside className="hidden md:flex flex-col w-60 shrink-0 border-r border-line p-3 gap-1 overflow-y-auto">
           <div className="text-xs font-bold text-zinc-500 uppercase tracking-wide px-2 py-1">
             Add a step
@@ -258,7 +510,7 @@ export default function LeadsWorkflowEditor({
               <button
                 key={t.value}
                 type="button"
-                onClick={() => appendStep(t.value)}
+                onClick={() => appendNode(t.value)}
                 className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-left hover:bg-black group"
               >
                 <span className="w-8 h-8 rounded-lg bg-black inline-flex items-center justify-center shrink-0 group-hover:bg-line">
@@ -280,7 +532,6 @@ export default function LeadsWorkflowEditor({
 
         {/* Center: canvas */}
         <div
-          ref={canvasRef}
           className="flex-1 relative overflow-auto bg-canvas"
           onClick={() => setSelection(null)}
           style={{
@@ -290,59 +541,23 @@ export default function LeadsWorkflowEditor({
           }}
         >
           <div
-            className="relative origin-top mx-auto"
+            className="relative origin-top-left"
             style={{
-              width: NODE_W + 240,
-              height: canvasHeight,
+              width: laid.width,
+              height: laid.height,
               transform: `scale(${zoom})`,
             }}
           >
-            {/* SVG connectors behind nodes */}
-            <svg
-              className="absolute inset-0 pointer-events-none"
-              width="100%"
-              height={canvasHeight}
-            >
-              {nodePositions.slice(0, -1).map((pos, i) => {
-                const next = nodePositions[i + 1];
-                const x = (NODE_W + 240) / 2;
-                return (
-                  <line
-                    key={i}
-                    x1={x}
-                    y1={pos.y + NODE_H}
-                    x2={x}
-                    y2={next.y}
-                    stroke="currentColor"
-                    strokeWidth={1.5}
-                    strokeDasharray="4 4"
-                    className="text-zinc-600"
-                  />
-                );
-              })}
-              {/* END marker line */}
-              {nodePositions.length > 0 && (
-                <line
-                  x1={(NODE_W + 240) / 2}
-                  y1={nodePositions[nodePositions.length - 1].y + NODE_H}
-                  x2={(NODE_W + 240) / 2}
-                  y2={
-                    nodePositions[nodePositions.length - 1].y +
-                    NODE_H +
-                    CANVAS_PAD_Y / 2
-                  }
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                  strokeDasharray="4 4"
-                  className="text-zinc-600"
-                />
-              )}
-            </svg>
+            <CanvasSvg
+              edges={laid.edges}
+              positions={laid.nodes}
+              endPositions={laid.endNodes}
+            />
 
             {/* Trigger node */}
             <CanvasNode
-              x={120}
-              y={nodePositions[0].y}
+              x={laid.nodes.get("__trigger__")?.x ?? 0}
+              y={laid.nodes.get("__trigger__")?.y ?? 0}
               selected={selection?.kind === "trigger"}
               onClick={(e) => {
                 e.stopPropagation();
@@ -358,44 +573,45 @@ export default function LeadsWorkflowEditor({
             />
 
             {/* Step nodes */}
-            {steps.map((step, i) => {
-              const pos = nodePositions[i + 1];
-              const Icon = STEP_ICONS[step.type];
-              const meta = STEP_TYPES.find((t) => t.value === step.type);
-              return (
-                <CanvasNode
-                  key={i}
-                  x={120}
-                  y={pos.y}
-                  selected={
-                    selection?.kind === "step" && selection.index === i
-                  }
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelection({ kind: "step", index: i });
-                  }}
-                  icon={<Icon className="w-4 h-4 text-zinc-300" />}
-                  title={meta?.label || step.type}
-                  subtitle={stepSummary(step)}
-                />
-              );
-            })}
+            {Array.from(laid.nodes.values())
+              .filter((n) => n.id !== "__trigger__")
+              .map((pos) => {
+                const node = graph.nodes[pos.id];
+                if (!node) return null;
+                const Icon = STEP_ICONS[node.type];
+                const meta = STEP_TYPES.find((t) => t.value === node.type);
+                return (
+                  <CanvasNode
+                    key={pos.id}
+                    x={pos.x}
+                    y={pos.y}
+                    selected={
+                      selection?.kind === "step" &&
+                      selection.nodeId === pos.id
+                    }
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setSelection({ kind: "step", nodeId: pos.id });
+                    }}
+                    icon={<Icon className="w-4 h-4 text-zinc-300" />}
+                    title={meta?.label || node.type}
+                    subtitle={nodeSummary(node)}
+                  />
+                );
+              })}
 
-            {/* END pill */}
-            <div
-              className="absolute -translate-x-1/2"
-              style={{
-                left: (NODE_W + 240) / 2,
-                top:
-                  (nodePositions[nodePositions.length - 1]?.y ?? 0) +
-                  NODE_H +
-                  CANVAS_PAD_Y / 2,
-              }}
-            >
-              <div className="text-[10px] font-bold tracking-wider text-zinc-500 bg-black px-3 py-1 rounded-full border border-line">
-                END
+            {/* END pills */}
+            {Array.from(laid.endNodes.values()).map((p) => (
+              <div
+                key={p.id}
+                className="absolute -translate-x-1/2"
+                style={{ left: p.x, top: p.y + NODE_H / 2 - 12 }}
+              >
+                <div className="text-[10px] font-bold tracking-wider text-zinc-500 bg-black px-3 py-1 rounded-full border border-line">
+                  END
+                </div>
               </div>
-            </div>
+            ))}
           </div>
 
           {/* Zoom controls */}
@@ -442,14 +658,73 @@ export default function LeadsWorkflowEditor({
             selection={selection}
             trigger={trigger}
             onTriggerChange={setTrigger}
-            steps={steps}
-            onStepChange={updateStep}
-            onStepRemove={removeStep}
+            graph={graph}
+            onNodeChange={updateNode}
+            onNodeDelete={deleteNode}
             runs={initialRuns}
           />
         </aside>
       </div>
     </div>
+  );
+}
+
+function CanvasSvg({
+  edges,
+  positions,
+  endPositions,
+}: {
+  edges: LaidEdge[];
+  positions: Map<string, LaidNode>;
+  endPositions: Map<string, LaidNode>;
+}) {
+  const all = new Map<string, LaidNode>([
+    ...positions.entries(),
+    ...endPositions.entries(),
+  ]);
+  return (
+    <svg
+      className="absolute inset-0 pointer-events-none"
+      width="100%"
+      height="100%"
+      style={{ overflow: "visible" }}
+    >
+      {edges.map((e, i) => {
+        const from = all.get(e.fromId);
+        const to = all.get(e.toId);
+        if (!from || !to) return null;
+        const x1 = from.x;
+        const y1 = from.y + NODE_H;
+        const x2 = to.x;
+        const y2 = to.y;
+        // Cubic bezier with a vertical control on both ends for a clean
+        // bend on diagonal connectors.
+        const mid = (y1 + y2) / 2;
+        const path = `M ${x1} ${y1} C ${x1} ${mid}, ${x2} ${mid}, ${x2} ${y2}`;
+        return (
+          <g key={i}>
+            <path
+              d={path}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              strokeDasharray="4 4"
+              className="text-zinc-600"
+            />
+            {e.label && (
+              <text
+                x={(x1 + x2) / 2 + 6}
+                y={mid - 4}
+                className="text-[11px] fill-zinc-500"
+                style={{ fontWeight: 600 }}
+              >
+                {e.label}
+              </text>
+            )}
+          </g>
+        );
+      })}
+    </svg>
   );
 }
 
@@ -477,7 +752,7 @@ function CanvasNode({
       type="button"
       onClick={onClick}
       className={
-        "absolute text-left bg-card rounded-xl border transition-all px-4 py-3 flex items-center gap-3 shadow-sm " +
+        "absolute text-left bg-card rounded-xl border transition-all px-3 py-2 flex items-center gap-2 shadow-sm -translate-x-1/2 " +
         (selected
           ? "border-primary ring-2 ring-primary/40"
           : accent === "blue"
@@ -510,17 +785,17 @@ function Inspector({
   selection,
   trigger,
   onTriggerChange,
-  steps,
-  onStepChange,
-  onStepRemove,
+  graph,
+  onNodeChange,
+  onNodeDelete,
   runs,
 }: {
   selection: Selection;
   trigger: WorkflowTrigger;
   onTriggerChange: (t: WorkflowTrigger) => void;
-  steps: WorkflowStep[];
-  onStepChange: (i: number, patch: Partial<WorkflowStep>) => void;
-  onStepRemove: (i: number) => void;
+  graph: WorkflowGraph;
+  onNodeChange: (id: string, patch: Partial<WorkflowNode>) => void;
+  onNodeDelete: (id: string) => void;
   runs: LeadWorkflowRun[];
 }) {
   if (!selection) {
@@ -562,7 +837,7 @@ function Inspector({
             Trigger Event
           </Label>
           <div className="relative">
-            {/* Native select kept: matches existing app pattern. */}
+            {/* Native select kept: matches existing leads-page select pattern. */}
             <select
               value={trigger}
               onChange={(e) =>
@@ -589,9 +864,9 @@ function Inspector({
     );
   }
 
-  const step = steps[selection.index];
-  if (!step) return null;
-  const meta = STEP_TYPES.find((t) => t.value === step.type);
+  const node = graph.nodes[selection.nodeId];
+  if (!node) return null;
+  const meta = STEP_TYPES.find((t) => t.value === node.type);
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between">
@@ -601,7 +876,7 @@ function Inspector({
         <Button
           type="button"
           variant="ghost"
-          onClick={() => onStepRemove(selection.index)}
+          onClick={() => onNodeDelete(node.id)}
           className="h-auto p-1.5 text-zinc-500 hover:text-rose-400 hover:bg-transparent"
           aria-label="Remove step"
         >
@@ -613,13 +888,10 @@ function Inspector({
           Node Type
         </Label>
         <div className="bg-canvas border border-line rounded-xl px-3 py-2 text-sm text-fg font-bold">
-          {meta?.label || step.type}
+          {meta?.label || node.type}
         </div>
       </div>
-      <StepFields
-        step={step}
-        onChange={(patch) => onStepChange(selection.index, patch)}
-      />
+      <NodeFields node={node} onChange={(patch) => onNodeChange(node.id, patch)} />
       <p className="text-xs text-zinc-500 pt-2 border-t border-line">
         Variables:{" "}
         <code className="text-zinc-300">{`{{first_name}}`}</code>,{" "}
@@ -632,23 +904,23 @@ function Inspector({
   );
 }
 
-function StepFields({
-  step,
+function NodeFields({
+  node,
   onChange,
 }: {
-  step: WorkflowStep;
-  onChange: (patch: Partial<WorkflowStep>) => void;
+  node: WorkflowNode;
+  onChange: (patch: Partial<WorkflowNode>) => void;
 }) {
-  if (step.type === "send_sms") {
+  if (node.type === "send_sms") {
     return (
       <div className="space-y-2">
         <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wide">
           Message
         </Label>
         <Textarea
-          value={step.message}
+          value={node.message}
           onChange={(e) =>
-            onChange({ message: e.target.value } as Partial<WorkflowStep>)
+            onChange({ message: e.target.value } as Partial<WorkflowNode>)
           }
           placeholder="Hi {{first_name}}, ..."
           rows={5}
@@ -656,7 +928,7 @@ function StepFields({
       </div>
     );
   }
-  if (step.type === "delay") {
+  if (node.type === "delay") {
     return (
       <div className="space-y-2">
         <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wide">
@@ -666,38 +938,34 @@ function StepFields({
           <Input
             type="number"
             min={1}
-            value={step.minutes}
+            value={node.minutes}
             onChange={(e) =>
               onChange({
                 minutes: Math.max(1, Number(e.target.value) || 1),
-              } as Partial<WorkflowStep>)
+              } as Partial<WorkflowNode>)
             }
             className="w-24 h-auto px-3 py-2 text-sm"
           />
           <span className="text-sm text-zinc-400 font-bold">minutes</span>
         </div>
-        <p className="text-xs text-zinc-500">{prettyDelay(step.minutes)}</p>
+        <p className="text-xs text-zinc-500">{prettyDelay(node.minutes)}</p>
       </div>
     );
   }
-  if (step.type === "update_stage") {
+  if (node.type === "update_stage") {
     return (
       <div className="space-y-2">
         <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wide">
           New stage
         </Label>
         <div className="relative">
-          {/* Native select kept: matches existing app pattern. */}
+          {/* Native select kept: matches existing leads-page select pattern. */}
           <select
-            value={step.stage}
+            value={node.stage}
             onChange={(e) =>
               onChange({
-                stage: e.target.value as
-                  | "new"
-                  | "contacted"
-                  | "responded"
-                  | "estimate_sent",
-              } as Partial<WorkflowStep>)
+                stage: e.target.value as LeadStageSlug,
+              } as Partial<WorkflowNode>)
             }
             className="w-full appearance-none bg-canvas border border-line-strong rounded-xl px-3 py-2 pr-9 text-sm text-fg font-bold focus:outline-none focus:ring-2 focus:ring-ring"
           >
@@ -712,7 +980,7 @@ function StepFields({
       </div>
     );
   }
-  if (step.type === "create_task") {
+  if (node.type === "create_task") {
     return (
       <div className="space-y-3">
         <div className="space-y-2">
@@ -720,9 +988,9 @@ function StepFields({
             Title
           </Label>
           <Input
-            value={step.title}
+            value={node.title}
             onChange={(e) =>
-              onChange({ title: e.target.value } as Partial<WorkflowStep>)
+              onChange({ title: e.target.value } as Partial<WorkflowNode>)
             }
             placeholder="Task title"
             className="h-auto px-3 py-2 text-sm"
@@ -735,11 +1003,11 @@ function StepFields({
           <Input
             type="number"
             min={0}
-            value={step.due_in_minutes ?? 0}
+            value={node.due_in_minutes ?? 0}
             onChange={(e) =>
               onChange({
                 due_in_minutes: Math.max(0, Number(e.target.value) || 0),
-              } as Partial<WorkflowStep>)
+              } as Partial<WorkflowNode>)
             }
             className="w-32 h-auto px-3 py-2 text-sm"
           />
@@ -747,20 +1015,78 @@ function StepFields({
       </div>
     );
   }
-  if (step.type === "notify_admin") {
+  if (node.type === "notify_admin") {
     return (
       <div className="space-y-2">
         <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wide">
           Message to org phone
         </Label>
         <Textarea
-          value={step.message}
+          value={node.message}
           onChange={(e) =>
-            onChange({ message: e.target.value } as Partial<WorkflowStep>)
+            onChange({ message: e.target.value } as Partial<WorkflowNode>)
           }
           placeholder="New lead needs attention..."
           rows={4}
         />
+      </div>
+    );
+  }
+  if (node.type === "wait_for_reply") {
+    return (
+      <div className="space-y-2">
+        <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wide">
+          Timeout (minutes)
+        </Label>
+        <Input
+          type="number"
+          min={1}
+          value={node.timeout_minutes}
+          onChange={(e) =>
+            onChange({
+              timeout_minutes: Math.max(1, Number(e.target.value) || 1),
+            } as Partial<WorkflowNode>)
+          }
+          className="w-32 h-auto px-3 py-2 text-sm"
+        />
+        <p className="text-xs text-zinc-500">
+          Branches On Reply (lead texts back) or On Timeout (timer
+          elapses). Edit the visual connectors to change destinations.
+        </p>
+      </div>
+    );
+  }
+  if (node.type === "paths") {
+    return (
+      <div className="space-y-2">
+        <Label className="text-xs font-bold text-zinc-400 uppercase tracking-wide">
+          If lead stage is
+        </Label>
+        <div className="relative">
+          {/* Native select kept: matches existing app pattern. */}
+          <select
+            value={node.condition.stage}
+            onChange={(e) =>
+              onChange({
+                condition: {
+                  kind: "lead_stage_is",
+                  stage: e.target.value as LeadStageSlug,
+                },
+              } as Partial<WorkflowNode>)
+            }
+            className="w-full appearance-none bg-canvas border border-line-strong rounded-xl px-3 py-2 pr-9 text-sm text-fg font-bold focus:outline-none focus:ring-2 focus:ring-ring"
+          >
+            {STAGES.map((s) => (
+              <option key={s.value} value={s.value}>
+                {s.label}
+              </option>
+            ))}
+          </select>
+          <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400 pointer-events-none" />
+        </div>
+        <p className="text-xs text-zinc-500">
+          Branches Yes (condition matches) or No (otherwise).
+        </p>
       </div>
     );
   }
@@ -798,15 +1124,19 @@ function RunHistory({ runs }: { runs: LeadWorkflowRun[] }) {
   );
 }
 
-function stepSummary(step: WorkflowStep): string {
-  if (step.type === "send_sms") {
-    const t = step.message.trim();
-    return t.length > 48 ? `${t.slice(0, 48)}…` : t || "(empty)";
+function nodeSummary(node: WorkflowNode): string {
+  if (node.type === "send_sms") {
+    const t = node.message.trim();
+    return t.length > 40 ? `${t.slice(0, 40)}…` : t || "(empty)";
   }
-  if (step.type === "delay") return `Delay for ${prettyDelay(step.minutes)}`;
-  if (step.type === "update_stage") return `Stage → ${step.stage}`;
-  if (step.type === "create_task") return step.title || "Untitled task";
-  if (step.type === "notify_admin") return "Notify org phone";
+  if (node.type === "delay") return `Delay for ${prettyDelay(node.minutes)}`;
+  if (node.type === "update_stage") return `Stage → ${node.stage}`;
+  if (node.type === "create_task") return node.title || "Untitled task";
+  if (node.type === "notify_admin") return "Notify org phone";
+  if (node.type === "wait_for_reply")
+    return `Timeout ${prettyDelay(node.timeout_minutes)}`;
+  if (node.type === "paths")
+    return `If lead stage is ${node.condition.stage}`;
   return "";
 }
 

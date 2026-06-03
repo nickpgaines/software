@@ -1,4 +1,8 @@
 import { createClient, type Client, type InValue } from "@libsql/client";
+import {
+  WORKFLOW_TEMPLATES,
+  serializeGraph,
+} from "@/lib/lead-workflows-types";
 
 type Args = InValue[];
 
@@ -359,7 +363,7 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
 // Bump when init() gains migrations that must run on existing deploys.
 // First call after deploy runs the full init; subsequent cold starts hit
 // the fast-path below (one SELECT) and skip the ~150 DDL statements.
-const SCHEMA_VERSION = 14;
+const SCHEMA_VERSION = 15;
 
 async function init(): Promise<void> {
   // Fast path: if the schema is already at the current version, skip the
@@ -1386,14 +1390,15 @@ async function init(): Promise<void> {
       updated_at        TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    -- Seed rows are intentionally minimal here; the schema v15 backfill
+    -- below replaces them with the Flyra-faithful graph templates via
+    -- the WORKFLOW_TEMPLATES import. Keeping these as empty stubs avoids
+    -- duplicating the (very long) graph JSON in two places.
     INSERT OR IGNORE INTO lead_workflows (id, name, trigger, max_per_day, enabled, steps)
     VALUES
-      (1, 'Missed Call Text-Back', 'missed_call', 3, 0,
-       '[{"type":"send_sms","message":"Hi {{first_name}}, this is {{company_name}} — sorry we missed your call! How can we help?"},{"type":"notify_admin","message":"Missed call from {{first_name}} {{last_name}} ({{phone}}). Auto-text sent."}]'),
-      (2, 'New Lead Follow-up (3-touch)', 'lead_created', 3, 0,
-       '[{"type":"send_sms","message":"Hi {{first_name}}! Thanks for reaching out to {{company_name}}. We got your info and will be in touch shortly."},{"type":"delay","minutes":60},{"type":"send_sms","message":"Hey {{first_name}} — just checking in. Still want to chat about your project? Reply YES and we will give you a call."},{"type":"delay","minutes":1440},{"type":"send_sms","message":"Hi {{first_name}}, last quick follow-up from {{company_name}}. Let us know if there is anything we can help with!"},{"type":"update_stage","stage":"contacted"}]'),
-      (3, 'Estimate Sent Follow-up', 'estimate_sent', 3, 0,
-       '[{"type":"delay","minutes":2880},{"type":"send_sms","message":"Hi {{first_name}}, just following up on the estimate we sent over. Any questions or anything we can clarify?"},{"type":"delay","minutes":4320},{"type":"send_sms","message":"Hey {{first_name}} — circling back on your estimate from {{company_name}}. Happy to walk through it."},{"type":"delay","minutes":7200},{"type":"send_sms","message":"Hi {{first_name}}, last check-in on the estimate. Let us know if we should keep it open or close it out."}]');
+      (1, 'Missed Call Text-Back', 'missed_call', 3, 0, '[]'),
+      (2, 'New Lead Follow-up', 'lead_created', 3, 0, '[]'),
+      (3, 'Quote Request Confirmation', 'lead_created', 3, 0, '[]');
 
     CREATE TABLE IF NOT EXISTS sprints (
       id           INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2159,41 +2164,60 @@ async function init(): Promise<void> {
       ON mcp_access_tokens(client_id);
   `);
 
-  // Schema v14: replace empty stub workflows with the real, editable
-  // templates. The original seed inserted three workflows with
-  // `steps='[]'`, so existing tenants see them as paused, zero-step rows
-  // even after the new schema ships. Update in place when steps is still
-  // empty so we don't clobber anything a user customized.
-  for (const tpl of [
-    {
-      id: 1,
-      name: "Missed Call Text-Back",
-      trigger: "missed_call",
-      steps:
-        '[{"type":"send_sms","message":"Hi {{first_name}}, this is {{company_name}} — sorry we missed your call! How can we help?"},{"type":"notify_admin","message":"Missed call from {{first_name}} {{last_name}} ({{phone}}). Auto-text sent."}]',
-    },
-    {
-      id: 2,
-      name: "New Lead Follow-up (3-touch)",
-      trigger: "lead_created",
-      steps:
-        '[{"type":"send_sms","message":"Hi {{first_name}}! Thanks for reaching out to {{company_name}}. We got your info and will be in touch shortly."},{"type":"delay","minutes":60},{"type":"send_sms","message":"Hey {{first_name}} — just checking in. Still want to chat about your project? Reply YES and we will give you a call."},{"type":"delay","minutes":1440},{"type":"send_sms","message":"Hi {{first_name}}, last quick follow-up from {{company_name}}. Let us know if there is anything we can help with!"},{"type":"update_stage","stage":"contacted"}]',
-    },
-    {
-      id: 3,
-      name: "Estimate Sent Follow-up",
-      trigger: "estimate_sent",
-      steps:
-        '[{"type":"delay","minutes":2880},{"type":"send_sms","message":"Hi {{first_name}}, just following up on the estimate we sent over. Any questions or anything we can clarify?"},{"type":"delay","minutes":4320},{"type":"send_sms","message":"Hey {{first_name}} — circling back on your estimate from {{company_name}}. Happy to walk through it."},{"type":"delay","minutes":7200},{"type":"send_sms","message":"Hi {{first_name}}, last check-in on the estimate. Let us know if we should keep it open or close it out."}]',
-    },
-  ]) {
+  // Schema v15: lead_workflow_runs needs a current_node_id pointer for
+  // graph-based execution, and the seeded workflows need their content
+  // replaced with the Flyra-faithful graph templates. Only overwrite
+  // workflow rows that look like the legacy stubs / earlier seed defaults
+  // — anything that's already been customized by a user is left alone.
+  const lwrCols = await _db
+    .prepare("PRAGMA table_info(lead_workflow_runs)")
+    .all<{ name: string }>();
+  await alterAddColumn("lead_workflow_runs", "current_node_id", "TEXT", lwrCols);
+  // The legacy seed used named stub workflows with `steps='[]'`, and the
+  // v14 backfill replaced them with linear-array steps. Both of those are
+  // safe to overwrite with the new graph format on the canonical IDs 1/2/3,
+  // since nothing in production has customized them yet.
+  const STALE_SHAPES = ["[]", "", null] as const;
+  const STALE_LINEAR_NAMES = new Set([
+    "Missed Call Text-Back",
+    "New Lead Follow-up (3-touch)",
+    "Estimate Sent Follow-up",
+    "CRACKED lead follow-up sequence",
+    "Contact fresh leads",
+  ]);
+  for (let i = 0; i < WORKFLOW_TEMPLATES.length; i += 1) {
+    const tpl = WORKFLOW_TEMPLATES[i];
+    const id = i + 1;
+    const existing = await _db
+      .prepare(
+        "SELECT name, steps FROM lead_workflows WHERE id = ? LIMIT 1"
+      )
+      .get<{ name: string; steps: string | null }>(id);
+    if (!existing) {
+      await _db
+        .prepare(
+          `INSERT INTO lead_workflows
+             (id, company_id, name, trigger, max_per_day, enabled, steps)
+           VALUES (?, 1, ?, ?, 3, 0, ?)`
+        )
+        .run(id, tpl.name, tpl.trigger, serializeGraph(tpl.graph));
+      continue;
+    }
+    const stale =
+      STALE_SHAPES.includes(existing.steps as (typeof STALE_SHAPES)[number]) ||
+      STALE_LINEAR_NAMES.has(existing.name) ||
+      // Detect legacy linear-array shape (starts with `[`, not `{"start_ids"`).
+      (typeof existing.steps === "string" &&
+        existing.steps.trim().startsWith("[") &&
+        !existing.steps.includes("\"start_ids\""));
+    if (!stale) continue;
     await _db
       .prepare(
         `UPDATE lead_workflows
            SET name = ?, trigger = ?, steps = ?, updated_at = datetime('now')
-         WHERE id = ? AND (steps = '[]' OR steps IS NULL OR steps = '')`
+         WHERE id = ?`
       )
-      .run(tpl.name, tpl.trigger, tpl.steps, tpl.id);
+      .run(tpl.name, tpl.trigger, serializeGraph(tpl.graph), id);
   }
 
   // Stamp the schema version so subsequent cold starts hit the fast-path
@@ -2953,6 +2977,7 @@ export type LeadWorkflowRun = {
   lead_id: number;
   status: string;
   step_index: number;
+  current_node_id: string | null;
   last_step_at: string | null;
   error: string | null;
   created_at: string;

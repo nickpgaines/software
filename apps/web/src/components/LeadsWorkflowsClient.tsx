@@ -273,7 +273,7 @@ export default function LeadsWorkflowsClient({
                           {t.description}
                         </div>
                         <div className="text-xs text-zinc-500 mt-1">
-                          {t.steps.length} steps ·{" "}
+                          {Object.keys(t.graph.nodes).length} steps ·{" "}
                           {TRIGGER_LABELS[t.trigger] || t.trigger}
                         </div>
                       </button>
@@ -336,8 +336,14 @@ function WorkflowRow({
   const enabled = !!workflow.enabled;
   const stepCount = (() => {
     try {
-      const arr = JSON.parse(workflow.steps) as unknown[];
-      return Array.isArray(arr) ? arr.length : 0;
+      const parsed = JSON.parse(workflow.steps) as
+        | { nodes?: Record<string, unknown> }
+        | unknown[];
+      if (Array.isArray(parsed)) return parsed.length;
+      if (parsed && typeof parsed === "object" && parsed.nodes) {
+        return Object.keys(parsed.nodes).length;
+      }
+      return 0;
     } catch {
       return 0;
     }

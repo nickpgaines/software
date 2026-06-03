@@ -5,7 +5,10 @@ import {
   findCompanyByPlatformNumber,
   getPlatformConfig,
 } from "@/lib/twilio-platform";
-import { fireTrigger } from "@/lib/lead-workflows";
+import {
+  fireTrigger,
+  advanceWaitingRunsOnReply,
+} from "@/lib/lead-workflows";
 
 // Inbound webhook for SMS sent to platform-managed Twilio numbers. All
 // platform numbers share the master account's AccountSid, so we identify
@@ -97,9 +100,12 @@ export async function POST(req: Request) {
     )
     .run(company.id, match.id, body, providerSid, toPhone, normalizedFrom);
 
-  // Fire lead_replied trigger for any leads tied to this customer or matching
-  // the inbound phone directly. Inbound reply is also a cue that whatever
-  // outreach was in flight should stop, so we cancel pending runs for this lead.
+  // Lead replied: advance any wait_for_reply runs onto their on_reply edge,
+  // then fire the lead_replied trigger for separate workflows that watch
+  // for replies. We no longer blanket-cancel pending runs — wait_for_reply
+  // nodes specifically represent "we want the reply to take us somewhere",
+  // and non-waiting runs are typically delay/SMS chains that should
+  // continue regardless.
   const allLeads = (await db
     .prepare("SELECT id, phone, customer_id FROM leads WHERE company_id = ?")
     .all(company.id)) as Pick<Lead, "id" | "phone" | "customer_id">[];
@@ -109,12 +115,10 @@ export async function POST(req: Request) {
       (l.phone && normalizeUSPhone(l.phone) === normalizedFrom)
   );
   for (const lead of matchedLeads) {
-    await db
-      .prepare(
-        `UPDATE lead_workflow_runs SET status = 'cancelled'
-           WHERE lead_id = ? AND status = 'pending'`
-      )
-      .run(lead.id);
+    await advanceWaitingRunsOnReply({
+      companyId: company.id,
+      leadId: lead.id,
+    });
     await fireTrigger({
       companyId: company.id,
       leadId: lead.id,
