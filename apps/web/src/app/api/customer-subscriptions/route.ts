@@ -219,7 +219,11 @@ export async function POST(req: Request) {
   }
 
   const now = new Date().toISOString();
-  const status = action === "accept" ? "active" : "pending";
+  // Status is always pending at insert time. For action='accept' we'll
+  // attempt Stripe Subscription creation below and only promote to 'active'
+  // if it succeeds — keeps "active" a strict invariant (accepted + card on
+  // file + Stripe Sub linked).
+  const status = "pending";
   const sentAt = action === "send" ? now : null;
   const acceptedAt = action === "accept" ? now : null;
   const signedAt = signatureData ? now : null;
@@ -271,11 +275,9 @@ export async function POST(req: Request) {
   const subscriptionId = Number(result.lastInsertRowid);
 
   if (action === "accept") {
-    // Create the Stripe Subscription that will run the recurring billing on
-    // its own schedule. Best-effort: if Stripe creation fails (typically
-    // no_card for merchant-initiated activation before the customer has
-    // saved a card), the row stays active and admin can retry once a card
-    // is on file. The visit schedule still seeds.
+    // Try to create the Stripe Subscription on the customer's saved card.
+    // Only promote the row to 'active' if Stripe Sub creation succeeds —
+    // a sub without recurring billing wired up should NOT show as active.
     const stripeResult = await createStripeSubscriptionForRow({
       companyId,
       customerId,
@@ -291,7 +293,8 @@ export async function POST(req: Request) {
         .prepare(
           `UPDATE customer_subscriptions
              SET stripe_subscription_id = ?,
-                 stripe_subscription_status = ?
+                 stripe_subscription_status = ?,
+                 status = 'active'
            WHERE id = ? AND company_id = ?`
         )
         .run(
@@ -300,30 +303,33 @@ export async function POST(req: Request) {
           subscriptionId,
           companyId
         );
+      try {
+        await ensureRollingVisits(db, {
+          subscriptionId,
+          customerId,
+          companyId,
+          startDateIso: startDateToIso(startDate),
+          serviceInterval,
+          pricePerVisitCents: price_cents,
+          visitName: name,
+          visitDescription: description,
+          soldById,
+          technicianId: null,
+        });
+      } catch (e) {
+        // Seeding the rolling window is best-effort — log and continue so
+        // the subscription itself still saves. The /api/cron/subscription-visits
+        // top-up will catch up on the next run.
+        console.error("ensureRollingVisits failed", e);
+      }
     } else {
+      // Stripe Sub creation failed (usually no_card if the customer has no
+      // saved card yet). Leave the row pending; the merchant can save a
+      // card to the customer and re-attempt activation via the accept flow.
       console.error(
         `Stripe Subscription creation failed for sub ${subscriptionId}:`,
         stripeResult.error
       );
-    }
-    try {
-      await ensureRollingVisits(db, {
-        subscriptionId,
-        customerId,
-        companyId,
-        startDateIso: startDateToIso(startDate),
-        serviceInterval,
-        pricePerVisitCents: price_cents,
-        visitName: name,
-        visitDescription: description,
-        soldById,
-        technicianId: null,
-      });
-    } catch (e) {
-      // Seeding the rolling window is best-effort — log and continue so
-      // the subscription itself still saves. The /api/cron/subscription-visits
-      // top-up will catch up on the next run.
-      console.error("ensureRollingVisits failed", e);
     }
   }
 
