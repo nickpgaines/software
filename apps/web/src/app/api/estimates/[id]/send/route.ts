@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { randomBytes } from "node:crypto";
-import { getDb, type Estimate } from "@/lib/db";
+import { getDb, syncReplica, type Estimate } from "@/lib/db";
 import { getSessionContext } from "@/lib/auth";
 import { getAppOrigin } from "@/lib/stripe";
 import { sendAndLogCompanySms } from "@/lib/sms";
@@ -22,6 +22,11 @@ export async function POST(
   const db = await getDb();
   const id = Number(params.id);
   const companyId = ctx.companyId;
+  // This authorize-read hits the local embedded replica, which can lag the
+  // remote primary. A just-created estimate (written on another instance)
+  // would otherwise read as missing and 404 the send. Pull the latest first
+  // so the lookup below — and the customer lookup — see current data.
+  await syncReplica();
   const estimate = (await db
     .prepare("SELECT * FROM estimates WHERE id = ? AND company_id = ?")
     .get(id, companyId)) as Estimate | undefined;
