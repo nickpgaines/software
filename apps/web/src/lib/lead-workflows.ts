@@ -1,8 +1,14 @@
-import { getDb, type Lead, type LeadWorkflow, type LeadWorkflowRun } from "@/lib/db";
+import {
+  getDb,
+  type Lead,
+  type LeadWorkflow,
+  type LeadWorkflowRun,
+} from "@/lib/db";
 import { sendCompanySms, normalizeUSPhone } from "@/lib/sms";
 import {
-  parseSteps,
-  type WorkflowStep,
+  parseGraph,
+  type WorkflowGraph,
+  type WorkflowNode,
   type WorkflowTrigger,
 } from "@/lib/lead-workflows-types";
 
@@ -10,14 +16,21 @@ export {
   WORKFLOW_TRIGGERS,
   WORKFLOW_TEMPLATES,
   STEP_TYPES,
-  defaultStep,
+  defaultNode,
+  parseGraph,
   parseSteps,
+  serializeGraph,
+  nodeEdges,
+  newNodeId,
 } from "@/lib/lead-workflows-types";
 export type {
   WorkflowTrigger,
-  WorkflowStep,
-  WorkflowStepType,
+  WorkflowNode,
+  WorkflowNodeType,
+  WorkflowGraph,
   WorkflowTemplate,
+  LeadStageSlug,
+  PathCondition,
 } from "@/lib/lead-workflows-types";
 
 function applyVars(
@@ -53,13 +66,14 @@ const STAGE_TIMESTAMP: Record<string, string | null> = {
   contacted: "contacted_at",
   responded: "responded_at",
   estimate_sent: "estimate_sent_at",
+  no_response: null,
 };
 
-// Enqueue workflow_runs for every enabled workflow on this company that
-// matches the given trigger, then immediately advance any zero-delay
-// leading steps so the user sees instant action (the daily cron only
-// catches longer-delayed steps after the fact). Safe to call from API
-// routes — failures here must never break the originating action.
+// Enqueue one workflow_run per branch start of every enabled workflow on
+// this company that matches the given trigger, then drain immediately so
+// the first action fires on the originating request rather than waiting
+// for the daily cron. Safe to call from API routes — failures here must
+// never break the originating action.
 export async function fireTrigger(args: {
   companyId: number;
   leadId: number;
@@ -76,9 +90,9 @@ export async function fireTrigger(args: {
       .all(companyId, trigger)) as LeadWorkflow[];
     let enrolled = false;
     for (const wf of workflows) {
-      const steps = parseSteps(wf.steps);
-      if (steps.length === 0) continue;
-      // Don't double-enroll an active run for the same workflow + lead.
+      const graph = parseGraph(wf.steps);
+      if (graph.start_ids.length === 0) continue;
+      // Don't double-enroll while an active run exists for this workflow + lead.
       const existing = await db
         .prepare(
           `SELECT id FROM lead_workflow_runs
@@ -87,18 +101,19 @@ export async function fireTrigger(args: {
         )
         .get<{ id: number }>(wf.id, leadId);
       if (existing) continue;
-      await db
-        .prepare(
-          `INSERT INTO lead_workflow_runs
-             (workflow_id, lead_id, status, step_index, last_step_at)
-           VALUES (?, ?, 'pending', 0, datetime('now'))`
-        )
-        .run(wf.id, leadId);
-      enrolled = true;
+      for (const startId of graph.start_ids) {
+        if (!graph.nodes[startId]) continue;
+        await db
+          .prepare(
+            `INSERT INTO lead_workflow_runs
+               (workflow_id, lead_id, status, step_index, current_node_id, last_step_at)
+             VALUES (?, ?, 'pending', 0, ?, datetime('now'))`
+          )
+          .run(wf.id, leadId, startId);
+        enrolled = true;
+      }
     }
     if (enrolled) {
-      // Drain immediately so the first SMS / stage-update fires on the
-      // originating request, not on the next daily cron tick.
       await runPendingWorkflowSteps().catch((e) => {
         console.error("[lead-workflows] inline drain failed", e);
       });
@@ -108,83 +123,134 @@ export async function fireTrigger(args: {
   }
 }
 
-// Execute one step on one run, return true if we should immediately try the
-// next step (non-delay actions advance instantly). For delay steps, returns
-// false (we wait for the cron to come back around).
-async function executeStep(
+// Advance any pending wait_for_reply runs for this lead onto their
+// on_reply edge, then drain. Called from the inbound SMS handler when a
+// lead replies.
+export async function advanceWaitingRunsOnReply(args: {
+  companyId: number;
+  leadId: number;
+}): Promise<void> {
+  try {
+    const { companyId, leadId } = args;
+    const db = await getDb();
+    const runs = (await db
+      .prepare(
+        `SELECT r.* FROM lead_workflow_runs r
+           JOIN lead_workflows w ON w.id = r.workflow_id
+          WHERE r.lead_id = ? AND r.status = 'pending'
+            AND w.company_id = ?`
+      )
+      .all(leadId, companyId)) as LeadWorkflowRun[];
+    let advanced = false;
+    for (const run of runs) {
+      const wf = await db
+        .prepare("SELECT * FROM lead_workflows WHERE id = ?")
+        .get<LeadWorkflow>(run.workflow_id);
+      if (!wf) continue;
+      const graph = parseGraph(wf.steps);
+      const node = run.current_node_id
+        ? graph.nodes[run.current_node_id]
+        : undefined;
+      if (!node || node.type !== "wait_for_reply") continue;
+      const next = node.on_reply ?? null;
+      await db
+        .prepare(
+          `UPDATE lead_workflow_runs
+             SET current_node_id = ?, last_step_at = datetime('now')
+           WHERE id = ?`
+        )
+        .run(next, run.id);
+      advanced = true;
+    }
+    if (advanced) {
+      await runPendingWorkflowSteps().catch((e) => {
+        console.error("[lead-workflows] reply drain failed", e);
+      });
+    }
+  } catch (err) {
+    console.error("[lead-workflows] advanceWaitingRunsOnReply failed", err);
+  }
+}
+
+type StepResult = {
+  // Where to go next. `null` means terminate the branch (completed).
+  next_node_id: string | null;
+  // `true` if the cron should immediately try the next node in the same
+  // tick; `false` means we're parked (delay timer, waiting on reply).
+  immediate: boolean;
+  // Hard error: mark run failed and stop.
+  error?: string;
+};
+
+async function executeNode(
   run: LeadWorkflowRun,
-  step: WorkflowStep,
+  node: WorkflowNode,
   lead: Lead,
+  graph: WorkflowGraph,
   companyId: number
-): Promise<{ advanced: boolean; immediate: boolean; error?: string }> {
+): Promise<StepResult> {
   const db = await getDb();
   const vars = await leadVars(companyId, lead);
 
-  if (step.type === "delay") {
-    // Check whether enough time has elapsed since last_step_at.
+  if (node.type === "delay") {
     const lastIso = run.last_step_at || run.created_at;
     const lastMs = new Date(lastIso + "Z").getTime();
-    const nowMs = Date.now();
     if (Number.isNaN(lastMs)) {
-      // Fall through and treat as ready — bad timestamps shouldn't strand runs.
-      await db
-        .prepare(
-          `UPDATE lead_workflow_runs
-             SET step_index = step_index + 1,
-                 last_step_at = datetime('now')
-           WHERE id = ?`
-        )
-        .run(run.id);
-      return { advanced: true, immediate: true };
+      return { next_node_id: node.next ?? null, immediate: true };
     }
-    const elapsedMin = (nowMs - lastMs) / 60000;
-    if (elapsedMin < step.minutes) {
-      return { advanced: false, immediate: false };
+    const elapsedMin = (Date.now() - lastMs) / 60000;
+    if (elapsedMin < node.minutes) {
+      return { next_node_id: node.id, immediate: false };
     }
-    await db
-      .prepare(
-        `UPDATE lead_workflow_runs
-           SET step_index = step_index + 1,
-               last_step_at = datetime('now')
-         WHERE id = ?`
-      )
-      .run(run.id);
-    return { advanced: true, immediate: true };
+    return { next_node_id: node.next ?? null, immediate: true };
   }
 
-  if (step.type === "send_sms") {
+  if (node.type === "wait_for_reply") {
+    const lastIso = run.last_step_at || run.created_at;
+    const lastMs = new Date(lastIso + "Z").getTime();
+    if (Number.isNaN(lastMs)) {
+      return { next_node_id: node.on_timeout ?? null, immediate: true };
+    }
+    const elapsedMin = (Date.now() - lastMs) / 60000;
+    if (elapsedMin < node.timeout_minutes) {
+      // Park here; advanceWaitingRunsOnReply will move us to on_reply when
+      // the lead replies, and the cron will move us to on_timeout once the
+      // timer elapses.
+      return { next_node_id: node.id, immediate: false };
+    }
+    return { next_node_id: node.on_timeout ?? null, immediate: true };
+  }
+
+  if (node.type === "send_sms") {
     if (!lead.phone) {
-      return { advanced: true, immediate: true, error: "Lead has no phone" };
+      return {
+        next_node_id: node.next ?? null,
+        immediate: true,
+        error: "Lead has no phone",
+      };
     }
     const to = normalizeUSPhone(lead.phone) || lead.phone;
-    const body = applyVars(step.message, vars);
+    const body = applyVars(node.message, vars);
     const result = await sendCompanySms({ companyId, to, body });
     if (!result.ok) {
-      await db
-        .prepare(
-          `UPDATE lead_workflow_runs
-             SET status = 'failed', error = ?, last_step_at = datetime('now')
-           WHERE id = ?`
-        )
-        .run(result.error, run.id);
-      return { advanced: false, immediate: false, error: result.error };
+      return {
+        next_node_id: node.id,
+        immediate: false,
+        error: result.error,
+      };
     }
-    // Mirror outbound into messages so it shows up in the conversation thread
-    // if a customer record exists for this phone.
-    const customer = await db
-      .prepare(
-        `SELECT id FROM customers
-           WHERE company_id = ? AND phone IS NOT NULL AND TRIM(phone) != ''`
-      )
-      .all<{ id: number; phone?: string }>(companyId);
-    let customerId: number | null = null;
-    if (lead.customer_id) {
-      customerId = lead.customer_id;
-    } else {
-      const match = customer.find(
-        (c) =>
-          normalizeUSPhone((c as { phone?: string }).phone || "") ===
-          normalizeUSPhone(lead.phone || "")
+    // Mirror outbound into messages so it shows up in the conversation thread.
+    let customerId: number | null = lead.customer_id ?? null;
+    if (!customerId) {
+      const customers = (await db
+        .prepare(
+          `SELECT id, phone FROM customers
+             WHERE company_id = ? AND phone IS NOT NULL AND TRIM(phone) != ''`
+        )
+        .all(companyId)) as { id: number; phone: string }[];
+      const fromNorm = normalizeUSPhone(lead.phone || "");
+      const match = customers.find(
+        (c) => normalizeUSPhone(c.phone) === fromNorm
       );
       if (match) customerId = match.id;
     }
@@ -195,28 +261,13 @@ async function executeStep(
              (company_id, customer_id, body, direction, status, provider_sid, to_phone, from_phone)
            VALUES (?, ?, ?, 'outbound', ?, ?, ?, NULL)`
         )
-        .run(
-          companyId,
-          customerId,
-          body,
-          result.status,
-          result.sid,
-          to
-        );
+        .run(companyId, customerId, body, result.status, result.sid, to);
     }
-    await db
-      .prepare(
-        `UPDATE lead_workflow_runs
-           SET step_index = step_index + 1,
-               last_step_at = datetime('now')
-         WHERE id = ?`
-      )
-      .run(run.id);
-    return { advanced: true, immediate: true };
+    return { next_node_id: node.next ?? null, immediate: true };
   }
 
-  if (step.type === "update_stage") {
-    const tsCol = STAGE_TIMESTAMP[step.stage];
+  if (node.type === "update_stage") {
+    const tsCol = STAGE_TIMESTAMP[node.stage];
     if (tsCol) {
       await db
         .prepare(
@@ -226,29 +277,21 @@ async function executeStep(
                  updated_at = datetime('now')
            WHERE id = ? AND company_id = ?`
         )
-        .run(step.stage, lead.id, companyId);
+        .run(node.stage, lead.id, companyId);
     } else {
       await db
         .prepare(
           `UPDATE leads SET stage = ?, updated_at = datetime('now')
              WHERE id = ? AND company_id = ?`
         )
-        .run(step.stage, lead.id, companyId);
+        .run(node.stage, lead.id, companyId);
     }
-    await db
-      .prepare(
-        `UPDATE lead_workflow_runs
-           SET step_index = step_index + 1,
-               last_step_at = datetime('now')
-         WHERE id = ?`
-      )
-      .run(run.id);
-    return { advanced: true, immediate: true };
+    return { next_node_id: node.next ?? null, immediate: true };
   }
 
-  if (step.type === "create_task") {
-    const title = applyVars(step.title, vars);
-    const dueIn = step.due_in_minutes || 0;
+  if (node.type === "create_task") {
+    const title = applyVars(node.title, vars);
+    const dueIn = node.due_in_minutes || 0;
     await db
       .prepare(
         `INSERT INTO lead_tasks
@@ -256,44 +299,42 @@ async function executeStep(
          VALUES (?, ?, ?, datetime('now', ?), 'workflow')`
       )
       .run(companyId, lead.id, title, `+${dueIn} minutes`);
-    await db
-      .prepare(
-        `UPDATE lead_workflow_runs
-           SET step_index = step_index + 1,
-               last_step_at = datetime('now')
-         WHERE id = ?`
-      )
-      .run(run.id);
-    return { advanced: true, immediate: true };
+    return { next_node_id: node.next ?? null, immediate: true };
   }
 
-  if (step.type === "notify_admin") {
-    const db2 = await getDb();
-    const company = await db2
+  if (node.type === "notify_admin") {
+    const company = await db
       .prepare("SELECT phone FROM company WHERE id = ?")
       .get<{ phone: string | null }>(companyId);
     const adminPhone = company?.phone;
     if (adminPhone) {
       const to = normalizeUSPhone(adminPhone) || adminPhone;
-      const body = applyVars(step.message, vars);
+      const body = applyVars(node.message, vars);
       await sendCompanySms({ companyId, to, body });
     }
-    await db
-      .prepare(
-        `UPDATE lead_workflow_runs
-           SET step_index = step_index + 1,
-               last_step_at = datetime('now')
-         WHERE id = ?`
-      )
-      .run(run.id);
-    return { advanced: true, immediate: true };
+    return { next_node_id: node.next ?? null, immediate: true };
   }
 
-  return { advanced: true, immediate: true };
+  if (node.type === "paths") {
+    const cond = node.condition;
+    let matched = false;
+    if (cond.kind === "lead_stage_is") {
+      matched = lead.stage === cond.stage;
+    }
+    return {
+      next_node_id: (matched ? node.yes_next : node.no_next) ?? null,
+      immediate: true,
+    };
+  }
+
+  // Unknown node type — bail.
+  return { next_node_id: null, immediate: true };
 }
 
-// Cron-driven processor. Walks every pending run, executes whatever steps
-// are ready, and marks runs completed when they reach the end of their steps.
+// Cron-driven processor. Walks every pending run, executes as many ready
+// nodes as it can in this tick, and marks runs completed/failed when they
+// reach the end of their branch or hit a hard error. Caps at 50 steps per
+// run per tick so a pathological cycle can't lock the worker.
 export async function runPendingWorkflowSteps(): Promise<{
   processed: number;
   steps_executed: number;
@@ -330,11 +371,11 @@ export async function runPendingWorkflowSteps(): Promise<{
       failed += 1;
       continue;
     }
-    const steps = parseSteps(wf.steps);
+    const graph = parseGraph(wf.steps);
     let current = { ...run };
-    // Walk as many ready steps as possible in this tick.
     for (let safety = 0; safety < 50; safety += 1) {
-      if (current.step_index >= steps.length) {
+      const nodeId = current.current_node_id;
+      if (!nodeId) {
         await db
           .prepare(
             `UPDATE lead_workflow_runs SET status = 'completed',
@@ -344,15 +385,40 @@ export async function runPendingWorkflowSteps(): Promise<{
         completed += 1;
         break;
       }
-      const step = steps[current.step_index];
-      const result = await executeStep(current, step, lead, wf.company_id);
-      if (result.error && !result.advanced) {
+      const node = graph.nodes[nodeId];
+      if (!node) {
+        await db
+          .prepare(
+            `UPDATE lead_workflow_runs SET status = 'failed', error = ?
+               WHERE id = ?`
+          )
+          .run(`Missing node ${nodeId}`, current.id);
         failed += 1;
         break;
       }
-      if (result.advanced) stepsExecuted += 1;
+      const result = await executeNode(current, node, lead, graph, wf.company_id);
+      if (result.error && result.next_node_id === node.id) {
+        // Hard failure that left us parked on the same node.
+        await db
+          .prepare(
+            `UPDATE lead_workflow_runs
+               SET status = 'failed', error = ?, last_step_at = datetime('now')
+             WHERE id = ?`
+          )
+          .run(result.error, current.id);
+        failed += 1;
+        break;
+      }
+      stepsExecuted += 1;
+      await db
+        .prepare(
+          `UPDATE lead_workflow_runs
+             SET current_node_id = ?, step_index = step_index + 1,
+                 last_step_at = datetime('now')
+           WHERE id = ?`
+        )
+        .run(result.next_node_id, current.id);
       if (!result.immediate) break;
-      // Refresh run row for next iteration.
       const refreshed = await db
         .prepare("SELECT * FROM lead_workflow_runs WHERE id = ?")
         .get<LeadWorkflowRun>(current.id);

@@ -27,12 +27,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Name is required" }, { status: 400 });
   }
   let trigger = body.trigger || "lead_created";
-  let stepsJson = typeof body.steps === "string" ? body.steps : "[]";
+  let stepsJson =
+    typeof body.steps === "string"
+      ? body.steps
+      : JSON.stringify({ start_ids: [], nodes: {} });
   if (body.template_key) {
     const tpl = WORKFLOW_TEMPLATES.find((t) => t.key === body.template_key);
     if (tpl) {
       trigger = tpl.trigger;
-      stepsJson = JSON.stringify(tpl.steps);
+      stepsJson = JSON.stringify(tpl.graph);
     }
   }
   const result = await db
