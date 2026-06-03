@@ -359,7 +359,7 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
 // Bump when init() gains migrations that must run on existing deploys.
 // First call after deploy runs the full init; subsequent cold starts hit
 // the fast-path below (one SELECT) and skip the ~150 DDL statements.
-const SCHEMA_VERSION = 13;
+const SCHEMA_VERSION = 14;
 
 async function init(): Promise<void> {
   // Fast path: if the schema is already at the current version, skip the
@@ -2140,6 +2140,43 @@ async function init(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_mcp_access_tokens_client
       ON mcp_access_tokens(client_id);
   `);
+
+  // Schema v14: replace empty stub workflows with the real, editable
+  // templates. The original seed inserted three workflows with
+  // `steps='[]'`, so existing tenants see them as paused, zero-step rows
+  // even after the new schema ships. Update in place when steps is still
+  // empty so we don't clobber anything a user customized.
+  for (const tpl of [
+    {
+      id: 1,
+      name: "Missed Call Text-Back",
+      trigger: "missed_call",
+      steps:
+        '[{"type":"send_sms","message":"Hi {{first_name}}, this is {{company_name}} — sorry we missed your call! How can we help?"},{"type":"notify_admin","message":"Missed call from {{first_name}} {{last_name}} ({{phone}}). Auto-text sent."}]',
+    },
+    {
+      id: 2,
+      name: "New Lead Follow-up (3-touch)",
+      trigger: "lead_created",
+      steps:
+        '[{"type":"send_sms","message":"Hi {{first_name}}! Thanks for reaching out to {{company_name}}. We got your info and will be in touch shortly."},{"type":"delay","minutes":60},{"type":"send_sms","message":"Hey {{first_name}} — just checking in. Still want to chat about your project? Reply YES and we will give you a call."},{"type":"delay","minutes":1440},{"type":"send_sms","message":"Hi {{first_name}}, last quick follow-up from {{company_name}}. Let us know if there is anything we can help with!"},{"type":"update_stage","stage":"contacted"}]',
+    },
+    {
+      id: 3,
+      name: "Estimate Sent Follow-up",
+      trigger: "estimate_sent",
+      steps:
+        '[{"type":"delay","minutes":2880},{"type":"send_sms","message":"Hi {{first_name}}, just following up on the estimate we sent over. Any questions or anything we can clarify?"},{"type":"delay","minutes":4320},{"type":"send_sms","message":"Hey {{first_name}} — circling back on your estimate from {{company_name}}. Happy to walk through it."},{"type":"delay","minutes":7200},{"type":"send_sms","message":"Hi {{first_name}}, last check-in on the estimate. Let us know if we should keep it open or close it out."}]',
+    },
+  ]) {
+    await _db
+      .prepare(
+        `UPDATE lead_workflows
+           SET name = ?, trigger = ?, steps = ?, updated_at = datetime('now')
+         WHERE id = ? AND (steps = '[]' OR steps IS NULL OR steps = '')`
+      )
+      .run(tpl.name, tpl.trigger, tpl.steps, tpl.id);
+  }
 
   // Stamp the schema version so subsequent cold starts hit the fast-path
   // at the top of init().
