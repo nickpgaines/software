@@ -88,7 +88,7 @@ export default function AcceptClient({
   // subscription is accepted we mint a SetupIntent and let the customer
   // save a card via the PaymentElement (Apple Pay / Google Pay surface
   // automatically when the device supports them).
-  type Phase = "accept" | "card" | "done";
+  type Phase = "accept" | "card" | "card_failed" | "done";
   const [phase, setPhase] = useState<Phase>(
     subscription.status === "active" ? "card" : "accept"
   );
@@ -111,10 +111,15 @@ export default function AcceptClient({
       error: string;
     }>;
     if (!r.ok || !data.client_secret || !data.setup_intent_id) {
-      setError(data.error || "Could not start card setup.");
-      // Even if card setup fails (e.g. Stripe not configured), the
-      // acceptance itself stuck — show the success state.
-      setPhase("done");
+      // Surface the real reason and stay on the card phase so the customer
+      // sees the error instead of a misleading "card is on file" success.
+      // The agreement itself is accepted (the earlier POST stuck), but the
+      // billing setup is incomplete — admin will need to follow up.
+      setError(
+        data.error ||
+          "We saved your agreement but couldn't reach payments. Please contact us so we can finish setting up your card."
+      );
+      setPhase("card_failed");
       return;
     }
     setSetupIntent({
@@ -302,7 +307,7 @@ export default function AcceptClient({
               active and your card is on file. {companyName} will be in
               touch about your first visit.
             </p>
-          ) : phase === "card" ? null : (
+          ) : phase === "card" || phase === "card_failed" ? null : (
             <Button
               type="button"
               variant="ghost"

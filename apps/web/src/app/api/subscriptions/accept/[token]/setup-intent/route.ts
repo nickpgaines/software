@@ -7,6 +7,8 @@ import {
   getOrCreateStripeCustomer,
   savePaymentMethodForCustomer,
 } from "@/lib/stripe";
+import { createStripeSubscriptionForRow } from "@/lib/stripe-subscriptions";
+import { startDateToIso } from "@/lib/subscription-schedule";
 
 export const dynamic = "force-dynamic";
 
@@ -139,8 +141,9 @@ export async function PUT(
     );
   }
 
+  let saved;
   try {
-    const saved = await savePaymentMethodForCustomer({
+    saved = await savePaymentMethodForCustomer({
       companyId: sub.company_id,
       customerId: sub.customer_id,
       stripeAccountId: company.stripe_account_id,
@@ -157,7 +160,6 @@ export async function PUT(
          WHERE id = ? AND company_id = ?`
       )
       .run(saved.stripe_payment_method_id, sub.id, sub.company_id);
-    return NextResponse.json({ payment_method: saved }, { status: 201 });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Unknown error";
     return NextResponse.json(
@@ -165,4 +167,70 @@ export async function PUT(
       { status: 400 }
     );
   }
+
+  // Card is now saved. If this sub is active and doesn't yet have a Stripe
+  // Subscription linked, create one now using the just-saved PM. Stripe then
+  // runs the recurring schedule on its own; Forge syncs via webhook.
+  //
+  // Re-read the sub so we see status changes from the accept POST that may
+  // have raced (typical client flow is accept → setup intent → confirm →
+  // PUT here, but in-between requests can land in any order on a flaky
+  // network).
+  const fresh = (await db
+    .prepare(
+      "SELECT * FROM customer_subscriptions WHERE id = ? AND company_id = ? LIMIT 1"
+    )
+    .get(sub.id, sub.company_id)) as CustomerSubscription | undefined;
+  if (
+    fresh &&
+    fresh.status === "active" &&
+    !fresh.stripe_subscription_id
+  ) {
+    const stripeResult = await createStripeSubscriptionForRow({
+      companyId: fresh.company_id,
+      customerId: fresh.customer_id,
+      subscriptionRowId: fresh.id,
+      productName: fresh.name,
+      productDescription: fresh.description,
+      amountCents: fresh.price_cents,
+      interval: fresh.interval,
+      paymentMethodId: saved.stripe_payment_method_id,
+      startDateIso: fresh.start_date
+        ? startDateToIso(fresh.start_date)
+        : null,
+    });
+    if (stripeResult.ok) {
+      await db
+        .prepare(
+          `UPDATE customer_subscriptions
+             SET stripe_subscription_id = ?,
+                 stripe_subscription_status = ?
+           WHERE id = ? AND company_id = ?`
+        )
+        .run(
+          stripeResult.stripeSubscriptionId,
+          stripeResult.stripeStatus,
+          fresh.id,
+          fresh.company_id
+        );
+    } else {
+      // Card is on file but the Stripe Sub couldn't be created. Don't fail
+      // the request — the card save itself succeeded, which is the
+      // customer-visible commit. Surface the error so admin tooling can
+      // retry; the customer sees a successful card-save either way.
+      console.error(
+        `Stripe Subscription creation failed for sub ${fresh.id} after PM save:`,
+        stripeResult.error
+      );
+      return NextResponse.json(
+        {
+          payment_method: saved,
+          stripe_subscription_error: stripeResult.error,
+        },
+        { status: 201 }
+      );
+    }
+  }
+
+  return NextResponse.json({ payment_method: saved }, { status: 201 });
 }
