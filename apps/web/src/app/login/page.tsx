@@ -52,7 +52,15 @@ function LoginPageInner() {
       setError("Invalid credentials");
       return;
     }
-    router.push("/dashboard");
+    // Honor ?next=<path> so OAuth flows (e.g. the Claude connector consent
+    // screen) can bounce users through login and back to where they started.
+    // Only same-origin paths are allowed, so an attacker can't open-redirect.
+    const rawNext = searchParams.get("next");
+    const safeNext =
+      rawNext && rawNext.startsWith("/") && !rawNext.startsWith("//")
+        ? rawNext
+        : "/dashboard";
+    router.push(safeNext);
     router.refresh();
   }
 

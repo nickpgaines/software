@@ -359,7 +359,7 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
 // Bump when init() gains migrations that must run on existing deploys.
 // First call after deploy runs the full init; subsequent cold starts hit
 // the fast-path below (one SELECT) and skip the ~150 DDL statements.
-const SCHEMA_VERSION = 12;
+const SCHEMA_VERSION = 13;
 
 async function init(): Promise<void> {
   // Fast path: if the schema is already at the current version, skip the
@@ -2069,6 +2069,60 @@ async function init(): Promise<void> {
          ON job_recurrences(company_id)`
     );
   }
+
+  // MCP / Claude connector: OAuth 2.1 + dynamic client registration. Claude
+  // registers itself the first time a user adds the connector URL, then walks
+  // an authorize -> code -> token flow. Tokens are bound to (company_id,
+  // staff_id) so every tool call lands in the right tenant with the right
+  // permissions. Hashes (sha256 hex) are stored instead of raw secrets.
+  await _db.exec(`
+    CREATE TABLE IF NOT EXISTS mcp_oauth_clients (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      client_id         TEXT NOT NULL UNIQUE,
+      client_secret_hash TEXT,
+      client_name       TEXT,
+      redirect_uris     TEXT NOT NULL,
+      grant_types       TEXT NOT NULL DEFAULT 'authorization_code,refresh_token',
+      token_endpoint_auth_method TEXT NOT NULL DEFAULT 'none',
+      created_at        TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS mcp_auth_codes (
+      id                  INTEGER PRIMARY KEY AUTOINCREMENT,
+      code_hash           TEXT NOT NULL UNIQUE,
+      client_id           TEXT NOT NULL,
+      company_id          INTEGER NOT NULL REFERENCES company(id) ON DELETE CASCADE,
+      staff_id            INTEGER REFERENCES staff(id) ON DELETE CASCADE,
+      redirect_uri        TEXT NOT NULL,
+      code_challenge      TEXT NOT NULL,
+      code_challenge_method TEXT NOT NULL DEFAULT 'S256',
+      scope               TEXT NOT NULL DEFAULT '',
+      expires_at          TEXT NOT NULL,
+      consumed_at         TEXT,
+      created_at          TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_mcp_auth_codes_expires_at
+      ON mcp_auth_codes(expires_at);
+
+    CREATE TABLE IF NOT EXISTS mcp_access_tokens (
+      id                INTEGER PRIMARY KEY AUTOINCREMENT,
+      token_hash        TEXT NOT NULL UNIQUE,
+      refresh_token_hash TEXT UNIQUE,
+      client_id         TEXT NOT NULL,
+      company_id        INTEGER NOT NULL REFERENCES company(id) ON DELETE CASCADE,
+      staff_id          INTEGER REFERENCES staff(id) ON DELETE CASCADE,
+      scope             TEXT NOT NULL DEFAULT '',
+      expires_at        TEXT NOT NULL,
+      refresh_expires_at TEXT,
+      revoked_at        TEXT,
+      last_used_at      TEXT,
+      created_at        TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_mcp_access_tokens_company_staff
+      ON mcp_access_tokens(company_id, staff_id);
+    CREATE INDEX IF NOT EXISTS idx_mcp_access_tokens_client
+      ON mcp_access_tokens(client_id);
+  `);
 
   // Stamp the schema version so subsequent cold starts hit the fast-path
   // at the top of init().
