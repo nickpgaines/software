@@ -337,9 +337,9 @@ export default function CustomerDetailClient({
               ) : null}
             </div>
             <Button
-              variant="ghost"
+              variant="outline"
+              size="sm"
               onClick={() => setEditing(true)}
-              className="h-auto text-xs font-bold border border-line-strong bg-card hover:bg-black text-zinc-300 rounded px-3 py-1.5"
             >
               Edit
             </Button>
@@ -446,25 +446,21 @@ export default function CustomerDetailClient({
         <main className="p-6 space-y-6 overflow-y-auto">
           <div className="flex items-center justify-end gap-2">
             <Button
-              variant="ghost"
               onClick={() =>
                 router.push(`/schedule/new?customer=${customer.id}`)
               }
-              className="h-auto text-sm bg-primary hover:opacity-90 text-primary-foreground rounded px-3 py-2 font-bold"
             >
               + Job
             </Button>
             <Button
-              variant="ghost"
+              variant="outline"
               onClick={() => router.push(`/estimates/new?customer=${customer.id}`)}
-              className="h-auto text-sm border border-line-strong bg-card hover:bg-black text-zinc-300 rounded px-3 py-2 font-bold"
             >
               + Estimate
             </Button>
             <Button
-              variant="ghost"
+              variant="outline"
               onClick={() => router.push(`/messages?customer=${customer.id}`)}
-              className="h-auto text-sm border border-line-strong bg-card hover:bg-black text-zinc-300 rounded px-3 py-2 font-bold"
             >
               Message
             </Button>
