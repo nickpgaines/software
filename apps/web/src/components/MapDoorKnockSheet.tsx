@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { OBJECTIONS } from "@/lib/map-status";
 import { PIN_STATUS, PIN_STATUS_KEYS, filledGlyphSvg } from "@/lib/map-pin-colors";
@@ -32,6 +33,7 @@ export default function MapDoorKnockSheet({
   onSaved: (saved: SheetPin & { id: number }) => void;
   onDelete?: (id: number) => void;
 }) {
+  const router = useRouter();
   const [firstName, setFirstName] = useState(pin.first_name || "");
   const [lastName, setLastName] = useState(pin.last_name || "");
   const [phone, setPhone] = useState(pin.phone || "");
@@ -49,7 +51,9 @@ export default function MapDoorKnockSheet({
     );
   }
 
-  async function save(asCustomer: boolean) {
+  async function save(
+    asCustomer: boolean
+  ): Promise<{ pin: SheetPin & { id: number }; customerId: number | null } | null> {
     setError(null);
     setSaving(true);
     const payload = {
@@ -70,7 +74,7 @@ export default function MapDoorKnockSheet({
       if (!first || !last) {
         setSaving(false);
         setError("First and last name are required to create a customer");
-        return;
+        return null;
       }
       const cRes = await fetch("/api/customers", {
         method: "POST",
@@ -99,10 +103,21 @@ export default function MapDoorKnockSheet({
     setSaving(false);
     if (!res.ok) {
       setError("Could not save pin");
-      return;
+      return null;
     }
     const saved = (await res.json()) as SheetPin & { id: number };
     onSaved(saved);
+    return { pin: saved, customerId };
+  }
+
+  async function saveAndStartSubscription() {
+    const result = await save(true);
+    if (!result) return;
+    if (!result.customerId) {
+      setError("Customer was not created");
+      return;
+    }
+    router.push(`/subscriptions/new?customer_id=${result.customerId}`);
   }
 
   return (
@@ -266,8 +281,8 @@ export default function MapDoorKnockSheet({
           <Button
             type="button"
             variant="ghost"
+            onClick={saveAndStartSubscription}
             disabled={saving}
-            title="Coming soon"
             className="h-auto text-sm border border-line bg-card hover:bg-black rounded-full px-4 py-2 font-bold"
           >
             Create Subscription

@@ -14,6 +14,7 @@ export type MessagesConfig = {
   invoice_subject: string;
   receipt_message: MessageBlock;
   review_request: MessageBlock;
+  review_link: string;
 };
 
 export type ReminderInterval = {
@@ -143,6 +144,7 @@ export const DEFAULT_CUSTOMIZATIONS: CustomizationConfig = {
       template:
         "Thanks for choosing {company_name}! If you have a moment, we'd love a review: {review_link}",
     },
+    review_link: "",
   },
   job_reminders: {
     intervals: [
@@ -284,6 +286,10 @@ export function mergeCustomizations(
         messages.review_request,
         DEFAULT_CUSTOMIZATIONS.messages.review_request
       ),
+      review_link:
+        typeof messages.review_link === "string"
+          ? messages.review_link
+          : DEFAULT_CUSTOMIZATIONS.messages.review_link,
     },
     job_reminders: {
       intervals:

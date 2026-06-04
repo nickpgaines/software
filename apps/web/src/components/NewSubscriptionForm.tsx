@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -166,13 +166,20 @@ type BillingMode = "with_service" | "monthly";
 
 export default function NewSubscriptionForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialCustomerId = (() => {
+    const raw = searchParams.get("customer_id");
+    if (!raw) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 ? n : null;
+  })();
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [templates, setTemplates] = useState<SubscriptionTemplate[]>([]);
   const [terms, setTerms] = useState<SubscriptionTerms[]>([]);
 
-  const [customerId, setCustomerId] = useState<number | null>(null);
+  const [customerId, setCustomerId] = useState<number | null>(initialCustomerId);
   const [customerQuery, setCustomerQuery] = useState("");
   const [showNewCustomer, setShowNewCustomer] = useState(false);
 

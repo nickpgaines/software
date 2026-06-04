@@ -440,6 +440,20 @@ function MessagesSection({
         showHeader={false}
         showEnabled
       />
+
+      <div className="space-y-1.5">
+        <FieldLabel>Review Link</FieldLabel>
+        <Input
+          type="url"
+          value={config.review_link}
+          onChange={(e) => set("review_link", e.target.value)}
+          placeholder="https://g.page/r/…/review"
+          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card"
+        />
+        <p className="text-xs text-zinc-500">
+          Substituted for {"{review_link}"} in the review request template.
+        </p>
+      </div>
     </div>
   );
 }
