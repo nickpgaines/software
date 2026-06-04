@@ -722,60 +722,93 @@ export function PulseScheduleCard({
 }
 
 // ---------- Pipeline ----------------------------------------------------
-// Pipeline numbers are placeholder for now — real lead/estimate counts can
-// be wired in when the pipeline aggregator is ready.
-
-export const PLACEHOLDER_PIPELINE: PipelineEntry[] = [
-  { label: "New Leads", count: 12, value: 540_000, pct: 0.4 },
-  { label: "Contacted", count: 8, value: 410_000, pct: 0.3 },
-  { label: "Estimating", count: 9, value: 890_000, pct: 0.66 },
-  { label: "Won", count: 6, value: 630_000, pct: 0.47 },
-];
 
 export function PulsePipelineCard({
-  entries = PLACEHOLDER_PIPELINE,
+  entries: initial,
 }: {
   entries?: PipelineEntry[];
 }) {
-  const totalCount = entries.reduce((s, e) => s + e.count, 0);
+  const [entries, setEntries] = useState<PipelineEntry[] | null>(
+    initial ?? null
+  );
+  const [loading, setLoading] = useState(!initial);
+
+  useEffect(() => {
+    if (initial) return;
+    let cancelled = false;
+    fetch("/api/leads/pipeline")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows: PipelineEntry[]) => {
+        if (!cancelled) setEntries(Array.isArray(rows) ? rows : []);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [initial]);
+
+  const list = entries ?? [];
+  const totalCount = list.reduce((s, e) => s + e.count, 0);
   return (
     <section
       className="rounded-2xl p-6"
       style={{ background: PULSE.card, border: `1px solid ${PULSE.cardBorder}` }}
     >
-      <div className="mb-4">
-        <h2 className="text-[15px] font-extrabold tracking-tight">Pipeline</h2>
-        <p className="text-[12px] mt-1 font-bold" style={{ color: PULSE.textSubtle }}>
-          {totalCount} active
+      <div className="mb-4 flex items-baseline justify-between">
+        <div>
+          <h2 className="text-[15px] font-extrabold tracking-tight">Pipeline</h2>
+          <p className="text-[12px] mt-1 font-bold" style={{ color: PULSE.textSubtle }}>
+            {loading ? "…" : `${totalCount} active`}
+          </p>
+        </div>
+        <CardHeaderLink label="View" href="/leads" />
+      </div>
+      {loading ? (
+        <p
+          className="py-6 text-center text-[12.5px] font-bold"
+          style={{ color: PULSE.textSubtle }}
+        >
+          Loading…
         </p>
-      </div>
-      <div className="space-y-4">
-        {entries.map((p) => (
-          <div key={p.label}>
-            <div className="flex items-baseline justify-between mb-1.5">
-              <span className="text-[12.5px] font-bold">{p.label}</span>
-              <span
-                className="text-[11px] font-bold tabular-nums"
-                style={{ color: PULSE.textSubtle }}
-              >
-                {p.count} · {formatCentsShort(p.value)}
-              </span>
-            </div>
-            <div
-              className="h-1.5 rounded-full overflow-hidden"
-              style={{ background: PULSE.cardBorder }}
-            >
+      ) : list.length === 0 || totalCount === 0 ? (
+        <p
+          className="py-6 text-center text-[12.5px] font-bold"
+          style={{ color: PULSE.textSubtle }}
+        >
+          No leads in the pipeline yet.
+        </p>
+      ) : (
+        <div className="space-y-4">
+          {list.map((p) => (
+            <div key={p.label}>
+              <div className="flex items-baseline justify-between mb-1.5">
+                <span className="text-[12.5px] font-bold">{p.label}</span>
+                <span
+                  className="text-[11px] font-bold tabular-nums"
+                  style={{ color: PULSE.textSubtle }}
+                >
+                  {p.count}
+                  {p.value > 0 ? ` · ${formatCentsShort(p.value)}` : ""}
+                </span>
+              </div>
               <div
-                className="h-full rounded-full"
-                style={{
-                  width: `${p.pct * 100}%`,
-                  background: `linear-gradient(90deg, ${PULSE.violetVar}, ${PULSE.violetSoftVar})`,
-                }}
-              />
+                className="h-1.5 rounded-full overflow-hidden"
+                style={{ background: PULSE.cardBorder }}
+              >
+                <div
+                  className="h-full rounded-full"
+                  style={{
+                    width: `${Math.max(p.pct * 100, p.count > 0 ? 4 : 0)}%`,
+                    background: `linear-gradient(90deg, ${PULSE.violetVar}, ${PULSE.violetSoftVar})`,
+                  }}
+                />
+              </div>
             </div>
-          </div>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </section>
   );
 }
