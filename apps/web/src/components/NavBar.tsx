@@ -56,11 +56,7 @@ type Me = {
   permissions?: string[];
 };
 
-type ConversationSummary = {
-  unread_count: number;
-};
-
-// How often to poll the conversations endpoint for the unread-count badge.
+// How often to poll the unread-count endpoint for the badge.
 // Twilio inbound webhooks land on a server route, not the client, so the
 // nav has to poll to surface new messages. 30s feels alive without being
 // chatty; the page also refetches on focus.
@@ -96,13 +92,10 @@ export default function NavBar() {
     let cancelled = false;
     async function load() {
       try {
-        const res = await fetch("/api/messages/conversations");
+        const res = await fetch("/api/messages/unread-count");
         if (!res.ok) return;
-        const rows = (await res.json()) as ConversationSummary[];
-        if (!cancelled) {
-          const total = rows.reduce((sum, c) => sum + (c.unread_count || 0), 0);
-          setUnread(total);
-        }
+        const data = (await res.json()) as { unread?: number };
+        if (!cancelled) setUnread(data.unread || 0);
       } catch {
         // ignore — badge stays at its last known value
       }

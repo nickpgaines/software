@@ -34,6 +34,9 @@ type ExecMany = (sql: string) => Promise<void>;
 
 let _client: Client | null = null;
 let _initPromise: Promise<void> | null = null;
+// Tracks an in-flight replica sync so concurrent callers can share one WAN
+// round-trip instead of each firing their own. See syncReplica().
+let _syncInFlight: Promise<void> | null = null;
 
 function makeClient(): Client {
   const url = process.env.TURSO_DATABASE_URL?.trim();
@@ -83,16 +86,52 @@ function getClient(): Client {
 // need to be visible on the next read (e.g. signup -> dashboard greeting),
 // or before a read that came up empty unexpectedly. No-op for non-replica
 // clients.
-export async function syncReplica(): Promise<void> {
+export async function syncReplica(opts?: { force?: boolean }): Promise<void> {
   const c = _client;
   if (!c) return;
   const sync = (c as { sync?: () => Promise<unknown> }).sync;
   if (typeof sync !== "function") return;
+
+  const force = opts?.force ?? false;
+
+  // Coalesce concurrent syncs. A single `client.sync()` pulls *all* pending
+  // frames from the primary, so when several requests (or several parallel
+  // API calls on one page) each want fresh data, they can share one WAN
+  // round-trip instead of firing N of them. Read-path callers just await
+  // whatever sync is already running.
+  //
+  // A `force` caller (used after a write) must see its own write reflected,
+  // and an already-running sync may have started *before* that write
+  // committed — so it can't reuse it. Instead it chains a fresh sync after
+  // the in-flight one, guaranteeing the write is included. This preserves the
+  // existing read-after-write behavior exactly; only redundant concurrent
+  // syncs are eliminated.
+  if (_syncInFlight && !force) {
+    await _syncInFlight.catch(() => {});
+    return;
+  }
+
+  const prior = _syncInFlight;
+  const p = (async () => {
+    if (prior) {
+      try {
+        await prior;
+      } catch {
+        // ignore — we re-sync below regardless
+      }
+    }
+    try {
+      await sync.call(c);
+    } catch {
+      // Sync is best-effort. A failure here just means the next read may
+      // still be stale; never break the request over it.
+    }
+  })();
+  _syncInFlight = p;
   try {
-    await sync.call(c);
-  } catch {
-    // Sync is best-effort. A failure here just means the next read may
-    // still be stale; never break the request over it.
+    await p;
+  } finally {
+    if (_syncInFlight === p) _syncInFlight = null;
   }
 }
 
@@ -139,7 +178,11 @@ function makeDb(exec: Executor, execMany: ExecMany, txCapable: boolean): Db {
   // Top-level writes (auto-commit single statements) should sync the local
   // replica on success. Writes performed inside a transaction shouldn't —
   // the transaction wrapper syncs once after `tx.commit()` instead.
-  const afterWrite = txCapable ? syncReplica : undefined;
+  // `force: true` guarantees a fresh sync that reflects this write even if
+  // another sync is already in flight (see syncReplica()).
+  const afterWrite = txCapable
+    ? () => syncReplica({ force: true })
+    : undefined;
   const db: Db = {
     prepare(sql: string) {
       return makeStmt(exec, sql, afterWrite);
@@ -174,7 +217,7 @@ function makeDb(exec: Executor, execMany: ExecMany, txCapable: boolean): Db {
         await tx.commit();
         // Pull the just-committed write into the local replica so a
         // subsequent read on this instance sees it.
-        await syncReplica();
+        await syncReplica({ force: true });
         return result;
       } catch (e) {
         try {
