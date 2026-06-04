@@ -224,6 +224,32 @@ export default function CustomerDetailClient({
     }
   }
 
+  // Manual activation override. Flips a pending sub to active without
+  // requiring the customer to sign / save a card / wire up Stripe billing —
+  // for one-off arrangements where the customer pays out-of-band (cash,
+  // check). Status='active' afterward, but stripe_subscription_id stays
+  // null so no recurring Stripe billing kicks in.
+  async function activateSubscription(subId: number) {
+    if (
+      !window.confirm(
+        "Mark this subscription as active without a card on file?\n\n" +
+          "The customer will not be automatically billed. You'll need to collect payment yourself for each period."
+      )
+    ) {
+      return;
+    }
+    const res = await fetch(
+      `/api/customer-subscriptions/${subId}/activate`,
+      { method: "POST" }
+    );
+    const j = (await res.json().catch(() => ({}))) as { error?: string };
+    if (!res.ok) {
+      window.alert(j.error || "Activation failed");
+      return;
+    }
+    await load();
+  }
+
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -678,6 +704,16 @@ export default function CustomerDetailClient({
                                 className="h-auto text-xs border border-line-strong bg-card hover:bg-black text-zinc-300 rounded px-2 py-1 font-bold disabled:opacity-50"
                               >
                                 {chargingId === s.id ? "Charging…" : "Charge now"}
+                              </Button>
+                            )}
+                            {s.status === "pending" && (
+                              <Button
+                                variant="ghost"
+                                onClick={() => activateSubscription(s.id)}
+                                className="h-auto text-xs border border-line-strong bg-card hover:bg-black text-zinc-300 rounded px-2 py-1 font-bold"
+                                title="Activate without requiring a card on file"
+                              >
+                                Mark active
                               </Button>
                             )}
                           </TableCell>
