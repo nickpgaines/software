@@ -56,6 +56,16 @@ type Me = {
   permissions?: string[];
 };
 
+type ConversationSummary = {
+  unread_count: number;
+};
+
+// How often to poll the conversations endpoint for the unread-count badge.
+// Twilio inbound webhooks land on a server route, not the client, so the
+// nav has to poll to surface new messages. 30s feels alive without being
+// chatty; the page also refetches on focus.
+const UNREAD_POLL_MS = 30_000;
+
 function initials(name: string) {
   const parts = name.trim().split(/\s+/);
   if (parts.length === 0 || !parts[0]) return "?";
@@ -67,6 +77,7 @@ export default function NavBar() {
   const pathname = usePathname();
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(null);
+  const [unread, setUnread] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -80,6 +91,32 @@ export default function NavBar() {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      try {
+        const res = await fetch("/api/messages/conversations");
+        if (!res.ok) return;
+        const rows = (await res.json()) as ConversationSummary[];
+        if (!cancelled) {
+          const total = rows.reduce((sum, c) => sum + (c.unread_count || 0), 0);
+          setUnread(total);
+        }
+      } catch {
+        // ignore — badge stays at its last known value
+      }
+    }
+    load();
+    const interval = setInterval(load, UNREAD_POLL_MS);
+    const onFocus = () => load();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
+  }, [pathname]);
 
   async function logout() {
     await fetch("/api/logout", { method: "POST" });
@@ -124,6 +161,7 @@ export default function NavBar() {
         {filteredLinks.map(({ href, label, icon: Icon }) => {
           const active =
             href === "/" ? pathname === "/" : pathname.startsWith(href);
+          const showBadge = href === "/messages" && unread > 0;
           return (
             <Link
               key={href}
@@ -139,7 +177,15 @@ export default function NavBar() {
                 className={`w-5 h-5 ${active ? "text-white" : ""}`}
                 strokeWidth={1.8}
               />
-              {label}
+              <span className="flex-1">{label}</span>
+              {showBadge && (
+                <span
+                  className="min-w-[18px] h-[18px] px-1.5 rounded-full bg-rose-500 text-white text-[10px] font-extrabold flex items-center justify-center"
+                  aria-label={`${unread} unread`}
+                >
+                  {unread > 99 ? "99+" : unread}
+                </span>
+              )}
             </Link>
           );
         })}

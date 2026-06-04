@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { getDb, type Payment, type PaymentMethod } from "@/lib/db";
-import { requireCompanyId } from "@/lib/auth";
+import { getSessionContext } from "@/lib/auth";
 import { autoCompleteSteps } from "@/lib/jobs";
 import { sendPaymentReceipt } from "@/lib/payment-receipts";
+import { recordActivity } from "@/lib/activity";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +13,9 @@ export async function GET(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  const companyId = await requireCompanyId();
+  const ctx = await getSessionContext();
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const companyId = ctx.companyId;
   const db = await getDb();
   const jobId = Number(params.id);
   const rows = (await db
@@ -30,7 +33,9 @@ export async function POST(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const companyId = await requireCompanyId();
+  const ctx = await getSessionContext();
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const companyId = ctx.companyId;
   const db = await getDb();
   const jobId = Number(params.id);
 
@@ -127,6 +132,48 @@ export async function POST(
   const created = (await db
     .prepare("SELECT * FROM payments WHERE id = ? AND company_id = ?")
     .get(insertedId, companyId)) as Payment;
+
+  // Activity: record the payment, and if this payment took the job to
+  // fully-paid, also surface a higher-signal "job.paid" event. Both are
+  // best-effort.
+  try {
+    const summary = (await db
+      .prepare(
+        `SELECT j.price_cents,
+                c.name AS customer_name,
+                COALESCE((SELECT SUM(amount_cents) FROM payments p
+                            WHERE p.job_id = j.id AND p.company_id = ?), 0) AS paid_total
+           FROM jobs j
+           JOIN customers c ON c.id = j.customer_id
+          WHERE j.id = ? AND j.company_id = ?`
+      )
+      .get(companyId, jobId, companyId)) as
+      | { price_cents: number; customer_name: string; paid_total: number }
+      | undefined;
+    if (summary) {
+      await recordActivity(db, companyId, {
+        type: "payment.recorded",
+        subjectType: "job",
+        subjectId: jobId,
+        subjectLabel: summary.customer_name,
+        actorUserId: ctx.staffId,
+        amountCents: amountCents,
+        metadata: { method },
+      });
+      if (summary.paid_total >= summary.price_cents && summary.price_cents > 0) {
+        await recordActivity(db, companyId, {
+          type: "job.paid",
+          subjectType: "job",
+          subjectId: jobId,
+          subjectLabel: summary.customer_name,
+          actorUserId: ctx.staffId,
+          amountCents: summary.price_cents,
+        });
+      }
+    }
+  } catch {
+    // never break the response over a logging failure
+  }
 
   if (send_email || send_sms) {
     await sendPaymentReceipt({

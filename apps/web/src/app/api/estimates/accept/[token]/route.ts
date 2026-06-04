@@ -5,6 +5,7 @@ import {
   buildTransactionalSmsConsentText,
 } from "@/lib/sms-consent";
 import { normalizeUSPhone } from "@/lib/sms";
+import { recordActivity } from "@/lib/activity";
 
 export const dynamic = "force-dynamic";
 
@@ -155,6 +156,26 @@ export async function POST(
           )
           .run(estimate.company_id, phone, now);
       }
+    }
+  }
+
+  // Activity: record the approval once (skip on idempotent re-submits of
+  // an already-accepted estimate). Best-effort.
+  if (estimate.status !== "accepted") {
+    try {
+      const cust = await db
+        .prepare("SELECT name FROM customers WHERE id = ? AND company_id = ?")
+        .get<{ name: string | null }>(estimate.customer_id, estimate.company_id);
+      await recordActivity(db, estimate.company_id, {
+        type: "estimate.approved",
+        subjectType: "estimate",
+        subjectId: estimate.id,
+        subjectLabel: cust?.name || estimate.title || `Estimate #${estimate.id}`,
+        actorUserId: estimate.sold_by_id ?? null,
+        amountCents: estimate.total_cents,
+      });
+    } catch {
+      // never break the response over a logging failure
     }
   }
 

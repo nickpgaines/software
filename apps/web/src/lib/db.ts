@@ -363,7 +363,7 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
 // Bump when init() gains migrations that must run on existing deploys.
 // First call after deploy runs the full init; subsequent cold starts hit
 // the fast-path below (one SELECT) and skip the ~150 DDL statements.
-const SCHEMA_VERSION = 15;
+const SCHEMA_VERSION = 16;
 
 async function init(): Promise<void> {
   // Fast path: if the schema is already at the current version, skip the
@@ -2220,6 +2220,61 @@ async function init(): Promise<void> {
       .run(tpl.name, tpl.trigger, serializeGraph(tpl.graph), id);
   }
 
+  // Tasks: scheduled to-dos with optional recurrence. Visible to the
+  // assignee, or to everyone in the company when is_team_task=1.
+  await _db.exec(`
+    CREATE TABLE IF NOT EXISTS tasks (
+      id                   INTEGER PRIMARY KEY AUTOINCREMENT,
+      company_id           INTEGER NOT NULL REFERENCES company(id) ON DELETE CASCADE,
+      created_by_user_id   INTEGER REFERENCES staff(id) ON DELETE SET NULL,
+      title                TEXT NOT NULL,
+      details              TEXT,
+      start_at             TEXT NOT NULL,
+      end_at               TEXT NOT NULL,
+      assignee_user_id     INTEGER REFERENCES staff(id) ON DELETE SET NULL,
+      is_team_task         INTEGER NOT NULL DEFAULT 0,
+      recurrence           TEXT,
+      recurrence_parent_id INTEGER REFERENCES tasks(id) ON DELETE SET NULL,
+      status               TEXT NOT NULL DEFAULT 'open'
+                             CHECK (status IN ('open','done')),
+      completed_at         TEXT,
+      completed_by_user_id INTEGER REFERENCES staff(id) ON DELETE SET NULL,
+      created_at           TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at           TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_tasks_company_start
+      ON tasks(company_id, start_at);
+    CREATE INDEX IF NOT EXISTS idx_tasks_assignee
+      ON tasks(assignee_user_id);
+    CREATE INDEX IF NOT EXISTS idx_tasks_status
+      ON tasks(status);
+    CREATE INDEX IF NOT EXISTS idx_tasks_recurrence_parent
+      ON tasks(recurrence_parent_id);
+  `);
+
+  // Activity feed: a single append-only event log written by hook points
+  // across the app (job started/completed, payment received, estimate
+  // approved, invoice paid, task completed, etc.). The UI reads recent
+  // rows ordered by created_at DESC. metadata is a JSON blob for ad-hoc
+  // fields (e.g. invoice number, payment method) — keep the hot path on
+  // dedicated columns and use metadata only for display extras.
+  await _db.exec(`
+    CREATE TABLE IF NOT EXISTS activity_events (
+      id              INTEGER PRIMARY KEY AUTOINCREMENT,
+      company_id      INTEGER NOT NULL REFERENCES company(id) ON DELETE CASCADE,
+      actor_user_id   INTEGER REFERENCES staff(id) ON DELETE SET NULL,
+      type            TEXT NOT NULL,
+      subject_type    TEXT NOT NULL,
+      subject_id      INTEGER,
+      subject_label   TEXT,
+      amount_cents    INTEGER,
+      metadata        TEXT,
+      created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_activity_events_company_created
+      ON activity_events(company_id, created_at DESC);
+  `);
+
   // Stamp the schema version so subsequent cold starts hit the fast-path
   // at the top of init().
   await _db.exec(
@@ -3137,6 +3192,41 @@ export type PayrollSettings = {
   plan_sale_bonus_cents: number;
   exclude_one_time_services: number;
   updated_at: string;
+};
+
+export type TaskRecurrence = "daily" | "weekly" | "biweekly" | "monthly";
+export type TaskStatus = "open" | "done";
+
+export type Task = {
+  id: number;
+  company_id: number;
+  created_by_user_id: number | null;
+  title: string;
+  details: string | null;
+  start_at: string;
+  end_at: string;
+  assignee_user_id: number | null;
+  is_team_task: number;
+  recurrence: TaskRecurrence | null;
+  recurrence_parent_id: number | null;
+  status: TaskStatus;
+  completed_at: string | null;
+  completed_by_user_id: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type ActivityEvent = {
+  id: number;
+  company_id: number;
+  actor_user_id: number | null;
+  type: string;
+  subject_type: string;
+  subject_id: number | null;
+  subject_label: string | null;
+  amount_cents: number | null;
+  metadata: string | null;
+  created_at: string;
 };
 
 export default getDb;

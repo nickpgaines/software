@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useEffect, useId, useRef, useState } from "react";
 import { PULSE } from "./theme";
 import { PulseIcon } from "./Icon";
@@ -839,32 +840,162 @@ export function PulseInboxCard() {
   );
 }
 
+type TaskRow = {
+  id: number;
+  title: string;
+  start_at: string;
+  assignee_name: string | null;
+  is_team_task: number;
+  status: "open" | "done";
+  completed_at: string | null;
+};
+
+function formatTaskWhen(iso: string): string {
+  const d = new Date(iso);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const tomorrow = new Date(today);
+  tomorrow.setDate(today.getDate() + 1);
+  const target = new Date(d);
+  target.setHours(0, 0, 0, 0);
+  const time = d.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+  });
+  if (target.getTime() === today.getTime()) return `Today, ${time}`;
+  if (target.getTime() === tomorrow.getTime()) return `Tomorrow, ${time}`;
+  return `${d.toLocaleDateString(undefined, { month: "short", day: "numeric" })}, ${time}`;
+}
+
 export function PulseTasksCard() {
+  const [tasks, setTasks] = useState<TaskRow[]>([]);
+  const [openModal, setOpenModal] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  async function reload() {
+    setLoading(true);
+    try {
+      const res = await fetch("/api/tasks?status=open");
+      if (res.ok) {
+        const rows = (await res.json()) as TaskRow[];
+        setTasks(rows);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    reload();
+  }, []);
+
+  async function toggle(id: number, next: "open" | "done") {
+    await fetch(`/api/tasks/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: next }),
+    });
+    await reload();
+  }
+
+  const visible = tasks.slice(0, 5);
+
   return (
-    <section
-      className="rounded-2xl p-6"
-      style={{ background: PULSE.card, border: `1px solid ${PULSE.cardBorder}` }}
-    >
-      <div className="flex items-baseline justify-between mb-4">
-        <h2 className="text-[15px] font-extrabold tracking-tight">Tasks</h2>
-        <button
-          className="w-7 h-7 rounded-full flex items-center justify-center shadow-glow-violet-sm"
-          style={{
-            background: PULSE.violetVar,
-            color: PULSE.violetFgVar,
-          }}
-        >
-          <PulseIcon name="plus" className="w-3.5 h-3.5" />
-        </button>
-      </div>
-      <PulseEmptyState
-        iconName="doc"
-        title="No tasks yet"
-        sub="Create one to keep your team organized."
+    <>
+      <section
+        className="rounded-2xl p-6"
+        style={{ background: PULSE.card, border: `1px solid ${PULSE.cardBorder}` }}
+      >
+        <div className="flex items-baseline justify-between mb-4">
+          <h2 className="text-[15px] font-extrabold tracking-tight">Tasks</h2>
+          <button
+            type="button"
+            onClick={() => setOpenModal(true)}
+            aria-label="Create task"
+            className="w-7 h-7 rounded-full flex items-center justify-center shadow-glow-violet-sm"
+            style={{
+              background: PULSE.violetVar,
+              color: PULSE.violetFgVar,
+            }}
+          >
+            <PulseIcon name="plus" className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        {loading ? (
+          <p
+            className="py-8 text-center text-[12.5px] font-bold"
+            style={{ color: PULSE.textSubtle }}
+          >
+            Loading…
+          </p>
+        ) : visible.length === 0 ? (
+          <PulseEmptyState
+            iconName="doc"
+            title="No tasks yet"
+            sub="Create one to keep your team organized."
+          />
+        ) : (
+          <ul className="space-y-2.5">
+            {visible.map((t) => (
+              <li key={t.id} className="flex items-start gap-3">
+                <button
+                  type="button"
+                  onClick={() => toggle(t.id, t.status === "open" ? "done" : "open")}
+                  aria-label={t.status === "open" ? "Mark complete" : "Mark open"}
+                  className="mt-0.5 w-4 h-4 rounded-[4px] border flex-shrink-0 flex items-center justify-center"
+                  style={{
+                    borderColor: PULSE.cardBorder,
+                    background:
+                      t.status === "done" ? PULSE.violetVar : "transparent",
+                  }}
+                >
+                  {t.status === "done" && (
+                    <PulseIcon name="check" className="w-3 h-3" />
+                  )}
+                </button>
+                <div className="flex-1 min-w-0">
+                  <div
+                    className="text-[12.5px] font-bold leading-snug truncate"
+                    style={{
+                      color: t.status === "done" ? PULSE.textDim : PULSE.text,
+                      textDecoration:
+                        t.status === "done" ? "line-through" : undefined,
+                    }}
+                  >
+                    {t.title}
+                  </div>
+                  <div
+                    className="text-xs mt-0.5 font-bold"
+                    style={{ color: PULSE.textDim }}
+                  >
+                    {formatTaskWhen(t.start_at)}
+                    {t.is_team_task
+                      ? " · Team"
+                      : t.assignee_name
+                      ? ` · ${t.assignee_name}`
+                      : ""}
+                  </div>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      <PulseCreateTaskModalLazy
+        open={openModal}
+        onOpenChange={setOpenModal}
+        onCreated={reload}
       />
-    </section>
+    </>
   );
 }
+
+// Lazy-loaded modal so the heavy form code doesn't ship in the initial
+// dashboard bundle.
+const PulseCreateTaskModalLazy = dynamic(
+  () => import("@/components/CreateTaskModal"),
+  { ssr: false }
+);
 
 export function LiveBadge() {
   return (
@@ -881,32 +1012,66 @@ export function LiveBadge() {
   );
 }
 
-export function PulseActivityCard({ jobs }: { jobs: LiveJob[] }) {
-  const items: { color: string; who: string; what: string; when: string }[] = [];
-  if (jobs.length > 0) {
-    items.push({
-      color: PULSE.green,
-      who: "System",
-      what: `scheduled ${jobs[0].customer_name}`,
-      when: formatTime(jobs[0].scheduled_at).time,
-    });
-  }
-  if (jobs.length > 1) {
-    items.push({
-      color: PULSE.violetVar,
-      who: "System",
-      what: `noted ${jobs[1].customer_name}`,
-      when: formatTime(jobs[1].scheduled_at).time,
-    });
-  }
-  if (jobs.length > 2) {
-    items.push({
-      color: PULSE.cyan,
-      who: "System",
-      what: `assigned ${jobs[2].customer_name}`,
-      when: formatTime(jobs[2].scheduled_at).time,
-    });
-  }
+type ActivityRow = {
+  id: number;
+  actor_name: string | null;
+  type: string;
+  subject_label: string | null;
+  amount_cents: number | null;
+  created_at: string;
+};
+
+function activityVerb(type: string): { color: string; verb: string } {
+  if (type === "job.sold") return { color: PULSE.green, verb: "sold" };
+  if (type === "job.started") return { color: PULSE.cyan, verb: "started" };
+  if (type === "job.completed") return { color: PULSE.violetVar, verb: "completed" };
+  if (type === "job.paid") return { color: PULSE.green, verb: "got paid for" };
+  if (type === "payment.recorded") return { color: PULSE.green, verb: "recorded payment on" };
+  if (type === "estimate.approved") return { color: PULSE.green, verb: "approved estimate for" };
+  if (type === "invoice.paid") return { color: PULSE.green, verb: "paid invoice for" };
+  if (type === "task.completed") return { color: PULSE.violetVar, verb: "completed task" };
+  return { color: PULSE.textSubtle, verb: type };
+}
+
+function formatAgo(iso: string): string {
+  const ms = Date.now() - new Date(iso).getTime();
+  const min = Math.floor(ms / 60_000);
+  if (min < 1) return "just now";
+  if (min < 60) return `${min}m ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `${hr}h ago`;
+  const day = Math.floor(hr / 24);
+  if (day < 7) return `${day}d ago`;
+  return new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function formatAmount(cents: number): string {
+  return `$${(cents / 100).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`;
+}
+
+export function PulseActivityCard({ jobs: _jobs }: { jobs: LiveJob[] }) {
+  void _jobs;
+  const [items, setItems] = useState<ActivityRow[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/activity?limit=10")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((rows: ActivityRow[]) => {
+        if (!cancelled) setItems(Array.isArray(rows) ? rows : []);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <section
       className="rounded-2xl p-6"
@@ -916,7 +1081,14 @@ export function PulseActivityCard({ jobs }: { jobs: LiveJob[] }) {
         <h2 className="text-[15px] font-extrabold tracking-tight">Activity</h2>
         <LiveBadge />
       </div>
-      {items.length === 0 ? (
+      {loading ? (
+        <p
+          className="py-8 text-center text-[12.5px] font-bold"
+          style={{ color: PULSE.textSubtle }}
+        >
+          Loading…
+        </p>
+      ) : items.length === 0 ? (
         <p
           className="py-8 text-center text-[12.5px] font-bold"
           style={{ color: PULSE.textSubtle }}
@@ -925,37 +1097,47 @@ export function PulseActivityCard({ jobs }: { jobs: LiveJob[] }) {
         </p>
       ) : (
         <ul className="space-y-3.5">
-          {items.map((it, i) => (
-            <li key={i} className="flex items-start gap-3">
-              <span
-                className="mt-1 w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold"
-                style={{
-                  background: `${it.color}1F`,
-                  color: it.color,
-                  border: `1px solid ${it.color}33`,
-                }}
-              >
-                {it.who[0]}
-              </span>
-              <div className="flex-1 min-w-0">
-                <div
-                  className="text-[12.5px] font-bold leading-snug"
-                  style={{ color: PULSE.textMuted }}
+          {items.map((it) => {
+            const who = it.actor_name || "System";
+            const { color, verb } = activityVerb(it.type);
+            const amount =
+              it.amount_cents != null
+                ? ` (${formatAmount(it.amount_cents)})`
+                : "";
+            return (
+              <li key={it.id} className="flex items-start gap-3">
+                <span
+                  className="mt-1 w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-[10px] font-bold"
+                  style={{
+                    background: `${color}1F`,
+                    color,
+                    border: `1px solid ${color}33`,
+                  }}
                 >
-                  <span className="font-bold" style={{ color: PULSE.text }}>
-                    {it.who}
-                  </span>{" "}
-                  {it.what}
+                  {who[0]}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <div
+                    className="text-[12.5px] font-bold leading-snug"
+                    style={{ color: PULSE.textMuted }}
+                  >
+                    <span className="font-bold" style={{ color: PULSE.text }}>
+                      {who}
+                    </span>{" "}
+                    {verb}
+                    {it.subject_label ? ` ${it.subject_label}` : ""}
+                    {amount}
+                  </div>
+                  <div
+                    className="text-xs mt-0.5 font-bold"
+                    style={{ color: PULSE.textDim }}
+                  >
+                    {formatAgo(it.created_at)}
+                  </div>
                 </div>
-                <div
-                  className="text-xs mt-0.5 font-bold"
-                  style={{ color: PULSE.textDim }}
-                >
-                  {it.when}
-                </div>
-              </div>
-            </li>
-          ))}
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>
