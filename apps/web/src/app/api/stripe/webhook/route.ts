@@ -11,6 +11,7 @@ import {
   type Invoice,
   type CustomerSubscription,
 } from "@/lib/db";
+import { recordActivity } from "@/lib/activity";
 
 export const dynamic = "force-dynamic";
 
@@ -177,6 +178,22 @@ async function handleCheckoutCompleted(event: Stripe.Event) {
        WHERE id = ? AND company_id = ?`
     )
     .run(paymentIntentId, invoiceId, company.id);
+
+  try {
+    const cust = await db
+      .prepare("SELECT name FROM customers WHERE id = ? AND company_id = ?")
+      .get<{ name: string | null }>(invoice.customer_id, company.id);
+    await recordActivity(db, company.id, {
+      type: "invoice.paid",
+      subjectType: "invoice",
+      subjectId: invoice.id,
+      subjectLabel: cust?.name || invoice.title || `Invoice #${invoice.id}`,
+      actorUserId: invoice.sold_by_id ?? null,
+      amountCents: invoice.total_cents,
+    });
+  } catch {
+    // never break the webhook over a logging failure
+  }
 }
 
 async function handlePaymentIntentSucceeded(event: Stripe.Event) {
@@ -214,6 +231,22 @@ async function handlePaymentIntentSucceeded(event: Stripe.Event) {
        WHERE id = ? AND company_id = ?`
     )
     .run(intent.id, invoiceId, company.id);
+
+  try {
+    const cust = await db
+      .prepare("SELECT name FROM customers WHERE id = ? AND company_id = ?")
+      .get<{ name: string | null }>(invoice.customer_id, company.id);
+    await recordActivity(db, company.id, {
+      type: "invoice.paid",
+      subjectType: "invoice",
+      subjectId: invoice.id,
+      subjectLabel: cust?.name || invoice.title || `Invoice #${invoice.id}`,
+      actorUserId: invoice.sold_by_id ?? null,
+      amountCents: invoice.total_cents,
+    });
+  } catch {
+    // never break the webhook over a logging failure
+  }
 }
 
 // Stripe SDK v22 moved subscription + payment_intent off the top-level Invoice

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { getDb, syncReplica } from "@/lib/db";
-import { getSessionContext, requireCompanyId } from "@/lib/auth";
+import { getSessionContext } from "@/lib/auth";
 import { computeJobStatus, createJob, type JobInput } from "@/lib/jobs";
 import { FULL_SCHEDULE_PERMISSIONS } from "@/lib/technicianColors";
+import { recordActivity } from "@/lib/activity";
 
 export const dynamic = "force-dynamic";
 
@@ -99,7 +100,9 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
-  const companyId = await requireCompanyId();
+  const ctx = await getSessionContext();
+  if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const companyId = ctx.companyId;
   const db = await getDb();
   const body = (await req.json().catch(() => ({}))) as Partial<JobInput>;
   if (!body.customer_id || !body.start_time) {
@@ -110,6 +113,32 @@ export async function POST(req: Request) {
   }
   try {
     const id = await createJob(db, body as JobInput, companyId);
+    // Activity: log a sold-job event so the dashboard activity feed
+    // surfaces new sales as they happen. Best-effort.
+    try {
+      const detail = (await db
+        .prepare(
+          `SELECT j.price_cents, c.name AS customer_name
+             FROM jobs j
+             JOIN customers c ON c.id = j.customer_id
+            WHERE j.id = ? AND j.company_id = ?`
+        )
+        .get(id, companyId)) as
+        | { price_cents: number; customer_name: string }
+        | undefined;
+      if (detail) {
+        await recordActivity(db, companyId, {
+          type: "job.sold",
+          subjectType: "job",
+          subjectId: id,
+          subjectLabel: detail.customer_name,
+          actorUserId: ctx.staffId,
+          amountCents: detail.price_cents || null,
+        });
+      }
+    } catch {
+      // never break the response over a logging failure
+    }
     return NextResponse.json({ id }, { status: 201 });
   } catch (e) {
     const message = e instanceof Error ? e.message : "Create failed";
