@@ -233,6 +233,8 @@ export default function JobDetailClient({
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [staff, setStaff] = useState<Staff[]>([]);
+  const [creatingInvoice, setCreatingInvoice] = useState(false);
+  const [sendingReview, setSendingReview] = useState(false);
   const subscription = initialSubscription;
 
   useEffect(() => {
@@ -292,6 +294,72 @@ export default function JobDetailClient({
     await fetch(`/api/jobs/${job.id}`, { method: "DELETE" });
     router.push("/schedule");
     router.refresh();
+  }
+
+  async function createInvoiceFromJob() {
+    if (creatingInvoice) return;
+    if (job.line_items.length === 0) {
+      alert("Add at least one line item to this job before creating an invoice.");
+      return;
+    }
+    setCreatingInvoice(true);
+    const payload = {
+      customer_id: job.customer_id,
+      notes: null,
+      lead_source: job.lead_source,
+      sold_by_id: job.sales[0]?.id ?? null,
+      items: job.line_items.map((li) => ({
+        title: li.title,
+        description: li.description,
+        quantity: li.quantity,
+        price_cents: li.price_cents,
+        taxable: !!li.taxable,
+      })),
+    };
+    const res = await fetch("/api/invoices", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    setCreatingInvoice(false);
+    if (!res.ok) {
+      const j = (await res.json().catch(() => ({}))) as { error?: string };
+      alert(j.error || "Could not create invoice");
+      return;
+    }
+    const created = (await res.json()) as { id: number };
+    router.push(`/invoices/${created.id}`);
+  }
+
+  async function sendReviewRequest() {
+    if (sendingReview) return;
+    if (!job.customer_phone && !job.customer_email) {
+      alert("This customer has no phone or email on file.");
+      return;
+    }
+    if (!confirm("Send a review request to this customer?")) return;
+    setSendingReview(true);
+    const res = await fetch(`/api/jobs/${job.id}/review-request`, {
+      method: "POST",
+    });
+    setSendingReview(false);
+    const j = (await res.json().catch(() => ({}))) as {
+      error?: string;
+      sent?: { sms?: boolean; email?: boolean };
+    };
+    if (!res.ok) {
+      alert(j.error || "Could not send review request");
+      return;
+    }
+    const channels = [
+      j.sent?.sms ? "SMS" : null,
+      j.sent?.email ? "email" : null,
+    ].filter(Boolean);
+    alert(
+      channels.length > 0
+        ? `Review request sent via ${channels.join(" + ")}.`
+        : "Review request prepared but no channel was available."
+    );
   }
 
   const start = new Date(job.scheduled_at);
@@ -512,19 +580,21 @@ export default function JobDetailClient({
               <Button
                 variant="ghost"
                 type="button"
-                title="Coming soon"
-                className="w-full inline-flex items-center justify-between border-line hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold h-auto"
+                onClick={createInvoiceFromJob}
+                disabled={creatingInvoice}
+                className="w-full inline-flex items-center justify-between border-line hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold h-auto disabled:opacity-50"
               >
-                <span>Create Invoice</span>
+                <span>{creatingInvoice ? "Creating…" : "Create Invoice"}</span>
                 <span className="text-zinc-500">›</span>
               </Button>
               <Button
                 variant="ghost"
                 type="button"
-                title="Coming soon"
-                className="w-full inline-flex items-center justify-between border-line hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold h-auto"
+                onClick={sendReviewRequest}
+                disabled={sendingReview}
+                className="w-full inline-flex items-center justify-between border-line hover:bg-black rounded-2xl px-4 py-3 text-sm text-zinc-300 font-bold h-auto disabled:opacity-50"
               >
-                <span>Send Review Request</span>
+                <span>{sendingReview ? "Sending…" : "Send Review Request"}</span>
                 <span className="text-zinc-500">›</span>
               </Button>
             </div>
