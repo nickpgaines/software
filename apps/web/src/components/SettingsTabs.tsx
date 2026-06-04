@@ -670,6 +670,9 @@ type StripeStatus = {
   details_submitted: boolean;
   requirements_due?: boolean;
   error?: string;
+  // Set when the previously-connected account was inaccessible and we
+  // auto-cleared the stored ID so the merchant can reconnect.
+  recovered_from?: string;
 };
 
 function PaymentsPanel() {
@@ -777,6 +780,11 @@ function PaymentsPanel() {
         </div>
       ) : !status.connected ? (
         <div className="border border-line rounded-2xl px-4 py-4 space-y-4">
+          {status.recovered_from && (
+            <div className="border border-amber-200 bg-amber-50 rounded-xl px-3 py-2 text-xs text-amber-800 font-bold">
+              {status.recovered_from}
+            </div>
+          )}
           <div>
             <p className="text-sm font-bold text-white tracking-tight">
               No Stripe account connected
