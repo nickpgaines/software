@@ -88,9 +88,9 @@ export function avatarColor(name: string) {
 
 export function KpiCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="bg-card border border-line rounded-2xl px-5 py-4">
-      <div className="text-[14px] font-semibold text-zinc-500">{label}</div>
-      <div className="mt-2.5 text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white">
+    <div className="bg-card border border-line rounded-2xl px-4 py-3.5 md:px-5 md:py-4">
+      <div className="text-[13px] md:text-[14px] font-semibold text-zinc-500">{label}</div>
+      <div className="mt-2 md:mt-2.5 text-[22px] md:text-[28px] font-extrabold tracking-tight leading-none tabular-nums text-white truncate">
         {value}
       </div>
     </div>

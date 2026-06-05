@@ -162,7 +162,7 @@ export default function LeadsWorkflowsClient({
 
       {tab === "workflows" ? (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-3 gap-2 md:gap-3">
             <Stat label="TOTAL" value={total} valueClass="text-white" />
             <Stat label="ACTIVE" value={active} valueClass="text-emerald-600" />
             <Stat label="PAUSED" value={paused} valueClass="text-white" />
@@ -319,9 +319,11 @@ function Stat({
   valueClass: string;
 }) {
   return (
-    <div className="border border-line rounded-2xl p-5">
-      <div className="text-xs font-bold text-zinc-400">{label}</div>
-      <div className={`text-3xl font-bold mt-2 ${valueClass}`}>{value}</div>
+    <div className="border border-line rounded-2xl p-3 md:p-5">
+      <div className="text-[11px] md:text-xs font-bold text-zinc-400">{label}</div>
+      <div className={`text-2xl md:text-3xl font-bold mt-1 md:mt-2 ${valueClass}`}>
+        {value}
+      </div>
     </div>
   );
 }

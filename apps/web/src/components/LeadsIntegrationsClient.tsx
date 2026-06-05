@@ -120,9 +120,9 @@ export default function LeadsIntegrationsClient({
       )}
 
       <div className="border border-line rounded-2xl overflow-hidden">
-        <div className="p-6 flex items-start gap-5">
-          <div className="w-16 h-16 rounded-2xl bg-white flex items-center justify-center shrink-0">
-            <MetaLogo className="w-10 h-7" />
+        <div className="p-5 sm:p-6 flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-5">
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-white flex items-center justify-center shrink-0">
+            <MetaLogo className="w-9 h-6 sm:w-10 sm:h-7" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
@@ -154,14 +154,14 @@ export default function LeadsIntegrationsClient({
               </p>
             )}
           </div>
-          <div className="shrink-0">
+          <div className="shrink-0 w-full sm:w-auto">
             {connected ? (
               <Button
                 type="button"
                 variant="ghost"
                 onClick={disconnect}
                 disabled={busy}
-                className="h-auto bg-primary hover:opacity-90 text-primary-foreground text-sm font-bold px-5 py-2.5 rounded-lg"
+                className="h-auto w-full sm:w-auto bg-primary hover:opacity-90 text-primary-foreground text-sm font-bold px-5 py-2.5 rounded-lg"
               >
                 Disconnect
               </Button>
@@ -170,7 +170,7 @@ export default function LeadsIntegrationsClient({
                 type="button"
                 variant="ghost"
                 onClick={connect}
-                className="h-auto bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg"
+                className="h-auto w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold px-5 py-2.5 rounded-lg"
               >
                 Connect Meta
               </Button>
