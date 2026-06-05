@@ -61,73 +61,86 @@ export async function GET() {
       { status: 503 }
     );
   }
-  const companyId = await requireCompanyId();
-  const company = await getCompany(companyId);
-  if (!company.stripe_account_id || !company.stripe_charges_enabled) {
-    return NextResponse.json(
-      { error: "Connect a Stripe account before importing subscriptions." },
-      { status: 400 }
+  try {
+    const companyId = await requireCompanyId();
+    const company = await getCompany(companyId);
+    if (!company.stripe_account_id) {
+      return NextResponse.json(
+        {
+          error:
+            "No Stripe account is connected to this Forge company yet. Connect one in Settings → Payments first.",
+        },
+        { status: 400 }
+      );
+    }
+    if (!company.stripe_charges_enabled) {
+      return NextResponse.json(
+        {
+          error:
+            "The connected Stripe account isn't ready to accept charges yet — finish onboarding in Stripe (Settings → Payments → Continue), then try again.",
+        },
+        { status: 400 }
+      );
+    }
+    const stripe = getStripe();
+    const db = await getDb();
+
+    // Page through every Stripe Sub on the connected account. 22-customer
+    // accounts return in one page; larger books paginate via starting_after.
+    // Cap iterations defensively.
+    const stripeSubs: Stripe.Subscription[] = [];
+    let startingAfter: string | undefined = undefined;
+    for (let page = 0; page < 20; page++) {
+      const params: Stripe.SubscriptionListParams = {
+        limit: 100,
+        status: "all",
+        expand: [
+          "data.customer",
+          "data.default_payment_method",
+          "data.items.data.price.product",
+        ],
+      };
+      if (startingAfter) params.starting_after = startingAfter;
+      const res = await stripe.subscriptions.list(params, {
+        stripeAccount: company.stripe_account_id,
+      });
+      for (const s of res.data) stripeSubs.push(s);
+      if (!res.has_more || res.data.length === 0) break;
+      startingAfter = res.data[res.data.length - 1].id;
+    }
+
+    // Build a lookup for Forge customers (small N — full table scan is fine
+    // for the company sizes that hit this endpoint).
+    const customers = (await db
+      .prepare(
+        "SELECT id, name, email, phone FROM customers WHERE company_id = ?"
+      )
+      .all(companyId)) as Pick<Customer, "id" | "name" | "email" | "phone">[];
+
+    const byEmail = new Map<string, number>();
+    const byPhone = new Map<string, number>();
+    const byName = new Map<string, number>();
+    for (const c of customers) {
+      if (c.email) byEmail.set(c.email.trim().toLowerCase(), c.id);
+      const ph = normalizePhone(c.phone);
+      if (ph) byPhone.set(ph, c.id);
+      if (c.name) byName.set(c.name.trim().toLowerCase(), c.id);
+    }
+
+    // Which Stripe Sub IDs are already linked? The unique index on
+    // stripe_subscription_id enforces this at the DB layer, but we surface
+    // the flag in the UI so users don't try.
+    const alreadyLinkedRows = (await db
+      .prepare(
+        `SELECT stripe_subscription_id FROM customer_subscriptions
+          WHERE company_id = ? AND stripe_subscription_id IS NOT NULL`
+      )
+      .all(companyId)) as { stripe_subscription_id: string }[];
+    const alreadyLinked = new Set(
+      alreadyLinkedRows.map((r) => r.stripe_subscription_id)
     );
-  }
-  const stripe = getStripe();
-  const db = await getDb();
 
-  // Page through every Stripe Sub on the connected account. 22-customer
-  // accounts return in one page; larger books paginate via starting_after.
-  // Cap iterations defensively.
-  const stripeSubs: Stripe.Subscription[] = [];
-  let startingAfter: string | undefined = undefined;
-  for (let page = 0; page < 20; page++) {
-    const params: Stripe.SubscriptionListParams = {
-      limit: 100,
-      status: "all",
-      expand: [
-        "data.customer",
-        "data.default_payment_method",
-        "data.items.data.price.product",
-      ],
-    };
-    if (startingAfter) params.starting_after = startingAfter;
-    const res = await stripe.subscriptions.list(params, {
-      stripeAccount: company.stripe_account_id,
-    });
-    for (const s of res.data) stripeSubs.push(s);
-    if (!res.has_more || res.data.length === 0) break;
-    startingAfter = res.data[res.data.length - 1].id;
-  }
-
-  // Build a lookup for Forge customers (small N — full table scan is fine
-  // for the company sizes that hit this endpoint).
-  const customers = (await db
-    .prepare(
-      "SELECT id, name, email, phone FROM customers WHERE company_id = ?"
-    )
-    .all(companyId)) as Pick<Customer, "id" | "name" | "email" | "phone">[];
-
-  const byEmail = new Map<string, number>();
-  const byPhone = new Map<string, number>();
-  const byName = new Map<string, number>();
-  for (const c of customers) {
-    if (c.email) byEmail.set(c.email.trim().toLowerCase(), c.id);
-    const ph = normalizePhone(c.phone);
-    if (ph) byPhone.set(ph, c.id);
-    if (c.name) byName.set(c.name.trim().toLowerCase(), c.id);
-  }
-
-  // Which Stripe Sub IDs are already linked? The unique index on
-  // stripe_subscription_id enforces this at the DB layer, but we surface
-  // the flag in the UI so users don't try.
-  const alreadyLinkedRows = (await db
-    .prepare(
-      `SELECT stripe_subscription_id FROM customer_subscriptions
-        WHERE company_id = ? AND stripe_subscription_id IS NOT NULL`
-    )
-    .all(companyId)) as { stripe_subscription_id: string }[];
-  const alreadyLinked = new Set(
-    alreadyLinkedRows.map((r) => r.stripe_subscription_id)
-  );
-
-  const report = stripeSubs.map((sub) => {
+    const report = stripeSubs.map((sub) => {
     const stripeCustomer =
       sub.customer && typeof sub.customer !== "string" ? sub.customer : null;
     const isDeleted =
@@ -232,10 +245,47 @@ export async function GET() {
     };
   });
 
-  return NextResponse.json({
-    stripe_subscriptions: report,
-    forge_customers: customers,
-  });
+    return NextResponse.json({
+      stripe_subscriptions: report,
+      forge_customers: customers,
+    });
+  } catch (e) {
+    const err = e as {
+      type?: string;
+      code?: string;
+      raw?: { type?: string; code?: string };
+      message?: string;
+    };
+    const code = err.code || err.raw?.code || "";
+    const type = err.type || err.raw?.type || "";
+    const message = err.message || "Unknown error";
+
+    // The most common real-world failure here is the same Connect-revoked
+    // case the Settings page hits: the stored stripe_account_id is no
+    // longer accessible to the platform key. Translate that into a
+    // friendly "reconnect" pointer instead of a raw Stripe error.
+    if (
+      type === "StripePermissionError" ||
+      type === "invalid_request_error" ||
+      code === "permission_error" ||
+      code === "resource_missing" ||
+      code === "account_invalid"
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "The connected Stripe account is no longer accessible to Forge. Go to Settings → Payments and reconnect, then retry.",
+        },
+        { status: 400 }
+      );
+    }
+
+    console.error("GET /api/customer-subscriptions/import failed:", e);
+    return NextResponse.json(
+      { error: `Could not list Stripe subscriptions: ${message}` },
+      { status: 500 }
+    );
+  }
 }
 
 export async function POST(req: Request) {
