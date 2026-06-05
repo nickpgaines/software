@@ -204,7 +204,7 @@ Every value below is taken from running code. The dashboard does not use
 
 | Role                         | Class                                                                                 | Effective values                                          | Defined at                                  |
 | ---------------------------- | ------------------------------------------------------------------------------------- | --------------------------------------------------------- | ------------------------------------------- |
-| **H1 — page title**          | `text-page-title` *(token; pair with `text-white` + optional `tabular-nums`)*         | 40px / weight 800 / lh 1 / tracking -0.025em              | `tailwind.config.ts` `fontSize.page-title` |
+| **H1 — page title**          | `text-page-title` *(token; pair with `text-white` + optional `tabular-nums`)*         | fluid `clamp(28px, 5vw, 40px)` / weight 800 / lh 1 / tracking -0.025em (28px floor on phones, 40px on tablet/desktop) | `tailwind.config.ts` `fontSize.page-title` |
 | **H1 — dashboard greeting**  | `text-[48px] font-extrabold tracking-tight leading-none`                              | 48px / weight 800 / lh 1 / tracking -0.025em              | `widgets.tsx:57`                            |
 | **H1 — chart card headline** | `text-[52px] font-black tracking-tight leading-none`                                  | 52px / weight 900 / lh 1 / tracking -0.025em              | `widgets.tsx:431`                           |
 | **H2 — card title**          | `text-[15px] font-extrabold tracking-tight`                                           | 15px / weight 800 / lh 1.5 (default) / tracking -0.025em  | `widgets.tsx:566` (Schedule), :617 (Pipeline), :696 (Inbox), :720 (Tasks), :788 (Activity) |
@@ -327,6 +327,14 @@ Rules:
    weight as the top label, one tone brighter (zinc-400 vs zinc-500).
    Literal Tailwind class — no inline `PULSE.textMuted` /
    `PULSE.textDim` style. One line only (see §10 #24).
+
+**Mobile step-down (allowed).** Cards may shrink padding and the value
+size below `md` and restore the canonical desktop values at `md:` —
+following the same fluid pattern as the chart card's `p-4 md:p-7`. The
+sanctioned pairs are `px-4 py-3.5 md:px-5 md:py-4` for the wrapper and
+`text-[22px] md:text-[28px]` for the value (e.g.
+`LeaderboardRankingsView.KpiCard`). Desktop (`md:` and up) must land on
+the exact canonical values above; only the sub-`md` step is reduced.
 
 ### Delta indicator
 
@@ -633,7 +641,7 @@ border `PULSE.cardBorder`.
 - White stroke path (`widgets.tsx:256-263`): `stroke="#ffffff"`, width 3, round caps + joins
 - Area gradient (`widgets.tsx:236-239`): white at 18% opacity → 0%
 - Y-axis grid lines (`widgets.tsx:241-254`): horizontal at 0 / 25% / 50% / 75% / 100%, dashed `2 4`, color `PULSE.cardBorder`
-- Y labels (`widgets.tsx:277-296`): HTML overlay, right-aligned in left padding zone (44px wide), shows `$<rounded-down dollars>` per tick
+- Y labels (`widgets.tsx:277-296`): HTML overlay, right-aligned in the left padding zone (44px desktop / 40px mobile), `text-[10px] md:text-[11px]`. Ticks are abbreviated by the `axisTick()` helper — thousands collapse to `K` (`$12000` → `$12K`, `$1500` → `$1.5K`), sub-$1000 stay as whole dollars (`$0`, `$750`). The compact form keeps labels inside the gutter so they don't bleed over the plot on narrow screens.
 - X labels (`widgets.tsx:297-312`): HTML overlay at `bottom: 4`, day-of-month numbers, every nth day (math: `Math.ceil(days.length / 10)`)
 - **Hover crosshair** (`widgets.tsx:264-274`): vertical dashed line at hovered X, color `PULSE.textDim`
 - **Hover dot** (`widgets.tsx:317-331`): 12×12 white circle with 3px black ring

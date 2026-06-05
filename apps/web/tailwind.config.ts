@@ -87,10 +87,13 @@ export default {
         // Settings, Reports, Leads, login/signup, modals, etc.). Distinct
         // from the Pulse hero greeting (`text-[48px]`) and chart headline
         // (`text-[52px]`) — those stay as-is. Bakes in the four properties
-        // that always travel together: 40px / extrabold / tracking-tight /
+        // that always travel together: extrabold / tracking-tight /
         // leading-none. Pair with `text-white` and (for numerics) `tabular-nums`.
+        // Size is fluid: `clamp` floors at 28px on narrow phones (so 40px
+        // titles don't wrap a word per line) and tops out at the canonical
+        // 40px on tablet/desktop — so desktop is visually unchanged.
         "page-title": [
-          "40px",
+          "clamp(1.75rem, 5vw, 2.5rem)",
           { lineHeight: "1", letterSpacing: "-0.025em", fontWeight: "800" },
         ],
         // Widget-internal uppercase label — KPI labels, form labels, table

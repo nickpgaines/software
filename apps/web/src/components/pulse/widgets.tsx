@@ -127,6 +127,19 @@ function tooltipDate(iso: string) {
   });
 }
 
+// Compact dollar label for the chart's Y-axis ticks. `tick` is in cents.
+// Abbreviates thousands as "K" ($12000 → "$12K", $1500 → "$1.5K") so the
+// labels stay narrow enough to sit inside the left gutter without bleeding
+// over the plot — the old `$12000` form overflowed the gutter on mobile.
+function axisTick(cents: number) {
+  const dollars = cents / 100;
+  if (dollars >= 1000) {
+    const k = dollars / 1000;
+    return `$${Number.isInteger(k) ? k : k.toFixed(1)}K`;
+  }
+  return `$${Math.round(dollars)}`;
+}
+
 export function HeroChart({
   days,
   height = 300,
@@ -176,7 +189,7 @@ export function HeroChart({
     );
   }
   const w = Math.max(1, Math.round(containerWidth));
-  const padL = isMobile ? 30 : 44;
+  const padL = isMobile ? 40 : 44;
   const padR = 8;
   const padT = 12;
   const padB = 28;
@@ -298,18 +311,18 @@ export function HeroChart({
           return (
             <div
               key={i}
-              className="absolute text-[11px] font-extrabold"
+              className="absolute text-[10px] md:text-[11px] font-extrabold tabular-nums"
               style={{
                 left: 0,
                 width: `${padLPct}%`,
                 top: `${yPct}%`,
                 transform: "translateY(-50%)",
                 textAlign: "right",
-                paddingRight: 8,
+                paddingRight: 6,
                 color: PULSE.textDim,
               }}
             >
-              ${Math.round(tick / 100)}
+              {axisTick(tick)}
             </div>
           );
         })}
