@@ -954,22 +954,6 @@ type SubscriptionTerms = {
   updated_at: string;
 };
 
-type CustomerSubscription = {
-  id: number;
-  customer_id: number;
-  template_id: number | null;
-  name: string;
-  description: string | null;
-  price_cents: number;
-  interval: SubscriptionInterval;
-  service_interval: SubscriptionInterval;
-  status: "pending" | "active" | "declined" | "canceled";
-  sent_at: string | null;
-  accepted_at: string | null;
-  canceled_at: string | null;
-  created_at: string;
-};
-
 type CustomerLite = {
   id: number;
   name: string;
@@ -986,10 +970,6 @@ const INTERVAL_LABELS: Record<SubscriptionInterval, string> = {
   semiannually: "Bi-annually (every 6 months)",
   yearly: "Yearly",
 };
-
-function formatPrice(cents: number) {
-  return `$${(cents / 100).toFixed(2)}`;
-}
 
 type TemplateForm = {
   name: string;
@@ -1013,7 +993,6 @@ function emptyForm(): TemplateForm {
 
 function SubscriptionsPanel() {
   const [templates, setTemplates] = useState<SubscriptionTemplate[]>([]);
-  const [subscriptions, setSubscriptions] = useState<CustomerSubscription[]>([]);
   const [customers, setCustomers] = useState<CustomerLite[]>([]);
   const [terms, setTerms] = useState<SubscriptionTerms[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1029,14 +1008,12 @@ function SubscriptionsPanel() {
   async function reload() {
     setLoading(true);
     try {
-      const [tplRes, subRes, custRes, termsRes] = await Promise.all([
+      const [tplRes, custRes, termsRes] = await Promise.all([
         fetch("/api/settings/subscriptions"),
-        fetch("/api/customer-subscriptions"),
         fetch("/api/customers"),
         fetch("/api/settings/subscription-terms"),
       ]);
       if (tplRes.ok) setTemplates(await tplRes.json());
-      if (subRes.ok) setSubscriptions(await subRes.json());
       if (custRes.ok) setCustomers(await custRes.json());
       if (termsRes.ok) setTerms(await termsRes.json());
     } catch {
@@ -1379,12 +1356,6 @@ function SubscriptionsPanel() {
         )}
       </div>
 
-      <RecentSubscriptions
-        subscriptions={subscriptions}
-        customers={customers}
-        onChange={reload}
-      />
-
       {actionTpl && (
         <SendOrAcceptModal
           template={actionTpl}
@@ -1409,272 +1380,6 @@ function SubscriptionsPanel() {
         />
       )}
     </div>
-  );
-}
-
-function RecentSubscriptions({
-  subscriptions,
-  customers,
-  onChange,
-}: {
-  subscriptions: CustomerSubscription[];
-  customers: CustomerLite[];
-  onChange: () => void | Promise<void>;
-}) {
-  const customerMap = useMemo(() => {
-    const m = new Map<number, CustomerLite>();
-    for (const c of customers) m.set(c.id, c);
-    return m;
-  }, [customers]);
-
-  const [cancelTarget, setCancelTarget] = useState<CustomerSubscription | null>(
-    null
-  );
-
-  if (subscriptions.length === 0) return null;
-
-  async function updateStatus(
-    id: number,
-    status: CustomerSubscription["status"]
-  ) {
-    const res = await fetch(`/api/customer-subscriptions/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status }),
-    });
-    if (res.ok) await onChange();
-  }
-
-  async function cancelSubscription(
-    id: number,
-    mode: "all_future" | "keep_next"
-  ) {
-    const res = await fetch(`/api/customer-subscriptions/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: "canceled", cancel_mode: mode }),
-    });
-    if (res.ok) {
-      setCancelTarget(null);
-      await onChange();
-    }
-  }
-
-  return (
-    <div>
-      <h3 className="text-sm font-extrabold text-white tracking-tight mb-3">
-        Recent subscriptions
-      </h3>
-      <ul className="divide-y divide-line rounded-xl border border-line">
-        {subscriptions.slice(0, 10).map((s) => {
-          const cust = customerMap.get(s.customer_id);
-          return (
-            <li
-              key={s.id}
-              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4"
-            >
-              <div className="min-w-0">
-                <div className="text-sm font-bold text-white tracking-tight truncate">
-                  {cust?.name || `Customer #${s.customer_id}`}
-                </div>
-                <div className="text-xs text-zinc-400 mt-0.5">
-                  {s.name} · {formatPrice(s.price_cents)} /{" "}
-                  {INTERVAL_LABELS[s.interval].toLowerCase()}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <StatusBadge status={s.status} />
-                {s.status === "pending" && (
-                  <>
-                    <Button
-                      variant="ghost"
-                      onClick={() => updateStatus(s.id, "active")}
-                      className="h-auto text-xs bg-emerald-600 hover:bg-emerald-700 text-white rounded-full px-3 py-1.5 font-bold"
-                    >
-                      Mark accepted
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      onClick={() => updateStatus(s.id, "declined")}
-                      className="h-auto text-xs text-zinc-400 hover:text-white hover:bg-transparent"
-                    >
-                      Decline
-                    </Button>
-                  </>
-                )}
-                {s.status === "active" && (
-                  <Button
-                    variant="ghost"
-                    onClick={() => setCancelTarget(s)}
-                    className="h-auto text-xs text-rose-600 hover:text-rose-700 hover:bg-transparent"
-                  >
-                    Cancel
-                  </Button>
-                )}
-              </div>
-            </li>
-          );
-        })}
-      </ul>
-      {cancelTarget && (
-        <CancelSubscriptionModal
-          subscription={cancelTarget}
-          onClose={() => setCancelTarget(null)}
-          onConfirm={(mode) => cancelSubscription(cancelTarget.id, mode)}
-        />
-      )}
-    </div>
-  );
-}
-
-function CancelSubscriptionModal({
-  subscription,
-  onClose,
-  onConfirm,
-}: {
-  subscription: CustomerSubscription;
-  onClose: () => void;
-  onConfirm: (mode: "all_future" | "keep_next") => void | Promise<void>;
-}) {
-  const [mode, setMode] = useState<"all_future" | "keep_next">("all_future");
-  const [submitting, setSubmitting] = useState(false);
-
-  async function go() {
-    setSubmitting(true);
-    await onConfirm(mode);
-    setSubmitting(false);
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 p-4">
-      <div className="bg-card rounded-2xl shadow-xl w-full max-w-md p-5 space-y-4">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-base font-extrabold text-white tracking-tight">
-              Cancel subscription
-            </h3>
-            <p className="text-xs text-zinc-400 mt-1">
-              {subscription.name} · {formatPrice(subscription.price_cents)} /{" "}
-              {INTERVAL_LABELS[subscription.interval].toLowerCase()}
-            </p>
-          </div>
-          <Button
-            variant="ghost"
-            onClick={onClose}
-            className="h-auto text-sm text-zinc-500 hover:text-zinc-300 hover:bg-transparent"
-          >
-            ✕
-          </Button>
-        </div>
-        <p className="text-xs text-zinc-400">
-          Past visits and their payment records stay intact. Pick how to
-          handle the upcoming visits already on the schedule.
-        </p>
-        <div className="space-y-2">
-          <Label className="block w-full rounded-xl border border-line hover:border-line-strong p-3 cursor-pointer">
-            {/* Native <input type="radio"> kept: no Radio primitive in design system. */}
-            <input
-              type="radio"
-              name="cancel-mode"
-              checked={mode === "all_future"}
-              onChange={() => setMode("all_future")}
-              className="sr-only"
-            />
-            <div className="flex items-start gap-3">
-              <span
-                className={
-                  "mt-0.5 inline-flex h-4 w-4 shrink-0 rounded-full border-2 " +
-                  (mode === "all_future"
-                    ? "border-slate-200"
-                    : "border-line-strong")
-                }
-              >
-                {mode === "all_future" && (
-                  <span className="m-auto h-2 w-2 rounded-full bg-slate-200" />
-                )}
-              </span>
-              <div>
-                <div className="text-sm font-bold text-white tracking-tight">
-                  Cancel all future visits
-                </div>
-                <div className="text-xs text-zinc-400 mt-0.5">
-                  Every upcoming subscription visit on the schedule is
-                  canceled.
-                </div>
-              </div>
-            </div>
-          </Label>
-          <Label className="block w-full rounded-xl border border-line hover:border-line-strong p-3 cursor-pointer">
-            <input
-              type="radio"
-              name="cancel-mode"
-              checked={mode === "keep_next"}
-              onChange={() => setMode("keep_next")}
-              className="sr-only"
-            />
-            <div className="flex items-start gap-3">
-              <span
-                className={
-                  "mt-0.5 inline-flex h-4 w-4 shrink-0 rounded-full border-2 " +
-                  (mode === "keep_next"
-                    ? "border-slate-200"
-                    : "border-line-strong")
-                }
-              >
-                {mode === "keep_next" && (
-                  <span className="m-auto h-2 w-2 rounded-full bg-slate-200" />
-                )}
-              </span>
-              <div>
-                <div className="text-sm font-bold text-white tracking-tight">
-                  Keep the next visit, cancel everything after
-                </div>
-                <div className="text-xs text-zinc-400 mt-0.5">
-                  Useful when the upcoming visit is already prepped or the
-                  customer expects it.
-                </div>
-              </div>
-            </div>
-          </Label>
-        </div>
-        <div className="flex items-center gap-3 pt-1">
-          <Button
-            variant="ghost"
-            onClick={go}
-            disabled={submitting}
-            className="h-auto text-sm bg-rose-600 hover:bg-rose-700 disabled:bg-rose-300 text-white rounded-full px-5 py-2 font-bold"
-          >
-            {submitting ? "Canceling…" : "Cancel subscription"}
-          </Button>
-          <Button
-            variant="ghost"
-            onClick={onClose}
-            className="h-auto text-sm text-zinc-400 font-bold hover:text-white hover:bg-transparent"
-          >
-            Keep active
-          </Button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function StatusBadge({ status }: { status: CustomerSubscription["status"] }) {
-  const styles: Record<CustomerSubscription["status"], string> = {
-    pending: "bg-amber-100 text-amber-800",
-    active: "bg-emerald-100 text-emerald-800",
-    declined: "bg-black text-zinc-400",
-    canceled: "bg-rose-100 text-rose-700",
-  };
-  return (
-    <span
-      className={
-        "text-[10px] font-bold rounded-full px-2 py-0.5 " +
-        styles[status]
-      }
-    >
-      {status}
-    </span>
   );
 }
 
