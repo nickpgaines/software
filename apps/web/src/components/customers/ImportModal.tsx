@@ -125,6 +125,12 @@ export default function ImportModal({
   const [mapping, setMapping] = useState<Mapping>({});
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [importProgress, setImportProgress] = useState<{
+    batch: number;
+    totalBatches: number;
+    rowsDone: number;
+    rowsTotal: number;
+  } | null>(null);
   const [showSkipped, setShowSkipped] = useState(false);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -178,22 +184,69 @@ export default function ImportModal({
     [csvRows, mapping]
   );
 
+  // Chunked import: a single large request (e.g. 2400+ rows from a real
+  // Homebase360 customer book) easily times out on Vercel's serverless
+  // function limit. We split into batches client-side and accumulate
+  // results. Each batch is its own server transaction so partial
+  // failure is recoverable — the user sees how far we got.
   async function doImport() {
     setStep("importing");
     setError(null);
     const rows = buildMapped(csvRows, mapping);
-    const res = await fetch("/api/customers/import", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rows }),
-    });
-    if (!res.ok) {
-      setError("Import failed");
-      setStep("preview");
-      return;
+    const CHUNK = 200;
+    const total: Result = {
+      inserted: 0,
+      skipped: 0,
+      skippedReasons: [],
+      errors: [],
+    };
+    let batchIndex = 0;
+    for (let offset = 0; offset < rows.length; offset += CHUNK) {
+      batchIndex++;
+      const slice = rows.slice(offset, offset + CHUNK);
+      setImportProgress({
+        batch: batchIndex,
+        totalBatches: Math.ceil(rows.length / CHUNK),
+        rowsDone: offset,
+        rowsTotal: rows.length,
+      });
+      const res = await fetch("/api/customers/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows: slice }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          message?: string;
+        };
+        setError(
+          (j.error || j.message
+            ? `${j.error || "Import failed"}${j.message ? `: ${j.message}` : ""}`
+            : "Import failed") +
+            ` (failed on rows ${offset + 1}–${offset + slice.length} of ${rows.length}; ${total.inserted} customers were imported before this)`
+        );
+        setStep("preview");
+        setImportProgress(null);
+        return;
+      }
+      const data = (await res.json()) as Result;
+      total.inserted += data.inserted;
+      total.skipped += data.skipped;
+      // Renumber sub-batch row indices to the source row positions so
+      // "Row 1437" means row 1437 of your CSV, not row 37 of batch 8.
+      for (const e of data.errors) {
+        total.errors.push({ row: offset + e.row, reason: e.reason });
+      }
+      for (const s of data.skippedReasons) {
+        total.skippedReasons.push({
+          row: offset + s.row,
+          reason: s.reason,
+        });
+      }
     }
-    const data = (await res.json()) as Result;
-    setResult(data);
+    setImportProgress(null);
+    setResult(total);
     setStep("result");
   }
 
@@ -255,8 +308,19 @@ export default function ImportModal({
           )}
 
           {step === "importing" && (
-            <div className="py-12 text-center text-sm text-zinc-400 font-bold">
-              Importing…
+            <div className="py-12 text-center text-sm text-zinc-400 font-bold space-y-2">
+              <p>
+                Importing
+                {importProgress
+                  ? ` batch ${importProgress.batch} of ${importProgress.totalBatches}…`
+                  : "…"}
+              </p>
+              {importProgress && (
+                <p className="text-xs text-zinc-500">
+                  {importProgress.rowsDone.toLocaleString()} of{" "}
+                  {importProgress.rowsTotal.toLocaleString()} rows processed
+                </p>
+              )}
             </div>
           )}
 
