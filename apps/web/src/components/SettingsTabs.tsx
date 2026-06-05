@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -829,34 +830,38 @@ function PaymentsPanel() {
           )}
         </div>
       ) : (
-        <div className="border border-line rounded-2xl px-4 py-4 space-y-3">
+        <div className="border border-line rounded-2xl px-5 py-5 space-y-5">
           <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2">
-                <span
-                  className={
-                    "inline-block w-2 h-2 rounded-full " +
-                    (status.charges_enabled
-                      ? "bg-emerald-500"
-                      : "bg-amber-500")
-                  }
-                />
-                <p className="text-sm font-bold text-white tracking-tight">
+            <div className="space-y-2">
+              <div className="flex items-center gap-2.5">
+                <p className="text-base font-bold text-white tracking-tight">
                   {status.business_name ||
                     status.email ||
-                    "Connected Stripe account"}
+                    "Stripe account"}
                 </p>
+                <Badge
+                  className={
+                    status.charges_enabled
+                      ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                      : "bg-amber-500/15 text-amber-300 border-amber-500/30"
+                  }
+                >
+                  {status.charges_enabled ? "Connected" : "Pending"}
+                </Badge>
               </div>
-              <p className="text-xs text-zinc-400 mt-1 font-mono">
-                {status.account_id}
-                {status.account_type && (
-                  <span className="ml-2 inline-block px-2 py-0.5 rounded-full bg-black text-zinc-400 text-[10px] font-bold font-sans not-italic">
-                    {status.account_type === "standard"
-                      ? "Existing account"
-                      : "New account"}
+              {status.business_name && status.email && (
+                <p className="text-xs text-zinc-400 font-bold">
+                  {status.email}
+                </p>
+              )}
+              {status.account_id && (
+                <p className="text-xs text-zinc-500 font-bold">
+                  <span className="text-zinc-600">Account ID</span>{" "}
+                  <span className="font-mono text-zinc-400">
+                    {status.account_id}
                   </span>
-                )}
-              </p>
+                </p>
+              )}
             </div>
             <Button
               variant="ghost"
@@ -869,17 +874,11 @@ function PaymentsPanel() {
             </Button>
           </div>
 
-          <dl className="grid grid-cols-3 gap-2 pt-1">
-            <Capability ok={status.charges_enabled} label="Charges" />
-            <Capability ok={status.payouts_enabled} label="Payouts" />
-            <Capability ok={status.details_submitted} label="Onboarding" />
-          </dl>
-
           {(!status.charges_enabled ||
             !status.payouts_enabled ||
             status.requirements_due) && (
-            <div className="border border-amber-200 bg-amber-50 rounded-xl px-3 py-2">
-              <p className="text-xs text-amber-800">
+            <div className="border border-amber-500/30 bg-amber-500/10 rounded-xl px-3 py-3 space-y-2">
+              <p className="text-xs text-amber-200 font-bold">
                 Stripe still needs more information before this account can
                 accept payments or receive payouts.
               </p>
@@ -888,28 +887,30 @@ function PaymentsPanel() {
                 type="button"
                 onClick={startConnect}
                 disabled={working}
-                className="h-auto mt-2 text-xs bg-amber-600 hover:bg-amber-500 disabled:bg-slate-400 text-white rounded-full px-3 py-1.5 font-bold"
+                className="h-auto text-xs bg-amber-500/20 hover:bg-amber-500/30 text-amber-200 rounded-full px-3 py-1.5 font-bold"
               >
                 {working ? "Opening Stripe…" : "Finish onboarding"}
               </Button>
             </div>
           )}
 
-          <div className="flex items-center gap-3 pt-1">
-            <a
-              href="https://dashboard.stripe.com/"
-              target="_blank"
-              rel="noreferrer"
-              className="text-xs text-indigo-600 hover:text-indigo-500"
-            >
-              Open Stripe dashboard ↗
-            </a>
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline" size="sm">
+              <a
+                href="https://dashboard.stripe.com/"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Open Stripe dashboard ↗
+              </a>
+            </Button>
             <Button
               variant="ghost"
+              size="sm"
               type="button"
               onClick={disconnect}
               disabled={working}
-              className="h-auto text-xs text-rose-600 hover:text-rose-500 hover:bg-transparent"
+              className="text-rose-400 hover:text-rose-300 hover:bg-transparent"
             >
               Disconnect
             </Button>
@@ -922,34 +923,6 @@ function PaymentsPanel() {
   );
 }
 
-function Capability({ ok, label }: { ok: boolean; label: string }) {
-  return (
-    <div
-      className={
-        "rounded-xl px-3 py-2 text-center " +
-        (ok
-          ? "bg-emerald-50 border border-emerald-200"
-          : "bg-black border border-line")
-      }
-    >
-      <div
-        className={
-          "text-xs font-bold " +
-          (ok ? "text-emerald-700" : "text-zinc-400")
-        }
-      >
-        {label}
-      </div>
-      <div
-        className={
-          "text-xs mt-0.5 " + (ok ? "text-emerald-600" : "text-zinc-500")
-        }
-      >
-        {ok ? "Enabled" : "Pending"}
-      </div>
-    </div>
-  );
-}
 type SubscriptionInterval =
   | "weekly"
   | "biweekly"
