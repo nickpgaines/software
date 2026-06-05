@@ -19,6 +19,7 @@ const FIELDS = [
   "phone",
   "email",
   "address",
+  "created_at",
 ] as const;
 
 type Field = (typeof FIELDS)[number];
@@ -29,6 +30,7 @@ const FIELD_LABELS: Record<Field, string> = {
   phone: "Phone",
   email: "Email",
   address: "Address",
+  created_at: "Date added",
 };
 
 type Step = "upload" | "mapping" | "preview" | "importing" | "result";
@@ -50,7 +52,23 @@ function suggestField(header: string): Field | null {
   if (/email/i.test(h)) return "email";
   if (/phone|mobile|cell|telephone|tel\b/i.test(h)) return "phone";
   if (/address|street|location/i.test(h)) return "address";
+  if (/^(date.?added|created.?at|created.?on|signed.?up|since|customer.?since|join.?date|added.?on)$/i.test(h))
+    return "created_at";
   return null;
+}
+
+// Parse common Homebase360 / CRM export date formats to ISO so we can store
+// it in the SQLite TEXT column. Accepts "Sep 28, 2023", "2023-09-28",
+// "9/28/2023", etc. Returns null on anything we can't parse so the API
+// falls back to the row's default created_at.
+function parseDateLoose(s: string): string | null {
+  const t = s.trim();
+  if (!t) return null;
+  const d = new Date(t);
+  if (isNaN(d.getTime())) return null;
+  // Strip the time portion since most CRM exports are date-only and we
+  // don't want phantom timezone shifts to push the date back a day.
+  return d.toISOString();
 }
 
 function autoSplitFirst(first: string, last: string) {
@@ -74,6 +92,7 @@ function buildMapped(
       phone: "",
       email: "",
       address: "",
+      created_at: "",
     };
     for (const [header, field] of Object.entries(mapping)) {
       if (field) {
@@ -84,6 +103,11 @@ function buildMapped(
     const split = autoSplitFirst(out.first_name, out.last_name);
     out.first_name = split.first;
     out.last_name = split.last;
+    // Normalize the date so the server doesn't have to guess at the format.
+    // Bad parses become empty so the API falls back to "now".
+    if (out.created_at) {
+      out.created_at = parseDateLoose(out.created_at) || "";
+    }
     return out;
   });
 }

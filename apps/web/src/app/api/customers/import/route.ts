@@ -10,6 +10,10 @@ type ImportRow = {
   phone?: string | null;
   email?: string | null;
   address?: string | null;
+  // ISO timestamp; when present, overrides the default created_at so
+  // imported customers carry their original "joined" date from the
+  // source CRM. Falls back to now() if absent or unparseable.
+  created_at?: string | null;
 };
 
 type Skipped = { row: number; reason: string };
@@ -57,11 +61,21 @@ export async function POST(req: Request) {
 
   try {
     await db.transaction(async (tx) => {
-      const insert = tx.prepare(
+      // Two inserts: the default uses datetime('now') for created_at, the
+      // override accepts an explicit ISO timestamp. Picking between them at
+      // call-time keeps the common path unchanged for callers that don't
+      // pass a date.
+      const insertNow = tx.prepare(
         `INSERT INTO customers
            (company_id, name, first_name, last_name, phone, email,
             address, address_line1, formatted_address)
          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      );
+      const insertWithDate = tx.prepare(
+        `INSERT INTO customers
+           (company_id, name, first_name, last_name, phone, email,
+            address, address_line1, formatted_address, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       );
 
       for (let i = 0; i < rows.length; i++) {
@@ -97,18 +111,41 @@ export async function POST(req: Request) {
           continue;
         }
 
+        // Accept a pre-normalized ISO date from the client; on any parse
+        // failure fall back to now() rather than rejecting the row.
+        let createdAtIso: string | null = null;
+        if (raw.created_at && typeof raw.created_at === "string") {
+          const d = new Date(raw.created_at.trim());
+          if (!isNaN(d.getTime())) createdAtIso = d.toISOString();
+        }
+
         const name = `${first} ${last}`.trim();
-        await insert.run(
-          companyId,
-          name,
-          first,
-          last,
-          phone || null,
-          email || null,
-          address || null,
-          address || null,
-          address || null
-        );
+        if (createdAtIso) {
+          await insertWithDate.run(
+            companyId,
+            name,
+            first,
+            last,
+            phone || null,
+            email || null,
+            address || null,
+            address || null,
+            address || null,
+            createdAtIso
+          );
+        } else {
+          await insertNow.run(
+            companyId,
+            name,
+            first,
+            last,
+            phone || null,
+            email || null,
+            address || null,
+            address || null,
+            address || null
+          );
+        }
 
         if (phone) phoneSet.add(phone.toLowerCase());
         if (email) emailSet.add(email.toLowerCase());
