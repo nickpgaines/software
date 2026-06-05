@@ -94,10 +94,13 @@ export async function GET() {
       const params: Stripe.SubscriptionListParams = {
         limit: 100,
         status: "all",
+        // Stripe caps expand depth at 4 levels — data.items.data.price is
+        // the max. We resolve product names via a separate retrieve loop
+        // after the list, see below.
         expand: [
           "data.customer",
           "data.default_payment_method",
-          "data.items.data.price.product",
+          "data.items.data.price",
         ],
       };
       if (startingAfter) params.starting_after = startingAfter;
@@ -107,6 +110,29 @@ export async function GET() {
       for (const s of res.data) stripeSubs.push(s);
       if (!res.has_more || res.data.length === 0) break;
       startingAfter = res.data[res.data.length - 1].id;
+    }
+
+    // Collect unique product IDs referenced by the subs' prices, then
+    // retrieve each so we can show the product name in the import list.
+    // Most merchants reuse a small set of products across many subs, so
+    // this is a handful of calls even for large books.
+    const productIds = new Set<string>();
+    for (const sub of stripeSubs) {
+      for (const item of sub.items.data) {
+        const pid = item.price?.product;
+        if (typeof pid === "string") productIds.add(pid);
+      }
+    }
+    const productNames = new Map<string, string>();
+    for (const pid of productIds) {
+      try {
+        const p = await stripe.products.retrieve(pid, undefined, {
+          stripeAccount: company.stripe_account_id,
+        });
+        if (p.name) productNames.set(p.id, p.name);
+      } catch {
+        // best-effort — fall back to price.nickname / synthetic name below
+      }
     }
 
     // Build a lookup for Forge customers (small N — full table scan is fine
@@ -201,12 +227,15 @@ export async function GET() {
         : null;
     const card = pm?.card ?? null;
 
+    // Product name comes from the productNames map we built above.
+    // Fall back to the price's nickname when set (some integrations
+    // store the display name there instead of on the product).
+    const productIdStr =
+      typeof price?.product === "string" ? price.product : null;
     const productName =
-      typeof price?.product === "object" &&
-      price?.product &&
-      !("deleted" in price.product)
-        ? (price.product as Stripe.Product).name
-        : null;
+      (productIdStr ? productNames.get(productIdStr) : null) ||
+      price?.nickname ||
+      null;
 
     // Stripe SDK v22 moved current_period_end onto each subscription item.
     // For our single-price subs the first item carries the period boundary.
