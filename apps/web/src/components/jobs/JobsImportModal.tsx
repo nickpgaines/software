@@ -139,6 +139,12 @@ export default function JobsImportModal({
   const [result, setResult] = useState<Result | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showSkipped, setShowSkipped] = useState(false);
+  const [importProgress, setImportProgress] = useState<{
+    batch: number;
+    totalBatches: number;
+    rowsDone: number;
+    rowsTotal: number;
+  } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   function handleFile(file: File | null) {
@@ -194,22 +200,67 @@ export default function JobsImportModal({
     [csvRows, mapping]
   );
 
+  // Chunked import — see ImportModal for the rationale. A real Homebase360
+  // jobs export can run into the tens of thousands of rows; one big POST
+  // times out Vercel's serverless function. Batch and accumulate.
   async function doImport() {
     setStep("importing");
     setError(null);
     const rows = buildMapped(csvRows, mapping);
-    const res = await fetch("/api/jobs/import", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ rows }),
-    });
-    if (!res.ok) {
-      setError("Import failed");
-      setStep("preview");
-      return;
+    const CHUNK = 200;
+    const total: Result = {
+      inserted_jobs: 0,
+      inserted_payments: 0,
+      skipped: 0,
+      skippedReasons: [],
+      errors: [],
+    };
+    let batchIndex = 0;
+    for (let offset = 0; offset < rows.length; offset += CHUNK) {
+      batchIndex++;
+      const slice = rows.slice(offset, offset + CHUNK);
+      setImportProgress({
+        batch: batchIndex,
+        totalBatches: Math.ceil(rows.length / CHUNK),
+        rowsDone: offset,
+        rowsTotal: rows.length,
+      });
+      const res = await fetch("/api/jobs/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows: slice }),
+      });
+      if (!res.ok) {
+        const j = (await res.json().catch(() => ({}))) as {
+          error?: string;
+          message?: string;
+        };
+        setError(
+          (j.error || j.message
+            ? `${j.error || "Import failed"}${j.message ? `: ${j.message}` : ""}`
+            : "Import failed") +
+            ` (failed on rows ${offset + 1}–${offset + slice.length} of ${rows.length}; ${total.inserted_jobs} jobs imported before this)`
+        );
+        setStep("preview");
+        setImportProgress(null);
+        return;
+      }
+      const data = (await res.json()) as Result;
+      total.inserted_jobs += data.inserted_jobs;
+      total.inserted_payments += data.inserted_payments;
+      total.skipped += data.skipped;
+      for (const e of data.errors) {
+        total.errors.push({ row: offset + e.row, reason: e.reason });
+      }
+      for (const s of data.skippedReasons) {
+        total.skippedReasons.push({
+          row: offset + s.row,
+          reason: s.reason,
+        });
+      }
     }
-    const data = (await res.json()) as Result;
-    setResult(data);
+    setImportProgress(null);
+    setResult(total);
     setStep("result");
   }
 
@@ -394,7 +445,20 @@ export default function JobsImportModal({
           )}
 
           {step === "importing" && (
-            <p className="text-sm text-zinc-400">Importing {csvRows.length} rows…</p>
+            <div className="text-sm text-zinc-400 space-y-1">
+              <p>
+                Importing
+                {importProgress
+                  ? ` batch ${importProgress.batch} of ${importProgress.totalBatches}…`
+                  : `…`}
+              </p>
+              {importProgress && (
+                <p className="text-xs text-zinc-500">
+                  {importProgress.rowsDone.toLocaleString()} of{" "}
+                  {importProgress.rowsTotal.toLocaleString()} rows processed
+                </p>
+              )}
+            </div>
           )}
 
           {step === "result" && result && (
