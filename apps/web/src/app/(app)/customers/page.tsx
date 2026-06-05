@@ -6,6 +6,7 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Plus, Search, Upload } from "lucide-react";
 import ImportModal from "@/components/customers/ImportModal";
 import SubscriptionImportModal from "@/components/subscriptions/SubscriptionImportModal";
+import JobsImportModal from "@/components/jobs/JobsImportModal";
 import CustomerForm from "@/components/customers/CustomerForm";
 import { usePhone } from "@/components/PhoneClient";
 import { Button } from "@/components/ui/button";
@@ -65,6 +66,7 @@ function CustomersPage() {
   const [attachPinId, setAttachPinId] = useState<number | null>(null);
   const [importing, setImporting] = useState(false);
   const [importingSubs, setImportingSubs] = useState(false);
+  const [importingJobs, setImportingJobs] = useState(false);
   const [query, setQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
   const searchParams = useSearchParams();
@@ -184,6 +186,13 @@ function CustomersPage() {
             className="hidden md:inline-flex"
           >
             Import subs
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setImportingJobs(true)}
+            className="hidden md:inline-flex"
+          >
+            Import jobs
           </Button>
           <Button
             onClick={() => setCreating(true)}
@@ -353,6 +362,15 @@ function CustomersPage() {
       {importingSubs && (
         <SubscriptionImportModal
           onClose={() => setImportingSubs(false)}
+          onImported={async () => {
+            await load();
+          }}
+        />
+      )}
+
+      {importingJobs && (
+        <JobsImportModal
+          onClose={() => setImportingJobs(false)}
           onImported={async () => {
             await load();
           }}
