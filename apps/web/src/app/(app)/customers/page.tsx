@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { Plus, Search, Upload } from "lucide-react";
 import ImportModal from "@/components/customers/ImportModal";
-import SubscriptionImportModal from "@/components/subscriptions/SubscriptionImportModal";
 import SubscriptionCsvImportModal from "@/components/subscriptions/SubscriptionCsvImportModal";
 import JobsImportModal from "@/components/jobs/JobsImportModal";
 import CustomerForm from "@/components/customers/CustomerForm";
@@ -67,7 +66,6 @@ function CustomersPage() {
   const [attachPinId, setAttachPinId] = useState<number | null>(null);
   const [importing, setImporting] = useState(false);
   const [importingSubs, setImportingSubs] = useState(false);
-  const [importingSubsCsv, setImportingSubsCsv] = useState(false);
   const [importingJobs, setImportingJobs] = useState(false);
   const [query, setQuery] = useState("");
   const searchInputRef = useRef<HTMLInputElement | null>(null);
@@ -186,17 +184,9 @@ function CustomersPage() {
             variant="outline"
             onClick={() => setImportingSubs(true)}
             className="hidden md:inline-flex"
-            title="Pull subscriptions directly from a Stripe account you can access. Won't work if your Stripe account is owned by another platform (Homebase360, Jobber, etc.)"
+            title="Upload a subscriptions CSV exported from your old CRM. Cards get collected at the next service visit via the accept link."
           >
-            Import subs (Stripe)
-          </Button>
-          <Button
-            variant="outline"
-            onClick={() => setImportingSubsCsv(true)}
-            className="hidden md:inline-flex"
-            title="Upload a subscriptions CSV exported from your old CRM. Best for migrating off Homebase360 or any platform that owns your Stripe account."
-          >
-            Import subs (CSV)
+            Import subs
           </Button>
           <Button
             variant="outline"
@@ -371,17 +361,8 @@ function CustomersPage() {
       )}
 
       {importingSubs && (
-        <SubscriptionImportModal
-          onClose={() => setImportingSubs(false)}
-          onImported={async () => {
-            await load();
-          }}
-        />
-      )}
-
-      {importingSubsCsv && (
         <SubscriptionCsvImportModal
-          onClose={() => setImportingSubsCsv(false)}
+          onClose={() => setImportingSubs(false)}
           onImported={async () => {
             await load();
           }}
