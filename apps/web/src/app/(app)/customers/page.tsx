@@ -184,7 +184,7 @@ function CustomersPage() {
             variant="outline"
             onClick={() => setImportingSubs(true)}
             className="hidden md:inline-flex"
-            title="Upload a subscriptions CSV exported from your old CRM. Cards get collected at the next service visit via the accept link."
+            title="Upload a subscriptions CSV. Cards get collected at the next service visit via the accept link."
           >
             Import subs
           </Button>

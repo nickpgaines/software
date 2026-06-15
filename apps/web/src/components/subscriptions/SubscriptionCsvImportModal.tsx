@@ -328,10 +328,10 @@ export default function SubscriptionCsvImportModal({
           {step === "upload" && (
             <div className="space-y-4">
               <p className="text-sm text-zinc-400 font-bold">
-                Upload your subscriptions export from your old CRM
-                (Homebase360, etc.). Each row becomes a pending Forge
-                subscription with the next visit on the calendar — your tech
-                collects the card on that visit, just like Flyra does.
+                Upload your subscriptions export as a CSV. Each row becomes a
+                pending Forge subscription with the next visit on the
+                calendar — collect the card at that visit via the accept
+                link.
               </p>
               <p className="text-xs text-zinc-500">
                 Customers are matched by name. Run the customer import first
