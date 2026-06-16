@@ -135,6 +135,31 @@ app (e.g. `app.<domain>`) so the shell always loads a stable origin.
 Exit criteria: you can log in and use the core CRM from the app on a physical
 iPhone.
 
+### Local dev smoke test (before a production domain exists)
+
+`server.url` is driven by the `CAP_SERVER_URL` env var (see
+`apps/mobile/capacitor.config.ts`) so no machine-specific URL is committed.
+
+**Simulator (recommended — zero config):** `localhost` is exempt from iOS App
+Transport Security, so plain HTTP just works.
+
+1. In `apps/web` (Node 16 is fine here): `npm run dev` (serves on `:3000`).
+2. In `apps/mobile` with **Node 24** active:
+   ```bash
+   CAP_SERVER_URL=http://localhost:3000 npx cap run ios
+   ```
+
+**Real device on the same Wi‑Fi:** use the Mac's LAN IP (currently
+`192.168.1.214`, re-check with `ipconfig getifaddr en0`):
+```bash
+CAP_SERVER_URL=http://192.168.1.214:3000 npx cap sync ios
+```
+Plain HTTP to a LAN IP needs a **temporary** App Transport Security exception
+in `ios/App/App/Info.plist` (add `NSAppTransportSecurity` →
+`NSAllowsArbitraryLoads = true`). **Remove it before shipping** — App Store
+review rejects arbitrary-loads. Production uses `https://`, which needs no
+exception. This is why the simulator path is preferred for day-to-day testing.
+
 ---
 
 ## Phase 2 — Make auth & networking solid in the webview (2–4 days)
