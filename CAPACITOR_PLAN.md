@@ -21,6 +21,87 @@ Capacitor, and get it through App Store review.
 
 ---
 
+## Current status (session handoff — read this first)
+
+**Last updated after Phase 1 scaffold.** This section exists so a new session
+can resume without re-investigating. Everything below is verified, not assumed.
+
+### Branches
+
+- `feature/capacitor` — integration branch, off `main`. Holds the plan.
+- `ae/capacitor-scaffold` — active working branch, off `feature/capacitor`.
+  Holds the Phase 1 Capacitor scaffold. **Nothing has been pushed.**
+
+### Done
+
+- ✅ **Phase 0** — architecture decided: hybrid / remote-URL shell (see below).
+- ✅ **Phase 1** — Capacitor scaffold under `apps/mobile`, iOS + Android
+  platforms added, **iOS simulator build verified green** (`** BUILD
+  SUCCEEDED **` on iPhone 17 sim, Debug, `CODE_SIGNING_ALLOWED=NO`).
+
+### What exists in `apps/mobile`
+
+- `capacitor.config.ts` — `appId: com.forge.crm`, `appName: Forge`,
+  `webDir: www`. The `server.url` block is **commented out** — set it to the
+  production domain (or a LAN dev URL) to actually load the hosted app.
+- `www/index.html` — offline/fallback shell only (shown until `server.url` is
+  set or when offline). The real UI is the hosted Next.js app.
+- `ios/` — native Xcode project. **Capacitor 8 uses Swift Package Manager, not
+  CocoaPods** (no `Podfile`/`pod install`).
+- `android/` — native Gradle project.
+- Native projects + `package-lock.json` are committed; `node_modules/` and
+  build output are gitignored.
+
+### Environment gotchas (important)
+
+- **Node:** the shell default is **v16.17.0 (too old for Capacitor)**. Use
+  Node 24 via nvm for every Capacitor/npm command:
+  ```bash
+  export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 24
+  ```
+- **Toolchain present:** Xcode 26.3, CocoaPods 1.11.3 (unused by Cap 8).
+- **No root `package.json`** — this is *not* an npm-workspaces monorepo;
+  `apps/mobile` is its own standalone package with its own `node_modules`.
+
+### Common commands (run from `apps/mobile`, Node 24 active)
+
+```bash
+npx cap sync ios          # copy web assets + sync native after config/plugin changes
+npx cap open ios          # open the project in Xcode
+npx cap run ios           # build + launch on simulator/device
+npx cap doctor            # validate the setup (currently all green)
+# verify iOS simulator build headlessly:
+cd ios/App && xcodebuild -project App.xcodeproj -scheme App \
+  -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -configuration Debug build CODE_SIGNING_ALLOWED=NO
+```
+
+### Codebase facts already established (don't re-investigate)
+
+- Server-rendered Next.js (App Router) in `apps/web`; **154 API routes**,
+  server components, middleware auth → **static export is not viable**, hence
+  the hybrid approach.
+- Auth: cookie-based HMAC, cookie name **`crm_session`**, set/checked in
+  `apps/web/src/middleware.ts`. Middleware also does an Origin/Referer CSRF
+  check on POST/PUT/PATCH/DELETE — relevant to Phase 2.
+- Already PWA-ready: `apps/web/public/manifest.json` (name "Forge"),
+  `public/sw.js`, icons under `public/icons/`, `viewport-fit: cover` and
+  apple-web-app meta in `apps/web/src/app/layout.tsx`.
+- Native-API surfaces to wire up in Phase 3: `navigator.geolocation` (map /
+  door-knock), Twilio Voice WebRTC mic in `components/PhoneClient.tsx`, photo
+  uploads.
+
+### Immediate next steps
+
+1. **Phase 0 open questions still unanswered** (bottom of this file) — most
+   importantly the production domain for `server.url`, and iOS-only vs both.
+2. Once a URL exists, set `server.url`, `npx cap sync ios`, and boot on a real
+   device to hit Phase 1's true exit criteria (log in + use the CRM).
+3. Then Phase 2 (auth/cookie persistence in WKWebView) — note: auth changes
+   require explicit approval per `CLAUDE.md`.
+
+---
+
 ## Phase 0 — Decide the architecture (½ day)
 
 **Decision: hybrid / remote-URL shell, not static export.**
