@@ -1,0 +1,30 @@
+# Dependencies
+node_modules/
+
+# Capacitor — generated on `cap sync`
+www/build/
+
+# iOS
+ios/App/Pods/
+ios/App/build/
+ios/App/Podfile.lock
+ios/DerivedData/
+ios/App/output/
+ios/App/App/public/
+*.xcuserstate
+xcuserdata/
+
+# Android
+android/.gradle/
+android/build/
+android/app/build/
+android/captures/
+android/local.properties
+android/.idea/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/app/src/main/res/xml/config.xml
+
+# Misc
+.DS_Store
+*.log
