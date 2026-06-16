@@ -564,8 +564,14 @@ async function init(): Promise<void> {
     ["messaging_service_sid", "TEXT"],
     ["tier_at_send", "TEXT"],
   ];
-  for (const [col, def] of messageAdds) {
-    await alterAddColumn("messages", col, def, messageCols);
+  // Guard for fresh DBs: `messages` is created later in init() already
+  // carrying all of these columns, so skip the ALTERs when the table doesn't
+  // exist yet (PRAGMA returns no rows). On existing deploys the ALTERs add any
+  // columns missing from an older schema. Mirrors ai_settings/line_items below.
+  if (messageCols.length > 0) {
+    for (const [col, def] of messageAdds) {
+      await alterAddColumn("messages", col, def, messageCols);
+    }
   }
 
   const messagingSettingsCols = await _db
@@ -580,8 +586,12 @@ async function init(): Promise<void> {
     ["voice_voicemail_greeting_data_url", "TEXT"],
     ["voice_capability_verified", "INTEGER NOT NULL DEFAULT 0"],
   ];
-  for (const [col, def] of messagingSettingsAdds) {
-    await alterAddColumn("messaging_settings", col, def, messagingSettingsCols);
+  // Same fresh-DB guard as `messages` above: the table is created later in
+  // init() already carrying the voice columns.
+  if (messagingSettingsCols.length > 0) {
+    for (const [col, def] of messagingSettingsAdds) {
+      await alterAddColumn("messaging_settings", col, def, messagingSettingsCols);
+    }
   }
 
   const aiSettingsCols = await _db
@@ -703,8 +713,13 @@ async function init(): Promise<void> {
     ["default_tax_rate_bps", "INTEGER NOT NULL DEFAULT 0"],
     ["tax_applied_by_default", "INTEGER NOT NULL DEFAULT 0"],
   ];
-  for (const [col, def] of companyAdds) {
-    await alterAddColumn("company", col, def, companyCols);
+  // Same fresh-DB guard as invoices/estimates below: `company` is created
+  // later in init() already carrying these columns, so skip the ALTERs when it
+  // doesn't exist yet. On existing deploys they add any missing columns.
+  if (companyCols.length > 0) {
+    for (const [col, def] of companyAdds) {
+      await alterAddColumn("company", col, def, companyCols);
+    }
   }
 
   // invoices: stripe-payment columns + opaque pay-link token. Best-effort
@@ -895,7 +910,39 @@ async function init(): Promise<void> {
       name TEXT,
       address TEXT,
       phone TEXT,
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      stripe_account_id TEXT,
+      stripe_charges_enabled INTEGER NOT NULL DEFAULT 0,
+      stripe_payouts_enabled INTEGER NOT NULL DEFAULT 0,
+      stripe_details_submitted INTEGER NOT NULL DEFAULT 0,
+      stripe_account_type TEXT,
+      twilio_subaccount_sid TEXT,
+      twilio_subaccount_auth_token TEXT,
+      platform_phone_number TEXT,
+      platform_phone_sid TEXT,
+      a2p_campaign_status TEXT,
+      email TEXT,
+      website TEXT,
+      logo_url TEXT,
+      sms_tier TEXT NOT NULL DEFAULT 'trial',
+      sms_trial_pool_number TEXT,
+      sms_trial_pool_number_sid TEXT,
+      sms_dedicated_number TEXT,
+      sms_dedicated_number_sid TEXT,
+      twilio_customer_profile_sid TEXT,
+      twilio_trust_product_sid TEXT,
+      twilio_brand_sid TEXT,
+      twilio_campaign_sid TEXT,
+      twilio_messaging_service_sid TEXT,
+      a2p_registration_state TEXT NOT NULL DEFAULT 'not_started',
+      a2p_registration_error TEXT,
+      a2p_registration_started_at TEXT,
+      a2p_registration_approved_at TEXT,
+      sms_daily_send_count INTEGER NOT NULL DEFAULT 0,
+      sms_daily_send_date TEXT,
+      sms_daily_send_limit INTEGER NOT NULL DEFAULT 0,
+      default_tax_rate_bps INTEGER NOT NULL DEFAULT 0,
+      tax_applied_by_default INTEGER NOT NULL DEFAULT 0
     );
     INSERT OR IGNORE INTO company (id, name, address, phone) VALUES (1, NULL, NULL, NULL);
 
@@ -905,7 +952,17 @@ async function init(): Promise<void> {
       body TEXT NOT NULL,
       direction TEXT NOT NULL CHECK (direction IN ('outbound', 'inbound')),
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      read_at TEXT
+      read_at TEXT,
+      status TEXT,
+      error TEXT,
+      provider_sid TEXT,
+      to_phone TEXT,
+      from_phone TEXT,
+      num_segments INTEGER,
+      error_code INTEGER,
+      price_micro_usd INTEGER,
+      messaging_service_sid TEXT,
+      tier_at_send TEXT
     );
     CREATE INDEX IF NOT EXISTS idx_messages_customer_id ON messages(customer_id);
     CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
@@ -916,6 +973,13 @@ async function init(): Promise<void> {
       account_sid TEXT,
       auth_token TEXT,
       from_number TEXT,
+      voice_api_key_sid TEXT,
+      voice_api_key_secret TEXT,
+      voice_twiml_app_sid TEXT,
+      voice_record_calls INTEGER NOT NULL DEFAULT 1,
+      voice_caller_id_name TEXT,
+      voice_voicemail_greeting_data_url TEXT,
+      voice_capability_verified INTEGER NOT NULL DEFAULT 0,
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
     INSERT OR IGNORE INTO messaging_settings (id) VALUES (1);
