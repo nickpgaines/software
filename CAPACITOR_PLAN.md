@@ -21,6 +21,125 @@ Capacitor, and get it through App Store review.
 
 ---
 
+## Current status (session handoff — read this first)
+
+**Last updated after Phase 1 scaffold.** This section exists so a new session
+can resume without re-investigating. Everything below is verified, not assumed.
+
+### Branches
+
+- `feature/capacitor` — integration branch, off `main`. Holds the plan + the
+  fresh-DB fix (cherry-picked).
+- `ae/capacitor-scaffold` — active working branch, off `feature/capacitor`.
+  Holds the Phase 1 Capacitor scaffold (rebased on the fix).
+- `ae/fix-fresh-db-schema-init` — off `main`. The fresh-DB schema-init fix +
+  `.env.example` doc correction, isolated for its own PR to `main`.
+- **Nothing has been pushed.**
+
+### Done
+
+- ✅ **Phase 0** — architecture decided (hybrid / remote-URL shell) and the
+  production `server.url` resolved: **`https://www.forgecrm.app/login`** (see
+  Phase 0 below). No dedicated subdomain or owner/DNS action needed.
+- ✅ **Phase 1 (iOS simulator)** — Capacitor scaffold under `apps/mobile`,
+  iOS + Android platforms added, iOS simulator build green, and the **full loop
+  verified end-to-end**: native shell → loads the hosted app → **UI login
+  (`POST /api/login 200`) → authenticated dashboard renders in-app**. Remaining
+  for literal 100%: real-device run (needs Apple signing, Phase 5); Android
+  build unverified.
+- ✅ **Unblocked local dev** — fixed a pre-existing fresh-DB schema-init bug
+  (`company`/`messages`/`messaging_settings` were altered before being created)
+  so a fresh libSQL DB initializes; verified signup/login/dashboard + a column
+  audit + prod build. Lives on `ae/fix-fresh-db-schema-init`.
+- ✅ **Fixed app launching into external Safari** — Capacitor iOS opens a
+  server-side redirect on the webview's initial load in the system browser, so
+  a logged-in user's `/login`→`/dashboard` redirect bounced to Safari. Adding
+  `server.allowNavigation` (host whitelist) keeps redirects in the webview.
+  Verified on the simulator.
+
+### Known open items (surfaced during Phase 1 testing → Phase 2/3)
+
+- **Session cookie persistence (Phase 2)** — the `crm_session` cookie (30-day,
+  `httpOnly`, `secure` in prod only) doesn't reliably survive an app restart in
+  WKWebView, so returning users get re-prompted at `/login`. Now resolves
+  cleanly in-app (not Safari). Needs native cookie persistence / Capacitor
+  cookie config.
+- **Google "Sign in with Google" (Phase 2/3)** — opens externally (different
+  host; Google blocks OAuth in embedded webviews) and can't return to the app
+  logged-in without deep-link plumbing + token exchange. Use username/password
+  in-app for now.
+- **Map / geolocation (Phase 3)** — needs `NEXT_PUBLIC_MAPBOX_TOKEN` /
+  `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (set in prod, absent in local `.env.local`),
+  plus `NSLocationWhenInUseUsageDescription` in `Info.plist` for "center on me".
+
+### What exists in `apps/mobile`
+
+- `capacitor.config.ts` — `appId: com.forge.crm`, `appName: Forge`,
+  `webDir: www`. `server.url` defaults to **`https://www.forgecrm.app/login`**
+  (production); override with the `CAP_SERVER_URL` env var for local dev
+  (e.g. `CAP_SERVER_URL=http://localhost:3000`). `server.allowNavigation`
+  whitelists the app host so server-side redirects stay in the webview.
+- `www/index.html` — offline/fallback shell only (shown until `server.url` is
+  set or when offline). The real UI is the hosted Next.js app.
+- `ios/` — native Xcode project. **Capacitor 8 uses Swift Package Manager, not
+  CocoaPods** (no `Podfile`/`pod install`).
+- `android/` — native Gradle project.
+- Native projects + `package-lock.json` are committed; `node_modules/` and
+  build output are gitignored.
+
+### Environment gotchas (important)
+
+- **Node:** the shell default is **v16.17.0 (too old for Capacitor)**. Use
+  Node 24 via nvm for every Capacitor/npm command:
+  ```bash
+  export NVM_DIR="$HOME/.nvm" && . "$NVM_DIR/nvm.sh" && nvm use 24
+  ```
+- **Toolchain present:** Xcode 26.3, CocoaPods 1.11.3 (unused by Cap 8).
+- **No root `package.json`** — this is *not* an npm-workspaces monorepo;
+  `apps/mobile` is its own standalone package with its own `node_modules`.
+
+### Common commands (run from `apps/mobile`, Node 24 active)
+
+```bash
+npx cap sync ios          # copy web assets + sync native after config/plugin changes
+npx cap open ios          # open the project in Xcode
+npx cap run ios           # build + launch on simulator/device
+npx cap doctor            # validate the setup (currently all green)
+# verify iOS simulator build headlessly:
+cd ios/App && xcodebuild -project App.xcodeproj -scheme App \
+  -sdk iphonesimulator -destination 'platform=iOS Simulator,name=iPhone 17' \
+  -configuration Debug build CODE_SIGNING_ALLOWED=NO
+```
+
+### Codebase facts already established (don't re-investigate)
+
+- Server-rendered Next.js (App Router) in `apps/web`; **154 API routes**,
+  server components, middleware auth → **static export is not viable**, hence
+  the hybrid approach.
+- Auth: cookie-based HMAC, cookie name **`crm_session`**, set/checked in
+  `apps/web/src/middleware.ts`. Middleware also does an Origin/Referer CSRF
+  check on POST/PUT/PATCH/DELETE — relevant to Phase 2.
+- Already PWA-ready: `apps/web/public/manifest.json` (name "Forge"),
+  `public/sw.js`, icons under `public/icons/`, `viewport-fit: cover` and
+  apple-web-app meta in `apps/web/src/app/layout.tsx`.
+- Native-API surfaces to wire up in Phase 3: `navigator.geolocation` (map /
+  door-knock), Twilio Voice WebRTC mic in `components/PhoneClient.tsx`, photo
+  uploads.
+
+### Immediate next steps
+
+1. **Real-device run** — boot on a physical iPhone for Phase 1's literal exit
+   criterion. Needs an Apple Developer account + signing (Phase 5 enrollment).
+2. **Verify the Android build** (`cap run android` / `./gradlew assembleDebug`)
+   if shipping both platforms — open question #1.
+3. **Phase 2** — confirm the `crm_session` cookie persists in WKWebView across
+   app restarts (so returning users skip `/login`), plus deep links. Note: auth
+   changes require explicit approval per `CLAUDE.md`.
+4. **Merge the DB fix** — open a PR from `ae/fix-fresh-db-schema-init` to `main`
+   (shared infra; wants a real review).
+
+---
+
 ## Phase 0 — Decide the architecture (½ day)
 
 **Decision: hybrid / remote-URL shell, not static export.**
@@ -35,8 +154,16 @@ Capacitor, and get it through App Store review.
 - Trade-off: the app needs network to function (acceptable for a CRM). We add
   a friendly offline screen rather than true offline data sync in v1.
 
-Output of this phase: agreed approach + a dedicated production domain for the
-app (e.g. `app.<domain>`) so the shell always loads a stable origin.
+Output of this phase: agreed approach + a stable production URL for the shell.
+
+**Resolved: `server.url` = `https://www.forgecrm.app/login`.** We considered a
+dedicated `app.forgecrm.app` subdomain but it's an optional nicety, not a
+requirement — and it needs owner/DNS action we don't have. The production apex
+already 307-redirects to the canonical `www.forgecrm.app`, so we point straight
+at `www` to avoid a redirect hop on every cold launch. `/login` is a safe entry
+point for both states: middleware 307s an already-authenticated request to
+`/dashboard`, and serves the login page to logged-out users (both verified
+live). No subdomain, no DNS, no owner action required.
 
 ---
 
@@ -53,6 +180,31 @@ app (e.g. `app.<domain>`) so the shell always loads a stable origin.
 
 Exit criteria: you can log in and use the core CRM from the app on a physical
 iPhone.
+
+### Local dev smoke test (before a production domain exists)
+
+`server.url` is driven by the `CAP_SERVER_URL` env var (see
+`apps/mobile/capacitor.config.ts`) so no machine-specific URL is committed.
+
+**Simulator (recommended — zero config):** `localhost` is exempt from iOS App
+Transport Security, so plain HTTP just works.
+
+1. In `apps/web` (Node 16 is fine here): `npm run dev` (serves on `:3000`).
+2. In `apps/mobile` with **Node 24** active:
+   ```bash
+   CAP_SERVER_URL=http://localhost:3000 npx cap run ios
+   ```
+
+**Real device on the same Wi‑Fi:** use the Mac's LAN IP (currently
+`192.168.1.214`, re-check with `ipconfig getifaddr en0`):
+```bash
+CAP_SERVER_URL=http://192.168.1.214:3000 npx cap sync ios
+```
+Plain HTTP to a LAN IP needs a **temporary** App Transport Security exception
+in `ios/App/App/Info.plist` (add `NSAppTransportSecurity` →
+`NSAllowsArbitraryLoads = true`). **Remove it before shipping** — App Store
+review rejects arbitrary-loads. Production uses `https://`, which needs no
+exception. This is why the simulator path is preferred for day-to-day testing.
 
 ---
 

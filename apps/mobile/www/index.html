@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1"
+    />
+    <title>Forge</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #000;
+        color: #fff;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      .screen {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 12px;
+        padding: max(env(safe-area-inset-top), 24px) 24px
+          max(env(safe-area-inset-bottom), 24px);
+        text-align: center;
+      }
+      h1 {
+        font-size: 20px;
+        font-weight: 600;
+        margin: 0;
+      }
+      p {
+        margin: 0;
+        opacity: 0.6;
+        font-size: 14px;
+        max-width: 280px;
+        line-height: 1.4;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+      Offline / fallback shell. When server.url is configured the webview loads
+      the hosted Forge app instead of this file. This screen shows only before
+      the remote URL is set, or when the device has no connectivity.
+    -->
+    <div class="screen">
+      <h1>Forge</h1>
+      <p>You're offline. Reconnect to the internet to continue.</p>
+    </div>
+  </body>
+</html>
