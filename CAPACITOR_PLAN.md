@@ -28,22 +28,36 @@ can resume without re-investigating. Everything below is verified, not assumed.
 
 ### Branches
 
-- `feature/capacitor` — integration branch, off `main`. Holds the plan.
+- `feature/capacitor` — integration branch, off `main`. Holds the plan + the
+  fresh-DB fix (cherry-picked).
 - `ae/capacitor-scaffold` — active working branch, off `feature/capacitor`.
-  Holds the Phase 1 Capacitor scaffold. **Nothing has been pushed.**
+  Holds the Phase 1 Capacitor scaffold (rebased on the fix).
+- `ae/fix-fresh-db-schema-init` — off `main`. The fresh-DB schema-init fix +
+  `.env.example` doc correction, isolated for its own PR to `main`.
+- **Nothing has been pushed.**
 
 ### Done
 
-- ✅ **Phase 0** — architecture decided: hybrid / remote-URL shell (see below).
-- ✅ **Phase 1** — Capacitor scaffold under `apps/mobile`, iOS + Android
-  platforms added, **iOS simulator build verified green** (`** BUILD
-  SUCCEEDED **` on iPhone 17 sim, Debug, `CODE_SIGNING_ALLOWED=NO`).
+- ✅ **Phase 0** — architecture decided (hybrid / remote-URL shell) and the
+  production `server.url` resolved: **`https://www.forgecrm.app/login`** (see
+  Phase 0 below). No dedicated subdomain or owner/DNS action needed.
+- ✅ **Phase 1 (iOS simulator)** — Capacitor scaffold under `apps/mobile`,
+  iOS + Android platforms added, iOS simulator build green, and the **full loop
+  verified end-to-end**: native shell → loads the hosted app → **UI login
+  (`POST /api/login 200`) → authenticated dashboard renders in-app**. Remaining
+  for literal 100%: real-device run (needs Apple signing, Phase 5); Android
+  build unverified.
+- ✅ **Unblocked local dev** — fixed a pre-existing fresh-DB schema-init bug
+  (`company`/`messages`/`messaging_settings` were altered before being created)
+  so a fresh libSQL DB initializes; verified signup/login/dashboard + a column
+  audit + prod build. Lives on `ae/fix-fresh-db-schema-init`.
 
 ### What exists in `apps/mobile`
 
 - `capacitor.config.ts` — `appId: com.forge.crm`, `appName: Forge`,
-  `webDir: www`. The `server.url` block is **commented out** — set it to the
-  production domain (or a LAN dev URL) to actually load the hosted app.
+  `webDir: www`. `server.url` defaults to **`https://www.forgecrm.app/login`**
+  (production); override with the `CAP_SERVER_URL` env var for local dev
+  (e.g. `CAP_SERVER_URL=http://localhost:3000`).
 - `www/index.html` — offline/fallback shell only (shown until `server.url` is
   set or when offline). The real UI is the hosted Next.js app.
 - `ios/` — native Xcode project. **Capacitor 8 uses Swift Package Manager, not
@@ -93,12 +107,15 @@ cd ios/App && xcodebuild -project App.xcodeproj -scheme App \
 
 ### Immediate next steps
 
-1. **Phase 0 open questions still unanswered** (bottom of this file) — most
-   importantly the production domain for `server.url`, and iOS-only vs both.
-2. Once a URL exists, set `server.url`, `npx cap sync ios`, and boot on a real
-   device to hit Phase 1's true exit criteria (log in + use the CRM).
-3. Then Phase 2 (auth/cookie persistence in WKWebView) — note: auth changes
-   require explicit approval per `CLAUDE.md`.
+1. **Real-device run** — boot on a physical iPhone for Phase 1's literal exit
+   criterion. Needs an Apple Developer account + signing (Phase 5 enrollment).
+2. **Verify the Android build** (`cap run android` / `./gradlew assembleDebug`)
+   if shipping both platforms — open question #1.
+3. **Phase 2** — confirm the `crm_session` cookie persists in WKWebView across
+   app restarts (so returning users skip `/login`), plus deep links. Note: auth
+   changes require explicit approval per `CLAUDE.md`.
+4. **Merge the DB fix** — open a PR from `ae/fix-fresh-db-schema-init` to `main`
+   (shared infra; wants a real review).
 
 ---
 
@@ -116,8 +133,16 @@ cd ios/App && xcodebuild -project App.xcodeproj -scheme App \
 - Trade-off: the app needs network to function (acceptable for a CRM). We add
   a friendly offline screen rather than true offline data sync in v1.
 
-Output of this phase: agreed approach + a dedicated production domain for the
-app (e.g. `app.<domain>`) so the shell always loads a stable origin.
+Output of this phase: agreed approach + a stable production URL for the shell.
+
+**Resolved: `server.url` = `https://www.forgecrm.app/login`.** We considered a
+dedicated `app.forgecrm.app` subdomain but it's an optional nicety, not a
+requirement — and it needs owner/DNS action we don't have. The production apex
+already 307-redirects to the canonical `www.forgecrm.app`, so we point straight
+at `www` to avoid a redirect hop on every cold launch. `/login` is a safe entry
+point for both states: middleware 307s an already-authenticated request to
+`/dashboard`, and serves the login page to logged-out users (both verified
+live). No subdomain, no DNS, no owner action required.
 
 ---
 
