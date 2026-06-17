@@ -51,13 +51,34 @@ can resume without re-investigating. Everything below is verified, not assumed.
   (`company`/`messages`/`messaging_settings` were altered before being created)
   so a fresh libSQL DB initializes; verified signup/login/dashboard + a column
   audit + prod build. Lives on `ae/fix-fresh-db-schema-init`.
+- ✅ **Fixed app launching into external Safari** — Capacitor iOS opens a
+  server-side redirect on the webview's initial load in the system browser, so
+  a logged-in user's `/login`→`/dashboard` redirect bounced to Safari. Adding
+  `server.allowNavigation` (host whitelist) keeps redirects in the webview.
+  Verified on the simulator.
+
+### Known open items (surfaced during Phase 1 testing → Phase 2/3)
+
+- **Session cookie persistence (Phase 2)** — the `crm_session` cookie (30-day,
+  `httpOnly`, `secure` in prod only) doesn't reliably survive an app restart in
+  WKWebView, so returning users get re-prompted at `/login`. Now resolves
+  cleanly in-app (not Safari). Needs native cookie persistence / Capacitor
+  cookie config.
+- **Google "Sign in with Google" (Phase 2/3)** — opens externally (different
+  host; Google blocks OAuth in embedded webviews) and can't return to the app
+  logged-in without deep-link plumbing + token exchange. Use username/password
+  in-app for now.
+- **Map / geolocation (Phase 3)** — needs `NEXT_PUBLIC_MAPBOX_TOKEN` /
+  `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (set in prod, absent in local `.env.local`),
+  plus `NSLocationWhenInUseUsageDescription` in `Info.plist` for "center on me".
 
 ### What exists in `apps/mobile`
 
 - `capacitor.config.ts` — `appId: com.forge.crm`, `appName: Forge`,
   `webDir: www`. `server.url` defaults to **`https://www.forgecrm.app/login`**
   (production); override with the `CAP_SERVER_URL` env var for local dev
-  (e.g. `CAP_SERVER_URL=http://localhost:3000`).
+  (e.g. `CAP_SERVER_URL=http://localhost:3000`). `server.allowNavigation`
+  whitelists the app host so server-side redirects stay in the webview.
 - `www/index.html` — offline/fallback shell only (shown until `server.url` is
   set or when offline). The real UI is the hosted Next.js app.
 - `ios/` — native Xcode project. **Capacitor 8 uses Swift Package Manager, not
