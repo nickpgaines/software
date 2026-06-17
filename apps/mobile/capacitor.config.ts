@@ -35,6 +35,9 @@ const config: CapacitorConfig = {
   server: {
     url: serverUrl,
     cleartext: isCleartext,
+    // Keep server-side redirects (e.g. /login -> /dashboard) inside the
+    // webview instead of bouncing to external Safari.
+    allowNavigation: ['localhost', 'forgecrm.app', '*.forgecrm.app'],
   },
 };
 
