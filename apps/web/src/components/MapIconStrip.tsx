@@ -172,8 +172,9 @@ export default function MapIconStrip({
         type="button"
         onClick={onLocate}
         disabled={locating}
+        aria-busy={locating}
         title="Center on my location"
-        aria-label="Center on my location"
+        aria-label={locating ? "Locating…" : "Center on my location"}
         className={buttonBase + " " + inactiveClasses}
       >
         {locating ? (

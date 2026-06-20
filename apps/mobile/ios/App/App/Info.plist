@@ -54,6 +54,6 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Forge lets you choose existing photos to attach to job records.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
-	<string>Forge saves job photos you take to your photo library.</string>
+	<string>Forge needs photo access to attach pictures to job records.</string>
 </dict>
 </plist>

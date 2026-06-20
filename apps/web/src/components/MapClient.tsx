@@ -620,6 +620,12 @@ export default function MapClient() {
     setLocating(true);
     try {
       const coords = await getCurrentPosition();
+      // getCurrentPosition can take up to ~10s; if the map was torn down while
+      // we waited, the captured `map` is removed and its cleanup already nulled
+      // the marker ref. Re-read the live ref and bail to avoid resurrecting a
+      // marker on a dead map (orphaned/leaked node).
+      const liveMap = mapRef.current;
+      if (!liveMap) return;
       if (!coords) {
         setLocateError("Couldn't get your location. Check location permission.");
         return;
@@ -632,9 +638,9 @@ export default function MapClient() {
           element: makeLocateMarkerElement(),
         })
           .setLngLat([lng, lat])
-          .addTo(map);
+          .addTo(liveMap);
       }
-      map.easeTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15) });
+      liveMap.easeTo({ center: [lng, lat], zoom: Math.max(liveMap.getZoom(), 15) });
     } finally {
       setLocating(false);
     }
@@ -1698,7 +1704,7 @@ export default function MapClient() {
         <div
           className="absolute left-1/2 z-20 -translate-x-1/2 rounded-lg border border-line bg-card px-3 py-2 text-xs font-bold text-rose-300 shadow-md"
           style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}
-          role="status"
+          role="alert"
         >
           {locateError}
         </div>

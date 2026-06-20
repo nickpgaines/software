@@ -1931,8 +1931,14 @@ function AttachmentsSection({ jobId }: { jobId: number }) {
     let blob: Blob | null;
     try {
       blob = await captureNativePhoto();
-    } catch {
-      setRecordError("Could not open the camera.");
+    } catch (err) {
+      // captureNativePhoto throws on real failures (denied permission, no
+      // camera, decode error) and returns null only on a deliberate cancel.
+      const msg =
+        err instanceof Error && err.message
+          ? err.message
+          : "Could not open the camera.";
+      setRecordError(msg);
       return;
     }
     if (!blob) return; // user cancelled
