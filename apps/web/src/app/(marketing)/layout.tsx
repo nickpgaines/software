@@ -1,5 +1,6 @@
 import { MarketingNav } from "@/components/marketing/MarketingNav";
 import { MarketingFooter } from "@/components/marketing/MarketingFooter";
+import { NativeMarketingRedirect } from "@/components/marketing/NativeMarketingRedirect";
 
 export default function MarketingLayout({
   children,
@@ -8,6 +9,7 @@ export default function MarketingLayout({
 }) {
   return (
     <div className="min-h-screen bg-canvas text-fg flex flex-col">
+      <NativeMarketingRedirect />
       <MarketingNav />
       <main className="flex-1">{children}</main>
       <MarketingFooter />

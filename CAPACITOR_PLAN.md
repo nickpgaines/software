@@ -143,6 +143,52 @@ can resume without re-investigating. Everything below is verified, not assumed.
        (a `data:` URL, fetchable from any origin). **Lesson for remote-URL
        Capacitor apps: prefer DataUrl/Base64 over Uri for plugin file results.**
 
+- ✅ **Phase 4 — mobile UX polish** — owner scoped all four items
+  (`feature/capacitor-phase4-polish`, stacked on the held Phase 3 branch):
+  - **App icon + splash:** generated full iOS + Android (incl. adaptive) icon
+    and splash sets from `forge-icon-square-1024.png` via `@capacitor/assets`,
+    replacing the default Capacitor icon. Full-bleed black icon with the white
+    F; F-centered black splash (`logoSplashScale 0.5`, matches the dark UI).
+    Source logos kept in `apps/mobile/assets/` for future regeneration.
+  - **Android hardware back button:** `@capacitor/app` `backButton` listener in
+    `NativeChrome` — steps back through webview history, exits the app at the
+    history root. iOS never fires it; web is unaffected (dynamic import behind
+    the runtime guard). Added `@capacitor/app` to both packages; `cap sync`
+    registered it (6 plugins each platform).
+  - **Hide marketing in-app:** `NativeMarketingRedirect` in the marketing
+    layout sends a native session to `/login` (middleware bounces an authed
+    request on to `/dashboard`). No-op in any browser — the public site is
+    unchanged.
+  - **Safe-area audit:** every app surface was already inset-aware except the
+    full-bleed workflow editor (`/leads/workflows/[id]`); its header now clears
+    the notch and the zoom controls clear the home indicator. Login is
+    vertically centered (no clip); map is intentionally full-bleed with
+    inset-aware controls.
+  - **iOS simulator verified:** the new app icon renders on the home screen
+    (full-bleed black, white F — default Capacitor icon gone) and the
+    F-on-black splash shows on launch. **Not verifiable locally:** Android
+    (no Android SDK/Studio installed) and the hardware back button. Web build
+    (typecheck + Next) passes.
+
+- ✅ **Phase 5 prep — everything code-side that needs no Apple account**
+  (`feature/capacitor-phase4-polish`):
+  - **Universal Links routing (code):** `NativeChrome` handles `@capacitor/app`
+    `appUrlOpen` + cold-start `getLaunchUrl`, routing same-origin
+    `https://*.forgecrm.app` deep links (`/invoices/pay/*`,
+    `/estimates/accept/*`, `/subscriptions/accept/*` per the AASA route) to the
+    webview path. OAuth/custom schemes ignored.
+  - **Associated Domains entitlement (staged):** created
+    `ios/App/App/App.entitlements` with `applinks:www.forgecrm.app` and wired
+    `CODE_SIGN_ENTITLEMENTS` into both Debug/Release configs. Entitlement
+    content needs no Team ID; sim build + deploy still pass (entitlements aren't
+    enforced on the simulator). On the Apple account, just enable the
+    "Associated Domains" capability for the App ID so the profile matches.
+  - **App Privacy labels drafted:** `APP_PRIVACY.md` — App Store Connect
+    answers from a data-collection audit (tracking = No; data types,
+    third-party recipients, open flags). Paste-ready.
+  - **Remaining for Universal Links — all need the Team ID:** set `IOS_APP_ID`
+    in prod env; enable the capability; device-test an emailed link.
+
 ### Known open items (surfaced during Phase 1 testing → Phase 2/3)
 
 - ✅ ~~**Session cookie persistence (Phase 2)**~~ — RESOLVED via the native
@@ -414,15 +460,46 @@ primitives — no inline markup, no ad-hoc tokens.
      force-quit on a real device against prod — the Phase 2 cookie flush was
      verified on local-dev http; this closes the one residual gap (see Phase 2
      note). Quick to check once a real prod account exists for TestFlight.
-   - **Finish Universal Links** (Phase 2 item 3 carry-over — all need the Team
-     ID from enrollment): (a) set `IOS_APP_ID=<TEAM_ID>.com.forge.crm` in the
-     web app's prod env (not sensitive); (b) add the Associated Domains
-     entitlement `applinks:www.forgecrm.app` to the iOS target; (c) install
-     `@capacitor/app` and, on its `appUrlOpen` event, navigate the webview to
-     the link's path; (d) verify an emailed `/invoices/pay/<token>` link opens
-     in the app on a signed device. The AASA file is already served (404 until
-     `IOS_APP_ID` is set).
+   - **Finish Universal Links** (Phase 2 item 3 carry-over): (a) set
+     `IOS_APP_ID=<TEAM_ID>.com.forge.crm` in the web app's prod env (not
+     sensitive) — **pending Team ID**; (b) ✅ Associated Domains entitlement
+     `applinks:www.forgecrm.app` is staged in `App.entitlements` + wired into
+     the build configs (just enable the capability for the App ID once the
+     account exists); (c) ✅ `@capacitor/app` installed and `appUrlOpen` /
+     `getLaunchUrl` routing done in `NativeChrome`; (d) verify an emailed
+     `/invoices/pay/<token>` link opens in the app on a signed device —
+     **pending device**. The AASA file is already served (404 until `IOS_APP_ID`
+     is set).
 7. Submit, respond to review notes, ship.
+
+### Resume checklist — do this in order once the Apple account exists
+
+Everything code-side that needs no account is **done** (icon/splash, Universal
+Links routing + staged entitlement, privacy-label draft, native plugins). From
+a cold start with a fresh Apple Developer account:
+
+1. **Enroll** in the Apple Developer Program; note the **Team ID**.
+2. Open `apps/mobile/ios/App/App.xcworkspace` in Xcode, select your team for
+   the App target (signing is `Automatic`), and **enable the "Associated
+   Domains" capability** for the `com.forge.crm` App ID (the entitlement file is
+   already in place — Xcode just needs the App ID capability to match).
+3. Set **`IOS_APP_ID=<TEAM_ID>.com.forge.crm`** in the web app's prod env
+   (**not sensitive**) so the AASA file starts serving (200 instead of 404).
+4. **Decide v1 scope** (the four open questions below): iOS-only vs +Android;
+   push (y/n → if yes, APNs key + `@capacitor/push-notifications` + a send
+   path); voice (y/n → if yes, add `NSMicrophoneUsageDescription` + the
+   Audio-Data privacy label); company-subscription billing path (needs
+   explicit approval — it's billing).
+5. **Fill App Privacy** in App Store Connect from `APP_PRIVACY.md`; set the
+   Privacy Policy URL to `https://www.forgecrm.app/privacy`.
+6. **Listing assets** — description, keywords, support URL, and screenshots
+   (generate from the simulator; deferred — no account needed, can be done any
+   time).
+7. **TestFlight** on a real device against prod, and close the two device-only
+   checks: (a) `Secure` `crm_session` cookie persists across a force-quit;
+   (b) an emailed `/invoices/pay/<token>` Universal Link opens in the app.
+   Also eyeball the Android back button if shipping Android.
+8. **Submit**, respond to review, ship.
 
 ---
 

@@ -426,7 +426,7 @@ export default function LeadsWorkflowEditor({
   return (
     <div className="flex flex-col h-screen">
       {/* Header */}
-      <div className="shrink-0 border-b border-line px-4 md:px-6 py-3 flex items-center justify-between gap-3">
+      <div className="shrink-0 border-b border-line px-4 md:px-6 pt-[calc(env(safe-area-inset-top)+0.75rem)] pb-3 flex items-center justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0 flex-1">
           <Link
             href="/leads/workflows"
@@ -615,7 +615,7 @@ export default function LeadsWorkflowEditor({
           </div>
 
           {/* Zoom controls */}
-          <div className="absolute bottom-4 left-4 flex flex-col gap-1 bg-card border border-line rounded-xl p-1">
+          <div className="absolute bottom-[calc(env(safe-area-inset-bottom)+1rem)] left-4 flex flex-col gap-1 bg-card border border-line rounded-xl p-1">
             <button
               type="button"
               onClick={(e) => {
