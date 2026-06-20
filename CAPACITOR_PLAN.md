@@ -61,13 +61,20 @@ can resume without re-investigating. Everything below is verified, not assumed.
 - ✅ **Phase 2 — session cookie now persists across restarts** — root cause was
   WebKit bug 177478: `crm_session` is delivered via the `fetch('/api/login')`
   `Set-Cookie` response, and WKWebView doesn't flush XHR-set cookies to its
-  on-disk store until the app is backgrounded; a force-quit before that flush
-  lost the session. Fix is **native shell only** — `AppDelegate.swift` calls
-  `WKWebsiteDataStore.default().httpCookieStore.getAllCookies` in
-  `applicationDidEnterBackground` (which always fires before a swipe-to-quit),
-  forcing the flush. **No change to the HMAC/session logic or cookie
-  attributes** (the server already sets a 30-day persistent cookie). Approved
-  by owner (chose native-flush-then-fallback). Verified on the simulator:
+  on-disk store until the app leaves the foreground; a force-quit before that
+  flush lost the session. Fix is **native shell only** — `AppDelegate.swift`
+  calls `WKWebsiteDataStore.default().httpCookieStore.getAllCookies` on both
+  `applicationWillResignActive` and `applicationDidEnterBackground`. It is the
+  foreground→inactive/background transition that triggers WebKit to persist the
+  cookie; the `getAllCookies` call rides that transition (it does not itself
+  write to disk) and is wrapped in a `UIBackgroundTaskIdentifier` assertion so
+  the async on-disk write isn't cut off by suspension. Flushing on resign-active
+  too means a **logout** that clears `crm_session` is persisted even without a
+  clean background transition — otherwise an ended session could be silently
+  resurrected on relaunch (deep-review finding, PR #329). **No change to the
+  HMAC/session logic or cookie attributes** (the server already sets a 30-day
+  persistent cookie). Approved by owner (chose native-flush-then-fallback).
+  Verified on the simulator:
   fresh login → home (background) → terminate → cold relaunch → lands on the
   authenticated dashboard, not `/login`. Verified against **local dev (http)**.
   This is representative: the `Secure` attribute only governs whether the cookie
