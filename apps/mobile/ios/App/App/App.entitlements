@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Universal Links (see CAPACITOR_PLAN.md, Phase 5). Lets https links on
+	     our domain open in the app. The entitlement content needs no Team ID;
+	     only signing does. When the Apple account exists, enable the
+	     "Associated Domains" capability for the App ID so the provisioning
+	     profile matches this entitlement. The matching AASA file is served at
+	     /.well-known/apple-app-site-association (404 until IOS_APP_ID is set). -->
+	<key>com.apple.developer.associated-domains</key>
+	<array>
+		<string>applinks:www.forgecrm.app</string>
+	</array>
+</dict>
+</plist>
