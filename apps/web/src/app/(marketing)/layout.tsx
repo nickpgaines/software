@@ -1,6 +1,6 @@
 import { MarketingNav } from "@/components/marketing/MarketingNav";
 import { MarketingFooter } from "@/components/marketing/MarketingFooter";
-import { NativeMarketingRedirect } from "@/components/marketing/NativeMarketingRedirect";
+import { NativeMarketingGate } from "@/components/marketing/NativeMarketingGate";
 
 export default function MarketingLayout({
   children,
@@ -8,11 +8,12 @@ export default function MarketingLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-canvas text-fg flex flex-col">
-      <NativeMarketingRedirect />
-      <MarketingNav />
-      <main className="flex-1">{children}</main>
-      <MarketingFooter />
-    </div>
+    <NativeMarketingGate>
+      <div className="min-h-screen bg-canvas text-fg flex flex-col">
+        <MarketingNav />
+        <main className="flex-1">{children}</main>
+        <MarketingFooter />
+      </div>
+    </NativeMarketingGate>
   );
 }
