@@ -1,10 +1,25 @@
 import UIKit
 import Capacitor
+import WebKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
+
+    /// Force WKWebView to flush its in-memory cookies to the on-disk store.
+    ///
+    /// WebKit bug 177478: cookies set via an XHR/fetch `Set-Cookie` response
+    /// (which is how `/api/login` issues `crm_session`) are not reliably
+    /// persisted to disk until the app is backgrounded. If the user force-quits
+    /// before that flush happens, the session cookie is lost and they're bounced
+    /// back to /login on next launch. Reading `getAllCookies` triggers WKWebView
+    /// to sync its cookie store, so calling it as the app backgrounds (which
+    /// always precedes a swipe-to-quit) persists `crm_session` across restarts.
+    /// This touches only native cookie persistence — not the HMAC/session logic.
+    private func flushWebViewCookies() {
+        WKWebsiteDataStore.default().httpCookieStore.getAllCookies { _ in }
+    }
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
@@ -19,6 +34,8 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func applicationDidEnterBackground(_ application: UIApplication) {
         // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later.
         // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
+        // Persist the session cookie before a possible force-quit (see flushWebViewCookies).
+        flushWebViewCookies()
     }
 
     func applicationWillEnterForeground(_ application: UIApplication) {
