@@ -1,10 +1,48 @@
 import UIKit
 import Capacitor
+import WebKit
 
 @UIApplicationMain
 class AppDelegate: UIResponder, UIApplicationDelegate {
 
     var window: UIWindow?
+
+    /// Persist the WKWebView's cookies to the on-disk store before the app can
+    /// be suspended or terminated.
+    ///
+    /// WebKit bug 177478: cookies set via an XHR/fetch `Set-Cookie` response
+    /// (how `/api/login` issues `crm_session`, and how `/api/logout` clears it)
+    /// are not reliably written to WKWebView's on-disk store until the app
+    /// leaves the foreground. Without this, force-quitting after login loses the
+    /// session (bounced to /login on relaunch); symmetrically, a logout could be
+    /// undone if the app dies before the cleared cookie is persisted, silently
+    /// resurrecting an ended session.
+    ///
+    /// It is the foreground→inactive/background transition itself that triggers
+    /// WebKit to persist these cookies (per the bug thread) — the `getAllCookies`
+    /// call rides that transition and keeps the WKHTTPCookieStore round-trip
+    /// alive; it is not the read that writes to disk. The work is async, so we
+    /// hold a background-task assertion until the completion fires — otherwise
+    /// iOS can suspend the process before the on-disk write lands (a real-device
+    /// race the simulator's lenient timing hides). We flush on both resign-active
+    /// and background so a logout that is never followed by a clean background
+    /// transition is still persisted. Native cookie persistence only — the
+    /// HMAC/session logic is untouched.
+    private func flushWebViewCookies(_ application: UIApplication) {
+        var task: UIBackgroundTaskIdentifier = .invalid
+        task = application.beginBackgroundTask(withName: "FlushWebViewCookies") {
+            if task != .invalid {
+                application.endBackgroundTask(task)
+                task = .invalid
+            }
+        }
+        WKWebsiteDataStore.default().httpCookieStore.getAllCookies { _ in
+            if task != .invalid {
+                application.endBackgroundTask(task)
+                task = .invalid
+            }
+        }
+    }
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         // Override point for customization after application launch.
@@ -13,12 +51,17 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func applicationWillResignActive(_ application: UIApplication) {
         // Sent when the application is about to move from active to inactive state. This can occur for certain types of temporary interruptions (such as an incoming phone call or SMS message) or when the user quits the application and it begins the transition to the background state.
-        // Use this method to pause ongoing tasks, disable timers, and invalidate graphics rendering callbacks. Games should use this method to pause the game.
+        // Persist any pending cookie change (e.g. a logout that just cleared
+        // crm_session) before the app could be killed without a clean
+        // background transition (see flushWebViewCookies).
+        flushWebViewCookies(application)
     }
 
     func applicationDidEnterBackground(_ application: UIApplication) {
         // Use this method to release shared resources, save user data, invalidate timers, and store enough application state information to restore your application to its current state in case it is terminated later.
         // If your application supports background execution, this method is called instead of applicationWillTerminate: when the user quits.
+        // Persist the session cookie before a possible force-quit (see flushWebViewCookies).
+        flushWebViewCookies(application)
     }
 
     func applicationWillEnterForeground(_ application: UIApplication) {

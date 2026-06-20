@@ -38,6 +38,12 @@ const config: CapacitorConfig = {
     // Keep server-side redirects (e.g. /login -> /dashboard) inside the
     // webview instead of bouncing to external Safari.
     allowNavigation: ['localhost', 'forgecrm.app', '*.forgecrm.app'],
+    // Offline fallback: when the webview can't load the remote app (no
+    // connectivity, server unreachable), Capacitor loads this bundled page
+    // from webDir instead of WKWebView's blank error screen. The page itself
+    // (www/index.html) listens for the `online` event and a manual retry to
+    // return to the hosted app once the network is back.
+    errorPath: 'index.html',
   },
 };
 

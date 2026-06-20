@@ -30,11 +30,13 @@ can resume without re-investigating. Everything below is verified, not assumed.
 
 - `feature/capacitor` — integration branch, off `main`. Holds the plan + the
   fresh-DB fix (cherry-picked).
-- `ae/capacitor-scaffold` — active working branch, off `feature/capacitor`.
-  Holds the Phase 1 Capacitor scaffold (rebased on the fix).
+- `ae/capacitor-scaffold` — Phase 1 Capacitor scaffold. **Pushed to `origin`.**
+- `feature/capacitor-phase2-auth` — active working branch, off
+  `ae/capacitor-scaffold`. Holds the Phase 2 session-cookie persistence fix.
+- `feature/capacitor` — integration branch, off `main`. Holds the plan + the
+  fresh-DB fix (cherry-picked).
 - `ae/fix-fresh-db-schema-init` — off `main`. The fresh-DB schema-init fix +
   `.env.example` doc correction, isolated for its own PR to `main`.
-- **Nothing has been pushed.**
 
 ### Done
 
@@ -56,14 +58,50 @@ can resume without re-investigating. Everything below is verified, not assumed.
   a logged-in user's `/login`→`/dashboard` redirect bounced to Safari. Adding
   `server.allowNavigation` (host whitelist) keeps redirects in the webview.
   Verified on the simulator.
+- ✅ **Phase 2 — session cookie now persists across restarts** — root cause was
+  WebKit bug 177478: `crm_session` is delivered via the `fetch('/api/login')`
+  `Set-Cookie` response, and WKWebView doesn't flush XHR-set cookies to its
+  on-disk store until the app leaves the foreground; a force-quit before that
+  flush lost the session. Fix is **native shell only** — `AppDelegate.swift`
+  calls `WKWebsiteDataStore.default().httpCookieStore.getAllCookies` on both
+  `applicationWillResignActive` and `applicationDidEnterBackground`. It is the
+  foreground→inactive/background transition that triggers WebKit to persist the
+  cookie; the `getAllCookies` call rides that transition (it does not itself
+  write to disk) and is wrapped in a `UIBackgroundTaskIdentifier` assertion so
+  the async on-disk write isn't cut off by suspension. Flushing on resign-active
+  too means a **logout** that clears `crm_session` is persisted even without a
+  clean background transition — otherwise an ended session could be silently
+  resurrected on relaunch (deep-review finding, PR #329). **No change to the
+  HMAC/session logic or cookie attributes** (the server already sets a 30-day
+  persistent cookie). Approved by owner (chose native-flush-then-fallback).
+  Verified on the simulator:
+  fresh login → home (background) → terminate → cold relaunch → lands on the
+  authenticated dashboard, not `/login`. Verified against **local dev (http)**.
+  This is representative: the `Secure` attribute only governs whether the cookie
+  is *sent* over http/https, not whether WKWebView persists it to disk (which is
+  all the flush affects), and bug 177478 applies regardless of `Secure`. A
+  faithful https re-test needs a trusted cert in the simulator OR a real account
+  — deferred to **Phase 5 / TestFlight** (see checklist there) rather than
+  faked locally (a `Secure` cookie over `http://localhost` is rejected outright,
+  giving a misleading false negative).
+- ✅ **Phase 2 — remaining items (Origin/CSRF, offline, deep-link infra)** —
+  (2) **Origin/CSRF**: no change needed; the remote-`server.url` webview's
+  origin equals the API host, so the middleware `sameOrigin` check passes for
+  in-app POSTs. Verified (matching origin → handler/400, foreign origin → 403).
+  (4) **Offline fallback**: `server.errorPath: 'index.html'` shows a branded
+  offline screen on load failure, with `online`-event + "Try again" recovery.
+  Verified on the simulator. (3) **Deep links**: web-side AASA route added
+  (env-gated on `IOS_APP_ID`); native universal-link wiring (entitlement,
+  `@capacitor/app`, `appUrlOpen` handler, signed-device test) is deferred to
+  Phase 5. See the Phase 2 section for details. **Phase 2 is functionally
+  complete** except the Phase-5-gated deep-link finish and the prod `Secure`
+  cookie re-test.
 
 ### Known open items (surfaced during Phase 1 testing → Phase 2/3)
 
-- **Session cookie persistence (Phase 2)** — the `crm_session` cookie (30-day,
-  `httpOnly`, `secure` in prod only) doesn't reliably survive an app restart in
-  WKWebView, so returning users get re-prompted at `/login`. Now resolves
-  cleanly in-app (not Safari). Needs native cookie persistence / Capacitor
-  cookie config.
+- ✅ ~~**Session cookie persistence (Phase 2)**~~ — RESOLVED via the native
+  `AppDelegate` cookie flush (see Done above). Returning users now skip `/login`
+  after a force-quit + relaunch.
 - **Google "Sign in with Google" (Phase 2/3)** — opens externally (different
   host; Google blocks OAuth in embedded webviews) and can't return to the app
   logged-in without deep-link plumbing + token exchange. Use username/password
@@ -189,7 +227,10 @@ iPhone.
 **Simulator (recommended — zero config):** `localhost` is exempt from iOS App
 Transport Security, so plain HTTP just works.
 
-1. In `apps/web` (Node 16 is fine here): `npm run dev` (serves on `:3000`).
+1. In `apps/web`, **with Node 24 active** (the shell-default Node 16 fails:
+   Next.js needs ≥18.17): `npm run dev` (serves on `:3000`). In local dev the
+   built-in admin login `admin`/`admin` works (disabled in prod), which is the
+   easiest way to drive the simulator without a seeded account.
 2. In `apps/mobile` with **Node 24** active:
    ```bash
    CAP_SERVER_URL=http://localhost:3000 npx cap run ios
@@ -212,20 +253,47 @@ exception. This is why the simulator path is preferred for day-to-day testing.
 
 The cookie-based HMAC session is the main thing to harden for native.
 
-1. **Session cookie persistence** — confirm the `crm_session` cookie survives
-   app restarts in WKWebView. Use `CapacitorCookies` and verify
-   `SameSite`/`Secure` flags work over the native origin. This is auth-adjacent
-   — per `CLAUDE.md` it needs explicit approval before any change ships.
-2. **Origin/CSRF** — middleware blocks cross-origin state-changing requests by
-   comparing `Origin`/`Referer` to `host`. Verify the webview sends a matching
-   origin; if not, allowlist the Capacitor origin rather than weakening the
-   check.
-3. **Deep links / universal links** so `invoices/pay/...`, `estimates/accept`,
-   and email links open in the app.
-4. **Offline fallback** screen when there's no connectivity.
+1. ✅ **Session cookie persistence** — DONE. The `crm_session` cookie now
+   survives app restarts in WKWebView via a native cookie flush in
+   `AppDelegate.applicationDidEnterBackground` (forces WKWebView to persist the
+   XHR-set cookie before a force-quit; WebKit bug 177478). No `CapacitorCookies`
+   plugin needed for the remote-`server.url` setup. Owner-approved; verified on
+   the simulator. (Prod-https `Secure`-cookie re-test still recommended.)
+2. ✅ **Origin/CSRF** — DONE (verification only, no change needed). Because the
+   webview uses the remote `server.url`, its origin **is** the API host
+   (`www.forgecrm.app` in prod, `localhost:3000` in dev) — not a separate
+   `capacitor://localhost` scheme — so the middleware `sameOrigin` check passes
+   for in-app requests. Verified with the exact headers the webview sends: a
+   state-changing POST with a matching `Origin` reached the route handler (got a
+   400 for an empty body, **not** a 403); the same POST with a foreign `Origin`
+   got 403, confirming the check is live. No allowlisting required.
+3. ⏳ **Deep links / universal links** — PARTIAL (web infra done; native gated
+   on Phase 5). Done now: the AASA file is served from the web app at
+   `/.well-known/apple-app-site-association`
+   (`apps/web/src/app/.well-known/apple-app-site-association/route.ts`), covering
+   `/invoices/pay/*`, `/estimates/accept/*`, `/subscriptions/accept/*`. It is
+   env-gated on `IOS_APP_ID` (`<TEAM_ID>.com.forge.crm`, **not sensitive**) and
+   returns 404 until that's set, so it's safe to ship now. **Remaining (needs
+   the Apple Developer Team ID → Phase 5):** (a) set the `IOS_APP_ID` env in
+   prod; (b) add the Associated Domains entitlement `applinks:www.forgecrm.app`
+   to the iOS app; (c) install `@capacitor/app` and handle its `appUrlOpen`
+   event in the web app to navigate the webview to the link's path; (d) test on
+   a signed device. Note: in-webview links to forgecrm.app *already* stay in the
+   app (`server.allowNavigation`); this item is specifically about links tapped
+   *outside* the app (Mail, etc.).
+4. ✅ **Offline fallback** — DONE. Set `server.errorPath: 'index.html'` in
+   `capacitor.config.ts`; Capacitor loads the bundled `www/index.html` (a
+   branded "You're offline" screen) when the remote app can't load, instead of
+   WKWebView's blank error. The page auto-returns to the hosted app on the
+   `online` event and via a manual "Try again" button (stays in-webview thanks
+   to `allowNavigation`). No native/storyboard changes. Verified on the
+   simulator: unreachable `server.url` → offline screen renders → "Try again"
+   recovers to the hosted login.
 
 Exit criteria: log in once, force-quit, reopen — still logged in; POST actions
-(create job, record payment) work without CSRF errors.
+(create job, record payment) work without CSRF errors. ✅ **Met** on the
+simulator (local-dev); residual: prod `Secure`-cookie re-test and the
+Phase-5-gated Universal Links finish.
 
 ---
 
@@ -284,6 +352,18 @@ primitives — no inline markup, no ad-hoc tokens.
    needs explicit approval per `CLAUDE.md`.
 5. **Screenshots, description, keywords**, support URL, marketing assets.
 6. **TestFlight** beta with a few real users before public submission.
+   - **Confirm the `Secure` (https) `crm_session` cookie persists** across a
+     force-quit on a real device against prod — the Phase 2 cookie flush was
+     verified on local-dev http; this closes the one residual gap (see Phase 2
+     note). Quick to check once a real prod account exists for TestFlight.
+   - **Finish Universal Links** (Phase 2 item 3 carry-over — all need the Team
+     ID from enrollment): (a) set `IOS_APP_ID=<TEAM_ID>.com.forge.crm` in the
+     web app's prod env (not sensitive); (b) add the Associated Domains
+     entitlement `applinks:www.forgecrm.app` to the iOS target; (c) install
+     `@capacitor/app` and, on its `appUrlOpen` event, navigate the webview to
+     the link's path; (d) verify an emailed `/invoices/pay/<token>` link opens
+     in the app on a signed device. The AASA file is already served (404 until
+     `IOS_APP_ID` is set).
 7. Submit, respond to review notes, ship.
 
 ---
