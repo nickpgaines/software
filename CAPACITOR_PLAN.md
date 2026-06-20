@@ -31,8 +31,11 @@ can resume without re-investigating. Everything below is verified, not assumed.
 - `feature/capacitor` — integration branch, off `main`. Holds the plan + the
   fresh-DB fix (cherry-picked).
 - `ae/capacitor-scaffold` — Phase 1 Capacitor scaffold. **Pushed to `origin`.**
-- `feature/capacitor-phase2-auth` — active working branch, off
-  `ae/capacitor-scaffold`. Holds the Phase 2 session-cookie persistence fix.
+- `feature/capacitor-phase2-auth` — off `ae/capacitor-scaffold`. Holds the
+  Phase 2 session-cookie persistence + remaining-items work.
+- `feature/capacitor-phase3-native` — **active working branch**, off
+  `feature/capacitor-phase2-auth`. Holds Phase 3 native capabilities v1
+  (geolocation, camera, UX chrome).
 - `feature/capacitor` — integration branch, off `main`. Holds the plan + the
   fresh-DB fix (cherry-picked).
 - `ae/fix-fresh-db-schema-init` — off `main`. The fresh-DB schema-init fix +
@@ -96,6 +99,49 @@ can resume without re-investigating. Everything below is verified, not assumed.
   Phase 5. See the Phase 2 section for details. **Phase 2 is functionally
   complete** except the Phase-5-gated deep-link finish and the prod `Secure`
   cookie re-test.
+- ✅ **Phase 3 — native capabilities v1 (geolocation, camera, UX chrome)** —
+  scope chosen by owner: geolocation + camera + chrome polish; **push
+  notifications and the Twilio-voice prototype deferred to Phase 5**. Approach
+  (owner-approved): real native plugins, called from the hosted web app behind a
+  runtime guard. Plugins installed in **both** packages — `apps/mobile` (native
+  registration via `cap sync`) and `apps/web` (the JS that calls them):
+  `@capacitor/{core,geolocation,camera,status-bar,splash-screen,keyboard}@^8`.
+  - **Bridge:** `apps/web/src/lib/native.ts` — `isNativeApp()` plus
+    `getCurrentPosition()` / `captureNativePhoto()`. Plugin modules are
+    **dynamically imported** so they never load during SSR or in the browser
+    bundle; each helper falls back to the web API (or no-op) off-device.
+  - **Geolocation:** a "locate me" control added to `MapIconStrip` →
+    `MapClient.handleLocate()` drops/moves a blue "you are here" dot and
+    recenters. Native plugin in the app, `navigator.geolocation` on web. (The
+    map had **no** prior location feature; pins come from the DB.)
+  - **Camera:** "Take Photo" button (native-only) in `JobDetailClient`
+    attachments → `Camera.getPhoto` (Prompt source) → same compress + upload
+    pipeline as the file `<input>` (which still serves web).
+  - **UX chrome:** `NativeChrome` (null component in the root layout) sets the
+    status bar to light text and hides the splash once the app paints;
+    `capacitor.config.ts` configures SplashScreen (autohide fallback, black bg)
+    + Keyboard (`resize: native`). Existing safe-area CSS already covers insets.
+  - **Native:** `Info.plist` usage strings (location, camera, photo library +
+    **`NSPhotoLibraryAddUsageDescription`** — see bug 1); `cap sync` wrote
+    `Package.swift` (5 plugins).
+  - **Verified end-to-end on the iOS simulator** (local-dev build,
+    `CAP_SERVER_URL=http://localhost:3000/login`): app builds + runs; status bar
+    shows light text on black + splash hides (chrome ✅); login persists across
+    relaunch (Phase 2 cookie flush ✅); the native-only **Take Photo** button
+    renders (so `isNativeApp()` works in the webview ✅); tapping it opens the
+    photo picker, and selecting a photo runs compress → `POST .../attachments
+    201` → the image renders in the list (camera pipeline ✅). The map
+    **locate** control couldn't be runtime-checked (no `NEXT_PUBLIC_MAPBOX_TOKEN`
+    locally → tiles don't render); deferred to a tokened/device run.
+  - **Two real bugs the sim test caught (both would break camera on-device):**
+    1. `@capacitor/camera` (IONCameraLib) requires `NSPhotoLibraryAddUsageDescription`
+       **unconditionally** — even with `saveToGallery:false`. Without it
+       `getPhoto` throws "Camera will not function without it". Added the key.
+    2. `CameraResultType.Uri` returns a `capacitor://`-served `webPath` that is
+       **cross-origin to the hosted remote-URL app**, so `fetch(webPath)` fails
+       silently and nothing uploads. Switched to `CameraResultType.DataUrl`
+       (a `data:` URL, fetchable from any origin). **Lesson for remote-URL
+       Capacitor apps: prefer DataUrl/Base64 over Uri for plugin file results.**
 
 ### Known open items (surfaced during Phase 1 testing → Phase 2/3)
 
@@ -106,9 +152,11 @@ can resume without re-investigating. Everything below is verified, not assumed.
   host; Google blocks OAuth in embedded webviews) and can't return to the app
   logged-in without deep-link plumbing + token exchange. Use username/password
   in-app for now.
-- **Map / geolocation (Phase 3)** — needs `NEXT_PUBLIC_MAPBOX_TOKEN` /
-  `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY` (set in prod, absent in local `.env.local`),
-  plus `NSLocationWhenInUseUsageDescription` in `Info.plist` for "center on me".
+- ✅ ~~**Map / geolocation (Phase 3)**~~ — DONE: native `@capacitor/geolocation`
+  behind the `lib/native` guard + a "locate me" control on the map;
+  `NSLocationWhenInUseUsageDescription` added. Note the map still needs
+  `NEXT_PUBLIC_MAPBOX_TOKEN` (set in prod, absent in local `.env.local`) to
+  render tiles for a local-dev test.
 
 ### What exists in `apps/mobile`
 
@@ -302,20 +350,30 @@ Phase-5-gated Universal Links finish.
 This is what gets us past Apple Guideline 4.2 and makes the app worth
 installing. Pick the high-value set:
 
-- **Push notifications** (`@capacitor/push-notifications` + APNs/FCM) for new
-  leads, scheduled jobs, payment received. Highest-value native feature.
-- **Camera** (`@capacitor/camera`) for job/site photos — wire into the
-  existing photo-upload surfaces.
-- **Geolocation** (`@capacitor/geolocation`) for the map / door-knock flow,
-  which already uses `navigator.geolocation`; route it through the native
-  plugin for reliable permissions.
-- **Microphone / Twilio Voice** — verify the WebRTC calling flow
-  (`PhoneClient`) works in WKWebView; configure mic permission. **Flag:** this
-  is the most likely thing to need a native fallback — prototype early.
-- **Status bar, splash screen, safe areas, haptics, native share, keyboard
-  resize.**
+- ✅ **Camera** (`@capacitor/camera`) for job/site photos — DONE; "Take Photo"
+  button in `JobDetailClient` attachments, reusing the existing compress/upload
+  pipeline.
+- ✅ **Geolocation** (`@capacitor/geolocation`) — DONE; "locate me" control on
+  the map (the map had no prior location feature). Native plugin in-app,
+  `navigator.geolocation` on web, behind the `lib/native` guard.
+- ✅ **Status bar, splash screen, keyboard resize** — DONE via `NativeChrome`
+  + `capacitor.config.ts` plugin config. (Safe areas were already wired in
+  Phase-1 CSS; haptics/native-share not needed for v1.)
+- ⏸️ **Push notifications** (`@capacitor/push-notifications` + APNs/FCM) —
+  **deferred to Phase 5** (needs the Apple Developer account / APNs key from
+  enrollment). Highest-value native feature once signing exists.
+- ⏸️ **Microphone / Twilio Voice** — WebRTC calling in WKWebView — **deferred
+  to Phase 5** (prototype). Most likely to need a native fallback.
 
-Each native plugin should degrade gracefully if a permission is denied.
+Each native plugin degrades gracefully if a permission is denied (helpers
+return null / fall back).
+
+**Remaining for Phase 3:** camera + chrome are verified on the simulator (see
+Done above). Still unverified at runtime: the map **locate** control (needs
+`NEXT_PUBLIC_MAPBOX_TOKEN` in local `.env.local` so tiles render, or a device
+run), and the **camera capture** path of `CameraSource.Prompt` (the simulator
+has no camera, so only the photo-library branch was exercised — the camera
+branch needs a real device, Phase 5).
 
 ---
 

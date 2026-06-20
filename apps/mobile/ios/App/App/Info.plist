@@ -47,5 +47,13 @@
 	</array>
 	<key>UIViewControllerBasedStatusBarAppearance</key>
 	<true/>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Forge uses your location to center the map on where you are while door-knocking and canvassing.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Forge uses the camera to take photos of jobs and attach them to job records.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Forge lets you choose existing photos to attach to job records.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Forge needs photo access to attach pictures to job records.</string>
 </dict>
 </plist>

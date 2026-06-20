@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ServiceWorkerRegistrar } from "@/components/ServiceWorkerRegistrar";
 import { MobileZoomLock } from "@/components/MobileZoomLock";
+import { NativeChrome } from "@/components/NativeChrome";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -77,6 +78,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <ServiceWorkerRegistrar />
         <MobileZoomLock />
+        <NativeChrome />
         {children}
       </body>
     </html>
