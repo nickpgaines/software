@@ -13,6 +13,7 @@ import {
   type Staff,
 } from "@/components/JobForm";
 import type { JobAttachment, JobAttachmentKind } from "@/lib/db";
+import { captureNativePhoto, isNativeApp } from "@/lib/native";
 import { LEAD_METHODS } from "@/components/forms/LeadSourceField";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -1801,6 +1802,9 @@ function AttachmentsSection({ jobId }: { jobId: number }) {
   const [recording, setRecording] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [recordError, setRecordError] = useState<string | null>(null);
+  // Native camera is offered only inside the Capacitor shell. Resolved in an
+  // effect (not at render) so SSR and the first client paint agree.
+  const [native, setNative] = useState(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -1812,6 +1816,10 @@ function AttachmentsSection({ jobId }: { jobId: number }) {
     if (res.ok) setItems(await res.json());
     setLoading(false);
   }
+
+  useEffect(() => {
+    setNative(isNativeApp());
+  }, []);
 
   useEffect(() => {
     load();
@@ -1914,6 +1922,31 @@ function AttachmentsSection({ jobId }: { jobId: number }) {
       );
     }
     if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  // Native camera path. The picker returns a Blob; we wrap it in a File and run
+  // it through the same compress + upload pipeline as the web file <input>.
+  async function handleNativePhoto() {
+    setRecordError(null);
+    let blob: Blob | null;
+    try {
+      blob = await captureNativePhoto();
+    } catch {
+      setRecordError("Could not open the camera.");
+      return;
+    }
+    if (!blob) return; // user cancelled
+    try {
+      const file = new File([blob], "photo.jpg", {
+        type: blob.type || "image/jpeg",
+      });
+      const { blob: out, mime } = await compressImage(file);
+      const content = await fileToDataUrl(out);
+      await upload("image", "photo.jpg", mime, content);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "upload failed";
+      setRecordError(`Could not add photo: ${msg}`);
+    }
   }
 
   async function startRecording() {
@@ -2019,6 +2052,17 @@ function AttachmentsSection({ jobId }: { jobId: number }) {
         >
           Add Attachment
         </Button>
+        {native && (
+          <Button
+            type="button"
+            variant="ghost"
+            disabled={adding}
+            onClick={handleNativePhoto}
+            className="h-auto inline-flex items-center gap-2 border border-dashed border-line bg-transparent hover:bg-black rounded-xl px-3 py-2 text-sm font-bold text-zinc-200 disabled:opacity-50"
+          >
+            Take Photo
+          </Button>
+        )}
         {recording ? (
           <Button
             type="button"

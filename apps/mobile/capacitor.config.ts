@@ -1,4 +1,5 @@
 import type { CapacitorConfig } from '@capacitor/cli';
+import { KeyboardResize } from '@capacitor/keyboard';
 
 /**
  * Hybrid / remote-URL shell (see CAPACITOR_PLAN.md, Phase 0).
@@ -44,6 +45,22 @@ const config: CapacitorConfig = {
     // (www/index.html) listens for the `online` event and a manual retry to
     // return to the hosted app once the network is back.
     errorPath: 'index.html',
+  },
+  plugins: {
+    // Phase 3 UX chrome. The hosted app calls SplashScreen.hide() once it has
+    // painted (see web NativeChrome); launchAutoHide is the fallback so the
+    // splash never sticks if that call never runs (e.g. offline). Black
+    // background matches the dark UI so any load gap isn't a white flash.
+    SplashScreen: {
+      launchAutoHide: true,
+      launchShowDuration: 2000,
+      backgroundColor: '#000000',
+    },
+    // Resize the webview when the software keyboard appears so focused form
+    // fields aren't covered.
+    Keyboard: {
+      resize: KeyboardResize.Native,
+    },
   },
 };
 
