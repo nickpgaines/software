@@ -15,12 +15,20 @@ export function GlobalSearch({ onClose }: { onClose: () => void }) {
   const [error, setError] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
+  // Per-result-button refs, rebuilt each render (see `cursor` below), so the
+  // keyboard-highlighted item can be scrolled into view.
+  const itemRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
   const flat = useMemo(() => groups.flatMap((g) => g.items), [groups]);
 
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
+
+  // Keep the keyboard-highlighted result visible inside the scroll container.
+  useEffect(() => {
+    itemRefs.current[activeIndex]?.scrollIntoView({ block: "nearest" });
+  }, [activeIndex]);
 
   // Debounced fetch with an out-of-order guard.
   useEffect(() => {
@@ -33,6 +41,7 @@ export function GlobalSearch({ onClose }: { onClose: () => void }) {
       return;
     }
     setLoading(true);
+    setError(false);
     const handle = setTimeout(async () => {
       try {
         const res = await fetch(`/api/search?q=${encodeURIComponent(q)}`);
@@ -80,6 +89,7 @@ export function GlobalSearch({ onClose }: { onClose: () => void }) {
 
   const q = query.trim();
   let cursor = -1; // running flat index, recomputed each render
+  itemRefs.current = []; // rebuilt as buttons render below
 
   return (
     <div
@@ -102,7 +112,8 @@ export function GlobalSearch({ onClose }: { onClose: () => void }) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search customers, jobs, invoices, leads…"
-            className="h-14 w-full bg-transparent text-sm text-fg outline-none placeholder:text-fg-dim"
+            aria-label="Search customers, jobs, invoices, leads"
+            className="h-14 w-full rounded-lg bg-transparent text-sm text-fg outline-none placeholder:text-fg-dim focus-visible:ring-2 focus-visible:ring-ring"
           />
           {loading && (
             <span
@@ -114,6 +125,18 @@ export function GlobalSearch({ onClose }: { onClose: () => void }) {
             Esc
           </kbd>
         </div>
+
+        <p className="sr-only" role="status" aria-live="polite">
+          {q.length < 2
+            ? ""
+            : loading
+              ? "Searching"
+              : error
+                ? "Search failed"
+                : flat.length === 0
+                  ? `No results for ${q}`
+                  : `${flat.length} result${flat.length === 1 ? "" : "s"}`}
+        </p>
 
         <div className="max-h-[50vh] overflow-y-auto py-2">
           {q.length < 2 ? (
@@ -129,7 +152,7 @@ export function GlobalSearch({ onClose }: { onClose: () => void }) {
           ) : (
             groups.map((group) => (
               <div key={group.type} className="px-2 py-1">
-                <p className="px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-fg-dim">
+                <p className="px-2 py-1 text-[11px] font-bold text-fg-dim">
                   {group.label}
                 </p>
                 {group.items.map((item) => {
@@ -140,6 +163,9 @@ export function GlobalSearch({ onClose }: { onClose: () => void }) {
                     <button
                       key={`${group.type}-${item.id}`}
                       type="button"
+                      ref={(el) => {
+                        itemRefs.current[idx] = el;
+                      }}
                       onMouseEnter={() => setActiveIndex(idx)}
                       onClick={() => go(item)}
                       className={`flex w-full items-center justify-between gap-3 rounded-xl px-2 py-2 text-left text-sm ${

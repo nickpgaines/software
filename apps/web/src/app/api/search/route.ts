@@ -58,7 +58,10 @@ export async function GET(req: NextRequest) {
   }
 
   const db = await getDb();
-  const like = `%${q.toLowerCase()}%`;
+  // Escape LIKE metacharacters so a literal % or _ in the query doesn't act as
+  // a wildcard. Paired with `ESCAPE '\'` on each LIKE clause below.
+  const escaped = q.toLowerCase().replace(/[\\%_]/g, (c) => `\\${c}`);
+  const like = `%${escaped}%`;
   const companyId = ctx.companyId;
 
   try {
@@ -67,11 +70,11 @@ export async function GET(req: NextRequest) {
         `SELECT id, first_name, last_name, name, phone, email
            FROM customers
           WHERE company_id = ?
-            AND ( LOWER(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) LIKE ?
-               OR LOWER(COALESCE(name,'')) LIKE ?
-               OR COALESCE(phone,'') LIKE ?
-               OR LOWER(COALESCE(email,'')) LIKE ?
-               OR LOWER(COALESCE(formatted_address, address_line1, address, '')) LIKE ? )
+            AND ( LOWER(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) LIKE ? ESCAPE '\\'
+               OR LOWER(COALESCE(name,'')) LIKE ? ESCAPE '\\'
+               OR COALESCE(phone,'') LIKE ? ESCAPE '\\'
+               OR LOWER(COALESCE(email,'')) LIKE ? ESCAPE '\\'
+               OR LOWER(COALESCE(formatted_address, address_line1, address, '')) LIKE ? ESCAPE '\\' )
           ORDER BY first_name COLLATE NOCASE
           LIMIT ?`
       )
@@ -84,10 +87,10 @@ export async function GET(req: NextRequest) {
          FROM jobs j
          LEFT JOIN customers c ON c.id = j.customer_id
         WHERE j.company_id = ?
-          AND ( LOWER(COALESCE(c.first_name,'') || ' ' || COALESCE(c.last_name,'')) LIKE ?
-             OR LOWER(COALESCE(c.name,'')) LIKE ?
-             OR LOWER(COALESCE(j.notes,'')) LIKE ?
-             OR LOWER(COALESCE(j.status,'')) LIKE ? )
+          AND ( LOWER(COALESCE(c.first_name,'') || ' ' || COALESCE(c.last_name,'')) LIKE ? ESCAPE '\\'
+             OR LOWER(COALESCE(c.name,'')) LIKE ? ESCAPE '\\'
+             OR LOWER(COALESCE(j.notes,'')) LIKE ? ESCAPE '\\'
+             OR LOWER(COALESCE(j.status,'')) LIKE ? ESCAPE '\\' )
           ${restrictJobsToTech ? "AND j.technician_id = ?" : ""}
         ORDER BY j.scheduled_at DESC
         LIMIT ?`;
@@ -108,10 +111,10 @@ export async function GET(req: NextRequest) {
            FROM invoices i
            LEFT JOIN customers c ON c.id = i.customer_id
           WHERE i.company_id = ?
-            AND ( LOWER(COALESCE(i.title,'')) LIKE ?
-               OR LOWER(COALESCE(i.notes,'')) LIKE ?
-               OR LOWER(COALESCE(c.first_name,'') || ' ' || COALESCE(c.last_name,'')) LIKE ?
-               OR LOWER(COALESCE(c.name,'')) LIKE ? )
+            AND ( LOWER(COALESCE(i.title,'')) LIKE ? ESCAPE '\\'
+               OR LOWER(COALESCE(i.notes,'')) LIKE ? ESCAPE '\\'
+               OR LOWER(COALESCE(c.first_name,'') || ' ' || COALESCE(c.last_name,'')) LIKE ? ESCAPE '\\'
+               OR LOWER(COALESCE(c.name,'')) LIKE ? ESCAPE '\\' )
           ORDER BY i.created_at DESC
           LIMIT ?`
       )
@@ -123,10 +126,10 @@ export async function GET(req: NextRequest) {
             `SELECT id, first_name, last_name, stage
                FROM leads
               WHERE company_id = ?
-                AND ( LOWER(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) LIKE ?
-                   OR LOWER(COALESCE(email,'')) LIKE ?
-                   OR COALESCE(phone,'') LIKE ?
-                   OR LOWER(COALESCE(address,'')) LIKE ? )
+                AND ( LOWER(COALESCE(first_name,'') || ' ' || COALESCE(last_name,'')) LIKE ? ESCAPE '\\'
+                   OR LOWER(COALESCE(email,'')) LIKE ? ESCAPE '\\'
+                   OR COALESCE(phone,'') LIKE ? ESCAPE '\\'
+                   OR LOWER(COALESCE(address,'')) LIKE ? ESCAPE '\\' )
               ORDER BY created_at DESC
               LIMIT ?`
           )
