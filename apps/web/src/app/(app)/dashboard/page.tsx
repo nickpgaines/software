@@ -20,7 +20,7 @@ import {
 import { PageHeader } from "@/components/pulse/PageHeader";
 import { PulseIcon } from "@/components/pulse/Icon";
 import { PULSE } from "@/components/pulse/theme";
-import { Button } from "@/components/ui/button";
+import { DashboardSearchButton } from "@/components/search/DashboardSearchButton";
 import { dateLabel, formatCentsShort, greeting } from "@/components/pulse/format";
 
 export const dynamic = "force-dynamic";
@@ -80,18 +80,7 @@ export default async function DashboardPage() {
             ? `${jobs.length} jobs today`
             : `${jobs.length} jobs today · ${completedCount} completed this month`
         }
-        actions={
-          <Button
-            asChild
-            variant="outline"
-            className="h-11 w-72 gap-2 rounded-2xl px-4 text-[13px] bg-elevated border-line text-fg-subtle hover:bg-elevated"
-          >
-            <Link href="/customers?focus=search">
-              <PulseIcon name="search" className="w-3.5 h-3.5" />
-              Search anything
-            </Link>
-          </Button>
-        }
+        actions={<DashboardSearchButton />}
       />
 
       {showStripeBanner && (
