@@ -6,6 +6,7 @@ import { AppFrame } from "@/components/AppFrame";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import { MobileNavShell } from "@/components/MobileNavShell";
 import { loadMe } from "@/lib/me";
+import { GlobalSearchProvider } from "@/components/search/GlobalSearchProvider";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   // Load the current user on the server so the sidebar's name + avatar are
@@ -16,15 +17,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <PhoneClientProvider>
       <MobileNavShell>
-        <div
-          className="min-h-screen"
-          style={{ background: PULSE.bg, color: PULSE.text }}
-        >
-          <PulseSidebar initialMe={me} />
-          <AppFrame>{children}</AppFrame>
-          <MobileBottomNav />
-          <SmsWelcomeModal />
-        </div>
+        <GlobalSearchProvider>
+          <div
+            className="min-h-screen"
+            style={{ background: PULSE.bg, color: PULSE.text }}
+          >
+            <PulseSidebar initialMe={me} />
+            <AppFrame>{children}</AppFrame>
+            <MobileBottomNav />
+            <SmsWelcomeModal />
+          </div>
+        </GlobalSearchProvider>
       </MobileNavShell>
     </PhoneClientProvider>
   );

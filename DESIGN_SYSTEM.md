@@ -1389,6 +1389,28 @@ The customer-side cluster source is filtered through
 employee filters change cluster counts in lockstep with the markers
 they aggregate.
 
+### 8.23 Global search (command palette)
+
+`components/search/GlobalSearch.tsx` + `GlobalSearchProvider.tsx`. A
+full-screen search overlay opened by the dashboard "Search anything" box
+(`DashboardSearchButton`) and by the global `⌘K` / `Ctrl+K` shortcut (owned by
+`GlobalSearchProvider`, mounted once in `app/(app)/layout.tsx`).
+
+- **Structure:** hand-rolled overlay using the accepted `fixed inset-0`
+  modal-wrapper deviation (§10 #22/#23). Scrim `bg-black/40`, `z-50`. Panel:
+  `rounded-2xl border border-line bg-card shadow-menu`, max-width `xl`,
+  top-anchored at `pt-[12vh]`.
+- **Input/icons:** native input on tokens (`text-fg`, `placeholder:text-fg-dim`)
+  with a leading `PulseIcon name="search"`; spinner is a `border-t-fg`
+  `animate-spin` ring; `Esc` hint via `<kbd>`.
+- **Keyboard model:** `⌘K`/`Ctrl+K` toggles open; `↑/↓` move a single flat
+  selection across all groups (wrapping); `Enter` navigates to the highlighted
+  result; `Esc` or scrim click closes.
+- **Data:** server-driven via `GET /api/search?q=` (company-scoped, role-gated,
+  ≤5 results per group). Results grouped Customers → Jobs → Invoices → Leads;
+  each links to its detail page (`/customers/[id]`, `/schedule/[id]`,
+  `/invoices/[id]`) or the leads pipeline (`/leads`).
+
 ---
 
 ## 9. Layout patterns

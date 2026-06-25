@@ -73,19 +73,6 @@ function CustomersPage() {
   const router = useRouter();
   const phone = usePhone();
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      const isMod = e.metaKey || e.ctrlKey;
-      if (isMod && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-        searchInputRef.current?.select();
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return customers;
@@ -122,12 +109,6 @@ function CustomersPage() {
       const pinId = pin ? Number(pin) : NaN;
       setAttachPinId(Number.isFinite(pinId) ? pinId : null);
       setCreating(true);
-      router.replace("/customers");
-    }
-    // Arrived from the dashboard "Search anything" box — focus the search.
-    if (searchParams.get("focus") === "search") {
-      searchInputRef.current?.focus();
-      searchInputRef.current?.select();
       router.replace("/customers");
     }
   }, [searchParams, router]);
