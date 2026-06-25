@@ -20,8 +20,9 @@ type JobRow = { id: number; status: string | null; scheduled_at: string | null; 
 type InvoiceRow = { id: number; title: string | null; status: string | null; total_cents: number | null };
 type LeadRow = { id: number; first_name: string | null; last_name: string | null; stage: string | null };
 
-function usd(cents: number | null): string {
-  const v = (cents ?? 0) / 100;
+function usd(cents: number | null): string | null {
+  if (cents == null) return null;
+  const v = cents / 100;
   return `$${v.toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}`;
 }
 
@@ -40,10 +41,15 @@ export async function GET(req: NextRequest) {
   const q = (req.nextUrl.searchParams.get("q") ?? "").trim();
   if (q.length < 2) return NextResponse.json({ groups: [] });
 
-  // Role-based visibility (mirrors /api/jobs gate and leads.view).
-  let canViewLeads = true;
-  let restrictJobsToTech = false;
-  if (!ctx.isPlatformAdmin && ctx.staffId != null) {
+  // Default to the most restrictive posture; widen only for known roles.
+  // A non-admin session with no staffId (anomalous, e.g. mid-migration) stays
+  // fail-closed: no leads, and jobs filtered to technician_id = null → no rows.
+  let canViewLeads = false;
+  let restrictJobsToTech = true;
+  if (ctx.isPlatformAdmin) {
+    canViewLeads = true;
+    restrictJobsToTech = false;
+  } else if (ctx.staffId != null) {
     const me = await loadMe();
     const perms = new Set(me?.permissions ?? []);
     canViewLeads = perms.has("leads.view");
