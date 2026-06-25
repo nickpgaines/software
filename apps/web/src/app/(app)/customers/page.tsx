@@ -124,6 +124,12 @@ function CustomersPage() {
       setCreating(true);
       router.replace("/customers");
     }
+    // Arrived from the dashboard "Search anything" box — focus the search.
+    if (searchParams.get("focus") === "search") {
+      searchInputRef.current?.focus();
+      searchInputRef.current?.select();
+      router.replace("/customers");
+    }
   }, [searchParams, router]);
 
   async function del(id: number) {

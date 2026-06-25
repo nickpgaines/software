@@ -82,11 +82,14 @@ export default async function DashboardPage() {
         }
         actions={
           <Button
+            asChild
             variant="outline"
             className="h-11 w-72 gap-2 rounded-2xl px-4 text-[13px] bg-elevated border-line text-fg-subtle hover:bg-elevated"
           >
-            <PulseIcon name="search" className="w-3.5 h-3.5" />
-            Search anything
+            <Link href="/customers?focus=search">
+              <PulseIcon name="search" className="w-3.5 h-3.5" />
+              Search anything
+            </Link>
           </Button>
         }
       />
