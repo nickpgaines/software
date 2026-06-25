@@ -73,19 +73,6 @@ function CustomersPage() {
   const router = useRouter();
   const phone = usePhone();
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      const isMod = e.metaKey || e.ctrlKey;
-      if (isMod && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        searchInputRef.current?.focus();
-        searchInputRef.current?.select();
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, []);
-
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return customers;
