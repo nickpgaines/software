@@ -19,9 +19,9 @@ import {
 } from "@/components/pulse/widgets";
 import { PageHeader } from "@/components/pulse/PageHeader";
 import { PulseIcon } from "@/components/pulse/Icon";
-import { PULSE } from "@/components/pulse/theme";
 import { DashboardSearchButton } from "@/components/search/DashboardSearchButton";
-import { dateLabel, formatCentsShort, greeting } from "@/components/pulse/format";
+import { formatCentsShort } from "@/components/pulse/format";
+import { GreetingTitle, LocalDateLabel } from "@/components/pulse/DashboardHeading";
 
 export const dynamic = "force-dynamic";
 
@@ -68,13 +68,8 @@ export default async function DashboardPage() {
   return (
     <>
       <PageHeader
-        kicker={dateLabel()}
-        title={
-          <>
-            {greeting(new Date().getHours())},{" "}
-            <span style={{ color: PULSE.violetVar }}>{firstName}.</span>
-          </>
-        }
+        kicker={<LocalDateLabel />}
+        title={<GreetingTitle firstName={firstName} />}
         subtitle={
           isTechnician
             ? `${jobs.length} jobs today`
