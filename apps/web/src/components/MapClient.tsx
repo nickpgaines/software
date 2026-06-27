@@ -447,6 +447,48 @@ function makeMarkerElement(status: PinStatus): HTMLElement {
   return el;
 }
 
+// Open a marker's popup when the user clicks or taps it.
+//
+// Mouse: the browser's click fires normally. We stopPropagation so the click
+// doesn't also reach the map and trigger the popup's default closeOnClick,
+// which would dismiss the popup we just opened.
+//
+// Touch/pen: Mapbox calls preventDefault() on a marker element's touchstart so
+// grabbing a pin doesn't pan the map — and on touch that also suppresses the
+// browser's synthesized click, so the click listener never fires when you tap
+// a pin on a phone (the popup only ever opened with a mouse). Drive the open
+// from pointerup instead, with a small movement threshold so a drag that
+// begins on a pin still pans the map. Mouse is excluded here because it
+// already opened via click (and a trailing click after a pointer-open would
+// re-close it via closeOnClick).
+function bindMarkerTap(el: HTMLElement, open: () => void) {
+  el.addEventListener("click", (ev) => {
+    ev.stopPropagation();
+    open();
+  });
+  let startX = 0;
+  let startY = 0;
+  let armed = false;
+  el.addEventListener("pointerdown", (ev) => {
+    if (ev.pointerType === "mouse") return;
+    armed = true;
+    startX = ev.clientX;
+    startY = ev.clientY;
+  });
+  el.addEventListener("pointercancel", () => {
+    armed = false;
+  });
+  el.addEventListener("pointerup", (ev) => {
+    if (ev.pointerType === "mouse" || !armed) return;
+    armed = false;
+    const dx = ev.clientX - startX;
+    const dy = ev.clientY - startY;
+    if (dx * dx + dy * dy > 100) return; // moved >10px → a drag, not a tap
+    ev.stopPropagation();
+    open();
+  });
+}
+
 function customerPinColor(c: CustomerPin): string {
   return c.has_active_subscription
     ? SUBSCRIPTION_PIN_COLOR
@@ -598,10 +640,7 @@ export default function MapClient() {
     const marker = new mapboxgl.Marker({ element: el })
       .setLngLat([pin.lng, pin.lat])
       .addTo(map);
-    el.addEventListener("click", (ev) => {
-      ev.stopPropagation();
-      openPinPopup(pin.id);
-    });
+    bindMarkerTap(el, () => openPinPopup(pin.id));
     markersRef.current.set(pin.id, marker);
     pinsDataRef.current.set(pin.id, pin);
     setPinSourceData();
@@ -615,10 +654,7 @@ export default function MapClient() {
     const marker = new mapboxgl.Marker({ element: el })
       .setLngLat([c.longitude, c.latitude])
       .addTo(map);
-    el.addEventListener("click", (ev) => {
-      ev.stopPropagation();
-      openCustomerPopup(c.id);
-    });
+    bindMarkerTap(el, () => openCustomerPopup(c.id));
     customerMarkersRef.current.set(c.id, marker);
     customerDataRef.current.set(c.id, c);
     setCustomerSourceData();
