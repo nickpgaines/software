@@ -32,8 +32,8 @@ export function greeting(h: number) {
   return "Good evening";
 }
 
-export function dateLabel() {
-  return new Date().toLocaleDateString(undefined, {
+export function dateLabel(d: Date = new Date()) {
+  return d.toLocaleDateString(undefined, {
     weekday: "long",
     month: "long",
     day: "numeric",
