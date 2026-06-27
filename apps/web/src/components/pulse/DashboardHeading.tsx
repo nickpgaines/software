@@ -13,7 +13,8 @@ import { dateLabel, greeting } from "@/components/pulse/format";
 // The initial (pre-mount) render is timezone-neutral so the server HTML and the
 // first client render match — no hydration mismatch, and the user never sees a
 // wrong time-of-day greeting flash; "Hello" simply resolves to the local
-// greeting once mounted.
+// greeting once mounted. Both components also reserve their final footprint up
+// front so filling in the real value after mount cannot shift layout (no CLS).
 
 export function GreetingTitle({ firstName }: { firstName: string }) {
   const [hour, setHour] = useState<number | null>(null);
@@ -21,15 +22,26 @@ export function GreetingTitle({ firstName }: { firstName: string }) {
     setHour(new Date().getHours());
   }, []);
   return (
-    <>
-      {hour === null ? "Hello" : greeting(hour)},{" "}
-      <span style={{ color: PULSE.violetVar }}>{firstName}.</span>
-    </>
+    // Grid-stack the real greeting over an invisible sizing twin that always
+    // holds the longest greeting. The cell sizes to the twin, so swapping
+    // "Hello" → the real greeting (shorter or equal) never reflows the heading.
+    <span className="grid">
+      <span aria-hidden className="invisible col-start-1 row-start-1">
+        Good afternoon, {firstName}.
+      </span>
+      <span className="col-start-1 row-start-1">
+        {hour === null ? "Hello" : greeting(hour)},{" "}
+        <span style={{ color: PULSE.violetVar }}>{firstName}.</span>
+      </span>
+    </span>
   );
 }
 
 export function LocalDateLabel() {
-  const [label, setLabel] = useState("");
+  // Start with a non-breaking space so the kicker reserves its single line of
+  // height from first paint; the date (always one line) fills in on mount
+  // without nudging the heading below it.
+  const [label, setLabel] = useState("\u00A0");
   useEffect(() => {
     setLabel(dateLabel(new Date()));
   }, []);
