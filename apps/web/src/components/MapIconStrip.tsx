@@ -3,6 +3,8 @@
 import {
   Hexagon,
   Lasso,
+  LoaderCircle,
+  LocateFixed,
   Map as MapIcon,
   MapPin,
   Pencil,
@@ -29,6 +31,8 @@ export default function MapIconStrip({
   onToggleFilter,
   drawingLasso,
   onToggleLasso,
+  onLocate,
+  locating,
 }: {
   styleMode: StyleMode;
   onToggleStyle: () => void;
@@ -44,6 +48,8 @@ export default function MapIconStrip({
   onToggleFilter: () => void;
   drawingLasso: boolean;
   onToggleLasso: () => void;
+  onLocate: () => void;
+  locating: boolean;
 }) {
   const satelliteActive = styleMode === "satellite";
   const StyleIcon = satelliteActive ? Satellite : MapIcon;
@@ -160,6 +166,22 @@ export default function MapIconStrip({
         }
       >
         <Lasso className="h-5 w-5" />
+      </Button>
+      <Button
+        variant="ghost"
+        type="button"
+        onClick={onLocate}
+        disabled={locating}
+        aria-busy={locating}
+        title="Center on my location"
+        aria-label={locating ? "Locating…" : "Center on my location"}
+        className={buttonBase + " " + inactiveClasses}
+      >
+        {locating ? (
+          <LoaderCircle className="h-5 w-5 animate-spin" />
+        ) : (
+          <LocateFixed className="h-5 w-5" />
+        )}
       </Button>
     </div>
   );

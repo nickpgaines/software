@@ -1,0 +1,28 @@
+{
+  "name": "forge-mobile",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Capacitor native shell for the Forge CRM web app",
+  "scripts": {
+    "sync": "cap sync",
+    "ios": "cap run ios",
+    "android": "cap run android",
+    "open:ios": "cap open ios",
+    "open:android": "cap open android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.4.0",
+    "@capacitor/app": "^8.1.0",
+    "@capacitor/camera": "^8.2.0",
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/core": "^8.4.0",
+    "@capacitor/geolocation": "^8.2.0",
+    "@capacitor/ios": "^8.4.0",
+    "@capacitor/keyboard": "^8.0.5",
+    "@capacitor/splash-screen": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.2"
+  },
+  "devDependencies": {
+    "typescript": "^6.0.3"
+  }
+}

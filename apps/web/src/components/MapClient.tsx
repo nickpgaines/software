@@ -24,6 +24,7 @@ import {
   normalizePinStatus,
   type PinStatus,
 } from "@/lib/map-pin-colors";
+import { getCurrentPosition } from "@/lib/native";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -554,6 +555,10 @@ export default function MapClient() {
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holdStartRef = useRef<{ x: number; y: number } | null>(null);
   const currentPopupRef = useRef<mapboxgl.Popup | null>(null);
+  // "You are here" dot for the locate-me control (Phase 3 geolocation).
+  const locateMarkerRef = useRef<mapboxgl.Marker | null>(null);
+  const [locating, setLocating] = useState(false);
+  const [locateError, setLocateError] = useState<string | null>(null);
 
   function openSinglePopup(popup: mapboxgl.Popup) {
     currentPopupRef.current?.remove();
@@ -587,6 +592,12 @@ export default function MapClient() {
   useEffect(() => {
     mapRef.current?.resize();
   }, [isMobile]);
+  // Auto-dismiss the transient locate error.
+  useEffect(() => {
+    if (!locateError) return;
+    const t = setTimeout(() => setLocateError(null), 4000);
+    return () => clearTimeout(t);
+  }, [locateError]);
   const [staff, setStaff] = useState<TerritoryStaff[]>([]);
   const [drawingTerritory, setDrawingTerritory] = useState(false);
   const [drawingLasso, setDrawingLasso] = useState(false);
@@ -629,6 +640,52 @@ export default function MapClient() {
     markersRef.current.delete(id);
     pinsDataRef.current.delete(id);
     setPinSourceData();
+  }
+
+  // The blue "you are here" dot — a CSS-only marker (no glyph) so it reads
+  // distinctly from the status/customer pins.
+  function makeLocateMarkerElement() {
+    const el = document.createElement("div");
+    el.style.cssText =
+      "width:18px;height:18px;border-radius:9999px;background:#2563eb;" +
+      "border:3px solid #fff;box-shadow:0 0 0 2px rgba(37,99,235,.35);";
+    return el;
+  }
+
+  // Locate-me control: resolve the device position (native plugin in the app,
+  // browser Geolocation on web — see lib/native), then drop/move the dot and
+  // recenter. Errors surface as a transient inline message.
+  async function handleLocate() {
+    const map = mapRef.current;
+    if (!map || locating) return;
+    setLocateError(null);
+    setLocating(true);
+    try {
+      const coords = await getCurrentPosition();
+      // getCurrentPosition can take up to ~10s; if the map was torn down while
+      // we waited, the captured `map` is removed and its cleanup already nulled
+      // the marker ref. Re-read the live ref and bail to avoid resurrecting a
+      // marker on a dead map (orphaned/leaked node).
+      const liveMap = mapRef.current;
+      if (!liveMap) return;
+      if (!coords) {
+        setLocateError("Couldn't get your location. Check location permission.");
+        return;
+      }
+      const { lat, lng } = coords;
+      if (locateMarkerRef.current) {
+        locateMarkerRef.current.setLngLat([lng, lat]);
+      } else {
+        locateMarkerRef.current = new mapboxgl.Marker({
+          element: makeLocateMarkerElement(),
+        })
+          .setLngLat([lng, lat])
+          .addTo(liveMap);
+      }
+      liveMap.easeTo({ center: [lng, lat], zoom: Math.max(liveMap.getZoom(), 15) });
+    } finally {
+      setLocating(false);
+    }
   }
 
   function addMarker(pin: ApiPin) {
@@ -1490,6 +1547,8 @@ export default function MapClient() {
       drawRef.current = null;
       currentPopupRef.current?.remove();
       currentPopupRef.current = null;
+      locateMarkerRef.current?.remove();
+      locateMarkerRef.current = null;
       map.remove();
       mapRef.current = null;
     };
@@ -1674,7 +1733,18 @@ export default function MapClient() {
         onToggleFilter={() => setFilterOpen((v) => !v)}
         drawingLasso={drawingLasso}
         onToggleLasso={toggleLasso}
+        onLocate={handleLocate}
+        locating={locating}
       />
+      {locateError && (
+        <div
+          className="absolute left-1/2 z-20 -translate-x-1/2 rounded-lg border border-line bg-card px-3 py-2 text-xs font-bold text-rose-300 shadow-md"
+          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}
+          role="alert"
+        >
+          {locateError}
+        </div>
+      )}
       {filterOpen && (
         <MapFilterPanel
           showCustomers={showCustomersFilter}

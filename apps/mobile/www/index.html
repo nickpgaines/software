@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1"
+    />
+    <title>Forge</title>
+    <style>
+      :root {
+        color-scheme: dark;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: #000;
+        color: #fff;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      .screen {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        padding: max(env(safe-area-inset-top), 24px) 24px
+          max(env(safe-area-inset-bottom), 24px);
+        text-align: center;
+      }
+      h1 {
+        font-size: 20px;
+        font-weight: 600;
+        margin: 0;
+      }
+      p {
+        margin: 0;
+        opacity: 0.6;
+        font-size: 14px;
+        max-width: 280px;
+        line-height: 1.4;
+      }
+      button {
+        margin-top: 8px;
+        appearance: none;
+        border: 0;
+        border-radius: 9999px;
+        background: #fff;
+        color: #000;
+        font: inherit;
+        font-weight: 600;
+        font-size: 15px;
+        padding: 12px 28px;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.4;
+      }
+    </style>
+  </head>
+  <body>
+    <!--
+      Offline / fallback shell. When server.url is reachable the webview loads
+      the hosted Forge app; Capacitor falls back to this page (server.errorPath)
+      only when the remote app can't load — no connectivity or server
+      unreachable. The script below returns to the hosted app automatically when
+      the network comes back, and on a manual "Try again" tap.
+    -->
+    <div class="screen">
+      <h1>You're offline</h1>
+      <p id="msg">Reconnect to the internet to keep using Forge.</p>
+      <button id="retry" type="button">Try again</button>
+    </div>
+    <script>
+      // The hosted app to return to. This is the production target the shipped
+      // app uses; local-dev builds (CAP_SERVER_URL) recover to prod, which is
+      // fine for the rare offline case during development.
+      var APP_URL = "https://www.forgecrm.app/login";
+
+      var retry = document.getElementById("retry");
+      var msg = document.getElementById("msg");
+
+      function reconnect() {
+        retry.disabled = true;
+        msg.textContent = "Reconnecting…";
+        // allowNavigation whitelists the Forge host, so this stays in the
+        // webview rather than opening Safari.
+        window.location.replace(APP_URL);
+      }
+
+      retry.addEventListener("click", reconnect);
+      // Fired by the webview when device connectivity is regained.
+      window.addEventListener("online", reconnect);
+    </script>
+  </body>
+</html>
