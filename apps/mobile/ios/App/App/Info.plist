@@ -55,5 +55,7 @@
 	<string>Forge lets you choose existing photos to attach to job records.</string>
 	<key>NSPhotoLibraryAddUsageDescription</key>
 	<string>Forge needs photo access to attach pictures to job records.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 </dict>
 </plist>
