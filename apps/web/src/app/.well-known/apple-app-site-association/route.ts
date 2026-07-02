@@ -13,7 +13,7 @@ export const dynamic = "force-dynamic";
 // Phase 5 enrollment. Until IOS_APP_ID is set we return 404 so Apple doesn't
 // cache an invalid association.
 //
-// Set IOS_APP_ID = "<TEAM_ID>.com.forge.crm" (not sensitive — it's public by
+// Set IOS_APP_ID = "<TEAM_ID>.app.forgecrm" (not sensitive — it's public by
 // design; Apple serves it unauthenticated) once the Apple Developer account
 // exists.
 const PATHS = [
