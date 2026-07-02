@@ -1,4 +1,4 @@
-package com.forge.crm;
+package app.forgecrm;
 
 import com.getcapacitor.BridgeActivity;
 

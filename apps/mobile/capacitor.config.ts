@@ -30,7 +30,7 @@ const serverUrl = process.env.CAP_SERVER_URL?.trim() || PROD_SERVER_URL;
 const isCleartext = serverUrl.startsWith('http://');
 
 const config: CapacitorConfig = {
-  appId: 'com.forge.crm',
+  appId: 'app.forgecrm',
   appName: 'Forge',
   webDir: 'www',
   server: {

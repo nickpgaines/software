@@ -206,7 +206,7 @@ can resume without re-investigating. Everything below is verified, not assumed.
 
 ### What exists in `apps/mobile`
 
-- `capacitor.config.ts` — `appId: com.forge.crm`, `appName: Forge`,
+- `capacitor.config.ts` — `appId: app.forgecrm`, `appName: Forge`,
   `webDir: www`. `server.url` defaults to **`https://www.forgecrm.app/login`**
   (production); override with the `CAP_SERVER_URL` env var for local dev
   (e.g. `CAP_SERVER_URL=http://localhost:3000`). `server.allowNavigation`
@@ -366,7 +366,7 @@ The cookie-based HMAC session is the main thing to harden for native.
    `/.well-known/apple-app-site-association`
    (`apps/web/src/app/.well-known/apple-app-site-association/route.ts`), covering
    `/invoices/pay/*`, `/estimates/accept/*`, `/subscriptions/accept/*`. It is
-   env-gated on `IOS_APP_ID` (`<TEAM_ID>.com.forge.crm`, **not sensitive**) and
+   env-gated on `IOS_APP_ID` (`<TEAM_ID>.app.forgecrm`, **not sensitive**) and
    returns 404 until that's set, so it's safe to ship now. **Remaining (needs
    the Apple Developer Team ID → Phase 5):** (a) set the `IOS_APP_ID` env in
    prod; (b) add the Associated Domains entitlement `applinks:www.forgecrm.app`
@@ -461,7 +461,7 @@ primitives — no inline markup, no ad-hoc tokens.
      verified on local-dev http; this closes the one residual gap (see Phase 2
      note). Quick to check once a real prod account exists for TestFlight.
    - **Finish Universal Links** (Phase 2 item 3 carry-over): (a) set
-     `IOS_APP_ID=<TEAM_ID>.com.forge.crm` in the web app's prod env (not
+     `IOS_APP_ID=<TEAM_ID>.app.forgecrm` in the web app's prod env (not
      sensitive) — **pending Team ID**; (b) ✅ Associated Domains entitlement
      `applinks:www.forgecrm.app` is staged in `App.entitlements` + wired into
      the build configs (just enable the capability for the App ID once the
@@ -481,9 +481,9 @@ a cold start with a fresh Apple Developer account:
 1. **Enroll** in the Apple Developer Program; note the **Team ID**.
 2. Open `apps/mobile/ios/App/App.xcworkspace` in Xcode, select your team for
    the App target (signing is `Automatic`), and **enable the "Associated
-   Domains" capability** for the `com.forge.crm` App ID (the entitlement file is
+   Domains" capability** for the `app.forgecrm` App ID (the entitlement file is
    already in place — Xcode just needs the App ID capability to match).
-3. Set **`IOS_APP_ID=<TEAM_ID>.com.forge.crm`** in the web app's prod env
+3. Set **`IOS_APP_ID=<TEAM_ID>.app.forgecrm`** in the web app's prod env
    (**not sensitive**) so the AASA file starts serving (200 instead of 404).
 4. **Decide v1 scope** (the four open questions below): iOS-only vs +Android;
    push (y/n → if yes, APNs key + `@capacitor/push-notifications` + a send
