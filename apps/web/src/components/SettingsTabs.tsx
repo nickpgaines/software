@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import CustomizationsPanel from "@/components/settings/CustomizationsPanel";
+import ConnectorsSettingsPanel from "@/components/settings/ConnectorsSettingsPanel";
 import AccentPicker from "@/components/AccentPicker";
 import { PulseIcon } from "@/components/pulse/Icon";
 
@@ -22,6 +23,7 @@ type Tab =
   | "calling"
   | "email"
   | "ai"
+  | "connectors"
   | "billing";
 
 const TABS: { key: Tab; label: string }[] = [
@@ -34,6 +36,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "calling", label: "Calling" },
   { key: "email", label: "Email" },
   { key: "ai", label: "AI" },
+  { key: "connectors", label: "Connectors" },
   { key: "billing", label: "Billing" },
 ];
 
@@ -130,6 +133,7 @@ function SettingsTabsInner({
         {canSeeAllSettings && tab === "calling" && <CallingPanel />}
         {canSeeAllSettings && tab === "email" && <EmailPanel />}
         {canSeeAllSettings && tab === "ai" && <AiPanel />}
+        {canSeeAllSettings && tab === "connectors" && <ConnectorsSettingsPanel />}
         {canSeeAllSettings && tab === "billing" && <BillingPanel />}
       </div>
     </div>
