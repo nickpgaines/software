@@ -269,39 +269,41 @@ function CustomersPage() {
                     <TableCell className="px-4 py-2 text-zinc-300 font-bold">{c.phone || "—"}</TableCell>
                     <TableCell className="px-4 py-2 text-zinc-300 font-bold">{c.email || "—"}</TableCell>
                     <TableCell
-                      className="px-4 py-2 text-right"
+                      className="px-4 py-2"
                       onClick={(e) => e.stopPropagation()}
                     >
-                      {phone.configured && c.phone && (
+                      <div className="flex flex-nowrap items-center justify-end gap-4">
+                        {phone.configured && c.phone && (
+                          <Button
+                            variant="ghost"
+                            onClick={() =>
+                              phone.startCall({
+                                customerId: c.id,
+                                customerName: fullName(c) || c.name,
+                                toPhone: c.phone || "",
+                              })
+                            }
+                            disabled={phone.state.kind !== "idle"}
+                            className="h-auto p-0 text-xs font-bold text-emerald-400 hover:text-emerald-300 hover:bg-transparent whitespace-nowrap"
+                          >
+                            Call
+                          </Button>
+                        )}
                         <Button
                           variant="ghost"
-                          onClick={() =>
-                            phone.startCall({
-                              customerId: c.id,
-                              customerName: fullName(c) || c.name,
-                              toPhone: c.phone || "",
-                            })
-                          }
-                          disabled={phone.state.kind !== "idle"}
-                          className="h-auto p-0 text-xs font-bold text-emerald-400 hover:text-emerald-300 hover:bg-transparent mr-4"
+                          onClick={() => setEditing(c)}
+                          className="h-auto p-0 text-xs font-bold text-zinc-400 hover:text-white hover:bg-transparent whitespace-nowrap"
                         >
-                          Call
+                          Edit
                         </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        onClick={() => setEditing(c)}
-                        className="h-auto p-0 text-xs font-bold text-zinc-400 hover:text-white hover:bg-transparent mr-4"
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        onClick={() => del(c.id)}
-                        className="h-auto p-0 text-xs font-bold text-red-400 hover:text-red-300 hover:bg-transparent"
-                      >
-                        Delete
-                      </Button>
+                        <Button
+                          variant="ghost"
+                          onClick={() => del(c.id)}
+                          className="h-auto p-0 text-xs font-bold text-red-400 hover:text-red-300 hover:bg-transparent whitespace-nowrap"
+                        >
+                          Delete
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
