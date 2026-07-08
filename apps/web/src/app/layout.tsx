@@ -37,6 +37,14 @@ export const metadata: Metadata = {
 // stays sized-to-fit on mobile (multi-tab pages get a locally-scrollable
 // tab strip per DESIGN_SYSTEM §9.6).
 export const viewport: Viewport = {
+  // themeColor is static metadata rendered on the server, so it can only key
+  // off the OS-level `prefers-color-scheme`; it cannot read the per-device
+  // `forge-theme` localStorage choice that the inline script below applies.
+  // Result: the browser UI/status-bar tint follows the OS preference, which
+  // may differ from the in-app theme (e.g. OS dark + app light). This is a
+  // known, cosmetic limitation — the in-app surfaces themselves always honor
+  // the localStorage choice via `data-theme`. Do not try to "fix" it by
+  // moving theme state into auth/session or the manifest.
   themeColor: [
     { media: "(prefers-color-scheme: light)", color: "#f9f9fb" },
     { media: "(prefers-color-scheme: dark)", color: "#000000" },
