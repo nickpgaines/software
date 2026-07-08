@@ -127,6 +127,20 @@ function tooltipDate(iso: string) {
   });
 }
 
+// Compact date-range headline, e.g. "Jul 1–7" (same month) or
+// "Jun 29 – Jul 5" (crossing a month). Used for the weekly hero label.
+function formatDateRange(startIso: string, endIso: string) {
+  const s = new Date(startIso);
+  const e = new Date(endIso);
+  if (isNaN(s.getTime()) || isNaN(e.getTime())) return "";
+  const sMon = s.toLocaleDateString(undefined, { month: "short" });
+  const eMon = e.toLocaleDateString(undefined, { month: "short" });
+  const sameMonth = sMon === eMon && s.getFullYear() === e.getFullYear();
+  return sameMonth
+    ? `${sMon} ${s.getDate()}–${e.getDate()}`
+    : `${sMon} ${s.getDate()} – ${eMon} ${e.getDate()}`;
+}
+
 // Compact dollar label for the chart's Y-axis ticks. `tick` is in cents.
 // Abbreviates thousands as "K" ($12000 → "$12K", $1500 → "$1.5K") so the
 // labels stay narrow enough to sit inside the left gutter without bleeding
@@ -379,7 +393,7 @@ export function HeroChart({
               className="text-xs font-bold"
               style={{ color: PULSE.textSubtle }}
             >
-              {tooltipDate(hovered.date)}
+              {hovered.label ?? tooltipDate(hovered.date)}
             </div>
             <div className="font-black tracking-tight tabular-nums mt-0.5">
               {tooltipMoney(hovered.cents)}
@@ -596,7 +610,11 @@ export function PulseChartHero({
   const titleLabel =
     range === "1m"
       ? new Date().toLocaleString(undefined, { month: "long", year: "numeric" })
-      : CHART_RANGES.find((r) => r.key === range)?.title ?? data?.label ?? "Revenue";
+      : range === "1w" && data?.start && data?.end
+        ? formatDateRange(data.start, data.end)
+        : CHART_RANGES.find((r) => r.key === range)?.title ??
+          data?.label ??
+          "Revenue";
 
   return (
     <RevenueHeroView
