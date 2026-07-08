@@ -37,7 +37,10 @@ export const metadata: Metadata = {
 // stays sized-to-fit on mobile (multi-tab pages get a locally-scrollable
 // tab strip per DESIGN_SYSTEM §9.6).
 export const viewport: Viewport = {
-  themeColor: "#000000",
+  themeColor: [
+    { media: "(prefers-color-scheme: light)", color: "#f9f9fb" },
+    { media: "(prefers-color-scheme: dark)", color: "#000000" },
+  ],
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -46,12 +49,14 @@ export const viewport: Viewport = {
   viewportFit: "cover",
 };
 
-// Runs before paint to apply the user's saved accent color. Inlined to
-// avoid a flash of the default white accent on first paint when the user
-// has chosen a custom one.
+// Runs before paint to apply the user's saved theme + accent color. Inlined
+// to avoid a flash of defaults on first paint when the user has chosen
+// light mode and/or a custom accent.
 const themeInitScript = `
 (function () {
   try {
+    var t = localStorage.getItem('forge-theme');
+    if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
     var a = localStorage.getItem('forge-accent');
     if (a && /^#[0-9a-fA-F]{6}$/.test(a)) {
       var r = parseInt(a.slice(1, 3), 16);
