@@ -1373,7 +1373,7 @@ function DocumentPreview({
       <div className="text-xs font-bold text-zinc-500 mb-2 px-1">
         Preview
       </div>
-      <div className="rounded-lg bg-white text-zinc-900 p-5 sm:p-6 shadow-sm overflow-hidden">
+      <div className="paper-surface rounded-lg bg-white text-zinc-900 p-5 sm:p-6 shadow-sm overflow-hidden">
         <div className="flex items-start justify-between gap-4 pb-4 border-b border-zinc-200">
           <div className="min-w-0 flex-1">
             {sections.show_logo &&

@@ -170,6 +170,31 @@ flash of the default accent on first load. Foreground and glow are
 auto-computed from the chosen accent by luminance — call sites
 don't pass them explicitly.
 
+### Theme (dark default + light)
+
+The app is dark by default. An optional **light theme** is activated by
+`data-theme="light"` on `<html>` and layered in two parts inside
+`globals.css`:
+
+1. **Token override** — a `html[data-theme="light"] { … }` block redefines
+   the surface/foreground CSS variables (`--color-canvas` → `#f9f9fb`,
+   `--color-card` → `#ffffff`, `--color-fg` → `#0a0a0a`, etc.) and flips the
+   default accent dark-on-white. Any component using the semantic tokens
+   (`bg-canvas`, `bg-card`, `text-fg`, `PULSE.*`) flips for free.
+2. **Utility remap** — because many components predate the tokens and use raw
+   Tailwind darks (`bg-black`, `text-white`, `text-zinc-400`, `bg-slate-900`,
+   …), a companion `html[data-theme="light"] .<utility> { … !important }`
+   layer flips those to a three-tier light scale (canvas `#f9f9fb` / recessed
+   `#f4f4f5` / white card). This is a hand-maintained lookup; prefer migrating
+   hardcoded darks to the semantic tokens so the remap can shrink over time.
+
+Persistence mirrors the accent: the choice is stored in `localStorage` under
+`forge-theme` (`"light"` | absent) and the same inline `app/layout.tsx` script
+applies `data-theme` **before paint** to avoid a flash. The toggle is
+`components/ThemeToggle.tsx`, mounted in the desktop sidebar footer and in
+Settings → Profile → Appearance (the mobile-reachable entry point; light mode
+is primarily for outdoor/map readability).
+
 **Removed tokens** (`greenSoft`, `pink`, `pinkSoft`, `amber`) were
 defined but had zero call sites across the Pulse surfaces. They were
 removed from `theme.ts`, `globals.css`, and `tailwind.config.ts` rather

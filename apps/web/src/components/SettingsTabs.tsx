@@ -11,6 +11,7 @@ import { Textarea } from "@/components/ui/textarea";
 import CustomizationsPanel from "@/components/settings/CustomizationsPanel";
 import ConnectorsSettingsPanel from "@/components/settings/ConnectorsSettingsPanel";
 import AccentPicker from "@/components/AccentPicker";
+import ThemeToggle from "@/components/ThemeToggle";
 import { PulseIcon } from "@/components/pulse/Icon";
 
 type Tab =
@@ -399,6 +400,16 @@ function ProfilePanel({
             </p>
           )}
 
+          <div className="pt-6 border-t border-line">
+            <div className="text-sm font-bold text-white mb-1">Appearance</div>
+            <p className="text-xs font-bold text-zinc-500 mb-3">
+              Light mode improves outdoor and map readability. Saved on this
+              device.
+            </p>
+            <div className="max-w-[220px] rounded-lg border border-line">
+              <ThemeToggle />
+            </div>
+          </div>
           <div className="pt-6 border-t border-line">
             <AccentPicker />
           </div>
