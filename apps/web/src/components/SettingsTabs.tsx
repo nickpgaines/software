@@ -43,13 +43,19 @@ const TABS: { key: Tab; label: string }[] = [
 export default function SettingsTabs({
   username,
   initialMe = null,
+  connectorUrl,
 }: {
   username: string;
   initialMe?: Me | null;
+  connectorUrl: string;
 }) {
   return (
     <Suspense fallback={null}>
-      <SettingsTabsInner username={username} initialMe={initialMe} />
+      <SettingsTabsInner
+        username={username}
+        initialMe={initialMe}
+        connectorUrl={connectorUrl}
+      />
     </Suspense>
   );
 }
@@ -57,9 +63,11 @@ export default function SettingsTabs({
 function SettingsTabsInner({
   username,
   initialMe,
+  connectorUrl,
 }: {
   username: string;
   initialMe: Me | null;
+  connectorUrl: string;
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -133,7 +141,9 @@ function SettingsTabsInner({
         {canSeeAllSettings && tab === "calling" && <CallingPanel />}
         {canSeeAllSettings && tab === "email" && <EmailPanel />}
         {canSeeAllSettings && tab === "ai" && <AiPanel />}
-        {canSeeAllSettings && tab === "connectors" && <ConnectorsSettingsPanel />}
+        {canSeeAllSettings && tab === "connectors" && (
+          <ConnectorsSettingsPanel connectorUrl={connectorUrl} />
+        )}
         {canSeeAllSettings && tab === "billing" && <BillingPanel />}
       </div>
     </div>
