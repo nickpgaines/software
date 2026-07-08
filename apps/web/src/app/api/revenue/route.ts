@@ -60,6 +60,38 @@ function dateKey(d: Date) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
+// Collapse a month's ~28-31 daily points into ~6 buckets of 5-6 days each
+// (Jul 1–5, Jul 6–10, …, Jul 26–31). The daily series is a dense line that
+// reads as noise on the small dashboard chart; buckets make the month legible.
+// Each bucket carries a `label` range string the chart tooltip surfaces.
+function bucketByDays(
+  days: { date: string; cents: number }[],
+  size: number,
+  maxBuckets: number,
+): { date: string; cents: number; label: string }[] {
+  const buckets: { date: string; cents: number; label: string }[] = [];
+  for (let b = 0; b < maxBuckets; b++) {
+    const startIdx = b * size;
+    if (startIdx >= days.length) break;
+    // The final bucket absorbs any remainder so a 31-day month yields six
+    // buckets (…, 26–31 = 6 days) rather than a stray one-day seventh.
+    const group =
+      b === maxBuckets - 1
+        ? days.slice(startIdx)
+        : days.slice(startIdx, startIdx + size);
+    const cents = group.reduce((a, d) => a + d.cents, 0);
+    const s = new Date(`${group[0].date}T12:00:00`);
+    const e = new Date(`${group[group.length - 1].date}T12:00:00`);
+    const mon = s.toLocaleDateString(undefined, { month: "short" });
+    const label =
+      s.getDate() === e.getDate()
+        ? `${mon} ${s.getDate()}`
+        : `${mon} ${s.getDate()}–${e.getDate()}`;
+    buckets.push({ date: group[0].date, cents, label });
+  }
+  return buckets;
+}
+
 export async function GET(req: Request) {
   const companyId = await requireCompanyId();
   const db = await getDb();
@@ -104,15 +136,20 @@ export async function GET(req: Request) {
     if (i !== undefined) days[i].cents += r.price_cents;
   }
 
+  // Total and per-day average are computed from the raw daily series so the
+  // headline stays accurate even when the chart series is bucketed below.
   const total = days.reduce((a, d) => a + d.cents, 0);
   const avg = days.length ? total / days.length : 0;
+
+  // Monthly: bucket the dense daily line into 5-day ranges for legibility.
+  const series = range === "1m" ? bucketByDays(days, 5, 6) : days;
 
   return NextResponse.json({
     range,
     label,
     start: start.toISOString(),
     end: end.toISOString(),
-    days,
+    days: series,
     total_cents: total,
     avg_cents: Math.round(avg),
   });
