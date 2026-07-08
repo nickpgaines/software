@@ -4,7 +4,6 @@ import { PULSE } from "@/components/pulse/theme";
 import SmsWelcomeModal from "@/components/SmsWelcomeModal";
 import { AppFrame } from "@/components/AppFrame";
 import MobileBottomNav from "@/components/MobileBottomNav";
-import { MobileNavShell } from "@/components/MobileNavShell";
 import { loadMe } from "@/lib/me";
 import { GlobalSearchProvider } from "@/components/search/GlobalSearchProvider";
 
@@ -16,19 +15,17 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const me = await loadMe();
   return (
     <PhoneClientProvider>
-      <MobileNavShell>
-        <GlobalSearchProvider>
-          <div
-            className="min-h-screen"
-            style={{ background: PULSE.bg, color: PULSE.text }}
-          >
-            <PulseSidebar initialMe={me} />
-            <AppFrame>{children}</AppFrame>
-            <MobileBottomNav />
-            <SmsWelcomeModal />
-          </div>
-        </GlobalSearchProvider>
-      </MobileNavShell>
+      <GlobalSearchProvider>
+        <div
+          className="min-h-screen"
+          style={{ background: PULSE.bg, color: PULSE.text }}
+        >
+          <PulseSidebar initialMe={me} />
+          <AppFrame>{children}</AppFrame>
+          <MobileBottomNav />
+          <SmsWelcomeModal />
+        </div>
+      </GlobalSearchProvider>
     </PhoneClientProvider>
   );
 }
