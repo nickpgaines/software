@@ -210,7 +210,7 @@ export function LeaderboardRankingsView({
             </h2>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2 max-w-full">
-            <div className="flex flex-wrap items-center gap-1 bg-black border border-line rounded-2xl p-1 text-sm max-w-full">
+            <div className="flex flex-wrap items-center gap-1 bg-black border border-line rounded-full p-1 text-sm max-w-full">
               {PRESET_RANGES.map((r) => (
                 <Button
                   key={r.key}

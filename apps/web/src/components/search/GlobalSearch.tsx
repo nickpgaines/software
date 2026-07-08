@@ -113,7 +113,7 @@ export function GlobalSearch({ onClose }: { onClose: () => void }) {
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search customers, jobs, invoices, leads…"
             aria-label="Search customers, jobs, invoices, leads"
-            className="h-14 w-full rounded-lg bg-transparent text-sm text-fg outline-none placeholder:text-fg-dim"
+            className="h-14 w-full rounded-lg bg-transparent text-sm text-fg outline-none placeholder:text-fg-dim focus-visible:ring-1 focus-visible:ring-line"
           />
           {loading && (
             <span
