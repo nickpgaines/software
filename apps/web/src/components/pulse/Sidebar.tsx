@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { PULSE } from "./theme";
 import { PulseIcon } from "./Icon";
-import { useMobileNav } from "@/components/MobileNavShell";
 
 type Me = {
   identity: string;
@@ -60,7 +59,7 @@ export const NEW_ITEMS = [
 
 export const SECTIONS = ["Workspace", "Insights", "Team"];
 
-function initials(name: string) {
+export function initials(name: string) {
   const parts = name.trim().split(/\s+/);
   if (parts.length === 0 || !parts[0]) return "?";
   if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
@@ -76,7 +75,6 @@ export function PulseSidebar({ initialMe = null }: { initialMe?: Me | null }) {
   const [me, setMe] = useState<Me | null>(initialMe);
   const [newOpen, setNewOpen] = useState(false);
   const newRef = useRef<HTMLDivElement>(null);
-  const { open: mobileOpen } = useMobileNav();
 
   // One-shot fallback: only fetch if the server didn't manage to seed us
   // (e.g. session present but staff row still syncing on the layout's
@@ -129,10 +127,11 @@ export function PulseSidebar({ initialMe = null }: { initialMe?: Me | null }) {
   const photo = me?.staff?.photo_url ?? null;
 
   return (
+    // Desktop-only nav: hidden off-canvas on mobile, always visible at `md:`
+    // and up. The mobile "More" experience lives at the `/more` route now, so
+    // there is no drawer to slide open here anymore.
     <aside
-      className={`fixed left-0 top-0 bottom-0 w-60 z-40 flex flex-col px-3 pb-4 pt-[calc(env(safe-area-inset-top)+1rem)] transition-transform duration-200 ease-out md:translate-x-0 ${
-        mobileOpen ? "translate-x-0" : "-translate-x-full"
-      }`}
+      className="fixed left-0 top-0 bottom-0 w-60 z-40 hidden md:flex flex-col px-3 pb-4 pt-[calc(env(safe-area-inset-top)+1rem)]"
       style={{ background: PULSE.sidebar, borderRight: `1px solid ${PULSE.divider}` }}
     >
       {/* Brand */}

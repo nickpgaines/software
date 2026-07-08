@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { ChevronRight } from "lucide-react";
 import { PulseIcon } from "@/components/pulse/Icon";
-import { NAV, NEW_ITEMS, SECTIONS } from "@/components/pulse/Sidebar";
+import { NAV, NEW_ITEMS, SECTIONS, initials } from "@/components/pulse/Sidebar";
 
 type Me = {
   identity: string;
@@ -28,30 +29,6 @@ const BOTTOM_TAB_HREFS = new Set([
   "/map",
 ]);
 
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0][0]!.toUpperCase();
-  return (parts[0][0]! + parts[parts.length - 1][0]!).toUpperCase();
-}
-
-function Chevron() {
-  return (
-    <svg
-      className="h-4 w-4 shrink-0 text-fg-subtle"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <polyline points="9 18 15 12 9 6" />
-    </svg>
-  );
-}
-
 function Row({
   href,
   icon,
@@ -72,7 +49,7 @@ function Row({
       <span className="min-w-0 flex-1 truncate text-[15px] font-bold text-fg">
         {label}
       </span>
-      <Chevron />
+      <ChevronRight className="h-4 w-4 shrink-0 text-fg-subtle" aria-hidden />
     </Link>
   );
 }
