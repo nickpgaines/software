@@ -30,7 +30,7 @@ type NavItem = {
   matchPrefixes?: string[];
 };
 
-const NAV: (NavItem & { perm?: string })[] = [
+export const NAV: (NavItem & { perm?: string })[] = [
   { name: "Dashboard", icon: "home", href: "/dashboard", section: "Workspace" },
   { name: "Schedule", icon: "calendar", href: "/schedule", section: "Workspace", perm: "schedule.view" },
   {
@@ -50,7 +50,7 @@ const NAV: (NavItem & { perm?: string })[] = [
   { name: "Settings", icon: "settings", href: "/settings", section: "Team" },
 ];
 
-const NEW_ITEMS = [
+export const NEW_ITEMS = [
   { key: "job", label: "Job", href: "/schedule/new" },
   { key: "subscription", label: "Subscription", href: "/subscriptions/new" },
   { key: "invoice", label: "Invoice", href: "/invoices/new" },
@@ -58,7 +58,7 @@ const NEW_ITEMS = [
   { key: "customer", label: "Customer", href: "/customers?new=1" },
 ];
 
-const SECTIONS = ["Workspace", "Insights", "Team"];
+export const SECTIONS = ["Workspace", "Insights", "Team"];
 
 function initials(name: string) {
   const parts = name.trim().split(/\s+/);
