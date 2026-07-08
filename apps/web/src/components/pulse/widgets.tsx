@@ -129,9 +129,13 @@ function tooltipDate(iso: string) {
 
 // Compact date-range headline, e.g. "Jul 1–7" (same month) or
 // "Jun 29 – Jul 5" (crossing a month). Used for the weekly hero label.
-function formatDateRange(startIso: string, endIso: string) {
-  const s = new Date(startIso);
-  const e = new Date(endIso);
+// Takes the plotted points' `date` strings (YYYY-MM-DD) and parses them
+// noon-anchored so the headline is TZ-safe and matches the plotted x-axis
+// (parsing the raw UTC start/end ISO timestamps directly shifts the day for
+// viewers behind UTC — same bug class as commit 64d3983).
+function formatDateRange(startDate: string, endDate: string) {
+  const s = new Date(`${startDate}T12:00:00`);
+  const e = new Date(`${endDate}T12:00:00`);
   if (isNaN(s.getTime()) || isNaN(e.getTime())) return "";
   const sMon = s.toLocaleDateString(undefined, { month: "short" });
   const eMon = e.toLocaleDateString(undefined, { month: "short" });
@@ -607,18 +611,25 @@ export function PulseChartHero({
     };
   }, [range, customStart, customEnd, salesStaffId]);
 
+  const days = data?.days ?? [];
   const titleLabel =
     range === "1m"
-      ? new Date().toLocaleString(undefined, { month: "long", year: "numeric" })
-      : range === "1w" && data?.start && data?.end
-        ? formatDateRange(data.start, data.end)
+      ? // Server-computed window label (e.g. "July 2026 Revenue"); avoids
+        // recomputing from new Date(), which can disagree at a month boundary.
+        // The header prepends the "Revenue" prefix, so strip the API label's
+        // trailing " Revenue" to keep the "Revenue · July 2026" display.
+        (data?.label ?? "").replace(/ Revenue$/, "") || "Revenue"
+      : range === "1w" && days.length > 0
+        ? // Derive the range from the plotted points (parsed noon-anchored in
+          // formatDateRange) so the headline matches the plotted x-axis.
+          formatDateRange(days[0].date, days[days.length - 1].date)
         : CHART_RANGES.find((r) => r.key === range)?.title ??
           data?.label ??
           "Revenue";
 
   return (
     <RevenueHeroView
-      days={data?.days ?? []}
+      days={days}
       totalCents={data?.total_cents ?? 0}
       label={titleLabel}
       range={range}
