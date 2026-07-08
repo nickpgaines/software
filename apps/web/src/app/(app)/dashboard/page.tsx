@@ -136,6 +136,7 @@ export default async function DashboardPage() {
 
           <div className="mb-5">
             <PulseChartHero
+              initialRange="1w"
               salesStaffId={salesStaffIdForScope}
               titleOverride={isSalesperson ? "My Sales" : undefined}
             />

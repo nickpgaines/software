@@ -5,7 +5,6 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { PULSE } from "./theme";
 import { PulseIcon } from "./Icon";
-import { useMobileNav } from "@/components/MobileNavShell";
 import ThemeToggle from "@/components/ThemeToggle";
 
 type Me = {
@@ -31,7 +30,7 @@ type NavItem = {
   matchPrefixes?: string[];
 };
 
-const NAV: (NavItem & { perm?: string })[] = [
+export const NAV: (NavItem & { perm?: string })[] = [
   { name: "Dashboard", icon: "home", href: "/dashboard", section: "Workspace" },
   { name: "Schedule", icon: "calendar", href: "/schedule", section: "Workspace", perm: "schedule.view" },
   {
@@ -51,7 +50,7 @@ const NAV: (NavItem & { perm?: string })[] = [
   { name: "Settings", icon: "settings", href: "/settings", section: "Team" },
 ];
 
-const NEW_ITEMS = [
+export const NEW_ITEMS = [
   { key: "job", label: "Job", href: "/schedule/new" },
   { key: "subscription", label: "Subscription", href: "/subscriptions/new" },
   { key: "invoice", label: "Invoice", href: "/invoices/new" },
@@ -59,9 +58,9 @@ const NEW_ITEMS = [
   { key: "customer", label: "Customer", href: "/customers?new=1" },
 ];
 
-const SECTIONS = ["Workspace", "Insights", "Team"];
+export const SECTIONS = ["Workspace", "Insights", "Team"];
 
-function initials(name: string) {
+export function initials(name: string) {
   const parts = name.trim().split(/\s+/);
   if (parts.length === 0 || !parts[0]) return "?";
   if (parts.length === 1) return parts[0].slice(0, 1).toUpperCase();
@@ -77,7 +76,6 @@ export function PulseSidebar({ initialMe = null }: { initialMe?: Me | null }) {
   const [me, setMe] = useState<Me | null>(initialMe);
   const [newOpen, setNewOpen] = useState(false);
   const newRef = useRef<HTMLDivElement>(null);
-  const { open: mobileOpen } = useMobileNav();
 
   // One-shot fallback: only fetch if the server didn't manage to seed us
   // (e.g. session present but staff row still syncing on the layout's
@@ -130,10 +128,11 @@ export function PulseSidebar({ initialMe = null }: { initialMe?: Me | null }) {
   const photo = me?.staff?.photo_url ?? null;
 
   return (
+    // Desktop-only nav: hidden off-canvas on mobile, always visible at `md:`
+    // and up. The mobile "More" experience lives at the `/more` route now, so
+    // there is no drawer to slide open here anymore.
     <aside
-      className={`fixed left-0 top-0 bottom-0 w-60 z-40 flex flex-col px-3 pb-4 pt-[calc(env(safe-area-inset-top)+1rem)] transition-transform duration-200 ease-out md:translate-x-0 ${
-        mobileOpen ? "translate-x-0" : "-translate-x-full"
-      }`}
+      className="fixed left-0 top-0 bottom-0 w-60 z-40 hidden md:flex flex-col px-3 pb-4 pt-[calc(env(safe-area-inset-top)+1rem)]"
       style={{ background: PULSE.sidebar, borderRight: `1px solid ${PULSE.divider}` }}
     >
       {/* Brand */}

@@ -1,7 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 // Track whether the viewport matches the mobile breakpoint (< md). Used by
 // the calendar to compress the day-view tech columns and pick the right
@@ -19,6 +27,7 @@ function useIsMobile() {
   return isMobile;
 }
 import EmployeeSchedulingModal from "./EmployeeSchedulingModal";
+import CreateTaskModal from "./CreateTaskModal";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -209,6 +218,12 @@ function blockHeight(start: Date, end: Date) {
   const ms = end.getTime() - start.getTime();
   return Math.max(28, (ms / 3_600_000) * HOUR_PX);
 }
+
+/** Lets the in-column "+ New → New Task" menu (rendered deep inside
+ * Day/Week columns) open the single CreateTaskModal mounted at the root,
+ * prefilled with the clicked slot's start/end. */
+type TaskModalOpener = (opts: { startIso: string; endIso: string }) => void;
+const TaskModalContext = createContext<TaskModalOpener>(() => {});
 
 export default function CalendarClient() {
   const isMobile = useIsMobile();
@@ -422,7 +437,17 @@ export default function CalendarClient() {
     return formatRange(start, addDays(start, 6));
   }, [view, cursor]);
 
+  const [taskModal, setTaskModal] = useState<{
+    startIso: string;
+    endIso: string;
+  } | null>(null);
+  const openTaskModal = useCallback<TaskModalOpener>(
+    (opts) => setTaskModal(opts),
+    [],
+  );
+
   return (
+    <TaskModalContext.Provider value={openTaskModal}>
     <div className="relative h-[calc(100dvh-4.5rem-env(safe-area-inset-bottom))] md:h-[100dvh] flex flex-col overflow-hidden pt-[env(safe-area-inset-top)] md:pt-0">
       <div className="px-3 md:px-6 py-3 md:py-4 flex items-center justify-between gap-2 md:gap-3 md:flex-wrap border-b border-line shrink-0">
         <div className="flex items-center gap-2 md:flex-wrap min-w-0">
@@ -709,7 +734,18 @@ export default function CalendarClient() {
         initialDate={cursor}
         onSaved={() => setShiftsLoadTick((n) => n + 1)}
       />
+
+      <CreateTaskModal
+        open={taskModal !== null}
+        onOpenChange={(o) => {
+          if (!o) setTaskModal(null);
+        }}
+        onCreated={() => setJobsLoadTick((n) => n + 1)}
+        defaultStartIso={taskModal?.startIso}
+        defaultEndIso={taskModal?.endIso}
+      />
     </div>
+    </TaskModalContext.Provider>
   );
 }
 
@@ -1067,7 +1103,7 @@ function DayView({
 
   return (
     <div className="md:min-w-[640px]">
-      <div className="sticky top-0 z-20 bg-card">
+      <div className="sticky top-0 z-30 bg-card">
         <div
           className={
             "px-4 py-3 text-center text-sm font-extrabold tracking-tight border-b border-line " +
@@ -1584,6 +1620,7 @@ function HoverAddPopover({
   menuOpen: boolean;
   onMenuOpenChange: (open: boolean) => void;
 }) {
+  const openTaskModal = useContext(TaskModalContext);
   if (!menuOpen) {
     for (const j of columnJobs) {
       if (j.anytime) continue;
@@ -1655,7 +1692,16 @@ function HoverAddPopover({
               <span>New Job</span>
             </Link>
           </DropdownMenuItem>
-          <DropdownMenuItem disabled className="flex items-center gap-2">
+          <DropdownMenuItem
+            className="flex items-center gap-2 cursor-pointer"
+            onSelect={() => {
+              onMenuOpenChange(false);
+              openTaskModal({
+                startIso: start.toISOString(),
+                endIso: end.toISOString(),
+              });
+            }}
+          >
             <PulseIcon name="task" />
             <span>New Task</span>
           </DropdownMenuItem>

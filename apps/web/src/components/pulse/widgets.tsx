@@ -127,6 +127,24 @@ function tooltipDate(iso: string) {
   });
 }
 
+// Compact date-range headline, e.g. "Jul 1–7" (same month) or
+// "Jun 29 – Jul 5" (crossing a month). Used for the weekly hero label.
+// Takes the plotted points' `date` strings (YYYY-MM-DD) and parses them
+// noon-anchored so the headline is TZ-safe and matches the plotted x-axis
+// (parsing the raw UTC start/end ISO timestamps directly shifts the day for
+// viewers behind UTC — same bug class as commit 64d3983).
+function formatDateRange(startDate: string, endDate: string) {
+  const s = new Date(`${startDate}T12:00:00`);
+  const e = new Date(`${endDate}T12:00:00`);
+  if (isNaN(s.getTime()) || isNaN(e.getTime())) return "";
+  const sMon = s.toLocaleDateString(undefined, { month: "short" });
+  const eMon = e.toLocaleDateString(undefined, { month: "short" });
+  const sameMonth = sMon === eMon && s.getFullYear() === e.getFullYear();
+  return sameMonth
+    ? `${sMon} ${s.getDate()}–${e.getDate()}`
+    : `${sMon} ${s.getDate()} – ${eMon} ${e.getDate()}`;
+}
+
 // Compact dollar label for the chart's Y-axis ticks. `tick` is in cents.
 // Abbreviates thousands as "K" ($12000 → "$12K", $1500 → "$1.5K") so the
 // labels stay narrow enough to sit inside the left gutter without bleeding
@@ -379,7 +397,7 @@ export function HeroChart({
               className="text-xs font-bold"
               style={{ color: PULSE.textSubtle }}
             >
-              {tooltipDate(hovered.date)}
+              {hovered.label ?? tooltipDate(hovered.date)}
             </div>
             <div className="font-black tracking-tight tabular-nums mt-0.5">
               {tooltipMoney(hovered.cents)}
@@ -593,14 +611,25 @@ export function PulseChartHero({
     };
   }, [range, customStart, customEnd, salesStaffId]);
 
+  const days = data?.days ?? [];
   const titleLabel =
     range === "1m"
-      ? new Date().toLocaleString(undefined, { month: "long", year: "numeric" })
-      : CHART_RANGES.find((r) => r.key === range)?.title ?? data?.label ?? "Revenue";
+      ? // Server-computed window label (e.g. "July 2026 Revenue"); avoids
+        // recomputing from new Date(), which can disagree at a month boundary.
+        // The header prepends the "Revenue" prefix, so strip the API label's
+        // trailing " Revenue" to keep the "Revenue · July 2026" display.
+        (data?.label ?? "").replace(/ Revenue$/, "") || "Revenue"
+      : range === "1w" && days.length > 0
+        ? // Derive the range from the plotted points (parsed noon-anchored in
+          // formatDateRange) so the headline matches the plotted x-axis.
+          formatDateRange(days[0].date, days[days.length - 1].date)
+        : CHART_RANGES.find((r) => r.key === range)?.title ??
+          data?.label ??
+          "Revenue";
 
   return (
     <RevenueHeroView
-      days={data?.days ?? []}
+      days={days}
       totalCents={data?.total_cents ?? 0}
       label={titleLabel}
       range={range}
