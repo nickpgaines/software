@@ -47,10 +47,15 @@ export default function CreateTaskModal({
   open,
   onOpenChange,
   onCreated,
+  defaultStartIso,
+  defaultEndIso,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onCreated?: () => void;
+  /** Prefill Start/End when opened from a specific calendar slot. */
+  defaultStartIso?: string;
+  defaultEndIso?: string;
 }) {
   const [title, setTitle] = useState("");
   const [details, setDetails] = useState("");
@@ -69,9 +74,18 @@ export default function CreateTaskModal({
     if (!open) return;
     setTitle("");
     setDetails("");
-    const start = nextHalfHour();
-    const end = new Date(start);
-    end.setHours(end.getHours() + 2);
+    const start =
+      defaultStartIso && !Number.isNaN(Date.parse(defaultStartIso))
+        ? new Date(defaultStartIso)
+        : nextHalfHour();
+    const end =
+      defaultEndIso && !Number.isNaN(Date.parse(defaultEndIso))
+        ? new Date(defaultEndIso)
+        : (() => {
+            const e = new Date(start);
+            e.setHours(e.getHours() + 2);
+            return e;
+          })();
     setStartAt(toLocalDatetimeInput(start));
     setEndAt(toLocalDatetimeInput(end));
     setIsRecurring(false);
@@ -90,7 +104,7 @@ export default function CreateTaskModal({
     return () => {
       cancelled = true;
     };
-  }, [open]);
+  }, [open, defaultStartIso, defaultEndIso]);
 
   async function submit() {
     setError(null);
