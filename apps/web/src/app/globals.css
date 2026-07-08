@@ -390,20 +390,24 @@ html[data-theme="light"] :is(
   color: #ffffff !important;
 }
 
-/* White primary "Sign in" CTA (`bg-white … text-black`, used on every auth
-   page: login / signup / forgot-password / reset-password / error /
-   not-found). These are auth surfaces we can only theme via CSS. Keep them
-   light-with-black-ink in light mode so BOTH the base and the
-   `hover:bg-zinc-200` state stay legible — the generic bg-white→dark +
-   text-black→white flips would leave white text on the light gray hover.
-   Compound specificity (0,3,1) beats the blanket bg-white / text-black
-   rules (0,2,1). */
+/* Primary "Sign in" CTA (`bg-white … text-black`, used on every auth page:
+   login / signup / forgot-password / reset-password / error / not-found).
+   Auth surfaces we can only theme via CSS. A white button on the white card
+   is shapeless in light mode, so invert it to a dark-filled button — this
+   also matches the app's other light-mode emphasis buttons (Create, active
+   range pills). White ink on near-black reads as a clear primary CTA in both
+   base and hover. Compound specificity (0,3,1) — plus :disabled (0,4,1) —
+   beats the blanket bg-white / text-black rules (0,2,1). */
 html[data-theme="light"] .bg-white.text-black {
-  background-color: #ffffff !important;
-  color: #18181b !important;
+  background-color: #18181b !important;
+  color: #ffffff !important;
 }
-html[data-theme="light"] .bg-white.text-black:hover {
-  background-color: #e4e4e7 !important;
+html[data-theme="light"] .bg-white.text-black:not(:disabled):hover {
+  background-color: #27272a !important;
+}
+html[data-theme="light"] .bg-white.text-black:disabled {
+  background-color: #d4d4d8 !important;
+  color: #71717a !important;
 }
 
 /* Document "paper" previews (estimate / customization previews) must look
