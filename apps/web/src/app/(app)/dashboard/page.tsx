@@ -20,6 +20,7 @@ import {
 import { PageHeader } from "@/components/pulse/PageHeader";
 import { PulseIcon } from "@/components/pulse/Icon";
 import { DashboardSearchButton } from "@/components/search/DashboardSearchButton";
+import MobileCreateMenu from "@/components/MobileCreateMenu";
 import { formatCentsShort } from "@/components/pulse/format";
 import { GreetingTitle, LocalDateLabel } from "@/components/pulse/DashboardHeading";
 
@@ -76,6 +77,7 @@ export default async function DashboardPage() {
             : `${jobs.length} jobs today · ${completedCount} completed this month`
         }
         actions={<DashboardSearchButton />}
+        mobileAction={<MobileCreateMenu />}
       />
 
       {showStripeBanner && (

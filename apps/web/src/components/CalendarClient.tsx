@@ -43,6 +43,7 @@ import {
   FULL_SCHEDULE_PERMISSIONS,
 } from "@/lib/technicianColors";
 import { PulseIcon } from "@/components/pulse/Icon";
+import MobileCreateMenu from "@/components/MobileCreateMenu";
 
 type Job = {
   id: number;
@@ -653,6 +654,8 @@ export default function CalendarClient() {
               <DropdownMenuItem disabled>Week starts on</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+
+          <MobileCreateMenu className="md:hidden" />
         </div>
       </div>
 

@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import MobileCreateMenu from "@/components/MobileCreateMenu";
 
 type Conversation = {
   id: number;
@@ -128,6 +129,7 @@ export default function MessagesClient() {
                 <path d="M16.5 3.5a2.121 2.121 0 1 1 3 3L7 19l-4 1 1-4z" />
               </svg>
             </Button>
+            <MobileCreateMenu className="md:hidden" />
           </div>
         </div>
       </div>
