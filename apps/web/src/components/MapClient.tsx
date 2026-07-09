@@ -573,7 +573,9 @@ export default function MapClient() {
   const [styleMode, setStyleMode] = useState<StyleMode>("satellite");
   const [pinsVisible, setPinsVisible] = useState(true);
   const pinsVisibleRef = useRef(true);
-  const [showCustomerPins, setShowCustomerPins] = useState(true);
+  // Customers are always shown now that the rail toggle is gone; the Filters
+  // panel's Customers/Subscriptions checkboxes control which type appears.
+  const [showCustomerPins] = useState(true);
   const showCustomerPinsRef = useRef(true);
   // Track the mobile breakpoint at runtime so the map container can use
   // inline styles (which beat mapbox-gl.css's own `.mapboxgl-map`
@@ -600,7 +602,9 @@ export default function MapClient() {
   }, [locateError]);
   const [staff, setStaff] = useState<TerritoryStaff[]>([]);
   const [drawingTerritory, setDrawingTerritory] = useState(false);
-  const [drawingLasso, setDrawingLasso] = useState(false);
+  // Lasso mode can no longer be started from the UI (the rail button was
+  // removed); the draw handler + results panel below stay wired but inert.
+  const [, setDrawingLasso] = useState(false);
   const [lassoSelection, setLassoSelection] = useState<LassoCustomer[] | null>(
     null
   );
@@ -1071,15 +1075,6 @@ export default function MapClient() {
     }
   }
 
-  function startLasso() {
-    const draw = drawRef.current;
-    if (!draw) return;
-    draw.deleteAll();
-    draw.changeMode("draw_polygon");
-    drawingLassoRef.current = true;
-    setDrawingLasso(true);
-  }
-
   function cancelLasso() {
     const draw = drawRef.current;
     if (draw) {
@@ -1088,15 +1083,6 @@ export default function MapClient() {
     }
     drawingLassoRef.current = false;
     setDrawingLasso(false);
-  }
-
-  function toggleLasso() {
-    if (drawingLassoRef.current) cancelLasso();
-    else {
-      if (drawingTerritoryRef.current) cancelDrawTerritory();
-      setLassoSelection(null);
-      startLasso();
-    }
   }
 
   function pointInPolygon(
@@ -1353,6 +1339,9 @@ export default function MapClient() {
       } catch {
         // ignore
       }
+      // Show the user's current location by default — drop the blue dot and
+      // recenter on it. Silently no-ops if permission is denied/unavailable.
+      void handleLocate();
     });
 
     map.on("click", "territories-fill", (e) => {
@@ -1721,18 +1710,12 @@ export default function MapClient() {
       <MapIconStrip
         styleMode={styleMode}
         onToggleStyle={toggleStyle}
-        pinsVisible={pinsVisible}
-        onTogglePins={() => setPinsVisible((v) => !v)}
-        customerPinsVisible={showCustomerPins}
-        onToggleCustomerPins={() => setShowCustomerPins((v) => !v)}
         drawingTerritory={drawingTerritory}
         onToggleDrawTerritory={toggleDrawTerritory}
         territoryListOpen={territoryListOpen}
         onToggleTerritoryList={() => setTerritoryListOpen((v) => !v)}
         filterOpen={filterOpen}
         onToggleFilter={() => setFilterOpen((v) => !v)}
-        drawingLasso={drawingLasso}
-        onToggleLasso={toggleLasso}
         onLocate={handleLocate}
         locating={locating}
       />
@@ -1756,8 +1739,10 @@ export default function MapClient() {
             name: s.name,
             color: s.color,
           }))}
+          showPins={pinsVisible}
           onChangeShowCustomers={setShowCustomersFilter}
           onChangeShowSubscriptions={setShowSubscriptionsFilter}
+          onChangeShowPins={setPinsVisible}
           onChangeDateRange={setDateRange}
           onChangeEmployeeIds={setSelectedEmployeeIds}
           onClose={() => setFilterOpen(false)}
@@ -1787,11 +1772,6 @@ export default function MapClient() {
       {drawingTerritory && (
         <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-slate-900 text-white text-sm rounded-full px-4 py-2 shadow-md pointer-events-none">
           Click points to outline a territory · double-click to finish
-        </div>
-      )}
-      {drawingLasso && (
-        <div className="absolute top-4 left-1/2 -translate-x-1/2 z-10 bg-slate-900 text-white text-sm rounded-full px-4 py-2 shadow-md pointer-events-none">
-          Click points to lasso customers · double-click to finish
         </div>
       )}
       {lassoSelection && (
