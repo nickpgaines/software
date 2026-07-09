@@ -3,8 +3,15 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useEffect, useId, useRef, useState } from "react";
+import { Settings2 } from "lucide-react";
 import { PULSE } from "./theme";
 import { PulseIcon } from "./Icon";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { formatCents, formatCentsShort, formatTime } from "./format";
 import type {
   LiveJob,
@@ -125,24 +132,6 @@ function tooltipDate(iso: string) {
     day: "numeric",
     year: "numeric",
   });
-}
-
-// Compact date-range headline, e.g. "Jul 1–7" (same month) or
-// "Jun 29 – Jul 5" (crossing a month). Used for the weekly hero label.
-// Takes the plotted points' `date` strings (YYYY-MM-DD) and parses them
-// noon-anchored so the headline is TZ-safe and matches the plotted x-axis
-// (parsing the raw UTC start/end ISO timestamps directly shifts the day for
-// viewers behind UTC — same bug class as commit 64d3983).
-function formatDateRange(startDate: string, endDate: string) {
-  const s = new Date(`${startDate}T12:00:00`);
-  const e = new Date(`${endDate}T12:00:00`);
-  if (isNaN(s.getTime()) || isNaN(e.getTime())) return "";
-  const sMon = s.toLocaleDateString(undefined, { month: "short" });
-  const eMon = e.toLocaleDateString(undefined, { month: "short" });
-  const sameMonth = sMon === eMon && s.getFullYear() === e.getFullYear();
-  return sameMonth
-    ? `${sMon} ${s.getDate()}–${e.getDate()}`
-    : `${sMon} ${s.getDate()} – ${eMon} ${e.getDate()}`;
 }
 
 // Compact dollar label for the chart's Y-axis ticks. `tick` is in cents.
@@ -356,7 +345,7 @@ export function HeroChart({
                 color: PULSE.textDim,
               }}
             >
-              {new Date(`${d.date}T12:00:00`).getDate()}
+              {d.xLabel ?? new Date(`${d.date}T12:00:00`).getDate()}
             </div>
           ) : null
         )}
@@ -414,15 +403,61 @@ export function HeroChart({
 // toggle (7D / 1M / 3M) actually works and the headline + path update
 // when the range changes. The HeroChart inside handles hover tooltips.
 
-type ChartRange = "1w" | "1m" | "3m" | "ytd" | "custom";
+type ChartRange =
+  | "today"
+  | "yesterday"
+  | "1w"
+  | "4w"
+  | "1m"
+  | "mtd"
+  | "3m"
+  | "12m"
+  | "qtd"
+  | "ytd"
+  | "all"
+  | "custom";
 
-const CHART_RANGES: { key: ChartRange; label: string; title: string }[] = [
-  { key: "1w", label: "1W", title: "Last 7 Days" },
-  { key: "1m", label: "1M", title: "This Month" },
-  { key: "3m", label: "3M", title: "Last 3 Months" },
-  { key: "ytd", label: "YTD", title: "Year To Date" },
-  { key: "custom", label: "Custom", title: "Custom Range" },
+// Quick pills — the four common windows kept inline.
+const PILL_RANGES: { key: ChartRange; label: string }[] = [
+  { key: "1w", label: "1W" },
+  { key: "1m", label: "1M" },
+  { key: "3m", label: "3M" },
+  { key: "ytd", label: "YTD" },
 ];
+
+// The gear-dropdown menu (Whop-style) with the full range list; "Custom
+// range…" sits at the bottom.
+const MENU_RANGES: { key: ChartRange; label: string }[] = [
+  { key: "today", label: "Today" },
+  { key: "yesterday", label: "Yesterday" },
+  { key: "1w", label: "Last 7 Days" },
+  { key: "4w", label: "Last 4 Weeks" },
+  { key: "3m", label: "Last 3 months" },
+  { key: "12m", label: "Last 12 months" },
+  { key: "mtd", label: "Month to Date" },
+  { key: "qtd", label: "Quarter to Date" },
+  { key: "ytd", label: "Year to Date" },
+  { key: "all", label: "All time" },
+  { key: "custom", label: "Custom range…" },
+];
+
+// Headline label per range (rendered as "Revenue · <title>").
+const RANGE_TITLE: Record<ChartRange, string> = {
+  today: "Today",
+  yesterday: "Yesterday",
+  "1w": "Last 7 Days",
+  "4w": "Last 4 Weeks",
+  "1m": "This Month",
+  mtd: "Month to Date",
+  "3m": "Last 3 Months",
+  "12m": "Last 12 Months",
+  qtd: "Quarter to Date",
+  ytd: "Year to Date",
+  all: "All Time",
+  custom: "Custom Range",
+};
+
+const PILL_KEYS = new Set<ChartRange>(PILL_RANGES.map((r) => r.key));
 
 type ApiRevenue = {
   range: ChartRange | "1y";
@@ -496,28 +531,64 @@ export function RevenueHeroView({
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <div
-            className="flex items-center gap-1 p-1 rounded-full"
-            style={{ background: PULSE.bgAlt }}
-          >
-            {CHART_RANGES.map((r) => {
-              const active = r.key === range;
-              return (
-                <button
-                  key={r.key}
-                  type="button"
-                  onClick={onRangeChange ? () => onRangeChange(r.key) : undefined}
-                  className="px-3.5 py-1 rounded-full text-[11.5px] font-extrabold transition-colors"
-                  style={{
-                    background: active ? PULSE.text : "transparent",
-                    color: active ? PULSE.bg : PULSE.textMuted,
-                    cursor: onRangeChange ? "pointer" : "default",
-                  }}
-                >
-                  {r.label}
-                </button>
-              );
-            })}
+          <div className="flex items-center gap-2">
+            <div
+              className="flex items-center gap-1 p-1 rounded-full"
+              style={{ background: PULSE.bgAlt }}
+            >
+              {PILL_RANGES.map((r) => {
+                const active = r.key === range;
+                return (
+                  <button
+                    key={r.key}
+                    type="button"
+                    onClick={
+                      onRangeChange ? () => onRangeChange(r.key) : undefined
+                    }
+                    className="px-3.5 py-1 rounded-full text-[11.5px] font-extrabold transition-colors"
+                    style={{
+                      background: active ? PULSE.text : "transparent",
+                      color: active ? PULSE.bg : PULSE.textMuted,
+                      cursor: onRangeChange ? "pointer" : "default",
+                    }}
+                  >
+                    {r.label}
+                  </button>
+                );
+              })}
+            </div>
+            {onRangeChange && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    aria-label="More date ranges"
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors"
+                    style={{
+                      background: PILL_KEYS.has(range)
+                        ? PULSE.bgAlt
+                        : PULSE.text,
+                      color: PILL_KEYS.has(range) ? PULSE.textMuted : PULSE.bg,
+                    }}
+                  >
+                    <Settings2 className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  {MENU_RANGES.map((m) => (
+                    <DropdownMenuItem
+                      key={m.key}
+                      onSelect={() => onRangeChange(m.key)}
+                    >
+                      <span className="w-4 inline-block">
+                        {m.key === range ? "✓" : ""}
+                      </span>
+                      <span className="ml-1">{m.label}</span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
           </div>
           {range === "custom" && (
             <div className="flex items-center gap-2 text-xs">
@@ -619,13 +690,14 @@ export function PulseChartHero({
         // The header prepends the "Revenue" prefix, so strip the API label's
         // trailing " Revenue" to keep the "Revenue · July 2026" display.
         (data?.label ?? "").replace(/ Revenue$/, "") || "Revenue"
-      : range === "1w" && days.length > 0
-        ? // Derive the range from the plotted points (parsed noon-anchored in
-          // formatDateRange) so the headline matches the plotted x-axis.
-          formatDateRange(days[0].date, days[days.length - 1].date)
-        : CHART_RANGES.find((r) => r.key === range)?.title ??
-          data?.label ??
-          "Revenue";
+      : range === "custom"
+        ? // Show the concrete date range in the headline; the axis carries the
+          // per-point dates.
+          data?.label ?? RANGE_TITLE.custom
+        : // Every other range gets a fixed human title ("Last 7 Days",
+          // "Year to Date", …) — 1W deliberately reads "Last 7 Days" rather
+          // than a date range since the dates are already on the chart.
+          RANGE_TITLE[range] ?? data?.label ?? "Revenue";
 
   return (
     <RevenueHeroView
