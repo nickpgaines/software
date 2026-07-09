@@ -353,7 +353,17 @@ export async function GET(req: Request) {
               : days;
   }
 
-  const avg = series.length ? Math.round(total / series.length) : 0;
+  // Daily average over the calendar days in the range — deliberately computed
+  // from the day span, NOT series.length. The chart series is bucketed
+  // (monthly / weekly / hourly), so dividing by bucket count would silently
+  // change the *unit* of "average" per range (per-month on 12M, per-hour on
+  // Today, …). Dividing by the day count keeps it a stable daily figure.
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const dayCount = Math.max(
+    1,
+    Math.round((end.getTime() - start.getTime()) / msPerDay),
+  );
+  const avg = Math.round(total / dayCount);
 
   return NextResponse.json({
     range,

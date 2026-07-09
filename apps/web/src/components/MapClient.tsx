@@ -574,8 +574,9 @@ export default function MapClient() {
   const [pinsVisible, setPinsVisible] = useState(true);
   const pinsVisibleRef = useRef(true);
   // Customers are always shown now that the rail toggle is gone; the Filters
-  // panel's Customers/Subscriptions checkboxes control which type appears.
-  const [showCustomerPins] = useState(true);
+  // panel's Customers/Subscriptions checkboxes control which type appears. Kept
+  // as a plain constant (not state) so it doesn't read as a live toggle.
+  const showCustomerPins = true;
   const showCustomerPinsRef = useRef(true);
   // Track the mobile breakpoint at runtime so the map container can use
   // inline styles (which beat mapbox-gl.css's own `.mapboxgl-map`
@@ -659,7 +660,8 @@ export default function MapClient() {
   // Locate-me control: resolve the device position (native plugin in the app,
   // browser Geolocation on web — see lib/native), then drop/move the dot and
   // recenter. Errors surface as a transient inline message.
-  async function handleLocate() {
+  async function handleLocate(opts?: { silent?: boolean }) {
+    const silent = opts?.silent === true;
     const map = mapRef.current;
     if (!map || locating) return;
     setLocateError(null);
@@ -673,7 +675,15 @@ export default function MapClient() {
       const liveMap = mapRef.current;
       if (!liveMap) return;
       if (!coords) {
-        setLocateError("Couldn't get your location. Check location permission.");
+        // On the automatic load-time call we stay quiet: a user who has denied
+        // location shouldn't get a permission nag + error banner on every map
+        // open. The error only surfaces when they explicitly tap the locate
+        // button.
+        if (!silent) {
+          setLocateError(
+            "Couldn't get your location. Check location permission.",
+          );
+        }
         return;
       }
       const { lat, lng } = coords;
@@ -1340,8 +1350,11 @@ export default function MapClient() {
         // ignore
       }
       // Show the user's current location by default — drop the blue dot and
-      // recenter on it. Silently no-ops if permission is denied/unavailable.
-      void handleLocate();
+      // recenter on it. Silent: if permission is denied/unavailable we don't
+      // surface the error banner on load (it only appears on an explicit
+      // locate-button tap). On iOS the OS shows its permission prompt at most
+      // once, so this doesn't nag repeat visitors.
+      void handleLocate({ silent: true });
     });
 
     map.on("click", "territories-fill", (e) => {
