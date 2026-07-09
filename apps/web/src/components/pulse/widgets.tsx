@@ -657,13 +657,13 @@ export function PulseScheduleRow({
   const { time, ampm } = formatTime(job.scheduled_at);
   return (
     <div
-      className="flex items-center gap-4 px-3 py-3 rounded-xl"
+      className="flex items-center gap-3 px-3 py-3 rounded-xl"
       style={{
         background: PULSE.bgAlt,
         border: `1px solid ${PULSE.cardBorder}`,
       }}
     >
-      <div className="text-center w-12">
+      <div className="text-center w-12 shrink-0">
         <div className="text-[18px] font-bold leading-none">{time}</div>
         <div
           className="text-[10px] font-bold mt-1"
@@ -683,17 +683,21 @@ export function PulseScheduleRow({
           </div>
         )}
       </div>
-      <PulseStatusChip status={job.status} />
+      {/* Status chip hides on the narrow mobile widget so name/address get the
+          room to render in full; it returns at sm+ where the row is wider. */}
+      <span className="hidden sm:inline-flex shrink-0">
+        <PulseStatusChip status={job.status} />
+      </span>
       {showTech && job.technician_name && (
         <div
-          className="text-[12px] font-bold w-24 truncate text-right hidden xl:block"
+          className="text-[12px] font-bold w-24 truncate text-right hidden xl:block shrink-0"
           style={{ color: PULSE.textMuted }}
         >
           {job.technician_name}
         </div>
       )}
       <div
-        className="text-[14px] font-bold tabular-nums w-20 text-right"
+        className="text-[14px] font-bold tabular-nums w-20 text-right shrink-0"
         style={{ color: PULSE.text }}
       >
         {formatCents(job.price_cents)}

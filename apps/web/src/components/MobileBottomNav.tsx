@@ -79,10 +79,10 @@ export default function MobileBottomNav() {
             className="flex-1 flex items-center justify-center"
           >
             <span
-              className="flex flex-col items-center justify-center gap-1 py-2 text-[10px] font-bold tracking-tight"
+              className="flex flex-col items-center justify-center gap-1 py-2 text-[11px] font-bold tracking-tight"
               style={{ color: active ? PULSE.text : PULSE.textMuted }}
             >
-              <PulseIcon name={tab.icon} className="w-5 h-5" />
+              <PulseIcon name={tab.icon} className="w-6 h-6" />
               <span>{tab.label}</span>
             </span>
           </Link>
