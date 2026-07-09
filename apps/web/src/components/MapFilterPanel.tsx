@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronDown, X } from "lucide-react";
+import { ChevronDown, MapPin, X } from "lucide-react";
 import { staffColorHex } from "@/lib/staff-colors";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -51,22 +51,26 @@ function initials(name: string) {
 }
 
 export default function MapFilterPanel({
+  showPins,
   showCustomers,
   showSubscriptions,
   dateRange,
   selectedEmployeeIds,
   staff,
+  onChangeShowPins,
   onChangeShowCustomers,
   onChangeShowSubscriptions,
   onChangeDateRange,
   onChangeEmployeeIds,
   onClose,
 }: {
+  showPins: boolean;
   showCustomers: boolean;
   showSubscriptions: boolean;
   dateRange: DateRange;
   selectedEmployeeIds: number[] | null; // null = all
   staff: FilterStaff[];
+  onChangeShowPins: (v: boolean) => void;
   onChangeShowCustomers: (v: boolean) => void;
   onChangeShowSubscriptions: (v: boolean) => void;
   onChangeDateRange: (v: DateRange) => void;
@@ -87,7 +91,10 @@ export default function MapFilterPanel({
   }
 
   return (
-    <div className="absolute top-4 right-16 z-10 w-72 max-h-[80vh] flex flex-col rounded-lg border border-line bg-card shadow-md">
+    <div
+      className="absolute right-16 z-10 w-72 max-h-[80vh] flex flex-col rounded-lg border border-line bg-card shadow-md"
+      style={{ top: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}
+    >
       <div className="px-4 py-3 border-b border-line flex items-center justify-between">
         <h3 className="font-extrabold text-white tracking-tight text-sm">Filters</h3>
         <Button
@@ -102,6 +109,19 @@ export default function MapFilterPanel({
 
       <div className="overflow-y-auto p-4 space-y-5">
         <Section label="Show">
+          <Label className="flex items-center gap-2.5 text-sm cursor-pointer py-1 font-normal">
+            <Checkbox
+              checked={showPins}
+              onCheckedChange={(c) => onChangeShowPins(c === true)}
+            />
+            <span
+              aria-hidden="true"
+              className="inline-flex h-5 w-5 items-center justify-center shrink-0"
+            >
+              <MapPin className="h-4 w-4 text-zinc-300" />
+            </span>
+            <span className="text-zinc-300">Pins</span>
+          </Label>
           <CheckRow
             checked={showCustomers}
             onChange={onChangeShowCustomers}

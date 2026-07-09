@@ -2,15 +2,12 @@
 
 import {
   Hexagon,
-  Lasso,
   LoaderCircle,
   LocateFixed,
   Map as MapIcon,
-  MapPin,
   Pencil,
   Satellite,
   SlidersHorizontal,
-  Users,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -19,50 +16,40 @@ type StyleMode = "satellite" | "streets";
 export default function MapIconStrip({
   styleMode,
   onToggleStyle,
-  pinsVisible,
-  onTogglePins,
-  customerPinsVisible,
-  onToggleCustomerPins,
   drawingTerritory,
   onToggleDrawTerritory,
   territoryListOpen,
   onToggleTerritoryList,
   filterOpen,
   onToggleFilter,
-  drawingLasso,
-  onToggleLasso,
   onLocate,
   locating,
 }: {
   styleMode: StyleMode;
   onToggleStyle: () => void;
-  pinsVisible: boolean;
-  onTogglePins: () => void;
-  customerPinsVisible: boolean;
-  onToggleCustomerPins: () => void;
   drawingTerritory: boolean;
   onToggleDrawTerritory: () => void;
   territoryListOpen: boolean;
   onToggleTerritoryList: () => void;
   filterOpen: boolean;
   onToggleFilter: () => void;
-  drawingLasso: boolean;
-  onToggleLasso: () => void;
   onLocate: () => void;
   locating: boolean;
 }) {
   const satelliteActive = styleMode === "satellite";
   const StyleIcon = satelliteActive ? Satellite : MapIcon;
 
-  const buttonBase =
-    "h-10 w-10 p-0 rounded-md transition-colors";
-  const activeClasses = "bg-slate-900 text-white hover:bg-slate-800";
-  const inactiveClasses =
-    "text-zinc-300 hover:bg-black hover:text-white";
+  // Individual circular floating buttons (Google/Uber style) rather than one
+  // grouped bar — each is its own dark circle with a hairline + shadow so it
+  // reads over satellite imagery.
+  const circleBase =
+    "h-11 w-11 p-0 rounded-full border border-line shadow-md transition-colors";
+  const activeClasses = "!bg-slate-900 text-white hover:!bg-slate-800";
+  const inactiveClasses = "bg-card text-zinc-300 hover:bg-black hover:text-white";
 
   return (
     <div
-      className="absolute right-4 z-10 flex w-12 flex-col items-center gap-2 rounded-lg border border-line bg-card p-1 shadow-md"
+      className="absolute right-4 z-10 flex flex-col items-center gap-3"
       style={{ top: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}
     >
       <Button
@@ -72,7 +59,7 @@ export default function MapIconStrip({
         title="Toggle satellite view"
         aria-label="Toggle satellite view"
         className={
-          buttonBase +
+          circleBase +
           " " +
           (satelliteActive ? activeClasses : inactiveClasses)
         }
@@ -82,40 +69,12 @@ export default function MapIconStrip({
       <Button
         variant="ghost"
         type="button"
-        onClick={onTogglePins}
-        title="Show/hide pins"
-        aria-label="Show/hide pins"
-        aria-pressed={pinsVisible}
-        className={
-          buttonBase + " " + (pinsVisible ? activeClasses : inactiveClasses)
-        }
-      >
-        <MapPin className="h-5 w-5" />
-      </Button>
-      <Button
-        variant="ghost"
-        type="button"
-        onClick={onToggleCustomerPins}
-        title="Show/hide customers"
-        aria-label="Show/hide customers"
-        aria-pressed={customerPinsVisible}
-        className={
-          buttonBase +
-          " " +
-          (customerPinsVisible ? activeClasses : inactiveClasses)
-        }
-      >
-        <Users className="h-5 w-5" />
-      </Button>
-      <Button
-        variant="ghost"
-        type="button"
         onClick={onToggleDrawTerritory}
         title={drawingTerritory ? "Cancel drawing" : "Draw territory"}
         aria-label={drawingTerritory ? "Cancel drawing territory" : "Draw territory"}
         aria-pressed={drawingTerritory}
         className={
-          buttonBase +
+          circleBase +
           " " +
           (drawingTerritory ? activeClasses : inactiveClasses)
         }
@@ -130,7 +89,7 @@ export default function MapIconStrip({
         aria-label="Edit territory"
         aria-pressed={territoryListOpen}
         className={
-          buttonBase +
+          circleBase +
           " " +
           (territoryListOpen ? activeClasses : inactiveClasses)
         }
@@ -145,27 +104,10 @@ export default function MapIconStrip({
         aria-label="Filters"
         aria-pressed={filterOpen}
         className={
-          buttonBase + " " + (filterOpen ? activeClasses : inactiveClasses)
+          circleBase + " " + (filterOpen ? activeClasses : inactiveClasses)
         }
       >
         <SlidersHorizontal className="h-5 w-5" />
-      </Button>
-      <Button
-        variant="ghost"
-        type="button"
-        onClick={onToggleLasso}
-        title={drawingLasso ? "Cancel lasso" : "Lasso customers for text blast"}
-        aria-label={
-          drawingLasso ? "Cancel lasso" : "Lasso customers for text blast"
-        }
-        aria-pressed={drawingLasso}
-        className={
-          buttonBase +
-          " " +
-          (drawingLasso ? activeClasses : inactiveClasses)
-        }
-      >
-        <Lasso className="h-5 w-5" />
       </Button>
       <Button
         variant="ghost"
@@ -175,7 +117,7 @@ export default function MapIconStrip({
         aria-busy={locating}
         title="Center on my location"
         aria-label={locating ? "Locating…" : "Center on my location"}
-        className={buttonBase + " " + inactiveClasses}
+        className={circleBase + " " + inactiveClasses}
       >
         {locating ? (
           <LoaderCircle className="h-5 w-5 animate-spin" />

@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { PulseIcon } from "@/components/pulse/Icon";
-import { NAV, NEW_ITEMS, SECTIONS, initials } from "@/components/pulse/Sidebar";
+import { NAV, SECTIONS, initials } from "@/components/pulse/Sidebar";
 
 type Me = {
   identity: string;
@@ -107,20 +107,8 @@ export default function MorePage() {
     <div className="space-y-6 pb-8">
       <h1 className="text-page-title text-white">More</h1>
 
-      {/* Create */}
-      <section className="space-y-2">
-        <h2 className={sectionHeader}>Create</h2>
-        <div className={cardClass}>
-          {NEW_ITEMS.map((item) => (
-            <Row
-              key={item.key}
-              href={item.href}
-              icon={<PulseIcon name="plus" />}
-              label={item.label}
-            />
-          ))}
-        </div>
-      </section>
+      {/* Create shortcuts moved to the "+" quick-create button in the Home,
+          Schedule, and Inbox headers (see MobileCreateMenu). */}
 
       {/* Nav items not already in the bottom tab bar, grouped by section. */}
       {SECTIONS.map((section) => {

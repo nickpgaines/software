@@ -496,15 +496,10 @@ export default function JobForm({
 
   return (
     <form onSubmit={submit} className="space-y-6">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <h1 className="text-page-title text-white">
-            {mode === "edit" ? "Edit Job" : "Create Job"}
-          </h1>
-          <p className="text-sm text-zinc-500 mt-1">
-            Schedule a window cleaning visit and assign your team.
-          </p>
-        </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-page-title text-white">
+          {mode === "edit" ? "Edit Job" : "Create Job"}
+        </h1>
         <div className="flex items-center gap-2">
           <Link
             href="/schedule"

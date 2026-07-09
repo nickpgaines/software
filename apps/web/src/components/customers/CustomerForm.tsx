@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import AddressFields, {
   EMPTY_ADDRESS,
   type AddressValue,
@@ -59,10 +60,18 @@ export default function CustomerForm({
   customer,
   onClose,
   onSaved,
+  variant = "modal",
 }: {
   customer: CustomerFormCustomer | null;
   onClose: () => void;
   onSaved: (saved: CustomerFormCustomer) => void;
+  /**
+   * "modal" (default) renders inside a centered Dialog — used for editing from
+   * the customers list. "page" renders as a standalone full-page form (its own
+   * `/customers/new` route) reached from the mobile "+" quick-create menu, so
+   * new-customer creation matches the other full-screen create flows.
+   */
+  variant?: "modal" | "page";
 }) {
   const [firstName, setFirstName] = useState(customer?.first_name ?? "");
   const [lastName, setLastName] = useState(customer?.last_name ?? "");
@@ -119,59 +128,94 @@ export default function CustomerForm({
     onSaved(saved);
   }
 
+  const heading = customer ? "Edit customer" : "New customer";
+
+  const fields = (
+    <>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="First name" required>
+          <Input
+            type="text"
+            value={firstName}
+            onChange={(e) => setFirstName(e.target.value)}
+            autoFocus
+            required
+          />
+        </Field>
+        <Field label="Last name" required>
+          <Input
+            type="text"
+            value={lastName}
+            onChange={(e) => setLastName(e.target.value)}
+            required
+          />
+        </Field>
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Phone">
+          <Input
+            type="tel"
+            value={phone ?? ""}
+            onChange={(e) => setPhone(e.target.value)}
+          />
+        </Field>
+        <Field label="Email">
+          <Input
+            type="email"
+            value={email ?? ""}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </Field>
+      </div>
+      <AddressFields value={address} onChange={setAddress} />
+      <Field label="Notes">
+        <Textarea
+          value={notes ?? ""}
+          onChange={(e) => setNotes(e.target.value)}
+          rows={2}
+        />
+      </Field>
+      {error && <p className="text-sm font-bold text-rose-400">{error}</p>}
+    </>
+  );
+
+  if (variant === "page") {
+    return (
+      <form onSubmit={onSubmit} className="space-y-6">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="text-page-title text-white">{heading}</h1>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/customers"
+              className="text-sm border border-line bg-card hover:bg-black rounded-full px-4 py-2 text-zinc-300"
+            >
+              Cancel
+            </Link>
+            <Button
+              type="submit"
+              disabled={saving}
+              variant="ghost"
+              className="text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-2 font-bold shadow-sm h-auto"
+            >
+              {saving ? "Saving…" : "Save"}
+            </Button>
+          </div>
+        </div>
+        <div className="rounded-2xl border border-line bg-card p-4 md:p-6 space-y-4 max-w-2xl">
+          {fields}
+        </div>
+      </form>
+    );
+  }
+
   return (
     <Dialog open onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>
-            {customer ? "Edit customer" : "New customer"}
-          </DialogTitle>
+          <DialogTitle>{heading}</DialogTitle>
         </DialogHeader>
         <form onSubmit={onSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="First name" required>
-              <Input
-                type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                autoFocus
-                required
-              />
-            </Field>
-            <Field label="Last name" required>
-              <Input
-                type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                required
-              />
-            </Field>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Phone">
-              <Input
-                type="tel"
-                value={phone ?? ""}
-                onChange={(e) => setPhone(e.target.value)}
-              />
-            </Field>
-            <Field label="Email">
-              <Input
-                type="email"
-                value={email ?? ""}
-                onChange={(e) => setEmail(e.target.value)}
-              />
-            </Field>
-          </div>
-          <AddressFields value={address} onChange={setAddress} />
-          <Field label="Notes">
-            <Textarea
-              value={notes ?? ""}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={2}
-            />
-          </Field>
-          {error && <p className="text-sm font-bold text-rose-400">{error}</p>}
+          {fields}
           <DialogFooter className="gap-2 sm:gap-2">
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
