@@ -325,15 +325,8 @@ export default function NewSubscriptionForm() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-page-title text-white">
-            New Subscription
-          </h1>
-          <p className="text-sm text-zinc-400 mt-3 font-bold">
-            Sell or set up a recurring subscription for a customer.
-          </p>
-        </div>
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <h1 className="text-page-title text-white">New Subscription</h1>
         <Button
           type="button"
           variant="ghost"
