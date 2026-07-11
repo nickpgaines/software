@@ -532,8 +532,11 @@ export function RevenueHeroView({
         </div>
         <div className="flex flex-col items-end gap-2">
           <div className="flex items-center gap-2">
+            {/* Desktop keeps the quick-pill row inline for one-tap access; on
+                mobile the row is replaced by the gear dropdown alone to hand
+                the graph back its horizontal space. */}
             <div
-              className="flex items-center gap-1 p-1 rounded-full"
+              className="hidden md:flex items-center gap-1 p-1 rounded-full"
               style={{ background: PULSE.bgAlt }}
             >
               {PILL_RANGES.map((r) => {
@@ -562,8 +565,8 @@ export function RevenueHeroView({
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    aria-label="More date ranges"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors"
+                    aria-label="Date range"
+                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-3 text-[11.5px] font-extrabold transition-colors md:w-8 md:px-0"
                     style={{
                       background: PILL_KEYS.has(range)
                         ? PULSE.bgAlt
@@ -571,10 +574,27 @@ export function RevenueHeroView({
                       color: PILL_KEYS.has(range) ? PULSE.textMuted : PULSE.bg,
                     }}
                   >
+                    <span className="md:hidden">
+                      {PILL_RANGES.find((p) => p.key === range)?.label ||
+                        MENU_RANGES.find((m) => m.key === range)?.label ||
+                        "Range"}
+                    </span>
                     <Settings2 className="h-4 w-4" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-48">
+                  {PILL_RANGES.map((r) => (
+                    <DropdownMenuItem
+                      key={r.key}
+                      className="md:hidden"
+                      onSelect={() => onRangeChange(r.key)}
+                    >
+                      <span className="w-4 inline-block">
+                        {r.key === range ? "✓" : ""}
+                      </span>
+                      <span className="ml-1">{r.label}</span>
+                    </DropdownMenuItem>
+                  ))}
                   {MENU_RANGES.map((m) => (
                     <DropdownMenuItem
                       key={m.key}
