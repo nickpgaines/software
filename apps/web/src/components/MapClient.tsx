@@ -1289,11 +1289,18 @@ export default function MapClient() {
     });
     mapRef.current = map;
     // If coords resolve before the map's load event fires, snap the map to the
-    // user's location immediately (no animation, no US-center flash).
+    // user's location immediately (no animation, no US-center flash). Guarded:
+    // jumpTo can throw if the map instance has been torn down between our
+    // capture of `map` above and the promise resolving.
     void earlyCoordsPromise.then((coords) => {
       const liveMap = mapRef.current;
       if (!liveMap || !coords) return;
-      liveMap.jumpTo({ center: [coords.lng, coords.lat], zoom: 15 });
+      try {
+        liveMap.jumpTo({ center: [coords.lng, coords.lat], zoom: 15 });
+      } catch {
+        // Map was destroyed mid-jump; the deferred locate call in load will
+        // recenter once a fresh instance is ready.
+      }
     });
 
     const draw = new MapboxDraw({
