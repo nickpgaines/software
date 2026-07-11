@@ -117,6 +117,7 @@ export async function getSessionContext(): Promise<SessionContext | null> {
   // Fast path: the cookie carries staffId + companyId for sessions issued
   // after the v2 cookie format landed. No DB round-trip required.
   if (verified.staffId != null && verified.companyId != null) {
+    if (await isCompanyAccessRevoked(verified.companyId)) return null;
     return {
       identity,
       staffId: verified.staffId,
@@ -135,12 +136,30 @@ export async function getSessionContext(): Promise<SessionContext | null> {
 
   if (!row) return null;
 
+  const companyId = row.company_id ?? 1;
+  if (await isCompanyAccessRevoked(companyId)) return null;
+
   return {
     identity,
     staffId: row.id,
-    companyId: row.company_id ?? 1,
+    companyId,
     isPlatformAdmin: false,
   };
+}
+
+// Returns true when the tenant has been shut off by a platform admin. Every
+// session gate calls this, so a revoke takes effect on the very next request
+// without waiting for cookie expiration. The platform-admin login is never
+// gated; it belongs to company_id=1 and its identity check runs earlier.
+export async function isCompanyAccessRevoked(
+  companyId: number
+): Promise<boolean> {
+  if (!Number.isFinite(companyId) || companyId <= 0) return false;
+  const db = await getDb();
+  const row = await db
+    .prepare("SELECT access_status FROM company WHERE id = ? LIMIT 1")
+    .get<{ access_status: string | null }>(companyId);
+  return row?.access_status === "revoked";
 }
 
 // Convenience for the common case: just the company_id, throwing if no

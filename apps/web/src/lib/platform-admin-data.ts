@@ -9,6 +9,7 @@ export type AdminCompanyRow = {
   stripe_account_id: string | null;
   stripe_charges_enabled: number;
   sms_tier: string;
+  access_status: string;
   staff_count: number;
   customers_count: number;
   jobs_count: number;
@@ -152,6 +153,7 @@ export async function loadAdminCompanies(
          c.stripe_account_id,
          c.stripe_charges_enabled,
          c.sms_tier,
+         c.access_status,
          (SELECT COUNT(*) FROM staff     WHERE company_id = c.id) AS staff_count,
          (SELECT COUNT(*) FROM customers WHERE company_id = c.id) AS customers_count,
          (SELECT COUNT(*) FROM jobs      WHERE company_id = c.id) AS jobs_count,
@@ -198,6 +200,9 @@ export type AdminCompanyDetail = {
   sms_trial_pool_number: string | null;
   a2p_registration_state: string;
   a2p_registration_error: string | null;
+  access_status: string;
+  access_revoked_at: string | null;
+  access_revoked_reason: string | null;
   signed_up_at: string | null;
   last_activity_at: string | null;
   staff_count: number;
@@ -249,6 +254,7 @@ export async function loadAdminCompanyDetail(
          c.stripe_details_submitted, c.stripe_account_type,
          c.sms_tier, c.sms_dedicated_number, c.sms_trial_pool_number,
          c.a2p_registration_state, c.a2p_registration_error,
+         c.access_status, c.access_revoked_at, c.access_revoked_reason,
          (SELECT MIN(created_at) FROM staff WHERE company_id = c.id) AS signed_up_at,
          (
            SELECT MAX(t) FROM (
