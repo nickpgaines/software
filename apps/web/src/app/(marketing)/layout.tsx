@@ -9,7 +9,7 @@ export default function MarketingLayout({
 }) {
   return (
     <NativeMarketingGate>
-      <div className="min-h-screen bg-canvas text-fg flex flex-col">
+      <div className="marketing-accent-reset min-h-screen bg-canvas text-fg flex flex-col">
         <MarketingNav />
         <main className="flex-1">{children}</main>
         <MarketingFooter />
