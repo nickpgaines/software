@@ -16,12 +16,20 @@ export function MarketingNav() {
 
   return (
     <header className="sticky top-0 z-40 bg-canvas/80 backdrop-blur-md border-b border-line">
-      <div className="max-w-app mx-auto px-6 md:px-10 h-16 flex items-center justify-between">
-        <Link href="/" className="text-white" aria-label="Forge home">
+      {/* 3-column grid keeps the center nav visually centered in the viewport
+          regardless of how wide the side columns get. Explicit col-start-*
+          means the mobile toggle stays right-aligned even when the middle
+          nav is display:none. */}
+      <div className="max-w-app mx-auto px-6 md:px-10 h-16 grid grid-cols-3 items-center">
+        <Link
+          href="/"
+          className="col-start-1 justify-self-start text-white"
+          aria-label="Forge home"
+        >
           <ForgeMark />
         </Link>
 
-        <nav className="hidden md:flex items-center gap-8">
+        <nav className="col-start-2 hidden md:flex items-center justify-center gap-8">
           {LINKS.map((l) => (
             <Link
               key={l.href}
@@ -33,26 +41,28 @@ export function MarketingNav() {
           ))}
         </nav>
 
-        <div className="hidden md:flex items-center gap-3">
-          <Link
-            href="/login"
-            className="text-[13.5px] font-bold text-zinc-400 hover:text-white transition-colors"
-          >
-            Log in
-          </Link>
-          <Button asChild size="sm" className="rounded-full px-4">
-            <Link href="/signup">Get Started</Link>
-          </Button>
-        </div>
+        <div className="col-start-3 justify-self-end flex items-center">
+          <div className="hidden md:flex items-center gap-3">
+            <Link
+              href="/login"
+              className="text-[13.5px] font-bold text-zinc-400 hover:text-white transition-colors"
+            >
+              Log in
+            </Link>
+            <Button asChild size="sm" className="rounded-full px-4">
+              <Link href="/signup">Get Started</Link>
+            </Button>
+          </div>
 
-        <button
-          type="button"
-          className="md:hidden text-white"
-          aria-label="Toggle menu"
-          onClick={() => setOpen((v) => !v)}
-        >
-          <PulseIcon name={open ? "more" : "more"} className="w-6 h-6" />
-        </button>
+          <button
+            type="button"
+            className="md:hidden text-white"
+            aria-label="Toggle menu"
+            onClick={() => setOpen((v) => !v)}
+          >
+            <PulseIcon name={open ? "more" : "more"} className="w-6 h-6" />
+          </button>
+        </div>
       </div>
 
       {open && (
