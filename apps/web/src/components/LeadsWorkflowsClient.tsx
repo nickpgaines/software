@@ -110,7 +110,7 @@ export default function LeadsWorkflowsClient({
 
   return (
     <div className="space-y-6">
-      <div className="hidden md:block">
+      <div>
         <h2 className="text-page-title text-white">Workflows</h2>
         <p className="text-sm text-zinc-400 font-bold">
           Automate follow-ups and lead nurturing sequences

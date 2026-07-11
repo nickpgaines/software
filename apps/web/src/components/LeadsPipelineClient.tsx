@@ -109,7 +109,7 @@ export default function LeadsPipelineClient({
 
   return (
     <div className="space-y-6">
-      <div className="hidden md:block">
+      <div>
         <h2 className="text-page-title text-white">Pipeline</h2>
         <p className="text-sm text-zinc-400 font-bold">
           Track and move leads through the sales pipeline

@@ -27,12 +27,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
   Table,
   TableBody,
   TableCell,
@@ -217,39 +211,8 @@ export default function ReportsClient() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between gap-3 flex-wrap md:border-b md:border-line md:pb-0">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              className="md:hidden h-auto gap-1.5 border border-line bg-card hover:bg-black rounded-full px-4 py-2 text-sm font-bold text-zinc-200"
-            >
-              {TABS.find((t) => t.key === tab)?.label || "Section"}
-              <svg
-                className="w-3 h-3"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <polyline points="6 9 12 15 18 9" />
-              </svg>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-48">
-            {TABS.map((t) => (
-              <DropdownMenuItem key={t.key} onSelect={() => setTab(t.key)}>
-                <span className="w-4 inline-block">
-                  {tab === t.key ? "✓" : ""}
-                </span>
-                <span className="ml-1">{t.label}</span>
-              </DropdownMenuItem>
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <nav className="hidden md:flex -mb-px gap-6 overflow-x-auto scrollbar-none w-full sm:w-auto">
+      <div className="flex items-end justify-between gap-4 flex-wrap border-b border-line">
+        <nav className="-mb-px flex gap-6 overflow-x-auto scrollbar-none w-full sm:w-auto">
           {TABS.map((t) => {
             const active = tab === t.key;
             return (
@@ -304,40 +267,27 @@ function RangePills({
   setCustomStart: (s: string) => void;
   setCustomEnd: (s: string) => void;
 }) {
-  const activeLabel = RANGES.find((r) => r.key === range)?.label || "Range";
   return (
-    <div className="flex flex-col items-end gap-2 max-w-full">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
+    <div className="flex flex-col items-end gap-2 mb-3 max-w-full">
+      <div className="overflow-x-auto scrollbar-none max-w-full">
+      <div className="inline-flex items-center gap-1 bg-black rounded-full p-1 text-sm">
+        {RANGES.map((r) => (
           <Button
+            key={r.key}
             variant="ghost"
-            className="h-auto gap-1.5 border border-line bg-card hover:bg-black rounded-full px-4 py-2 text-sm font-bold text-zinc-200"
+            onClick={() => setRange(r.key)}
+            className={
+              "h-auto px-3 py-1 rounded-full whitespace-nowrap font-bold hover:bg-transparent " +
+              (range === r.key
+                ? "bg-card text-white shadow-sm"
+                : "text-zinc-400 hover:text-white")
+            }
           >
-            {activeLabel}
-            <svg
-              className="w-3 h-3"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <polyline points="6 9 12 15 18 9" />
-            </svg>
+            {r.label}
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-40">
-          {RANGES.map((r) => (
-            <DropdownMenuItem key={r.key} onSelect={() => setRange(r.key)}>
-              <span className="w-4 inline-block">
-                {range === r.key ? "✓" : ""}
-              </span>
-              <span className="ml-1">{r.label}</span>
-            </DropdownMenuItem>
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+        ))}
+      </div>
+      </div>
       {range === "custom" && (
         <div className="flex items-center gap-2 text-xs">
           <Input

@@ -101,7 +101,7 @@ export default function LeadsIntegrationsClient({
 
   return (
     <div className="space-y-6">
-      <div className="hidden md:block">
+      <div>
         <h2 className="text-page-title text-white">Integrations</h2>
         <p className="text-sm text-zinc-400 font-bold">Connect Meta and other lead sources</p>
       </div>
