@@ -48,7 +48,7 @@ export default function LeadsFormsClient({
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="hidden md:block">
         <h2 className="text-page-title text-white">Forms</h2>
         <p className="text-sm text-zinc-400 font-bold">
           Create web forms that drop new leads into your pipeline

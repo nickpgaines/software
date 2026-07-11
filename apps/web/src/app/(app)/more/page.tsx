@@ -105,8 +105,6 @@ export default function MorePage() {
 
   return (
     <div className="space-y-6 pb-8">
-      <h1 className="text-page-title text-white">More</h1>
-
       {/* Create shortcuts moved to the "+" quick-create button in the Home,
           Schedule, and Inbox headers (see MobileCreateMenu). */}
 
