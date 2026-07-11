@@ -80,20 +80,12 @@ type MeLite = {
   permission_level: string | null;
 };
 
-type View = "day" | "threeDay" | "week" | "month" | "agenda" | "map";
+type View = "day" | "week" | "month" | "agenda" | "map";
 
 const VIEW_OPTIONS: { value: View; label: string }[] = [
   { value: "day", label: "Day" },
   { value: "week", label: "Week" },
   { value: "month", label: "Month" },
-  { value: "agenda", label: "Agenda" },
-  { value: "map", label: "Map" },
-];
-
-const MOBILE_VIEW_OPTIONS: { value: View; label: string }[] = [
-  { value: "day", label: "Day" },
-  { value: "threeDay", label: "3 Days" },
-  { value: "week", label: "Week" },
   { value: "agenda", label: "Agenda" },
   { value: "map", label: "Map" },
 ];
@@ -359,10 +351,6 @@ export default function CalendarClient() {
     if (view === "day") {
       return { start: startOfDay(cursor), end: addDays(startOfDay(cursor), 1) };
     }
-    if (view === "threeDay") {
-      const start = startOfDay(cursor);
-      return { start, end: addDays(start, 3) };
-    }
     if (view === "month") {
       const start = startOfMonth(cursor);
       const end = addDays(endOfMonth(cursor), 1);
@@ -419,7 +407,6 @@ export default function CalendarClient() {
 
   function navigate(delta: number) {
     if (view === "day") setCursor(addDays(cursor, delta));
-    else if (view === "threeDay") setCursor(addDays(cursor, delta * 3));
     else if (view === "month") {
       const next = new Date(cursor);
       next.setMonth(next.getMonth() + delta);
@@ -440,10 +427,6 @@ export default function CalendarClient() {
         month: "short",
         day: "numeric",
       });
-    }
-    if (view === "threeDay") {
-      const start = startOfDay(cursor);
-      return formatRange(start, addDays(start, 2));
     }
     if (view === "month") {
       return cursor.toLocaleDateString(undefined, {
@@ -467,14 +450,32 @@ export default function CalendarClient() {
   return (
     <TaskModalContext.Provider value={openTaskModal}>
     <div className="relative h-[calc(100dvh-4.5rem-env(safe-area-inset-bottom))] md:h-[100dvh] flex flex-col overflow-hidden pt-[env(safe-area-inset-top)] md:pt-0">
-      <div className="px-3 md:px-6 py-3 md:py-4 flex items-center justify-between gap-2 md:gap-3 md:flex-wrap md:border-b md:border-line shrink-0">
+      <div className="px-3 md:px-6 py-3 md:py-4 flex items-center justify-between gap-2 md:gap-3 md:flex-wrap border-b border-line shrink-0">
         <div className="flex items-center gap-2 md:flex-wrap min-w-0">
+          {/* Native <select> kept: mobile-only compact view picker replaces the
+              desktop pill row so all toolbar controls fit on one phone row. */}
+          <select
+            value={view}
+            onChange={(e) => setView(e.target.value as View)}
+            aria-label="Calendar view"
+            className="md:hidden appearance-none border border-line bg-card rounded-full pl-4 pr-8 py-2 text-sm font-bold text-zinc-300 bg-no-repeat"
+            style={{
+              backgroundImage:
+                "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='none' stroke='%2394a3b8' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round' d='M1 1l5 5 5-5'/%3E%3C/svg%3E\")",
+              backgroundPosition: "right 12px center",
+            }}
+          >
+            {VIEW_OPTIONS.map((v) => (
+              <option key={v.value} value={v.value}>
+                {v.label}
+              </option>
+            ))}
+          </select>
           <Button
             type="button"
             variant="ghost"
             onClick={() => setCursor(startOfDay(new Date()))}
-            aria-label="Today"
-            className="h-auto gap-2 border border-line bg-card hover:bg-black rounded-full px-3 md:px-4 py-2 text-sm text-zinc-300 font-bold"
+            className="h-auto gap-2 border border-line bg-card hover:bg-black rounded-full px-4 py-2 text-sm text-zinc-300 font-bold"
           >
             <svg
               className="w-4 h-4"
@@ -490,7 +491,7 @@ export default function CalendarClient() {
               <line x1="8" y1="2" x2="8" y2="6" />
               <line x1="3" y1="10" x2="21" y2="10" />
             </svg>
-            <span className="hidden md:inline">Today</span>
+            Today
           </Button>
           {/* Date navigation: desktop top bar. On mobile this is rendered as a
               floating pill near the bottom of the schedule (see below). */}
@@ -557,8 +558,7 @@ export default function CalendarClient() {
               <Button
                 type="button"
                 variant="ghost"
-                aria-label="Filters"
-                className="h-auto gap-2 border border-line bg-card hover:bg-black rounded-full px-3 md:px-4 py-2 text-sm text-zinc-300 font-bold"
+                className="h-auto gap-2 border border-line bg-card hover:bg-black rounded-full px-4 py-2 text-sm text-zinc-300 font-bold"
               >
                 <svg
                   className="w-4 h-4"
@@ -571,7 +571,7 @@ export default function CalendarClient() {
                 >
                   <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
                 </svg>
-                <span className="hidden md:inline">Filters</span>
+                Filters
                 {statusFilter.size > 0 && (
                   <span className="ml-1 inline-flex items-center justify-center bg-primary text-primary-foreground rounded-full text-[10px] font-extrabold w-4 h-4">
                     {statusFilter.size}
@@ -580,20 +580,6 @@ export default function CalendarClient() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
-              <DropdownMenuLabel className="md:hidden">View</DropdownMenuLabel>
-              {MOBILE_VIEW_OPTIONS.map((v) => (
-                <DropdownMenuItem
-                  key={v.value}
-                  className="md:hidden"
-                  onSelect={() => setView(v.value)}
-                >
-                  <span className="w-4 inline-block">
-                    {view === v.value ? "✓" : ""}
-                  </span>
-                  <span className="ml-1">{v.label}</span>
-                </DropdownMenuItem>
-              ))}
-              <DropdownMenuSeparator className="md:hidden" />
               <DropdownMenuLabel>Filter by status</DropdownMenuLabel>
               <DropdownMenuSeparator />
               {STATUS_FILTER_OPTIONS.map((opt) => {
@@ -684,14 +670,6 @@ export default function CalendarClient() {
             start={startOfWeek(cursor)}
             jobs={filteredJobs ?? []}
             now={now}
-          />
-        )}
-        {view === "threeDay" && (
-          <WeekView
-            start={startOfDay(cursor)}
-            jobs={filteredJobs ?? []}
-            now={now}
-            count={3}
           />
         )}
         {view === "day" && (
@@ -966,27 +944,21 @@ function WeekView({
   start,
   jobs,
   now,
-  count = 7,
 }: {
   start: Date;
   jobs: Job[];
   now: Date;
-  count?: number;
 }) {
   const days = useMemo(
-    () => Array.from({ length: count }, (_, i) => addDays(start, i)),
-    [start.getTime(), count]
+    () => Array.from({ length: 7 }, (_, i) => addDays(start, i)),
+    [start.getTime()]
   );
   const today = startOfDay(now);
   const buckets = jobsByDay(jobs, days);
-  const gridCols =
-    count === 3
-      ? "grid-cols-[40px_repeat(3,1fr)] md:grid-cols-[64px_repeat(3,1fr)]"
-      : "grid-cols-[40px_repeat(7,1fr)] md:grid-cols-[64px_repeat(7,1fr)]";
   return (
     <div className="md:overflow-x-auto">
-      <div className={count === 3 ? "" : "md:min-w-[760px]"}>
-        <div className={"grid " + gridCols + " border-b border-line"}>
+      <div className="md:min-w-[760px]">
+        <div className="grid grid-cols-[40px_repeat(7,1fr)] md:grid-cols-[64px_repeat(7,1fr)] border-b border-line">
           <div />
           {days.map((d) => {
             const isToday = sameDay(d, today);
@@ -1013,7 +985,7 @@ function WeekView({
             );
           })}
         </div>
-        <div className={"grid " + gridCols + " grid-rows-1"}>
+        <div className="grid grid-cols-[40px_repeat(7,1fr)] md:grid-cols-[64px_repeat(7,1fr)] grid-rows-1">
           <div className="border-r border-line">
             {HOURS.map((h, i) => (
               <div
