@@ -5,6 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Table,
   TableBody,
   TableCell,
@@ -210,90 +216,97 @@ export function LeaderboardRankingsView({
             </h2>
           </div>
           <div className="flex flex-wrap items-center justify-end gap-2 max-w-full">
-            <div className="flex flex-wrap items-center gap-1 bg-black border border-line rounded-full p-1 text-sm max-w-full">
-              {PRESET_RANGES.map((r) => (
-                <Button
-                  key={r.key}
-                  variant="ghost"
-                  onClick={onRangeChange ? () => onRangeChange(r.key) : undefined}
-                  className={
-                    "h-auto px-3 py-1 rounded-full whitespace-nowrap font-bold hover:bg-transparent " +
-                    (range === r.key
-                      ? "bg-card text-white shadow-sm"
-                      : "text-zinc-400 hover:text-white")
-                  }
-                >
-                  {r.label}
-                </Button>
-              ))}
-              <div ref={customRef} className="relative">
-                <Button
-                  variant="ghost"
-                  onClick={onCustomToggle ? () => onCustomToggle() : undefined}
-                  className={
-                    "h-auto px-3 py-1 rounded-full whitespace-nowrap gap-1 font-bold hover:bg-transparent " +
-                    (range === "custom"
-                      ? "bg-card text-white shadow-sm"
-                      : "text-zinc-400 hover:text-white")
-                  }
-                >
-                  Custom
-                  <svg
-                    className={
-                      "w-3 h-3 transition-transform " +
-                      (customOpen ? "rotate-180" : "")
-                    }
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
+            <div ref={customRef} className="relative">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    className="h-auto gap-1.5 px-4 py-1.5 rounded-full border border-line bg-card hover:bg-black text-sm font-bold whitespace-nowrap text-zinc-300"
                   >
-                    <polyline points="6 9 12 15 18 9" />
-                  </svg>
-                </Button>
-                {customOpen && (
-                  <div className="absolute right-0 mt-2 z-30 bg-card border border-line rounded-2xl shadow-lg p-4 w-64 space-y-3">
-                    <div>
-                      <Label className="block text-xs font-bold text-zinc-500 mb-1 font-normal">
-                        From
-                      </Label>
-                      <Input
-                        type="date"
-                        value={customFrom}
-                        max={customTo || undefined}
-                        onChange={(e) => {
-                          if (onCustomFromChange) onCustomFromChange(e.target.value);
-                        }}
-                        className="w-full h-auto border-line rounded-full px-3 py-1.5 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <Label className="block text-xs font-bold text-zinc-500 mb-1 font-normal">
-                        To
-                      </Label>
-                      <Input
-                        type="date"
-                        value={customTo}
-                        min={customFrom || undefined}
-                        onChange={(e) => {
-                          if (onCustomToChange) onCustomToChange(e.target.value);
-                        }}
-                        className="w-full h-auto border-line rounded-full px-3 py-1.5 text-sm"
-                      />
-                    </div>
-                    <Button
-                      variant="ghost"
-                      onClick={onApplyCustom ? () => onApplyCustom() : undefined}
-                      disabled={!customFrom || !customTo}
-                      className="w-full h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-3 py-1.5 font-bold"
+                    {range === "custom"
+                      ? "Custom"
+                      : PRESET_RANGES.find((p) => p.key === range)?.label ||
+                        "Range"}
+                    <svg
+                      className="w-3 h-3"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
                     >
-                      Apply
-                    </Button>
+                      <polyline points="6 9 12 15 18 9" />
+                    </svg>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  {PRESET_RANGES.map((r) => (
+                    <DropdownMenuItem
+                      key={r.key}
+                      onSelect={() =>
+                        onRangeChange ? onRangeChange(r.key) : undefined
+                      }
+                    >
+                      <span className="w-4 inline-block">
+                        {range === r.key ? "✓" : ""}
+                      </span>
+                      <span className="ml-1">{r.label}</span>
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      if (onCustomToggle) onCustomToggle();
+                    }}
+                  >
+                    <span className="w-4 inline-block">
+                      {range === "custom" ? "✓" : ""}
+                    </span>
+                    <span className="ml-1">Custom…</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              {customOpen && (
+                <div className="absolute right-0 mt-2 z-30 bg-card border border-line rounded-2xl shadow-lg p-4 w-64 space-y-3">
+                  <div>
+                    <Label className="block text-xs font-bold text-zinc-500 mb-1 font-normal">
+                      From
+                    </Label>
+                    <Input
+                      type="date"
+                      value={customFrom}
+                      max={customTo || undefined}
+                      onChange={(e) => {
+                        if (onCustomFromChange) onCustomFromChange(e.target.value);
+                      }}
+                      className="w-full h-auto border-line rounded-full px-3 py-1.5 text-sm"
+                    />
                   </div>
-                )}
-              </div>
+                  <div>
+                    <Label className="block text-xs font-bold text-zinc-500 mb-1 font-normal">
+                      To
+                    </Label>
+                    <Input
+                      type="date"
+                      value={customTo}
+                      min={customFrom || undefined}
+                      onChange={(e) => {
+                        if (onCustomToChange) onCustomToChange(e.target.value);
+                      }}
+                      className="w-full h-auto border-line rounded-full px-3 py-1.5 text-sm"
+                    />
+                  </div>
+                  <Button
+                    variant="ghost"
+                    onClick={onApplyCustom ? () => onApplyCustom() : undefined}
+                    disabled={!customFrom || !customTo}
+                    className="w-full h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-3 py-1.5 font-bold"
+                  >
+                    Apply
+                  </Button>
+                </div>
+              )}
             </div>
             <Button
               type="button"
