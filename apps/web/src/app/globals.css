@@ -99,6 +99,29 @@ html[data-theme="light"] {
 }
 
 /* =============================================================================
+   Marketing accent isolation.
+   The AccentPicker writes accent CSS variables to `document.documentElement`
+   inline styles, which cascade to every page — including the marketing site.
+   The marketing surfaces must stay monochrome regardless of the logged-in
+   user's chosen accent, so we re-declare the accent tokens on the marketing
+   wrapper. Custom-property substitution happens at the element where var()
+   resolves, so descendants of `.marketing-accent-reset` pick up the black/
+   white defaults even though `<html>` still carries the user's inline accent.
+   ============================================================================= */
+.marketing-accent-reset {
+  --color-violet: #ffffff;
+  --color-violet-soft: #e4e4e7;
+  --color-violet-foreground: #0a0a0a;
+  --color-violet-glow: rgba(255, 255, 255, 0.18);
+}
+html[data-theme="light"] .marketing-accent-reset {
+  --color-violet: #0a0a0a;
+  --color-violet-soft: #3f3f46;
+  --color-violet-foreground: #ffffff;
+  --color-violet-glow: rgba(0, 0, 0, 0.18);
+}
+
+/* =============================================================================
    shadcn/ui bridge variables.
    shadcn/ui's CLI generates components that reference a fixed set of CSS
    variable names (--background, --foreground, --card, etc.). Those names
