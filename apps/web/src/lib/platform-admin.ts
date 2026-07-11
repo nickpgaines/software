@@ -25,10 +25,17 @@ function platformAdminEmails(): string[] {
 // unauthed users and authed non-admins, so /admin doesn't reveal its
 // existence to a curious tenant who finds the path.
 export async function requirePlatformAdmin(): Promise<void> {
-  const ctx = await getSessionContext();
-  if (!ctx) notFound();
-  if (ctx.isPlatformAdmin) return;
-  const allowed = platformAdminEmails();
-  if (allowed.includes(ctx.identity.toLowerCase())) return;
+  if (await isPlatformAdminRequest()) return;
   notFound();
+}
+
+// Same allowlist as requirePlatformAdmin, but returns a boolean so API
+// routes can return a 404 JSON body instead of throwing notFound() (which
+// is for pages).
+export async function isPlatformAdminRequest(): Promise<boolean> {
+  const ctx = await getSessionContext();
+  if (!ctx) return false;
+  if (ctx.isPlatformAdmin) return true;
+  const allowed = platformAdminEmails();
+  return allowed.includes(ctx.identity.toLowerCase());
 }

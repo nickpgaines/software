@@ -1,5 +1,9 @@
 import { NextResponse } from "next/server";
-import { createSessionToken, SESSION_COOKIE } from "@/lib/auth";
+import {
+  createSessionToken,
+  isCompanyAccessRevoked,
+  SESSION_COOKIE,
+} from "@/lib/auth";
 import { getDb, syncReplica, type Staff } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
 
@@ -47,9 +51,16 @@ export async function POST(req: Request) {
       row = (await db.prepare(sql).get(identifier)) as Staff | undefined;
     }
     if (row && row.password_hash && verifyPassword(password, row.password_hash)) {
+      const companyId = row.company_id ?? 1;
+      if (await isCompanyAccessRevoked(companyId)) {
+        return NextResponse.json(
+          { error: "Account access has been revoked. Contact support." },
+          { status: 403 }
+        );
+      }
       return issueSession(row.email || identifier, {
         staffId: row.id,
-        companyId: row.company_id ?? 1,
+        companyId,
       });
     }
   }

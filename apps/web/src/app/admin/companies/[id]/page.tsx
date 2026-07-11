@@ -18,6 +18,7 @@ import {
   loadAdminCompanyStaff,
 } from "@/lib/platform-admin-data";
 import { relativeFromNow, shortDate, shortDateTime } from "../../_format";
+import { AccessControls } from "./AccessControls";
 
 export const dynamic = "force-dynamic";
 
@@ -62,6 +63,26 @@ export default async function AdminCompanyDetailPage({
             : "No staff record yet"
         }
       />
+
+      {detail.access_status === "revoked" && (
+        <div
+          className="rounded-2xl px-4 py-3 mb-5 text-[13px] font-extrabold"
+          style={{
+            background: `${PULSE.red}1F`,
+            color: PULSE.red,
+            border: `1px solid ${PULSE.red}`,
+          }}
+          role="alert"
+        >
+          Access revoked
+          {detail.access_revoked_at
+            ? ` · ${shortDateTime(detail.access_revoked_at)}`
+            : ""}
+          {detail.access_revoked_reason
+            ? ` · ${detail.access_revoked_reason}`
+            : ""}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-8">
         <Metric label="Staff" value={String(detail.staff_count)} />
@@ -167,6 +188,20 @@ export default async function AdminCompanyDetailPage({
                 ? `${shortDateTime(detail.last_activity_at)} (${relativeFromNow(detail.last_activity_at)})`
                 : "—"
             }
+          />
+        </DetailCard>
+
+        <DetailCard title="Access">
+          <AccessControls
+            companyId={detail.id}
+            accessStatus={detail.access_status}
+            revokedAt={
+              detail.access_revoked_at
+                ? shortDateTime(detail.access_revoked_at)
+                : null
+            }
+            revokedReason={detail.access_revoked_reason}
+            isPlatformTenant={detail.id === 1}
           />
         </DetailCard>
       </div>

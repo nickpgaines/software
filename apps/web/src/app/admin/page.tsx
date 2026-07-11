@@ -129,7 +129,20 @@ export default async function AdminIndexPage({
                       href={`/admin/companies/${c.id}`}
                       className="hover:underline"
                     >
-                      <div>{c.name || `Company #${c.id}`}</div>
+                      <div className="flex items-center gap-2">
+                        <span>{c.name || `Company #${c.id}`}</span>
+                        {c.access_status === "revoked" && (
+                          <span
+                            className="text-[10.5px] px-1.5 py-0.5 rounded-full font-extrabold uppercase tracking-wide"
+                            style={{
+                              background: `${PULSE.red}1F`,
+                              color: PULSE.red,
+                            }}
+                          >
+                            Revoked
+                          </span>
+                        )}
+                      </div>
                       <div
                         className="text-[11.5px] font-bold mt-0.5"
                         style={{ color: PULSE.textSubtle }}

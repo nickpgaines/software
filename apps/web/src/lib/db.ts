@@ -712,6 +712,13 @@ async function init(): Promise<void> {
     // to 0/off so nothing is taxed until the merchant opts in.
     ["default_tax_rate_bps", "INTEGER NOT NULL DEFAULT 0"],
     ["tax_applied_by_default", "INTEGER NOT NULL DEFAULT 0"],
+    // Platform-admin gate. 'active' is the normal state; 'revoked' locks
+    // every login for the tenant and blocks every request that resolves a
+    // session context (see getSessionContext). Used to shut out abusive or
+    // competitor accounts without deleting their data.
+    ["access_status", "TEXT NOT NULL DEFAULT 'active'"],
+    ["access_revoked_at", "TEXT"],
+    ["access_revoked_reason", "TEXT"],
   ];
   // Same fresh-DB guard as invoices/estimates below: `company` is created
   // later in init() already carrying these columns, so skip the ALTERs when it
@@ -942,7 +949,10 @@ async function init(): Promise<void> {
       sms_daily_send_date TEXT,
       sms_daily_send_limit INTEGER NOT NULL DEFAULT 0,
       default_tax_rate_bps INTEGER NOT NULL DEFAULT 0,
-      tax_applied_by_default INTEGER NOT NULL DEFAULT 0
+      tax_applied_by_default INTEGER NOT NULL DEFAULT 0,
+      access_status TEXT NOT NULL DEFAULT 'active',
+      access_revoked_at TEXT,
+      access_revoked_reason TEXT
     );
     INSERT OR IGNORE INTO company (id, name, address, phone) VALUES (1, NULL, NULL, NULL);
 
