@@ -617,7 +617,7 @@ export function RevenueHeroView({
                       </span>
                       <span className="ml-1">More ranges</span>
                     </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
+                    <DropdownMenuSubContent className="w-52">
                       {EXTENDED_RANGES.map((m) => (
                         <DropdownMenuItem
                           key={m.key}
