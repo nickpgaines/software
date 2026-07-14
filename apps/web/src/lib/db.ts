@@ -363,7 +363,10 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
 // Bump when init() gains migrations that must run on existing deploys.
 // First call after deploy runs the full init; subsequent cold starts hit
 // the fast-path below (one SELECT) and skip the ~150 DDL statements.
-const SCHEMA_VERSION = 16;
+// v17: forces the company.access_status ALTER (added to the migration list
+// without a version bump) to run on existing deploys already at v16, which
+// otherwise fast-path out and 500 on login (SELECT access_status).
+const SCHEMA_VERSION = 17;
 
 async function init(): Promise<void> {
   // Fast path: if the schema is already at the current version, skip the
