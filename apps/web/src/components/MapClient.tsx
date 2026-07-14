@@ -659,9 +659,12 @@ export default function MapClient() {
 
   // Locate-me control: resolve the device position (native plugin in the app,
   // browser Geolocation on web — see lib/native), then drop/move the dot and
-  // recenter. Errors surface as a transient inline message.
-  async function handleLocate(opts?: { silent?: boolean }) {
+  // recenter. Errors surface as a transient inline message. When `jump` is
+  // set (initial silent locate), skip the ease animation so the map lands on
+  // the user's location without the "zoom out → animate in" flash.
+  async function handleLocate(opts?: { silent?: boolean; jump?: boolean }) {
     const silent = opts?.silent === true;
+    const jump = opts?.jump === true;
     const map = mapRef.current;
     if (!map || locating) return;
     setLocateError(null);
@@ -696,7 +699,12 @@ export default function MapClient() {
           .setLngLat([lng, lat])
           .addTo(liveMap);
       }
-      liveMap.easeTo({ center: [lng, lat], zoom: Math.max(liveMap.getZoom(), 15) });
+      const targetZoom = Math.max(liveMap.getZoom(), 15);
+      if (jump) {
+        liveMap.jumpTo({ center: [lng, lat], zoom: targetZoom });
+      } else {
+        liveMap.easeTo({ center: [lng, lat], zoom: targetZoom });
+      }
     } finally {
       setLocating(false);
     }
@@ -1261,6 +1269,12 @@ export default function MapClient() {
   useEffect(() => {
     if (!containerRef.current) return;
     mapboxgl.accessToken = TOKEN as string;
+    // Kick off geolocation before map init so coords are (often) ready by the
+    // time the map load event fires, letting us jumpTo the user's location
+    // without the "zoomed-out US → animate in" flash.
+    const earlyCoordsPromise = getCurrentPosition({ fast: true }).catch(
+      () => null
+    );
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: SATELLITE_STYLE,
@@ -1276,6 +1290,20 @@ export default function MapClient() {
       projection: { name: "mercator" },
     });
     mapRef.current = map;
+    // If coords resolve before the map's load event fires, snap the map to the
+    // user's location immediately (no animation, no US-center flash). Guarded:
+    // jumpTo can throw if the map instance has been torn down between our
+    // capture of `map` above and the promise resolving.
+    void earlyCoordsPromise.then((coords) => {
+      const liveMap = mapRef.current;
+      if (!liveMap || !coords) return;
+      try {
+        liveMap.jumpTo({ center: [coords.lng, coords.lat], zoom: 15 });
+      } catch {
+        // Map was destroyed mid-jump; the deferred locate call in load will
+        // recenter once a fresh instance is ready.
+      }
+    });
 
     const draw = new MapboxDraw({
       displayControlsDefault: false,
@@ -1352,9 +1380,11 @@ export default function MapClient() {
       // Show the user's current location by default — drop the blue dot and
       // recenter on it. Silent: if permission is denied/unavailable we don't
       // surface the error banner on load (it only appears on an explicit
-      // locate-button tap). On iOS the OS shows its permission prompt at most
-      // once, so this doesn't nag repeat visitors.
-      void handleLocate({ silent: true });
+      // locate-button tap). Jump (no animation) so the map lands on the user's
+      // location without the zoomed-out → animate-in flash. On iOS the OS
+      // shows its permission prompt at most once, so this doesn't nag repeat
+      // visitors.
+      void handleLocate({ silent: true, jump: true });
     });
 
     map.on("click", "territories-fill", (e) => {

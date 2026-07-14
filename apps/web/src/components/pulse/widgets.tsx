@@ -3,7 +3,7 @@
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useEffect, useId, useRef, useState } from "react";
-import { Settings2 } from "lucide-react";
+import { ChevronDown, Settings2 } from "lucide-react";
 import { PULSE } from "./theme";
 import { PulseIcon } from "./Icon";
 import {
@@ -457,7 +457,34 @@ const RANGE_TITLE: Record<ChartRange, string> = {
   custom: "Custom Range",
 };
 
+// Compact label for the mobile trigger pill. The full names (e.g.
+// "Custom range…", "Quarter to Date") overflow the small button and truncate,
+// so the trigger shows these short codes instead.
+const SHORT_LABEL: Record<ChartRange, string> = {
+  today: "Today",
+  yesterday: "Yest",
+  "1w": "1W",
+  "4w": "4W",
+  "1m": "1M",
+  mtd: "MTD",
+  "3m": "3M",
+  "12m": "12M",
+  qtd: "QTD",
+  ytd: "YTD",
+  all: "All",
+  custom: "Custom",
+};
+
 const PILL_KEYS = new Set<ChartRange>(PILL_RANGES.map((r) => r.key));
+
+// On mobile the four quick ranges show first and everything else lives behind
+// a "More ranges" submenu, so the phone menu isn't one long scrolling list.
+// Filter out the pill keys here so a range never appears (or gets checked)
+// twice — e.g. "1w" is both the "1W" pill and "Last 7 Days" in the full list.
+const EXTENDED_RANGES: { key: ChartRange; label: string }[] = MENU_RANGES.filter(
+  (m) => !PILL_KEYS.has(m.key)
+);
+const EXTENDED_KEYS = new Set<ChartRange>(EXTENDED_RANGES.map((r) => r.key));
 
 type ApiRevenue = {
   range: ChartRange | "1y";
@@ -514,6 +541,10 @@ export function RevenueHeroView({
   onCustomEndChange?: (s: string) => void;
   loading?: boolean;
 }) {
+  // Mobile range menu: "More ranges" expands the extended list inline (in the
+  // same downward menu) rather than a side submenu, which clipped off the left
+  // edge on a narrow screen. Reset when the menu closes so it reopens compact.
+  const [moreOpen, setMoreOpen] = useState(false);
   return (
     <section
       className="rounded-2xl p-4 md:p-7"
@@ -532,8 +563,11 @@ export function RevenueHeroView({
         </div>
         <div className="flex flex-col items-end gap-2">
           <div className="flex items-center gap-2">
+            {/* Desktop keeps the quick-pill row inline for one-tap access; on
+                mobile the row is replaced by the gear dropdown alone to hand
+                the graph back its horizontal space. */}
             <div
-              className="flex items-center gap-1 p-1 rounded-full"
+              className="hidden md:flex items-center gap-1 p-1 rounded-full"
               style={{ background: PULSE.bgAlt }}
             >
               {PILL_RANGES.map((r) => {
@@ -558,12 +592,16 @@ export function RevenueHeroView({
               })}
             </div>
             {onRangeChange && (
-              <DropdownMenu>
+              <DropdownMenu
+                onOpenChange={(o) => {
+                  if (!o) setMoreOpen(false);
+                }}
+              >
                 <DropdownMenuTrigger asChild>
                   <button
                     type="button"
-                    aria-label="More date ranges"
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-full transition-colors"
+                    aria-label="Date range"
+                    className="inline-flex h-8 items-center justify-center gap-1.5 rounded-full px-3 text-[11.5px] font-extrabold transition-colors md:w-8 md:px-0"
                     style={{
                       background: PILL_KEYS.has(range)
                         ? PULSE.bgAlt
@@ -571,13 +609,69 @@ export function RevenueHeroView({
                       color: PILL_KEYS.has(range) ? PULSE.textMuted : PULSE.bg,
                     }}
                   >
-                    <Settings2 className="h-4 w-4" />
+                    <span className="md:hidden whitespace-nowrap">
+                      {SHORT_LABEL[range] ?? "Range"}
+                    </span>
+                    <Settings2 className="h-4 w-4 shrink-0" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent
+                  align="end"
+                  className="w-48 max-h-[70vh] overflow-y-auto"
+                >
+                  {/* Mobile: the four quick ranges up top; "More ranges"
+                      expands the rest inline (same downward menu) so the phone
+                      menu stays short but nothing opens off-screen. */}
+                  {PILL_RANGES.map((r) => (
+                    <DropdownMenuItem
+                      key={r.key}
+                      className="md:hidden"
+                      onSelect={() => onRangeChange(r.key)}
+                    >
+                      <span className="w-4 inline-block">
+                        {r.key === range ? "✓" : ""}
+                      </span>
+                      <span className="ml-1">{r.label}</span>
+                    </DropdownMenuItem>
+                  ))}
+                  <DropdownMenuItem
+                    className="md:hidden"
+                    onSelect={(e) => {
+                      // Keep the menu open and toggle the extended list inline.
+                      e.preventDefault();
+                      setMoreOpen((v) => !v);
+                    }}
+                  >
+                    <span className="w-4 inline-block">
+                      {EXTENDED_KEYS.has(range) ? "✓" : ""}
+                    </span>
+                    <span className="ml-1 flex-1">More ranges</span>
+                    <ChevronDown
+                      className={
+                        "h-4 w-4 shrink-0 transition-transform " +
+                        (moreOpen ? "rotate-180" : "")
+                      }
+                    />
+                  </DropdownMenuItem>
+                  {moreOpen &&
+                    EXTENDED_RANGES.map((m) => (
+                      <DropdownMenuItem
+                        key={m.key}
+                        className="md:hidden"
+                        onSelect={() => onRangeChange(m.key)}
+                      >
+                        <span className="w-4 inline-block">
+                          {m.key === range ? "✓" : ""}
+                        </span>
+                        <span className="ml-1">{m.label}</span>
+                      </DropdownMenuItem>
+                    ))}
+                  {/* Desktop: the pill row already exposes the quick four, so
+                      the gear dropdown lists the full range set flat. */}
                   {MENU_RANGES.map((m) => (
                     <DropdownMenuItem
                       key={m.key}
+                      className="hidden md:flex"
                       onSelect={() => onRangeChange(m.key)}
                     >
                       <span className="w-4 inline-block">
