@@ -8,6 +8,12 @@ import { HeroChart } from "@/components/pulse/widgets";
 import { PULSE } from "@/components/pulse/theme";
 import { formatCents, formatCentsShort } from "@/components/pulse/format";
 import { PIN_STATUS, PIN_STATUS_KEYS } from "@/lib/map-pin-colors";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type Range = "today" | "week" | "month" | "year" | "custom";
 type View = "sales" | "tech";
@@ -175,7 +181,7 @@ export default function SalesStatsClient({
       <div className="flex items-end justify-between gap-6 flex-wrap mb-7">
         <div className="flex items-center gap-5 min-w-0">
           <div
-            className="w-20 h-20 rounded-full overflow-hidden flex items-center justify-center text-[22px] font-extrabold flex-shrink-0"
+            className="w-14 h-14 md:w-20 md:h-20 rounded-full overflow-hidden flex items-center justify-center text-[18px] md:text-[22px] font-extrabold flex-shrink-0"
             style={{
               background: PULSE.bgAlt,
               border: `1px solid ${PULSE.cardBorder}`,
@@ -200,7 +206,7 @@ export default function SalesStatsClient({
             >
               Sales Stats
             </div>
-            <h1 className="text-[48px] font-extrabold tracking-tight leading-none tabular-nums">
+            <h1 className="text-[26px] md:text-[48px] font-extrabold tracking-tight leading-none tabular-nums">
               {staff?.name || (loading ? "Loading…" : "—")}
               {data && (
                 <>
@@ -233,27 +239,42 @@ export default function SalesStatsClient({
             )}
           </div>
         </div>
-        <div
-          className="flex items-center gap-1 p-1 rounded-full flex-shrink-0"
-          style={{ background: PULSE.bgAlt }}
-        >
-          {PRESETS.map((p) => {
-            const active = range === p.key;
-            return (
-              <button
-                key={p.key}
-                onClick={() => setRange(p.key)}
-                className="px-3.5 py-1 rounded-full text-[11.5px] font-extrabold transition-colors whitespace-nowrap"
-                style={{
-                  background: active ? PULSE.text : "transparent",
-                  color: active ? PULSE.bg : PULSE.textMuted,
-                }}
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[11.5px] font-extrabold whitespace-nowrap flex-shrink-0"
+              style={{
+                background: PULSE.bgAlt,
+                border: `1px solid ${PULSE.cardBorder}`,
+                color: PULSE.text,
+              }}
+            >
+              {PRESETS.find((p) => p.key === range)?.label || "Range"}
+              <svg
+                className="w-3 h-3"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
               >
-                {p.label}
-              </button>
-            );
-          })}
-        </div>
+                <polyline points="6 9 12 15 18 9" />
+              </svg>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            {PRESETS.map((p) => (
+              <DropdownMenuItem key={p.key} onSelect={() => setRange(p.key)}>
+                <span className="w-4 inline-block">
+                  {range === p.key ? "✓" : ""}
+                </span>
+                <span className="ml-1">{p.label}</span>
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <Section title="Subscriptions">
