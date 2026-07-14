@@ -29,7 +29,23 @@ export type Coords = { lat: number; lng: number };
  * otherwise the browser Geolocation API. Resolves null when unavailable or the
  * user denies permission — callers surface their own UI for the null case.
  */
-export async function getCurrentPosition(): Promise<Coords | null> {
+export async function getCurrentPosition(opts?: {
+  /**
+   * Prefer speed over precision: accept a recently-cached fix and a coarse
+   * (cell/wifi) position so the caller can center immediately instead of
+   * blocking several seconds on a fresh high-accuracy GPS lock. Used for the
+   * map's initial auto-center so it opens on the user's location rather than
+   * the zoomed-out default; the explicit "locate me" tap omits this to force a
+   * precise fix.
+   */
+  fast?: boolean;
+}): Promise<Coords | null> {
+  const fast = opts?.fast === true;
+  const enableHighAccuracy = !fast;
+  const timeout = fast ? 7_000 : 10_000;
+  // fast: reuse any fix from the last 5 minutes (returns instantly if the OS
+  // already has one); precise: force a fresh reading (maximumAge 0).
+  const maximumAge = fast ? 300_000 : 0;
   if (isNativeApp()) {
     try {
       const { Geolocation } = await import("@capacitor/geolocation");
@@ -38,8 +54,9 @@ export async function getCurrentPosition(): Promise<Coords | null> {
         return null;
       }
       const pos = await Geolocation.getCurrentPosition({
-        enableHighAccuracy: true,
-        timeout: 10_000,
+        enableHighAccuracy,
+        timeout,
+        maximumAge,
       });
       return { lat: pos.coords.latitude, lng: pos.coords.longitude };
     } catch {
@@ -52,7 +69,7 @@ export async function getCurrentPosition(): Promise<Coords | null> {
     navigator.geolocation.getCurrentPosition(
       (p) => resolve({ lat: p.coords.latitude, lng: p.coords.longitude }),
       () => resolve(null),
-      { enableHighAccuracy: true, timeout: 10_000 }
+      { enableHighAccuracy, timeout, maximumAge }
     );
   });
 }

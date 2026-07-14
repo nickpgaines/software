@@ -1272,7 +1272,9 @@ export default function MapClient() {
     // Kick off geolocation before map init so coords are (often) ready by the
     // time the map load event fires, letting us jumpTo the user's location
     // without the "zoomed-out US → animate in" flash.
-    const earlyCoordsPromise = getCurrentPosition().catch(() => null);
+    const earlyCoordsPromise = getCurrentPosition({ fast: true }).catch(
+      () => null
+    );
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: SATELLITE_STYLE,
