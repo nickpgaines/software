@@ -452,12 +452,19 @@ export default function CustomerDetailClient({
             )}
           </Section>
 
-          <div className="rounded-xl border border-line overflow-hidden bg-black h-56">
-            <LocationMap
+          <div className="space-y-2">
+            <StreetViewPhoto
               address={address}
               latitude={customer.latitude}
               longitude={customer.longitude}
             />
+            <div className="rounded-xl border border-line overflow-hidden bg-black h-56">
+              <LocationMap
+                address={address}
+                latitude={customer.latitude}
+                longitude={customer.longitude}
+              />
+            </div>
           </div>
 
           <Section title="Notes">
@@ -903,18 +910,28 @@ function LocationMap({
       ? { status: "ok", lat: latitude, lng: longitude }
       : { status: "idle" }
   );
+  // Bumped by the Retry button to re-run the geocode effect after a
+  // transient failure (e.g. a rate-limited or offline Geocoding request).
+  const [attempt, setAttempt] = useState(0);
+  // Set when the Google Maps JS API itself fails to load (invalid key,
+  // referer restriction) so we swap Google's gray error tile for a clean
+  // placeholder instead.
+  const [mapLoadError, setMapLoadError] = useState(false);
 
   useEffect(() => {
     if (typeof latitude === "number" && typeof longitude === "number") {
       setGeo({ status: "ok", lat: latitude, lng: longitude });
       return;
     }
-    if (!address) {
-      setGeo({ status: "error", message: "No address on file" });
-      return;
-    }
+    // Order matters: only reach "Address not found" after an actual geocode
+    // attempt. Missing key / missing address are their own distinct states so
+    // the error is never shown when a lookup never ran.
     if (!MAPS_KEY) {
       setGeo({ status: "error", message: "Map not configured" });
+      return;
+    }
+    if (!address) {
+      setGeo({ status: "error", message: "No address on file" });
       return;
     }
     let cancelled = false;
@@ -935,11 +952,11 @@ function LocationMap({
     return () => {
       cancelled = true;
     };
-  }, [address, latitude, longitude]);
+  }, [address, latitude, longitude, attempt]);
 
-  if (geo.status === "ok") {
+  if (geo.status === "ok" && !mapLoadError) {
     return (
-      <APIProvider apiKey={MAPS_KEY}>
+      <APIProvider apiKey={MAPS_KEY} onError={() => setMapLoadError(true)}>
         <Map
           defaultCenter={{ lat: geo.lat, lng: geo.lng }}
           defaultZoom={19}
@@ -956,9 +973,101 @@ function LocationMap({
       </APIProvider>
     );
   }
+
+  // Loading placeholder — never surface an error while a lookup is in flight.
+  if (geo.status === "loading" || geo.status === "idle") {
+    return (
+      <div className="h-full flex items-center justify-center text-sm text-zinc-500 font-bold px-4 text-center">
+        Looking up address…
+      </div>
+    );
+  }
+
+  // "Address not found" is a recoverable geocode miss — offer a retry. Other
+  // error states (no address, key missing, JS API failed to load) are terminal.
+  const canRetry =
+    !mapLoadError && geo.status === "error" && !!address && !!MAPS_KEY;
+  const message = mapLoadError
+    ? "Map unavailable"
+    : geo.status === "error"
+    ? geo.message
+    : "Map unavailable";
   return (
-    <div className="h-full flex items-center justify-center text-sm text-zinc-500 font-bold px-4 text-center">
-      {geo.status === "loading" ? "Looking up address…" : geo.status === "error" ? geo.message : "—"}
+    <div className="h-full flex flex-col items-center justify-center gap-2 text-sm text-zinc-500 font-bold px-4 text-center">
+      <span>{message}</span>
+      {canRetry && (
+        <Button
+          variant="ghost"
+          type="button"
+          onClick={() => setAttempt((n) => n + 1)}
+          className="h-auto rounded-full border border-line px-3 py-1 text-xs text-zinc-300 hover:text-white"
+        >
+          Retry
+        </Button>
+      )}
+    </div>
+  );
+}
+
+// Non-interactive Google Street View Static photo of the property. Renders
+// nothing (the slot collapses) when there's no API key, no usable location, or
+// Street View has no imagery / the photo fails to load — so a broken image or
+// Google error surface never appears.
+function StreetViewPhoto({
+  address,
+  latitude,
+  longitude,
+}: {
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
+}) {
+  const location =
+    typeof latitude === "number" && typeof longitude === "number"
+      ? `${latitude},${longitude}`
+      : address;
+  const [state, setState] = useState<"checking" | "ok" | "hidden">(
+    MAPS_KEY && location ? "checking" : "hidden"
+  );
+
+  useEffect(() => {
+    if (!MAPS_KEY || !location) {
+      setState("hidden");
+      return;
+    }
+    let cancelled = false;
+    setState("checking");
+    const metaUrl = `https://maps.googleapis.com/maps/api/streetview/metadata?size=640x300&location=${encodeURIComponent(
+      location
+    )}&key=${MAPS_KEY}`;
+    fetch(metaUrl)
+      .then((r) => r.json())
+      .then((d: { status?: string }) => {
+        if (cancelled) return;
+        setState(d.status === "OK" ? "ok" : "hidden");
+      })
+      .catch(() => {
+        if (!cancelled) setState("hidden");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [location]);
+
+  if (state !== "ok") return null;
+
+  const src = `https://maps.googleapis.com/maps/api/streetview?size=640x300&location=${encodeURIComponent(
+    location
+  )}&key=${MAPS_KEY}`;
+  return (
+    <div className="rounded-xl border border-line overflow-hidden bg-black aspect-[16/9]">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={src}
+        alt={`Street view of ${address || "the property"}`}
+        className="w-full h-full object-cover"
+        onError={() => setState("hidden")}
+      />
     </div>
   );
 }

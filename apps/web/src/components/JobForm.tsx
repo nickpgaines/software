@@ -19,6 +19,7 @@ import {
   type Staff,
 } from "@/components/forms/StaffPickers";
 import { LeadSourceField } from "@/components/forms/LeadSourceField";
+import { formatPhoneAsTyped } from "@/lib/phone";
 import { PrivateNotesSection } from "@/components/forms/PrivateNotesSection";
 import type { AttachmentDraft } from "@/components/forms/PrivateNotesSection";
 
@@ -97,21 +98,21 @@ function defaultEnd(start: { date: string; time: string }) {
   return { date: toDateInput(d.toISOString()), time: toTimeInput(d.toISOString()) };
 }
 
-function dateOnly(d: Date) {
+export function dateOnly(d: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
-function timeOnly(d: Date) {
+export function timeOnly(d: Date) {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
-function parseLocal(date: string, time: string): Date | null {
+export function parseLocal(date: string, time: string): Date | null {
   if (!date) return null;
   const d = new Date(`${date}T${time || "08:00"}`);
   return isNaN(d.getTime()) ? null : d;
 }
 const TWO_HOURS_MS = 2 * 60 * 60 * 1000;
-function endForNewStart(
+export function endForNewStart(
   newStart: Date,
   oldStart: Date | null,
   oldEnd: Date | null
@@ -220,6 +221,19 @@ export default function JobForm({
     const newEnd = endForNewStart(newStart, oldStart, oldEnd);
     setEndDate(dateOnly(newEnd));
     setEndTime(timeOnly(newEnd));
+  }
+  // When End date or time changes, never let it land before Start —
+  // clamp back to Start if the user picks an earlier moment.
+  function applyNewEnd(newDate: string, newTime: string) {
+    const start = parseLocal(startDate, startTime);
+    const end = parseLocal(newDate, newTime);
+    if (start && end && end.getTime() < start.getTime()) {
+      setEndDate(dateOnly(start));
+      setEndTime(timeOnly(start));
+      return;
+    }
+    setEndDate(newDate);
+    setEndTime(newTime);
   }
   const [scheduleLater, setScheduleLater] = useState(!!job?.schedule_later);
 
@@ -606,14 +620,14 @@ export default function JobForm({
                 <PickerInput
                   type="date"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
+                  onChange={(e) => applyNewEnd(e.target.value, endTime)}
                   disabled={scheduleLater}
                   className="w-[150px]"
                 />
                 <PickerInput
                   type="time"
                   value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
+                  onChange={(e) => applyNewEnd(endDate, e.target.value)}
                   disabled={scheduleLater || anytime}
                   className="w-[110px]"
                 />
@@ -964,6 +978,7 @@ function NewCustomerInline({
   const [error, setError] = useState<string | null>(null);
 
   async function save() {
+    setError(null);
     if (!firstName.trim() || !lastName.trim()) {
       setError("First name and last name are required");
       return;
@@ -989,7 +1004,11 @@ function NewCustomerInline({
     });
     setSaving(false);
     if (!res.ok) {
-      setError("Could not save customer");
+      const data = (await res.json().catch(() => ({}))) as { error?: unknown };
+      setError(
+        (data && typeof data.error === "string" && data.error) ||
+          "Could not save customer"
+      );
       return;
     }
     const c = (await res.json()) as Customer;
@@ -1020,7 +1039,7 @@ function NewCustomerInline({
           type="tel"
           placeholder="Phone"
           value={phone}
-          onChange={(e) => setPhone(e.target.value)}
+          onChange={(e) => setPhone(formatPhoneAsTyped(e.target.value))}
           className={pillCls}
         />
         <Input

@@ -649,8 +649,8 @@ Defined: `widgets.tsx:386-468` (PulseChartHero), `widgets.tsx:147-361` (HeroChar
 border `PULSE.cardBorder`.
 
 **Header** (`widgets.tsx:422-457`):
-- Section label: `text-[11px] uppercase tracking-[0.22em] font-extrabold mb-3`, color `PULSE.textSubtle`. Format: `Revenue · {titleLabel}` where `titleLabel` is one of "Last 7 days" / "This month" / "Last 3 months". Same kicker token as the page-level kicker — see §4 tracking scale.
-- Headline (`widgets.tsx:430-433`): `text-[52px] font-black tracking-tight leading-none`. Shows `formatCentsShort(total_cents)` from API, or `—` while loading.
+- Headline first (2026-07 bug batch 4, Homebase parity): the big total (`text-[36px] md:text-[52px] font-black tracking-tight leading-none tabular-nums`) is anchored on the card's TOP line, with the section label beneath it (`mt-2`); range controls anchor top-right (`items-start`). Shows `formatCentsShort(total_cents)` from API, or `—` while loading.
+- Section label: `text-[11px] uppercase tracking-[0.22em] font-extrabold`, color `PULSE.textSubtle`. Format: `Revenue · {titleLabel}` where `titleLabel` is one of "Last 7 days" / "This month" / "Last 3 months". Same kicker token as the page-level kicker — see §4 tracking scale.
 - Range pills (`widgets.tsx:436-456`): pill bar `flex items-center gap-1 p-1 rounded-full`, bg `PULSE.bgAlt`. Each pill `px-3.5 py-1 rounded-full text-[11.5px] font-extrabold`. Active pill bg = `PULSE.text` (#fff) with text `PULSE.bg` (#000); idle text = `PULSE.textMuted`.
 
 **Range options** (`widgets.tsx:370-374`):
@@ -665,14 +665,15 @@ border `PULSE.cardBorder`.
 **HeroChart interactions** (`widgets.tsx:147-361`):
 - White stroke path (`widgets.tsx:256-263`): `stroke="#ffffff"`, width 3, round caps + joins
 - Area gradient (`widgets.tsx:236-239`): white at 18% opacity → 0%
-- Y-axis grid lines (`widgets.tsx:241-254`): horizontal at 0 / 25% / 50% / 75% / 100%, dashed `2 4`, color `PULSE.cardBorder`
+- Y-axis grid lines (`widgets.tsx:241-254`): 4 horizontal lines at 0 / 33% / 66% / 100% (Homebase parity, 2026-07 bug batch 4; `niceCeil` picks a chart-top divisible by 3 so thirds land on clean labels), dashed `2 4`, color `PULSE.cardBorder`
 - Y labels (`widgets.tsx:277-296`): HTML overlay, right-aligned in the left padding zone (44px desktop / 40px mobile), `text-[10px] md:text-[11px]`. Ticks are abbreviated by the `axisTick()` helper — thousands collapse to `K` (`$12000` → `$12K`, `$1500` → `$1.5K`), sub-$1000 stay as whole dollars (`$0`, `$750`). The compact form keeps labels inside the gutter so they don't bleed over the plot on narrow screens.
 - X labels (`widgets.tsx:297-312`): HTML overlay at `bottom: 4`, day-of-month numbers, every nth day (math: `Math.ceil(days.length / 10)`)
 - **Hover crosshair** (`widgets.tsx:264-274`): vertical dashed line at hovered X, color `PULSE.textDim`
 - **Hover dot** (`widgets.tsx:317-331`): 12×12 white circle with 3px black ring
 - **Hover tooltip** (`widgets.tsx:332-357`): bg `PULSE.card`, 1px border `PULSE.cardBorderHi`, `rounded-lg px-2.5 py-1.5`. Date in micro-uppercase; dollar value in `font-black tracking-tight tabular-nums`. Positioned 36px above the hovered point.
 - Cursor on chart area: `cursor-crosshair` (`widgets.tsx:225`)
-- Empty state (`widgets.tsx:160-168`): centered `text-[13px] font-extrabold`, color `PULSE.textDim`, "No data yet."
+- Touch scrub (2026-07 bug batch 4): crosshair/tooltip show only while a finger is down — cleared on `touchend`/`touchcancel`. On native (Capacitor) a light haptic impact fires when the scrub crosses to a new data index (dynamic `@capacitor/haptics` import, silent no-op on web). Mouse hover unchanged.
+- Empty state (`widgets.tsx:160-168`): centered `text-[13px] font-extrabold`, color `PULSE.textDim`, "No data yet." — shown only for a genuinely-empty successful response. Fetch failures keep last-good data; with no data at all they render "Couldn't load revenue." plus a Retry pill, and auto-retry on window focus/visibility.
 
 ### 8.5 `PulseScheduleCard`
 

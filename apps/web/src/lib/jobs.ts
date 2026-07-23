@@ -102,6 +102,9 @@ export type JobDetail = Job & {
   customer_phone: string | null;
   customer_email: string | null;
   customer_address: string | null;
+  customer_latitude: number | null;
+  customer_longitude: number | null;
+  customer_formatted_address: string | null;
   line_items: LineItem[];
   checklist_items: ChecklistItem[];
   sales: { id: number; name: string; role: string | null }[];
@@ -167,6 +170,9 @@ async function syncLineItems(db: Db, jobId: number, items: LineItemInput[]) {
     // Upsell can only be set on add-on items (items added after initial
     // job creation). Original line items always store upsell=0.
     const upsell = isAddon ? toBit(li.upsell) : 0;
+    // Server-side price guard: coerce to an integer number of cents so a
+    // client can never persist float cents (WS-C). NaN collapses to 0.
+    const priceCents = Math.round(Number(li.price_cents)) || 0;
     if (hasAddon) {
       await db
         .prepare(
@@ -179,7 +185,7 @@ async function syncLineItems(db: Db, jobId: number, items: LineItemInput[]) {
           li.title,
           li.description || null,
           li.quantity,
-          li.price_cents,
+          priceCents,
           toBit(li.taxable),
           upsell,
           isAddon,
@@ -197,7 +203,7 @@ async function syncLineItems(db: Db, jobId: number, items: LineItemInput[]) {
           li.title,
           li.description || null,
           li.quantity,
-          li.price_cents,
+          priceCents,
           toBit(li.taxable),
           upsell,
           i
@@ -437,7 +443,10 @@ export async function getJobDetail(
               c.name AS customer_name,
               c.phone AS customer_phone,
               c.email AS customer_email,
-              c.address AS customer_address
+              c.address AS customer_address,
+              c.latitude AS customer_latitude,
+              c.longitude AS customer_longitude,
+              c.formatted_address AS customer_formatted_address
        FROM jobs j
        JOIN customers c ON c.id = j.customer_id
        WHERE j.id = ? AND j.company_id = ?`
@@ -448,6 +457,9 @@ export async function getJobDetail(
         customer_phone: string | null;
         customer_email: string | null;
         customer_address: string | null;
+        customer_latitude: number | null;
+        customer_longitude: number | null;
+        customer_formatted_address: string | null;
       }
     >(id, companyId);
   if (!job) return null;

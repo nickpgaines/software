@@ -166,6 +166,7 @@ function AddressFieldsInner({
               }
             }}
             placeholder="Start typing an address…"
+            aria-label="Address"
             className={
               inputClassName ||
               "w-full h-auto border-line-strong rounded px-3 py-2 text-sm"
@@ -262,6 +263,7 @@ function ManualFields({
                 ? "Start typing an address…"
                 : "123 Main St"
             }
+            aria-label="Address"
             className={cls}
             autoComplete="off"
           />
@@ -280,6 +282,7 @@ function ManualFields({
               })
             }
             placeholder="Apt 4B"
+            aria-label="Unit"
             className={cls}
             autoComplete="off"
           />
@@ -292,6 +295,8 @@ function ManualFields({
               onChange({ ...value, zip: e.target.value, formatted_address: "" })
             }
             inputMode="numeric"
+            placeholder="ZIP"
+            aria-label="ZIP"
             className={cls}
             autoComplete="off"
           />
@@ -305,6 +310,8 @@ function ManualFields({
             onChange={(e) =>
               onChange({ ...value, city: e.target.value, formatted_address: "" })
             }
+            placeholder="City"
+            aria-label="City"
             className={cls}
             autoComplete="off"
           />
@@ -321,6 +328,8 @@ function ManualFields({
               })
             }
             maxLength={2}
+            placeholder="State"
+            aria-label="State"
             className={cls + " uppercase"}
             autoComplete="off"
           />

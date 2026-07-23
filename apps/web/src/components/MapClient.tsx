@@ -555,6 +555,11 @@ export default function MapClient() {
   const holdTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const holdStartRef = useRef<{ x: number; y: number } | null>(null);
   const currentPopupRef = useRef<mapboxgl.Popup | null>(null);
+  // Monotonically-decreasing id source for optimistic ("temp") pins that are
+  // shown on the map instantly while the POST is in flight. Negative so they
+  // never collide with real (positive) DB ids; reconciled away once the server
+  // returns the persisted row.
+  const tempPinIdRef = useRef(-1);
   // "You are here" dot for the locate-me control (Phase 3 geolocation).
   const locateMarkerRef = useRef<mapboxgl.Marker | null>(null);
   const [locating, setLocating] = useState(false);
@@ -1711,7 +1716,63 @@ export default function MapClient() {
     const snap = modal;
     setModal({ open: false, lng: 0, lat: 0 });
     if (!snap.open) return;
-    await persistPin(data, snap);
+
+    // Editing an existing pin already has a marker on the map; persistPin
+    // swaps it in place via PUT, so no optimistic marker is needed.
+    if (snap.editingId != null) {
+      const updated = await persistPin(data, snap);
+      if (!updated) setLocateError("Could not save the pin. Please try again.");
+      return;
+    }
+
+    // New pin: drop it on the map immediately so it never feels laggy, then
+    // reverse-geocode (only if the long-press probe didn't already resolve an
+    // address) and POST in the background. Reconcile the temp marker with the
+    // server row on success; roll it back on failure.
+    const tempId = tempPinIdRef.current;
+    tempPinIdRef.current -= 1;
+    const tempPin: ApiPin = {
+      id: tempId,
+      lat: snap.lat,
+      lng: snap.lng,
+      status: data.status,
+      notes: data.note || null,
+      objections:
+        data.objections.length > 0 ? JSON.stringify(data.objections) : null,
+      address: snap.address ?? null,
+      first_name: null,
+      last_name: null,
+      phone: null,
+      created_at: new Date().toISOString(),
+    };
+    addMarker(tempPin);
+
+    try {
+      // Reuse the address the long-press background geocode already resolved;
+      // only fall back to a fresh reverseGeocode when it hasn't.
+      const address = snap.address ?? (await reverseGeocode(snap.lng, snap.lat));
+      const r = await fetch("/api/map/pins", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          lat: snap.lat,
+          lng: snap.lng,
+          status: data.status,
+          note: data.note,
+          objections: data.objections,
+          address,
+        }),
+      });
+      if (!r.ok) throw new Error("save failed");
+      const created = (await r.json()) as ApiPin;
+      // Swap the optimistic marker for the persisted one so its real id wires
+      // up edit / delete / popup correctly.
+      removeMarker(tempId);
+      addMarker(created);
+    } catch {
+      removeMarker(tempId);
+      setLocateError("Could not save the pin. Please try again.");
+    }
   }
 
   async function handlePinAction(action: PinAction, data: PinSubmitData) {

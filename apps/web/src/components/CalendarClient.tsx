@@ -466,8 +466,13 @@ export default function CalendarClient() {
 
   return (
     <TaskModalContext.Provider value={openTaskModal}>
-    <div className="relative h-[calc(100dvh-4.5rem-env(safe-area-inset-bottom))] md:h-[100dvh] flex flex-col overflow-hidden pt-[env(safe-area-inset-top)] md:pt-0">
-      <div className="px-3 md:px-6 py-3 md:py-4 flex items-center justify-between gap-2 md:gap-3 md:flex-wrap md:border-b md:border-line shrink-0">
+    {/* Mobile: the header strip (incl. the notch inset) sits on bg-card, the
+        same surface as the grid below, so no black canvas seam shows between
+        them. Desktop keeps the transparent header + md:border-b divider. */}
+    <div className="relative h-[calc(100dvh-4.5rem-env(safe-area-inset-bottom))] md:h-[100dvh] flex flex-col overflow-hidden pt-[env(safe-area-inset-top)] md:pt-0 bg-card md:bg-transparent">
+      {/* Mobile padding matches the Home/Inbox headers (16px right + top) so
+          the + quick-create button lands in the same spot on all three. */}
+      <div className="px-4 md:px-6 py-4 flex items-center justify-between gap-2 md:gap-3 md:flex-wrap md:border-b md:border-line shrink-0">
         <div className="flex items-center gap-2 md:flex-wrap min-w-0">
           <Button
             type="button"
@@ -1138,7 +1143,10 @@ function DayView({
         <div
           className={
             "px-4 py-3 text-center text-sm font-extrabold tracking-tight border-b border-line " +
-            (isToday ? "bg-black text-white" : "text-zinc-200")
+            // Mobile stays on bg-card so the today bar doesn't render as a
+            // black band right under the toolbar; desktop keeps the black
+            // today highlight.
+            (isToday ? "bg-card md:bg-black text-white" : "text-zinc-200")
           }
         >
           {dateLabel}
@@ -1325,7 +1333,9 @@ function MonthView({
   const weekDayHeaders = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
   return (
     <div>
-      <div className="grid grid-cols-7 border-b border-line bg-black">
+      {/* Mobile weekday strip sits on bg-card (no black band under the
+          header); desktop keeps the black strip. */}
+      <div className="grid grid-cols-7 border-b border-line bg-card md:bg-black">
         {weekDayHeaders.map((d) => (
           <div
             key={d}

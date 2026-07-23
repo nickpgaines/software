@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, type Customer } from "@/lib/db";
+import { getDb, syncReplica, type Customer } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
 import { normalizeAddress } from "@/lib/customer-address";
 import { buildOriginFromRequest, sendWelcomeToCustomer } from "@/lib/email";
@@ -75,9 +75,21 @@ export async function POST(req: Request) {
       addr.formatted_address,
       body.notes || null
     );
-    const created = (await db
+    let created = (await db
       .prepare("SELECT * FROM customers WHERE id = ? AND company_id = ?")
-      .get(result.lastInsertRowid, companyId)) as Customer;
+      .get(result.lastInsertRowid, companyId)) as Customer | undefined;
+    if (!created) {
+      // Embedded-replica mode: the INSERT was forwarded to the primary but
+      // this instance's local replica may not have caught up yet (the
+      // post-write sync is debounced). Force a sync and retry once.
+      await syncReplica();
+      created = (await db
+        .prepare("SELECT * FROM customers WHERE id = ? AND company_id = ?")
+        .get(result.lastInsertRowid, companyId)) as Customer | undefined;
+    }
+    if (!created) {
+      throw new Error("Customer was saved but could not be read back");
+    }
     if (created.email && created.email.trim()) {
       const origin = buildOriginFromRequest(req);
       void sendWelcomeToCustomer(created.id, companyId, origin).catch((e) => {

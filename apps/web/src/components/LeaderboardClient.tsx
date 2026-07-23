@@ -87,8 +87,11 @@ export default function LeaderboardClient({
 
   useEffect(() => {
     setMounted(true);
+    // Match the body to the theme canvas token (black in dark, light-gray in
+    // light) instead of a hardcoded white — a forced white body hid the
+    // white page title in dark mode and fought the selected theme/accent.
     const prev = document.body.style.backgroundColor;
-    document.body.style.backgroundColor = "#ffffff";
+    document.body.style.backgroundColor = "var(--color-canvas)";
     return () => {
       document.body.style.backgroundColor = prev;
     };

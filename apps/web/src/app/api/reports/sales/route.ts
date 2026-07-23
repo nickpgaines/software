@@ -238,11 +238,15 @@ async function getReps(
          s.name AS name,
          (SELECT COUNT(*) FROM map_pins p
             WHERE p.company_id = ?
-              AND LOWER(p.created_by) = LOWER(s.name)
+              AND (LOWER(TRIM(p.created_by)) = LOWER(TRIM(s.name))
+                   OR (s.email IS NOT NULL
+                       AND LOWER(TRIM(p.created_by)) = LOWER(TRIM(s.email))))
               AND p.created_at >= ? AND p.created_at < ?) AS pins,
          (SELECT COUNT(*) FROM map_pins p
             WHERE p.company_id = ?
-              AND LOWER(p.created_by) = LOWER(s.name)
+              AND (LOWER(TRIM(p.created_by)) = LOWER(TRIM(s.name))
+                   OR (s.email IS NOT NULL
+                       AND LOWER(TRIM(p.created_by)) = LOWER(TRIM(s.email))))
               AND p.created_at >= ? AND p.created_at < ?
               AND p.status = 'sale') AS sales,
          (SELECT COALESCE(SUM(j.price_cents), 0)
@@ -345,7 +349,9 @@ async function getPinStatusBreakdown(
        FROM map_pins p
        LEFT JOIN staff s
          ON s.company_id = p.company_id
-        AND LOWER(s.name) = LOWER(p.created_by)
+        AND (LOWER(TRIM(s.name)) = LOWER(TRIM(p.created_by))
+             OR (s.email IS NOT NULL
+                 AND LOWER(TRIM(s.email)) = LOWER(TRIM(p.created_by))))
        WHERE p.company_id = ?
          AND p.created_at >= ? AND p.created_at < ?
        GROUP BY s.id, COALESCE(s.name, p.created_by), p.status`,

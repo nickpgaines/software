@@ -14,12 +14,46 @@ export function NativeChrome() {
     if (!isNativeApp()) return;
     let cancelled = false;
     const handles: PluginListenerHandle[] = [];
+    let themeObserver: MutationObserver | null = null;
+
+    // Native-app text behavior: long-press must not pop the iOS text-selection
+    // loupe / Copy–Look Up callout on labels and headings (it fights chart
+    // scrubbing and feels web-y). globals.css scopes user-select/touch-callout
+    // off under this class, while keeping inputs/textareas selectable.
+    document.documentElement.classList.add("native-app");
 
     (async () => {
       try {
         const { StatusBar, Style } = await import("@capacitor/status-bar");
-        // Style.Dark = light text/icons, which reads on Forge's black UI.
-        await StatusBar.setStyle({ style: Style.Dark });
+        // The status bar icons must contrast with the app's theme. Capacitor's
+        // Style is inverted from its name: Style.Light = dark icons (for light
+        // backgrounds), Style.Dark = light icons (for dark backgrounds). The
+        // active theme lives in <html>'s `data-theme` attribute — "light" for
+        // light mode, absent/"dark" for the default dark UI (set pre-paint by
+        // the inline script in layout.tsx, toggled at runtime by ThemeToggle).
+        const applyStatusBarStyle = () => {
+          const isLight =
+            document.documentElement.getAttribute("data-theme") === "light";
+          return StatusBar.setStyle({
+            style: isLight ? Style.Light : Style.Dark,
+          });
+        };
+
+        await applyStatusBarStyle();
+
+        if (cancelled) return;
+
+        // Re-apply whenever ThemeToggle flips `data-theme` at runtime, so the
+        // status bar icons stay legible after a theme switch.
+        themeObserver = new MutationObserver(() => {
+          void applyStatusBarStyle().catch(() => {
+            // Style set can fail transiently; ignore.
+          });
+        });
+        themeObserver.observe(document.documentElement, {
+          attributes: true,
+          attributeFilter: ["data-theme"],
+        });
       } catch {
         // StatusBar isn't available on every platform; ignore.
       }
@@ -99,6 +133,7 @@ export function NativeChrome() {
 
     return () => {
       cancelled = true;
+      themeObserver?.disconnect();
       for (const h of handles) h.remove();
     };
   }, []);

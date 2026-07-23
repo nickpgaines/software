@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { formatPhoneAsTyped } from "@/lib/phone";
 
 export type CustomerFormCustomer = {
   id: number;
@@ -156,7 +157,7 @@ export default function CustomerForm({
           <Input
             type="tel"
             value={phone ?? ""}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={(e) => setPhone(formatPhoneAsTyped(e.target.value))}
           />
         </Field>
         <Field label="Email">

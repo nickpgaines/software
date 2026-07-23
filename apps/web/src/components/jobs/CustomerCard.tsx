@@ -80,6 +80,12 @@ export default function CustomerCard({
   href?: string;
 }) {
   const [geo, setGeo] = useState<GeocodeState>({ status: "idle" });
+  // Bumped by the placeholder's Retry button to re-run a failed geocode.
+  const [attempt, setAttempt] = useState(0);
+  // Set when the Google Maps JS API fails to load (invalid key / referer
+  // restriction) so we render the clean placeholder rather than Google's
+  // gray error tile.
+  const [mapLoadError, setMapLoadError] = useState(false);
 
   // Prefer the structured formatted_address; fall back to legacy address.
   const preferredAddress =
@@ -87,6 +93,8 @@ export default function CustomerCard({
     (customer.address || "").trim();
 
   useEffect(() => {
+    // A fresh lookup clears any prior JS-API load failure.
+    setMapLoadError(false);
     const lat = customer.latitude;
     const lng = customer.longitude;
     // Fast path: lat AND lng are stored on the customer record (set by the
@@ -109,10 +117,7 @@ export default function CustomerCard({
       return;
     }
     if (!KEY) {
-      setGeo({
-        status: "error",
-        message: "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set",
-      });
+      setGeo({ status: "error", message: "Map unavailable" });
       return;
     }
     let cancelled = false;
@@ -138,6 +143,7 @@ export default function CustomerCard({
     customer.latitude,
     customer.longitude,
     preferredAddress,
+    attempt,
   ]);
 
   const displayedAddress =
@@ -215,13 +221,28 @@ export default function CustomerCard({
         </div>
 
         <div className="bg-black md:border-l border-line min-h-[220px]">
-          {geo.status === "ok" ? (
-            <CustomerMap lat={geo.lat} lng={geo.lng} />
+          {geo.status === "ok" && !mapLoadError ? (
+            <CustomerMap
+              lat={geo.lat}
+              lng={geo.lng}
+              onError={() => setMapLoadError(true)}
+            />
           ) : (
             <MapPlaceholder
-              status={geo.status}
+              status={mapLoadError || geo.status === "ok" ? "error" : geo.status}
               message={
-                geo.status === "error" ? geo.message : "Looking up address…"
+                mapLoadError
+                  ? "Map unavailable"
+                  : geo.status === "error"
+                  ? geo.message
+                  : "Looking up address…"
+              }
+              onRetry={
+                !mapLoadError &&
+                geo.status === "error" &&
+                geo.message === "Address not found"
+                  ? () => setAttempt((n) => n + 1)
+                  : undefined
               }
             />
           )}
@@ -248,9 +269,17 @@ function Row({
   );
 }
 
-function CustomerMap({ lat, lng }: { lat: number; lng: number }) {
+function CustomerMap({
+  lat,
+  lng,
+  onError,
+}: {
+  lat: number;
+  lng: number;
+  onError?: () => void;
+}) {
   return (
-    <APIProvider apiKey={KEY}>
+    <APIProvider apiKey={KEY} onError={() => onError?.()}>
       <div className="w-full h-full min-h-[220px]" style={{ height: "100%" }}>
         <Map
           defaultCenter={{ lat, lng }}
@@ -274,16 +303,30 @@ function CustomerMap({ lat, lng }: { lat: number; lng: number }) {
 function MapPlaceholder({
   status,
   message,
+  onRetry,
 }: {
   status: "idle" | "loading" | "error";
   message: string;
+  onRetry?: () => void;
 }) {
   return (
-    <div className="w-full h-full min-h-[220px] flex items-center justify-center px-4 py-8 text-sm text-zinc-400 font-bold text-center">
+    <div className="w-full h-full min-h-[220px] flex flex-col items-center justify-center gap-2 px-4 py-8 text-sm text-zinc-400 font-bold text-center">
       {status === "loading" ? (
         <span>Looking up address…</span>
       ) : (
-        <span>{message}</span>
+        <>
+          <span>{message}</span>
+          {onRetry && (
+            <Button
+              variant="ghost"
+              type="button"
+              onClick={onRetry}
+              className="h-auto rounded-full border border-line px-3 py-1 text-xs text-zinc-300 hover:text-white"
+            >
+              Retry
+            </Button>
+          )}
+        </>
       )}
     </div>
   );

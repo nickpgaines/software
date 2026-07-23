@@ -76,24 +76,127 @@ function getClient(): Client {
   return _client;
 }
 
+// ---------------------------------------------------------------------------
+// Write-path serialization + replica-sync coalescing.
+//
+// One libSQL client (`_client`) is shared by every concurrent request in a
+// warm serverless instance. Two production failure modes come from that
+// sharing in embedded-replica mode:
+//
+//   1. "SQLITE_BUSY: Failed to checkpoint WAL: database is locked" — a
+//      replica sync's WAL checkpoint colliding with a concurrent write or
+//      another sync on the same local file.
+//   2. InvalidParserState("Txn") — another request interleaving execute()/
+//      sync() calls on the shared client while a write transaction is open,
+//      corrupting the protocol state machine.
+//
+// The fix has three parts:
+//   - a process-wide promise-chain mutex that serializes write transactions
+//     and standalone sync() calls (read paths never take it);
+//   - per-write syncs coalesced into one debounced, shared in-flight sync
+//     (scheduleSync / syncNow) instead of a sync per .run();
+//   - bounded retry with short backoff on SQLITE_BUSY for single-statement
+//     writes, transaction open/commit, and syncs.
+// ---------------------------------------------------------------------------
+
+let _writeChain: Promise<void> = Promise.resolve();
+
+// Simple FIFO promise-chain mutex. A failing section never poisons the
+// chain: the next waiter runs regardless.
+function withWriteLock<T>(fn: () => Promise<T>): Promise<T> {
+  const run = _writeChain.then(fn, fn);
+  _writeChain = run.then(
+    () => undefined,
+    () => undefined
+  );
+  return run;
+}
+
+const BUSY_RETRY_DELAYS_MS = [50, 150, 400];
+
+function isBusyError(e: unknown): boolean {
+  const msg = String((e as Error)?.message ?? e);
+  return msg.includes("SQLITE_BUSY") || /database is locked/i.test(msg);
+}
+
+// Bounded retry for transient lock contention: up to 3 retries with short
+// backoff when the error is SQLITE_BUSY / "database is locked". Any other
+// error is rethrown immediately.
+async function withBusyRetry<T>(fn: () => Promise<T>): Promise<T> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await fn();
+    } catch (e) {
+      if (attempt >= BUSY_RETRY_DELAYS_MS.length || !isBusyError(e)) throw e;
+      await new Promise((r) => setTimeout(r, BUSY_RETRY_DELAYS_MS[attempt]));
+    }
+  }
+}
+
+// Raw replica sync. Best-effort: a failure just means the next read may be
+// stale; never break a request over it. No-op for non-replica clients
+// (plain remote or local file:), where `sync` either doesn't exist or
+// throws — both are swallowed here. Callers must already hold the write
+// lock (or be inside a section that does); everyone else goes through
+// syncNow()/scheduleSync().
+async function rawSync(): Promise<void> {
+  const c = _client;
+  if (!c) return;
+  const sync = (c as { sync?: () => Promise<unknown> }).sync;
+  if (typeof sync !== "function") return;
+  try {
+    await withBusyRetry(() => sync.call(c) as Promise<unknown>);
+  } catch {
+    // Sync is best-effort. A failure here just means the next read may
+    // still be stale; never break the request over it.
+  }
+}
+
+let _queuedSync: Promise<void> | null = null;
+let _syncTimer: ReturnType<typeof setTimeout> | null = null;
+
+// Awaitable, coalesced replica sync. Concurrent callers share one queued
+// sync; the shared promise is cleared right before the sync actually runs,
+// so a caller arriving mid-sync queues a fresh sync behind it (its write
+// may have committed after the running sync started). Runs under the write
+// mutex so it never interleaves with an open write transaction.
+export function syncNow(): Promise<void> {
+  if (_syncTimer) {
+    clearTimeout(_syncTimer);
+    _syncTimer = null;
+  }
+  if (_queuedSync) return _queuedSync;
+  _queuedSync = withWriteLock(() => {
+    _queuedSync = null;
+    return rawSync();
+  });
+  return _queuedSync;
+}
+
+const SYNC_DEBOUNCE_MS = 250;
+
+// Fire-and-forget debounced sync used after top-level auto-commit writes.
+// A burst of writes collapses into a single sync ~250ms after the first
+// one; if a sync is already queued or scheduled, this is a no-op.
+function scheduleSync(): void {
+  if (_queuedSync || _syncTimer) return;
+  _syncTimer = setTimeout(() => {
+    _syncTimer = null;
+    void syncNow();
+  }, SYNC_DEBOUNCE_MS);
+  // Don't keep a local dev process alive just for a pending sync.
+  (_syncTimer as unknown as { unref?: () => void }).unref?.();
+}
+
 // In embedded-replica mode, reads run against a local file that syncs from
 // the remote primary on an interval (default 60s). Right after a write, the
 // local replica on this function instance — and worse, on *other* function
 // instances — may not yet have the new row. Call this after writes that
 // need to be visible on the next read (e.g. signup -> dashboard greeting),
 // or before a read that came up empty unexpectedly. No-op for non-replica
-// clients.
+// clients. Concurrent calls coalesce into a single sync (see syncNow).
 export async function syncReplica(): Promise<void> {
-  const c = _client;
-  if (!c) return;
-  const sync = (c as { sync?: () => Promise<unknown> }).sync;
-  if (typeof sync !== "function") return;
-  try {
-    await sync.call(c);
-  } catch {
-    // Sync is best-effort. A failure here just means the next read may
-    // still be stale; never break the request over it.
-  }
+  await syncNow();
 }
 
 function rowToObject<T>(row: unknown, columns: string[]): T {
@@ -105,7 +208,7 @@ function rowToObject<T>(row: unknown, columns: string[]): T {
 function makeStmt(
   exec: Executor,
   sql: string,
-  afterWrite?: () => Promise<void>
+  afterWrite?: () => void
 ): Stmt {
   return {
     async get<T>(...args: Args): Promise<T | undefined> {
@@ -118,17 +221,19 @@ function makeStmt(
       return r.rows.map((row) => rowToObject<T>(row, r.columns));
     },
     async run(...args: Args): Promise<RunResult> {
-      const r = await exec(sql, args);
+      // Single statements are atomic, so retrying on SQLITE_BUSY is safe:
+      // a busy failure means the statement didn't execute.
+      const r = await withBusyRetry(() => exec(sql, args));
       const lastInsertRowid =
         r.lastInsertRowid != null ? Number(r.lastInsertRowid) : 0;
       const changes = r.rowsAffected ?? 0;
-      // Auto-commit single-statement write: pull the new state into the
-      // local embedded replica so the next read on this instance sees it.
-      // Without this the user has to manually refresh after creating a
-      // job, recording a payment, etc. — the write hit the primary but
-      // this instance's local SQLite file hasn't synced yet.
+      // Auto-commit single-statement write: schedule a debounced replica
+      // sync so reads on this instance catch up shortly. Bursts of writes
+      // (imports, batch updates) collapse into one sync instead of a WAL
+      // checkpoint per statement — the per-write awaited sync is what was
+      // colliding into "SQLITE_BUSY: Failed to checkpoint WAL" under load.
       if (afterWrite && (changes > 0 || lastInsertRowid > 0)) {
-        await afterWrite();
+        afterWrite();
       }
       return { lastInsertRowid, changes };
     },
@@ -136,54 +241,66 @@ function makeStmt(
 }
 
 function makeDb(exec: Executor, execMany: ExecMany, txCapable: boolean): Db {
-  // Top-level writes (auto-commit single statements) should sync the local
-  // replica on success. Writes performed inside a transaction shouldn't —
+  // Top-level writes (auto-commit single statements) schedule a debounced
+  // replica sync on success. Writes performed inside a transaction don't —
   // the transaction wrapper syncs once after `tx.commit()` instead.
-  const afterWrite = txCapable ? syncReplica : undefined;
+  const afterWrite = txCapable ? scheduleSync : undefined;
   const db: Db = {
     prepare(sql: string) {
       return makeStmt(exec, sql, afterWrite);
     },
     async exec(sql: string) {
       await execMany(sql);
-      if (afterWrite) await afterWrite();
+      if (afterWrite) afterWrite();
     },
     async transaction<R>(fn: (inner: Db) => Promise<R>): Promise<R> {
       if (!txCapable) {
         // Already inside a transaction; reuse.
         return fn(db);
       }
-      const tx = await getClient().transaction("write");
-      try {
-        const innerExec: Executor = async (sql, args) => {
-          const r = await tx.execute({ sql, args });
-          return {
-            rows: r.rows as unknown[],
-            columns: r.columns as string[],
-            lastInsertRowid: r.lastInsertRowid,
-            rowsAffected: r.rowsAffected,
-          };
-        };
-        const innerExecMany: ExecMany = async (sql) => {
-          for (const stmt of splitStatements(sql)) {
-            await tx.execute(stmt);
-          }
-        };
-        const innerDb = makeDb(innerExec, innerExecMany, false);
-        const result = await fn(innerDb);
-        await tx.commit();
-        // Pull the just-committed write into the local replica so a
-        // subsequent read on this instance sees it.
-        await syncReplica();
-        return result;
-      } catch (e) {
+      // Hold the process-wide write mutex for the whole transaction,
+      // including the post-commit sync. This is what stops another
+      // request's sync() from interleaving with an open write transaction
+      // on the shared client (InvalidParserState("Txn")), and stops two
+      // write transactions from racing each other. Read paths and
+      // single-statement writes never take this lock, so they stay fast;
+      // single statements are protected by the SQLITE_BUSY retry instead.
+      return withWriteLock(async () => {
+        const tx = await withBusyRetry(() => getClient().transaction("write"));
         try {
-          await tx.rollback();
-        } catch {
-          // ignore rollback errors
+          const innerExec: Executor = async (sql, args) => {
+            const r = await withBusyRetry(() => tx.execute({ sql, args }));
+            return {
+              rows: r.rows as unknown[],
+              columns: r.columns as string[],
+              lastInsertRowid: r.lastInsertRowid,
+              rowsAffected: r.rowsAffected,
+            };
+          };
+          const innerExecMany: ExecMany = async (sql) => {
+            for (const stmt of splitStatements(sql)) {
+              await withBusyRetry(() => tx.execute(stmt));
+            }
+          };
+          const innerDb = makeDb(innerExec, innerExecMany, false);
+          const result = await fn(innerDb);
+          await withBusyRetry(() => tx.commit());
+          // Pull the just-committed write into the local replica so a
+          // subsequent read on this instance sees it — awaited so the
+          // committing request gets read-your-writes. We already hold the
+          // write lock, so call rawSync directly (syncNow would deadlock
+          // waiting on ourselves).
+          await rawSync();
+          return result;
+        } catch (e) {
+          try {
+            await tx.rollback();
+          } catch {
+            // ignore rollback errors
+          }
+          throw e;
         }
-        throw e;
-      }
+      });
     },
   };
   return db;

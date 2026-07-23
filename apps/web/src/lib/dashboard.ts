@@ -60,6 +60,11 @@ export async function getTodayJobs(): Promise<LiveJob[]> {
   const ctx = await getSessionContext();
   const companyId = ctx?.companyId ?? 0;
   const db = await getDb();
+  // Pull the latest committed state into the local replica before reading,
+  // so "Today's Schedule" reflects reschedules/deletes made moments ago on
+  // another instance. Coalesced (parallel dashboard loaders share one
+  // sync); cheap no-op when not in replica mode.
+  await syncReplica();
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const tomorrow = new Date(today);
@@ -86,6 +91,9 @@ export async function getMonthlyRevenue(): Promise<RevenueSummary> {
   const ctx = await getSessionContext();
   const companyId = ctx?.companyId ?? 0;
   const db = await getDb();
+  // Fresh replica before reading — see getTodayJobs. Coalesced, so this
+  // shares a single sync with the other dashboard loaders.
+  await syncReplica();
   const now = new Date();
   const start = new Date(now.getFullYear(), now.getMonth(), 1);
   const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
@@ -144,18 +152,26 @@ export async function getDashboardKpis(opts?: {
   const ctx = await getSessionContext();
   const companyId = ctx?.companyId ?? 0;
   const db = await getDb();
+  // Fresh replica before reading — see getTodayJobs. Coalesced, so this
+  // shares a single sync with the other dashboard loaders.
+  await syncReplica();
   const salesStaffId = opts?.salesStaffId ?? null;
 
-  // When scoping to a single salesperson we filter pins by their name —
-  // map_pins.created_by is a free-text column the rest of the app already
-  // matches on (see /api/staff/[id]/scorecard). Names aren't unique in
-  // principle but in practice map to the rep who dropped the pin.
-  let salesStaffName: string | null = null;
+  // When scoping to a single salesperson we filter pins by identity —
+  // map_pins.created_by is a free-text column that in practice stores the
+  // rep's email (session identity) but historically may hold a display
+  // name, so match either (see /api/staff/[id]/scorecard for the same
+  // broadened join).
+  let salesStaffIdents: string[] = [];
   if (salesStaffId != null) {
     const row = (await db
-      .prepare("SELECT name FROM staff WHERE id = ? AND company_id = ?")
-      .get(salesStaffId, companyId)) as { name: string | null } | undefined;
-    salesStaffName = row?.name ?? null;
+      .prepare("SELECT name, email FROM staff WHERE id = ? AND company_id = ?")
+      .get(salesStaffId, companyId)) as
+      | { name: string | null; email: string | null }
+      | undefined;
+    salesStaffIdents = [row?.name, row?.email]
+      .map((v) => (v ?? "").trim().toLowerCase())
+      .filter(Boolean);
   }
 
   const now = new Date();
@@ -180,9 +196,11 @@ export async function getDashboardKpis(opts?: {
        WHERE company_id = ?
          AND created_at >= ? AND created_at < ?`;
     const args: (string | number)[] = [companyId, startIso, endIso];
-    if (salesStaffName) {
-      sql += ` AND LOWER(created_by) = LOWER(?)`;
-      args.push(salesStaffName);
+    if (salesStaffIdents.length > 0) {
+      sql += ` AND LOWER(TRIM(created_by)) IN (${salesStaffIdents
+        .map(() => "?")
+        .join(", ")})`;
+      args.push(...salesStaffIdents);
     }
     const row = (await db.prepare(sql).get(...args)) as
       | { sales: number; quoted: number }
