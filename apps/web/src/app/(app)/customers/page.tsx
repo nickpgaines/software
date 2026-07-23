@@ -61,6 +61,8 @@ export default function CustomersPageWrapper() {
 
 function CustomersPage() {
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [editing, setEditing] = useState<Customer | null>(null);
   const [creating, setCreating] = useState(false);
   const [attachPinId, setAttachPinId] = useState<number | null>(null);
@@ -95,8 +97,17 @@ function CustomersPage() {
   }, [customers, query]);
 
   async function load() {
-    const res = await fetch("/api/customers");
-    setCustomers(await res.json());
+    try {
+      const res = await fetch("/api/customers");
+      if (!res.ok) throw new Error(`Request failed (${res.status})`);
+      const data = (await res.json()) as Customer[];
+      setCustomers(Array.isArray(data) ? data : []);
+      setLoadError(null);
+    } catch {
+      setLoadError("Couldn't load customers.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
@@ -192,7 +203,36 @@ function CustomersPage() {
         </div>
       </div>
 
-      {customers.length === 0 ? (
+      {loading ? (
+        /* First fetch still in flight: lightweight skeleton so the page
+           never flashes "No customers yet." before the data arrives. */
+        <Card className="overflow-hidden divide-y divide-line" aria-busy="true">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-3 px-4 py-3">
+              <span className="h-11 w-11 shrink-0 animate-pulse rounded-full bg-elevated" />
+              <span className="min-w-0 flex-1 space-y-2">
+                <span className="block h-3 w-40 max-w-full animate-pulse rounded bg-elevated" />
+                <span className="block h-3 w-64 max-w-full animate-pulse rounded bg-elevated" />
+              </span>
+            </div>
+          ))}
+        </Card>
+      ) : loadError && customers.length === 0 ? (
+        <Card className="p-8 text-center text-sm text-zinc-400 font-bold">
+          {loadError}{" "}
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setLoading(true);
+              setLoadError(null);
+              void load();
+            }}
+            className="h-auto p-0 text-sm font-bold text-primary hover:bg-transparent"
+          >
+            Retry
+          </Button>
+        </Card>
+      ) : customers.length === 0 ? (
         <Card className="p-8 text-center text-sm text-zinc-400 font-bold">
           No customers yet.
         </Card>

@@ -41,6 +41,11 @@ export async function PATCH(
     const status = message === "Not found" ? 404 : 400;
     return NextResponse.json({ error: message }, { status });
   }
+  // Sync the embedded replica before reading back so the response — and
+  // the RSC re-render the client triggers next — reflect the just-saved
+  // values (e.g. an edited price) instead of the stale local replica.
+  // Coalesced with any in-flight sync; no-op outside replica mode.
+  await syncReplica();
   const detail = await getJobDetail(db, id, companyId);
   return NextResponse.json(detail);
 }

@@ -114,7 +114,7 @@ export default function MessagesClient() {
               type="button"
               variant="ghost"
               title="Compose"
-              className="w-8 h-8 p-0 rounded-full hover:bg-black text-zinc-400 shrink-0"
+              className="w-9 h-9 p-0 rounded-full hover:bg-black text-zinc-400 shrink-0"
             >
               <svg
                 className="w-4 h-4"
@@ -136,7 +136,9 @@ export default function MessagesClient() {
       <div className="flex flex-1 overflow-hidden">
       <aside
         className={
-          "w-full md:w-80 shrink-0 border-r border-line flex-col " +
+          // Hairlines are desktop-only: on mobile the pane is full-width on
+          // bg-card, so border-r/border-t rendered as stray dark seams.
+          "w-full md:w-80 shrink-0 md:border-r md:border-line flex-col " +
           (selected ? "hidden md:flex" : "flex")
         }
       >
@@ -174,7 +176,7 @@ export default function MessagesClient() {
           </Label>
         </div>
 
-        <div className="flex-1 overflow-y-auto border-t border-line">
+        <div className="flex-1 overflow-y-auto md:border-t md:border-line">
           {filtered.length === 0 ? (
             <div className="p-6 text-center text-sm text-zinc-500">
               {conversations.length === 0

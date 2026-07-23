@@ -590,3 +590,19 @@ html[data-theme="light"] textarea:-webkit-autofill:active {
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+/* Native (Capacitor) shell only — html gets .native-app from NativeChrome.
+   Kill the iOS long-press text-selection loupe / Copy–Look Up callout so
+   press-and-hold gestures (chart scrubbing, list long-press) behave like a
+   native app instead of a web page. Inputs stay selectable/editable. */
+html.native-app {
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+}
+html.native-app input,
+html.native-app textarea,
+html.native-app [contenteditable="true"] {
+  -webkit-user-select: text;
+  user-select: text;
+}

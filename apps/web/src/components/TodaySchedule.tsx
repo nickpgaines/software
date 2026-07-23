@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 
 type Job = {
@@ -63,6 +63,9 @@ export default function TodaySchedule({ initialJobs }: { initialJobs: Job[] }) {
   const [jobs, setJobs] = useState<Job[]>(initialJobs);
   const [loading, setLoading] = useState(false);
   const [mounted, setMounted] = useState(false);
+  // First effect run renders the server-rendered seed, so its fetch (and all
+  // focus refetches) run silently in the background — no loading flash.
+  const seededRef = useRef(true);
 
   useEffect(() => {
     setMounted(true);
@@ -74,20 +77,47 @@ export default function TodaySchedule({ initialJobs }: { initialJobs: Job[] }) {
   const nextDate = new Date(currentDate);
   nextDate.setDate(nextDate.getDate() + 1);
 
+  // Always fetch fresh jobs for the shown day — the server-rendered seed goes
+  // stale as soon as a job is rescheduled or deleted elsewhere. Also refetch
+  // whenever the app returns to the foreground.
   useEffect(() => {
-    if (offset === 0) {
-      setJobs(initialJobs);
-      return;
-    }
-    setLoading(true);
+    let cancelled = false;
     const params = new URLSearchParams({
       from: currentDate.toISOString(),
       to: nextDate.toISOString(),
     });
-    fetch(`/api/jobs?${params}`)
-      .then((r) => r.json())
-      .then((j: Job[]) => setJobs(j))
-      .finally(() => setLoading(false));
+
+    async function load(showSpinner: boolean) {
+      if (showSpinner) setLoading(true);
+      try {
+        const res = await fetch(`/api/jobs?${params}`);
+        if (!res.ok) return;
+        const j = (await res.json()) as Job[];
+        if (!cancelled) setJobs(j);
+      } catch {
+        // Keep what's shown; the next focus refetch will retry.
+      } finally {
+        if (!cancelled && showSpinner) setLoading(false);
+      }
+    }
+
+    const isSeedRun = seededRef.current;
+    seededRef.current = false;
+    load(!isSeedRun);
+
+    const onWake = () => {
+      if (document.visibilityState !== "visible") return;
+      load(false);
+    };
+    window.addEventListener("focus", onWake);
+    document.addEventListener("visibilitychange", onWake);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", onWake);
+      document.removeEventListener("visibilitychange", onWake);
+    };
+    // currentDate/nextDate derive from offset; offset is the real dependency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [offset]);
 
   return (

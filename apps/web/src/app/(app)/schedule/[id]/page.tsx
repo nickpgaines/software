@@ -20,10 +20,15 @@ export default async function JobDetailPage({
     );
     notFound();
   }
+  // Sync the embedded replica before the first read so the page reflects
+  // the latest committed state (fresh creation, price edit, reschedule
+  // from another instance). Mirrors GET /api/jobs/[id]; coalesced and a
+  // cheap no-op when not in replica mode.
+  await syncReplica();
   let job = await getJobDetail(db, id, companyId);
-  // A miss here right after creation almost always means the embedded
-  // replica on this instance hasn't synced the write from another
-  // instance yet. Force a sync and retry once before 404-ing the user.
+  // A miss here right after creation almost always means the write landed
+  // after the sync above started. Force one more sync and retry before
+  // 404-ing the user.
   if (!job) {
     await syncReplica();
     job = await getJobDetail(db, id, companyId);

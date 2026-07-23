@@ -10,6 +10,10 @@ import {
   PickerInput,
   StaffMultiPicker,
   StaffSinglePicker,
+  dateOnly,
+  endForNewStart,
+  parseLocal,
+  timeOnly,
   type Staff,
 } from "@/components/JobForm";
 import type { JobAttachment, JobAttachmentKind } from "@/lib/db";
@@ -39,6 +43,9 @@ type Detail = {
   customer_phone: string | null;
   customer_email: string | null;
   customer_address: string | null;
+  customer_latitude: number | null;
+  customer_longitude: number | null;
+  customer_formatted_address: string | null;
   scheduled_at: string;
   end_time: string | null;
   duration_minutes: number;
@@ -219,6 +226,97 @@ function combineLocal(date: string, time: string) {
 
 function uid() {
   return Math.random().toString(36).slice(2);
+}
+
+// Property location card. Prefers a Google Street View Static photo of the
+// home (like Homebase); degrades gracefully when Google isn't available:
+//   1. No API key            → keyless Google Maps iframe embed (works keyless).
+//   2. Street View metadata  → if imagery exists render the <img>, else the
+//      says no imagery / fails    iframe embed. Never a broken image.
+//   3. <img> network error   → fall back to the iframe embed.
+// The photo links out to Google Maps on tap.
+function JobLocationView({
+  address,
+  latitude,
+  longitude,
+  mapsAddr,
+}: {
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
+  mapsAddr: string;
+}) {
+  const key = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || "";
+  const location =
+    typeof latitude === "number" && typeof longitude === "number"
+      ? `${latitude},${longitude}`
+      : address;
+  const embedSrc = `https://maps.google.com/maps?q=${mapsAddr}&z=15&output=embed`;
+  const mapsHref = `https://www.google.com/maps?q=${mapsAddr}`;
+
+  // "checking" probes Street View metadata before committing to the photo so
+  // Google's gray "no imagery" placeholder never renders as if it were a home.
+  const [mode, setMode] = useState<"checking" | "streetview" | "embed">(
+    key ? "checking" : "embed"
+  );
+
+  useEffect(() => {
+    if (!key) {
+      setMode("embed");
+      return;
+    }
+    let cancelled = false;
+    setMode("checking");
+    const metaUrl = `https://maps.googleapis.com/maps/api/streetview/metadata?size=640x300&location=${encodeURIComponent(
+      location
+    )}&key=${key}`;
+    fetch(metaUrl)
+      .then((r) => r.json())
+      .then((d: { status?: string }) => {
+        if (cancelled) return;
+        setMode(d.status === "OK" ? "streetview" : "embed");
+      })
+      .catch(() => {
+        if (!cancelled) setMode("embed");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [key, location]);
+
+  if (mode === "embed") {
+    return (
+      <iframe
+        title="Map"
+        src={embedSrc}
+        className="w-full h-full"
+        loading="lazy"
+      />
+    );
+  }
+  if (mode === "checking") {
+    // Neutral fill while probing metadata — matches the wrapper, never broken.
+    return <div className="w-full h-full bg-black" />;
+  }
+  const streetViewSrc = `https://maps.googleapis.com/maps/api/streetview?size=640x300&location=${encodeURIComponent(
+    location
+  )}&key=${key}`;
+  return (
+    <a
+      href={mapsHref}
+      target="_blank"
+      rel="noreferrer"
+      className="block w-full h-full"
+    >
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src={streetViewSrc}
+        alt={`Street view of ${address}`}
+        className="w-full h-full object-cover"
+        onError={() => setMode("embed")}
+      />
+    </a>
+  );
 }
 
 export default function JobDetailClient({
@@ -549,11 +647,11 @@ export default function JobDetailClient({
             </div>
             {job.customer_address && (
               <div className="mt-4 rounded-2xl overflow-hidden border border-line aspect-[4/3] bg-black">
-                <iframe
-                  title="Map"
-                  src={`https://maps.google.com/maps?q=${mapsAddr}&z=15&output=embed`}
-                  className="w-full h-full"
-                  loading="lazy"
+                <JobLocationView
+                  address={job.customer_address}
+                  latitude={job.customer_latitude}
+                  longitude={job.customer_longitude}
+                  mapsAddr={mapsAddr}
                 />
               </div>
             )}
@@ -768,6 +866,33 @@ function JobDetailsSection({
     setRecurring(!!job.recurring);
   }
 
+  // Same scheduling behavior as JobForm: moving Start drags End along to
+  // preserve the current duration (falling back to +2h when the duration
+  // is missing or non-positive)…
+  function applyNewStart(newDate: string, newTime: string) {
+    const newStart = parseLocal(newDate, newTime);
+    setStartDate(newDate);
+    setStartTime(newTime);
+    if (!newStart) return;
+    const oldStart = parseLocal(startDate, startTime);
+    const oldEnd = parseLocal(endDate, endTime);
+    const newEnd = endForNewStart(newStart, oldStart, oldEnd);
+    setEndDate(dateOnly(newEnd));
+    setEndTime(timeOnly(newEnd));
+  }
+  // …and End can never land before Start — clamp back to Start.
+  function applyNewEnd(newDate: string, newTime: string) {
+    const start = parseLocal(startDate, startTime);
+    const end = parseLocal(newDate, newTime);
+    if (start && end && end.getTime() < start.getTime()) {
+      setEndDate(dateOnly(start));
+      setEndTime(timeOnly(start));
+      return;
+    }
+    setEndDate(newDate);
+    setEndTime(newTime);
+  }
+
   async function save() {
     setSaving(true);
     const ok = await onSave({
@@ -861,40 +986,41 @@ function JobDetailsSection({
       ) : (
         <div className="space-y-4">
           <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+            <div>
+              <Label className="block text-xs font-bold text-zinc-500 mb-2">
+                Start Date &amp; Time
+              </Label>
               <div className="flex items-center gap-2">
-                <Label className="text-xs font-bold text-zinc-500 w-10 shrink-0">
-                  Start
-                </Label>
                 <PickerInput
                   type="date"
                   value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
+                  onChange={(e) => applyNewStart(e.target.value, startTime)}
                   className="w-[150px]"
                 />
                 <PickerInput
                   type="time"
                   value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
+                  onChange={(e) => applyNewStart(startDate, e.target.value)}
                   disabled={anytime}
                   className="w-[110px]"
                 />
               </div>
+            </div>
+            <div>
+              <Label className="block text-xs font-bold text-zinc-500 mb-2">
+                End Date &amp; Time
+              </Label>
               <div className="flex items-center gap-2">
-                <Label className="text-xs font-bold text-zinc-500 w-8 shrink-0">
-                  End
-                </Label>
                 <PickerInput
                   type="date"
                   value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  disabled={anytime}
+                  onChange={(e) => applyNewEnd(e.target.value, endTime)}
                   className="w-[150px]"
                 />
                 <PickerInput
                   type="time"
                   value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
+                  onChange={(e) => applyNewEnd(endDate, e.target.value)}
                   disabled={anytime}
                   className="w-[110px]"
                 />
@@ -984,7 +1110,10 @@ function fromDetail(li: LineItemDetail): LineItemDraft {
     title: li.title,
     description: li.description ?? "",
     quantity: li.quantity,
-    price_cents: li.price_cents,
+    // Legacy rows can hold float cents (written before the Math.round
+    // guards existed) — normalize to integer cents on the way into the
+    // editor so displays and re-saves never perpetuate the drift.
+    price_cents: Math.round(li.price_cents),
     taxable: !!li.taxable,
     upsell: !!li.upsell,
     is_addon: !!li.is_addon,
@@ -1066,7 +1195,8 @@ function LineItemsSection({
         title: li.title,
         description: li.description,
         quantity: li.quantity,
-        price_cents: li.price_cents,
+        // Round on resubmit too — never perpetuate legacy float cents.
+        price_cents: Math.round(li.price_cents),
         taxable: !!li.taxable,
         upsell: !!li.upsell,
         is_addon: !!li.is_addon,

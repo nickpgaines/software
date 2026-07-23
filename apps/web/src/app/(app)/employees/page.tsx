@@ -1,6 +1,7 @@
 import { getDb, syncReplica, type Staff, type CustomRole } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
 import { BUILT_IN_ROLE_LABELS } from "@/lib/permissions";
+import { formatPhone as formatPhoneShared } from "@/lib/phone";
 import EmployeesClient, { type EmployeeRow } from "./EmployeesClient";
 
 export const dynamic = "force-dynamic";
@@ -13,14 +14,7 @@ function displayName(s: Staff): string {
 
 function formatPhone(raw: string | null): string {
   if (!raw) return "—";
-  const digits = raw.replace(/\D/g, "");
-  if (digits.length === 10) {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-  }
-  if (digits.length === 11 && digits.startsWith("1")) {
-    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
-  }
-  return raw;
+  return formatPhoneShared(raw);
 }
 
 function formatDate(iso: string): string {

@@ -84,6 +84,39 @@ function normalizeStatus(s: string): PinStatus | null {
   return null;
 }
 
+// Normalize a candidate created_by string: trim, collapse internal runs of
+// whitespace, and lowercase. Mirrors the LOWER(TRIM(...)) applied to the
+// stored column so both sides compare on equal footing.
+function normalizePinIdentifier(value: string | null | undefined): string {
+  return (value || "").trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+// Every identifier a pin dropped by this staff member could have been stored
+// under in map_pins.created_by: display name, email, and email local-part.
+// Returned de-duplicated and normalized for use in a LOWER(TRIM(...)) IN (…).
+function staffPinIdentifiers(
+  name: string | null,
+  email: string | null
+): string[] {
+  const candidates: string[] = [];
+  if (name) candidates.push(name);
+  if (email) {
+    candidates.push(email);
+    const local = email.split("@")[0];
+    if (local) candidates.push(local);
+  }
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const c of candidates) {
+    const n = normalizePinIdentifier(c);
+    if (n && !seen.has(n)) {
+      seen.add(n);
+      out.push(n);
+    }
+  }
+  return out;
+}
+
 export async function GET(
   req: Request,
   { params }: { params: { id: string } }
@@ -209,17 +242,31 @@ export async function GET(
     cents: otByDay.get(d.date) || 0,
   }));
 
-  // Pins dropped by this staff (matched by created_by name, like reports/sales).
-  const pinRows = (await db
-    .prepare(
-      `SELECT status, COUNT(*) AS n
-       FROM map_pins
-       WHERE company_id = ?
-         AND LOWER(created_by) = LOWER(?)
-         AND created_at >= ? AND created_at < ?
-       GROUP BY status`
-    )
-    .all(companyId, staff.name, start, end)) as { status: string; n: number }[];
+  // Pins dropped by this staff. map_pins.created_by stores the session
+  // identity — which for staff is their EMAIL, not their display name — so a
+  // plain name match returned 0. Match a normalized (trimmed, whitespace-
+  // collapsed, lowercased) created_by against every identifier the pin could
+  // have been stored under: the staff name, the email, and the email
+  // local-part. There is no staff_id/attribution column on map_pins, so this
+  // string set is the most reliable join available without a schema change.
+  const pinIdentifiers = staffPinIdentifiers(staff.name, staff.email);
+  const pinPlaceholders = pinIdentifiers.map(() => "?").join(", ");
+  const pinRows =
+    pinIdentifiers.length === 0
+      ? []
+      : ((await db
+          .prepare(
+            `SELECT status, COUNT(*) AS n
+             FROM map_pins
+             WHERE company_id = ?
+               AND LOWER(TRIM(created_by)) IN (${pinPlaceholders})
+               AND created_at >= ? AND created_at < ?
+             GROUP BY status`
+          )
+          .all(companyId, ...pinIdentifiers, start, end)) as {
+          status: string;
+          n: number;
+        }[]);
 
   const pin_counts: Record<PinStatus, number> = {
     sale: 0,

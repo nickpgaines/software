@@ -47,12 +47,13 @@ export function CardHeaderLink({
   );
 }
 
-// Picks the smallest "nice" chart-top >= v so 5 ticks (0, 25%, 50%, 75%, 100%)
-// cover the data tightly. Uses steps from {1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10} × 10^n
-// so e.g. 1098 → 1200 and 5425 → 6000 instead of jumping to 2000 / 10000.
+// Picks the smallest "nice" chart-top >= v so 4 ticks (0, ⅓, ⅔, 100%)
+// cover the data tightly — Homebase-style thirds ($0 / $2K / $4K / $6K).
+// The step comes from {1, 1.5, 2, 2.5, 3, 4, 5, 6, 8, 10} × 10^n and the
+// chart-top is 3 × step, so every tick lands on a clean step multiple.
 function niceCeil(v: number) {
   if (v <= 0) return 1;
-  const intervals = 4;
+  const intervals = 3;
   const rawStep = v / intervals;
   const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
   const norm = rawStep / mag;
@@ -117,6 +118,20 @@ export function CompactHeroKpi({
 // shows a crosshair, dot, and tooltip with the date + dollar value of the
 // nearest data point.
 
+// Light haptic tick for the touch scrub. Only fires inside the Capacitor
+// native shell — dynamic imports keep the plugin lazy and the browser path a
+// silent no-op. Best-effort: a haptics failure must never break the scrub.
+async function scrubHapticTick() {
+  try {
+    const { Capacitor } = await import("@capacitor/core");
+    if (!Capacitor.isNativePlatform()) return;
+    const { Haptics, ImpactStyle } = await import("@capacitor/haptics");
+    await Haptics.impact({ style: ImpactStyle.Light });
+  } catch {
+    // no-op — haptics are decoration, not behavior
+  }
+}
+
 function tooltipMoney(cents: number) {
   return `$${(cents / 100).toLocaleString(undefined, {
     minimumFractionDigits: 2,
@@ -156,6 +171,9 @@ export function HeroChart({
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
+  // Last index a haptic fired for — ticks only when the scrub crosses to a
+  // new data point, not on every touchmove.
+  const lastHapticIdx = useRef<number | null>(null);
   // Track container width so the SVG viewBox can match it 1:1 (otherwise the
   // fixed 1000-wide viewBox gets squished horizontally on phones and peaks
   // look like exaggerated tall thin spikes).
@@ -218,7 +236,7 @@ export function HeroChart({
     path += ` C ${cx},${y0} ${cx},${y1} ${x1},${y1}`;
   }
   const area = `${path} L ${x(days.length - 1)},${baseY} L ${x(0)},${baseY} Z`;
-  const yTicks = [0, niceMax / 4, niceMax / 2, (niceMax * 3) / 4, niceMax];
+  const yTicks = [0, niceMax / 3, (niceMax * 2) / 3, niceMax];
   const everyN = Math.max(1, Math.ceil(days.length / 10));
   const padLPct = (padL / w) * 100;
   const padRPct = (padR / w) * 100;
@@ -242,13 +260,23 @@ export function HeroChart({
     setHoverIdx(idxFromClientX(e.clientX));
   }
 
-  // Touch: tap or drag to inspect a day. We deliberately don't clear on
-  // touchend so the user can see the value after lifting their finger;
-  // tapping anywhere outside the plot clears it.
+  // Touch: press and drag to scrub. The crosshair/tooltip shows only while
+  // the finger is down — touchend/touchcancel clear it. Crossing to a new
+  // data point fires a light haptic tick in the native app.
   function onTouch(e: React.TouchEvent<HTMLDivElement>) {
     const t = e.touches[0];
     if (!t) return;
-    setHoverIdx(idxFromClientX(t.clientX));
+    const idx = idxFromClientX(t.clientX);
+    setHoverIdx(idx);
+    if (idx !== null && idx !== lastHapticIdx.current) {
+      lastHapticIdx.current = idx;
+      void scrubHapticTick();
+    }
+  }
+
+  function onTouchEnd() {
+    setHoverIdx(null);
+    lastHapticIdx.current = null;
   }
 
   const hovered = hoverIdx !== null ? days[hoverIdx] : null;
@@ -258,12 +286,17 @@ export function HeroChart({
   return (
     <div
       ref={containerRef}
-      className="relative w-full cursor-crosshair touch-none"
-      style={{ height: h }}
+      className="relative w-full cursor-crosshair touch-none select-none"
+      // WebkitTouchCallout kills the iOS long-press loupe / Copy-Look Up
+      // menu inside the Capacitor WKWebView — without it, press-and-hold
+      // scrubbing selects the axis labels instead of moving the crosshair.
+      style={{ height: h, WebkitTouchCallout: "none", WebkitUserSelect: "none" }}
       onMouseMove={onMove}
       onMouseLeave={() => setHoverIdx(null)}
       onTouchStart={onTouch}
       onTouchMove={onTouch}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchEnd}
     >
       <svg
         viewBox={`0 0 ${w} ${h}`}
@@ -527,6 +560,8 @@ export function RevenueHeroView({
   onCustomStartChange,
   onCustomEndChange,
   loading = false,
+  error = false,
+  onRetry,
 }: {
   days: RevenuePoint[];
   totalCents: number;
@@ -540,6 +575,10 @@ export function RevenueHeroView({
   onCustomStartChange?: (s: string) => void;
   onCustomEndChange?: (s: string) => void;
   loading?: boolean;
+  /** Last fetch failed. With no data to fall back on, a retry state renders
+      in place of the chart instead of a misleading "No data yet." */
+  error?: boolean;
+  onRetry?: () => void;
 }) {
   // Mobile range menu: "More ranges" expands the extended list inline (in the
   // same downward menu) rather than a side submenu, which clipped off the left
@@ -550,15 +589,15 @@ export function RevenueHeroView({
       className="rounded-2xl p-4 md:p-7"
       style={{ background: PULSE.card, border: `1px solid ${PULSE.cardBorder}` }}
     >
-      <div className="flex items-baseline justify-between mb-5 flex-wrap gap-3">
-        <div>
-          <div className="text-[14px] font-semibold mb-3 text-zinc-500">
-            {prefix} · {label}
+      <div className="flex items-start justify-between mb-5 flex-wrap gap-3">
+        {/* Homebase-style header: the range total is the card's anchor, sitting
+            on the top line with the "Revenue · …" label beneath it. */}
+        <div className="min-w-0">
+          <div className="text-[36px] md:text-[52px] font-black tracking-tight leading-none tabular-nums">
+            {days.length ? formatCentsShort(totalCents) : "—"}
           </div>
-          <div className="flex items-baseline gap-3">
-            <span className="text-[36px] md:text-[52px] font-black tracking-tight leading-none">
-              {days.length ? formatCentsShort(totalCents) : "—"}
-            </span>
+          <div className="text-[14px] font-semibold mt-2 text-zinc-500">
+            {prefix} · {label}
           </div>
         </div>
         <div className="flex flex-col items-end gap-2">
@@ -728,6 +767,35 @@ export function RevenueHeroView({
           className="rounded-xl animate-pulse"
           style={{ height, background: PULSE.bgAlt }}
         />
+      ) : error && days.length === 0 ? (
+        // Fetch failed with nothing cached — a retry affordance, not the
+        // "No data yet." empty state (that one is reserved for a successful
+        // response that genuinely has zero days).
+        <div
+          className="flex flex-col items-center justify-center gap-2.5"
+          style={{ height }}
+        >
+          <span
+            className="text-[13px] font-extrabold"
+            style={{ color: PULSE.textDim }}
+          >
+            Couldn&apos;t load revenue.
+          </span>
+          {onRetry && (
+            <button
+              type="button"
+              onClick={onRetry}
+              className="px-3.5 py-1 rounded-full text-[11.5px] font-extrabold"
+              style={{
+                background: PULSE.bgAlt,
+                color: PULSE.textMuted,
+                border: `1px solid ${PULSE.cardBorder}`,
+              }}
+            >
+              Retry
+            </button>
+          )}
+        </div>
       ) : (
         <HeroChart days={days} height={height} />
       )}
@@ -751,6 +819,12 @@ export function PulseChartHero({
   const [customEnd, setCustomEnd] = useState<string>(todayIso());
   const [data, setData] = useState<ApiRevenue | null>(null);
   const [loading, setLoading] = useState(true);
+  // Fetch failure is tracked separately from "successfully loaded zero days":
+  // /api/revenue always returns a dense zero-filled series, so an empty chart
+  // after a fetch means the request failed, not that there's no data. On
+  // error the last-good `data` is kept and the fetch retries on focus.
+  const [error, setError] = useState(false);
+  const [fetchNonce, setFetchNonce] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -764,9 +838,18 @@ export function PulseChartHero({
       params.set("sales_staff_id", String(salesStaffId));
     }
     fetch(`/api/revenue?${params.toString()}`)
-      .then((r) => r.json())
+      .then((r) => {
+        if (!r.ok) throw new Error(`revenue fetch failed: ${r.status}`);
+        return r.json();
+      })
       .then((d: ApiRevenue) => {
-        if (!cancelled) setData(d);
+        if (cancelled) return;
+        setData(d);
+        setError(false);
+      })
+      .catch(() => {
+        // Keep the last-good data (if any) on screen; just flag the failure.
+        if (!cancelled) setError(true);
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -774,7 +857,23 @@ export function PulseChartHero({
     return () => {
       cancelled = true;
     };
-  }, [range, customStart, customEnd, salesStaffId]);
+  }, [range, customStart, customEnd, salesStaffId, fetchNonce]);
+
+  // After a failure, retry automatically when the app comes back to the
+  // foreground (mobile webview resume / tab refocus).
+  useEffect(() => {
+    if (!error) return;
+    const onWake = () => {
+      if (document.visibilityState !== "visible") return;
+      setFetchNonce((n) => n + 1);
+    };
+    window.addEventListener("focus", onWake);
+    document.addEventListener("visibilitychange", onWake);
+    return () => {
+      window.removeEventListener("focus", onWake);
+      document.removeEventListener("visibilitychange", onWake);
+    };
+  }, [error]);
 
   const days = data?.days ?? [];
   const titleLabel =
@@ -807,6 +906,8 @@ export function PulseChartHero({
       onCustomStartChange={setCustomStart}
       onCustomEndChange={setCustomEnd}
       loading={loading && !data}
+      error={error}
+      onRetry={() => setFetchNonce((n) => n + 1)}
     />
   );
 }
@@ -1301,21 +1402,45 @@ export function PulseActivityCard({ jobs: _jobs }: { jobs: LiveJob[] }) {
   void _jobs;
   const [items, setItems] = useState<ActivityRow[]>([]);
   const [loading, setLoading] = useState(true);
+  // Failed fetches keep the last-good list on screen; the error state only
+  // surfaces when there's nothing cached to show. Retries happen on focus
+  // and via the 30s poll that keeps the "Live" badge honest.
+  const [error, setError] = useState(false);
+  const [fetchNonce, setFetchNonce] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/activity?limit=10")
-      .then((r) => (r.ok ? r.json() : []))
-      .then((rows: ActivityRow[]) => {
-        if (!cancelled) setItems(Array.isArray(rows) ? rows : []);
-      })
-      .finally(() => {
+
+    async function load() {
+      try {
+        const r = await fetch("/api/activity?limit=10");
+        if (!r.ok) throw new Error(`activity fetch failed: ${r.status}`);
+        const rows = (await r.json()) as ActivityRow[];
+        if (cancelled) return;
+        setItems(Array.isArray(rows) ? rows : []);
+        setError(false);
+      } catch {
+        if (!cancelled) setError(true);
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    }
+
+    load();
+    const poll = window.setInterval(load, 30_000);
+    const onWake = () => {
+      if (document.visibilityState !== "visible") return;
+      load();
+    };
+    window.addEventListener("focus", onWake);
+    document.addEventListener("visibilitychange", onWake);
     return () => {
       cancelled = true;
+      window.clearInterval(poll);
+      window.removeEventListener("focus", onWake);
+      document.removeEventListener("visibilitychange", onWake);
     };
-  }, []);
+  }, [fetchNonce]);
 
   return (
     <section
@@ -1333,6 +1458,27 @@ export function PulseActivityCard({ jobs: _jobs }: { jobs: LiveJob[] }) {
         >
           Loading…
         </p>
+      ) : error && items.length === 0 ? (
+        <div className="py-8 flex flex-col items-center gap-2.5">
+          <p
+            className="text-[12.5px] font-bold"
+            style={{ color: PULSE.textSubtle }}
+          >
+            Couldn&apos;t load activity.
+          </p>
+          <button
+            type="button"
+            onClick={() => setFetchNonce((n) => n + 1)}
+            className="px-3.5 py-1 rounded-full text-[11.5px] font-extrabold"
+            style={{
+              background: PULSE.bgAlt,
+              color: PULSE.textMuted,
+              border: `1px solid ${PULSE.cardBorder}`,
+            }}
+          >
+            Retry
+          </button>
+        </div>
       ) : items.length === 0 ? (
         <p
           className="py-8 text-center text-[12.5px] font-bold"
@@ -1341,7 +1487,9 @@ export function PulseActivityCard({ jobs: _jobs }: { jobs: LiveJob[] }) {
           No recent activity.
         </p>
       ) : (
-        <ul className="space-y-3.5">
+        // Capped at the widget's default height — long feeds scroll inside
+        // the card instead of stretching the page.
+        <ul className="space-y-3.5 max-h-80 overflow-y-auto">
           {items.map((it) => {
             const who = it.actor_name || "System";
             const { color, verb } = activityVerb(it.type);
