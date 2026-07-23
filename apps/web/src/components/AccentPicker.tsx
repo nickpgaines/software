@@ -70,6 +70,9 @@ export default function AccentPicker() {
     try {
       if (next) localStorage.setItem(STORAGE_KEY, next);
       else localStorage.removeItem(STORAGE_KEY);
+      // Any deliberate pick marks the one-shot old-default migration done,
+      // so the layout init script never clears a post-migration Violet pick.
+      localStorage.setItem("forge-accent-migrated", "1");
     } catch {
       // ignore
     }

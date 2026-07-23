@@ -66,6 +66,17 @@ const themeInitScript = `
     var t = localStorage.getItem('forge-theme');
     if (t === 'light') document.documentElement.setAttribute('data-theme', 'light');
     var a = localStorage.getItem('forge-accent');
+    // One-shot migration: #8b5cf6 was the app's original default accent, so
+    // long-time devices have it persisted even though the default is now
+    // white — clear it once. The marker keeps deliberate Violet picks made
+    // after this migration sticky (AccentPicker also sets the marker).
+    if (!localStorage.getItem('forge-accent-migrated')) {
+      localStorage.setItem('forge-accent-migrated', '1');
+      if (a === '#8b5cf6') {
+        localStorage.removeItem('forge-accent');
+        a = null;
+      }
+    }
     if (a && /^#[0-9a-fA-F]{6}$/.test(a)) {
       var r = parseInt(a.slice(1, 3), 16);
       var g = parseInt(a.slice(3, 5), 16);
