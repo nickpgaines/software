@@ -127,6 +127,6 @@ export async function middleware(req: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/|favicon.ico|favicon.png|manifest.json|sw.js|icons/|privacy|terms|sms-terms|sms-consent|sms-opt-in|about|data-deletion|connect-claude|\\.well-known/|api/login|api/signup|api/auth/|api/messages/webhook|api/twilio/|api/voice/outbound|api/voice/status|api/voice/recording|api/email/unsubscribe|api/stripe/webhook|api/integrations/meta/webhook|api/mcp/oauth/register|api/mcp/oauth/token|api/mcp/oauth/revoke|invoices/pay/|api/invoices/pay/|estimates/accept/|api/estimates/accept/|subscriptions/accept/|api/subscriptions/accept/).*)",
+    "/((?!_next/|favicon.ico|favicon.png|manifest.json|sw.js|icons/|privacy|terms|sms-terms|sms-consent|sms-opt-in|about|data-deletion|connect-claude|\\.well-known/|api/login|api/signup|api/auth/|api/messages/webhook|api/twilio/|api/voice/outbound|api/voice/status|api/voice/recording|api/email/unsubscribe|api/stripe/webhook|api/integrations/meta/webhook|api/mcp/oauth/register|api/mcp/oauth/token|api/mcp/oauth/revoke|invoices/pay/|api/invoices/pay/|estimates/accept/|api/estimates/accept/|subscriptions/accept/|api/subscriptions/accept/|forms/|api/lead-forms/submit/).*)",
   ],
 };
