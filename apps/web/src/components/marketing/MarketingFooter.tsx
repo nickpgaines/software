@@ -34,6 +34,9 @@ export function MarketingFooter() {
             <Link href="/about" className="hover:text-white transition-colors">
               About
             </Link>
+            <Link href="/support" className="hover:text-white transition-colors">
+              Support
+            </Link>
             <Link href="/terms" className="hover:text-white transition-colors">
               Terms
             </Link>
