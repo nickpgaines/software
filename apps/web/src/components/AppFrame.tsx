@@ -26,7 +26,7 @@ export function AppFrame({ children }: { children: React.ReactNode }) {
   }
   return (
     <main className="md:ml-60 overflow-x-hidden">
-      <div className="max-w-app mx-auto px-4 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:px-10 md:py-10">
+      <div className="max-w-app mx-auto px-4 pt-[calc(env(safe-area-inset-top)+1rem)] pb-[calc(3.75rem+env(safe-area-inset-bottom))] md:px-10 md:py-10">
         {children}
       </div>
     </main>

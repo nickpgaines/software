@@ -61,6 +61,13 @@ export default function MobileBottomNav() {
         background: PULSE.sidebar,
         borderTop: `1px solid ${PULSE.divider}`,
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        // Pinned rather than intrinsic. Full-height pages size themselves
+        // with calc(100dvh - 3.75rem - safe-area) (CalendarClient,
+        // MessagesClient) and scrolling pages reserve the same amount as
+        // bottom padding, so this bar has to be exactly that tall. When it
+        // was left intrinsic (~61.5px vs the 72px those pages assumed) the
+        // shortfall showed as a black seam above the tab bar.
+        height: "calc(3.75rem + env(safe-area-inset-bottom, 0px))",
       }}
       aria-label="Primary"
     >

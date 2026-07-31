@@ -120,12 +120,17 @@ export async function POST(req: Request) {
 
   try {
     await db.transaction(async (tx) => {
+      // company_id is required for the row to be visible: every jobs read
+      // in the app is scoped by `WHERE company_id = ?`. Omitting it (the
+      // column is nullable, so the INSERT still succeeds) silently
+      // produced orphan jobs that imported "successfully" but never showed
+      // up anywhere — see the customers importer, which has always set it.
       const insertJob = tx.prepare(
         `INSERT INTO jobs
-           (customer_id, scheduled_at, duration_minutes, price_cents,
-            status, notes, lead_source, technician_id, salesperson_id,
-            completed_at, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')))`
+           (company_id, customer_id, scheduled_at, duration_minutes,
+            price_cents, status, notes, lead_source, technician_id,
+            salesperson_id, completed_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, COALESCE(?, datetime('now')))`
       );
       const insertPayment = tx.prepare(
         `INSERT INTO payments
@@ -185,6 +190,7 @@ export async function POST(req: Request) {
         const completedAt = status === "completed" ? scheduledAt : null;
 
         const jobRes = await insertJob.run(
+          companyId,
           customerId,
           scheduledAt,
           60,
