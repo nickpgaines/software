@@ -122,12 +122,21 @@ function LoginPageInner() {
             <Label className="block text-xs font-bold text-zinc-500 mb-2">
               Email or username
             </Label>
+            {/* type="text" (not "email") because this field also takes a
+                username — but that costs us iOS's automatic capitalization
+                and autocorrect exemption, so opt out explicitly. Sign-in
+                still succeeded with a capitalized address (the route
+                lowercases the identifier); this is so the field doesn't
+                *look* wrong while typing on a phone. */}
             <Input
               type="text"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               placeholder="employee@example.com"
               autoComplete="username"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               className="w-full h-auto bg-black border-line-strong rounded-lg px-3 py-2.5 text-sm font-bold text-white placeholder-zinc-600 focus-visible:ring-violet-500/50 focus-visible:border-violet-500/50"
               autoFocus
             />
