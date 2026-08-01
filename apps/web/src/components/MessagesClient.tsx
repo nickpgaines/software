@@ -101,7 +101,7 @@ export default function MessagesClient() {
     conversations.find((c) => c.id === selectedId) || null;
 
   return (
-    <div className="flex flex-col bg-card overflow-hidden h-[calc(100dvh-4.5rem-env(safe-area-inset-bottom))] md:h-[100dvh]">
+    <div className="flex flex-col bg-card overflow-hidden h-[calc(100dvh-3.75rem-env(safe-area-inset-bottom))] md:h-[100dvh]">
       <div
         className={
           "shrink-0 " + (selected ? "hidden md:block" : "block")

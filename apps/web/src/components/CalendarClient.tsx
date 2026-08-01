@@ -469,7 +469,7 @@ export default function CalendarClient() {
     {/* Mobile: the header strip (incl. the notch inset) sits on bg-card, the
         same surface as the grid below, so no black canvas seam shows between
         them. Desktop keeps the transparent header + md:border-b divider. */}
-    <div className="relative h-[calc(100dvh-4.5rem-env(safe-area-inset-bottom))] md:h-[100dvh] flex flex-col overflow-hidden pt-[env(safe-area-inset-top)] md:pt-0 bg-card md:bg-transparent">
+    <div className="relative h-[calc(100dvh-3.75rem-env(safe-area-inset-bottom))] md:h-[100dvh] flex flex-col overflow-hidden pt-[env(safe-area-inset-top)] md:pt-0 bg-card md:bg-transparent">
       {/* Mobile padding matches the Home/Inbox headers (16px right + top) so
           the + quick-create button lands in the same spot on all three. */}
       <div className="px-4 md:px-6 py-4 flex items-center justify-between gap-2 md:gap-3 md:flex-wrap md:border-b md:border-line shrink-0">
