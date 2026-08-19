@@ -49,6 +49,17 @@ test("prevents administrative removal of the final employee", () => {
   );
 });
 
+test("prevents administrative removal of the sole administrator", () => {
+  assert.equal(
+    getAdministrativeRemovalBlock({
+      employeeCount: 3,
+      adminCount: 1,
+      targetIsAdmin: true,
+    }),
+    "final_admin"
+  );
+});
+
 test("rejects a team count with no employee", () => {
   assert.throws(
     () =>

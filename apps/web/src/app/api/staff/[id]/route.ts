@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { getDb, syncReplica, type Staff, type PermissionLevel } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
-import { requireCompanyId } from "@/lib/auth";
+import { getSessionContext, requireCompanyId } from "@/lib/auth";
+import { getAdministrativeRemovalBlock } from "@/lib/account-deletion-policy";
+import { buildMe } from "@/lib/me";
 
 export const dynamic = "force-dynamic";
 
@@ -206,9 +208,62 @@ export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  const companyId = await requireCompanyId();
+  const ctx = await getSessionContext();
+  if (!ctx) {
+    return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  }
+  const me = await buildMe(ctx);
+  if (!me.permissions.includes("team.manage")) {
+    return NextResponse.json(
+      { error: "You do not have permission to remove employees." },
+      { status: 403 }
+    );
+  }
+
+  const companyId = ctx.companyId;
   const db = await getDb();
   const id = Number(params.id);
+  const target = (await db
+    .prepare("SELECT * FROM staff WHERE id = ? AND company_id = ?")
+    .get(id, companyId)) as Staff | undefined;
+  if (!target) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const counts = await db
+    .prepare(
+      `SELECT
+         COUNT(*) AS employee_count,
+         SUM(CASE WHEN permission_level = 'admin' THEN 1 ELSE 0 END) AS admin_count
+       FROM staff
+       WHERE company_id = ?`
+    )
+    .get<{ employee_count: number; admin_count: number | null }>(companyId);
+  const block = getAdministrativeRemovalBlock({
+    employeeCount: Number(counts?.employee_count ?? 0),
+    adminCount: Number(counts?.admin_count ?? 0),
+    targetIsAdmin: target.permission_level === "admin",
+  });
+  if (block === "final_employee") {
+    return NextResponse.json(
+      {
+        error:
+          "The last employee must delete the organization from Settings > Profile > Delete account.",
+        reason: block,
+      },
+      { status: 409 }
+    );
+  }
+  if (block === "final_admin") {
+    return NextResponse.json(
+      {
+        error: "Promote another employee to administrator before removing this employee.",
+        reason: block,
+      },
+      { status: 409 }
+    );
+  }
+
   await db
     .prepare("DELETE FROM staff WHERE id = ? AND company_id = ?")
     .run(id, companyId);
