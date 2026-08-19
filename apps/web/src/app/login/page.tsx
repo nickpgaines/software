@@ -34,6 +34,7 @@ function LoginPageInner() {
   const oauthError = oauthErrorCode
     ? OAUTH_ERROR_MESSAGES[oauthErrorCode] || "Sign-in failed. Please try again."
     : null;
+  const accountDeleted = searchParams.get("deleted") === "1";
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -123,6 +124,11 @@ function LoginPageInner() {
         {oauthError && (
           <div className="mb-4 text-sm font-bold text-red-400 bg-red-500/10 border border-red-500/30 rounded-lg p-3">
             {oauthError}
+          </div>
+        )}
+        {accountDeleted && (
+          <div className="mb-4 text-sm font-bold text-emerald-300 bg-emerald-500/10 border border-emerald-500/30 rounded-lg p-3">
+            Your account has been deleted.
           </div>
         )}
         <form
