@@ -48,3 +48,27 @@ test("prevents administrative removal of the final employee", () => {
     "final_employee"
   );
 });
+
+test("rejects a team count with no employee", () => {
+  assert.throws(
+    () =>
+      decideSelfDeletion({
+        employeeCount: 0,
+        adminCount: 0,
+        actorIsAdmin: false,
+      }),
+    RangeError
+  );
+});
+
+test("rejects an administrator count larger than the team", () => {
+  assert.throws(
+    () =>
+      decideSelfDeletion({
+        employeeCount: 2,
+        adminCount: 3,
+        actorIsAdmin: true,
+      }),
+    RangeError
+  );
+});
