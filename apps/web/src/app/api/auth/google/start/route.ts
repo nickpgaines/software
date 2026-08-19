@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
+import { canStartGoogleOAuth, NATIVE_APP_COOKIE } from "@/lib/native-auth";
 import { OAUTH_STATE_COOKIE, createOAuthState } from "@/lib/oauth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
+  if (!canStartGoogleOAuth(cookies().get(NATIVE_APP_COOKIE)?.value)) {
+    return NextResponse.redirect(new URL("/login", req.url));
+  }
+
   const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID?.trim();
   if (!clientId) {
     return NextResponse.redirect(

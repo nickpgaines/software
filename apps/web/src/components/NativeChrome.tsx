@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import type { PluginListenerHandle } from "@capacitor/core";
 import { isNativeApp } from "@/lib/native";
+import { NATIVE_APP_COOKIE } from "@/lib/native-auth";
 
 // One-time native UX chrome setup for the Capacitor shell (Phase 3/4). No-op in
 // any browser. Plugins are imported dynamically so they never load during SSR
@@ -12,6 +13,8 @@ import { isNativeApp } from "@/lib/native";
 export function NativeChrome() {
   useEffect(() => {
     if (!isNativeApp()) return;
+    const secure = window.location.protocol === "https:" ? "; Secure" : "";
+    document.cookie = `${NATIVE_APP_COOKIE}=1; Path=/; SameSite=Lax; Max-Age=${60 * 60 * 24 * 30}${secure}`;
     let cancelled = false;
     const handles: PluginListenerHandle[] = [];
     let themeObserver: MutationObserver | null = null;
