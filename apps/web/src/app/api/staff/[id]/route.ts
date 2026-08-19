@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { getDb, syncReplica, type Staff, type PermissionLevel } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
 import { getSessionContext, requireCompanyId } from "@/lib/auth";
-import { getAdministrativeRemovalBlock } from "@/lib/account-deletion-policy";
 import { buildMe } from "@/lib/me";
+import { removeStaffWithSafeguards } from "@/lib/administrative-staff-removal";
 
 export const dynamic = "force-dynamic";
 
@@ -223,50 +223,43 @@ export async function DELETE(
   const companyId = ctx.companyId;
   const db = await getDb();
   const id = Number(params.id);
-  const target = (await db
-    .prepare("SELECT * FROM staff WHERE id = ? AND company_id = ?")
-    .get(id, companyId)) as Staff | undefined;
-  if (!target) {
+  const result = await removeStaffWithSafeguards({
+    db,
+    companyId,
+    actorStaffId: ctx.staffId,
+    targetStaffId: id,
+  });
+  if (result.kind === "not_found") {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-
-  const counts = await db
-    .prepare(
-      `SELECT
-         COUNT(*) AS employee_count,
-         SUM(CASE WHEN permission_level = 'admin' THEN 1 ELSE 0 END) AS admin_count
-       FROM staff
-       WHERE company_id = ?`
-    )
-    .get<{ employee_count: number; admin_count: number | null }>(companyId);
-  const block = getAdministrativeRemovalBlock({
-    employeeCount: Number(counts?.employee_count ?? 0),
-    adminCount: Number(counts?.admin_count ?? 0),
-    targetIsAdmin: target.permission_level === "admin",
-  });
-  if (block === "final_employee") {
+  if (result.kind === "self_deletion") {
+    return NextResponse.json(
+      {
+        error:
+          "Delete your own account from Settings > Profile > Delete account.",
+      },
+      { status: 409 }
+    );
+  }
+  if (result.kind === "blocked" && result.reason === "final_employee") {
     return NextResponse.json(
       {
         error:
           "The last employee must delete the organization from Settings > Profile > Delete account.",
-        reason: block,
+        reason: result.reason,
       },
       { status: 409 }
     );
   }
-  if (block === "final_admin") {
+  if (result.kind === "blocked" && result.reason === "final_admin") {
     return NextResponse.json(
       {
         error: "Promote another employee to administrator before removing this employee.",
-        reason: block,
+        reason: result.reason,
       },
       { status: 409 }
     );
   }
-
-  await db
-    .prepare("DELETE FROM staff WHERE id = ? AND company_id = ?")
-    .run(id, companyId);
   await syncReplica();
   return NextResponse.json({ ok: true });
 }

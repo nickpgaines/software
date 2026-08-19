@@ -6,7 +6,12 @@ import { OAUTH_STATE_COOKIE, createOAuthState } from "@/lib/oauth";
 export const dynamic = "force-dynamic";
 
 export async function GET(req: Request) {
-  if (!canStartGoogleOAuth(cookies().get(NATIVE_APP_COOKIE)?.value)) {
+  if (
+    !canStartGoogleOAuth(
+      cookies().get(NATIVE_APP_COOKIE)?.value,
+      req.headers.get("user-agent")
+    )
+  ) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 

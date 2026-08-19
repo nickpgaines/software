@@ -13,6 +13,7 @@ import { getDb, syncReplica, type Company, type Db, type Staff } from "@/lib/db"
 import { verifyPassword } from "@/lib/password";
 import { getStripe, isStripeConfigured } from "@/lib/stripe";
 import { getMasterCreds } from "@/lib/twilio-platform";
+import { deleteTenantDataWithoutForeignKeyCascades } from "@/lib/tenant-deletion";
 
 export const dynamic = "force-dynamic";
 
@@ -227,6 +228,7 @@ export async function DELETE(req: Request) {
       return { kind: "deleted", scope };
     }
 
+    await deleteTenantDataWithoutForeignKeyCascades(tx, ctx.companyId);
     await tx.prepare("DELETE FROM company WHERE id = ?").run(ctx.companyId);
     return { kind: "deleted", scope, company: state.company };
   });

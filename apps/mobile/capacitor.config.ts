@@ -33,6 +33,11 @@ const config: CapacitorConfig = {
   appId: 'app.forgecrm',
   appName: 'Forge',
   webDir: 'www',
+  // Sent by the native WebView before its first hosted navigation. The web
+  // server uses it to prevent web-only Google OAuth from being started in the
+  // mobile app; it is intentionally appended rather than replacing the
+  // platform's normal user agent.
+  appendUserAgent: 'ForgeNative/1',
   server: {
     url: serverUrl,
     cleartext: isCleartext,
