@@ -63,7 +63,11 @@ export default function DataDeletionPage() {
             How to request deletion
           </h2>
           <p>
-            <strong className="text-white">Option 1 &mdash; Email us.</strong> Send an email to{" "}
+            <strong className="text-white">Business account holders.</strong> Sign in to Forge and go to{" "}
+            <strong className="text-white">Settings &rarr; Profile &rarr; Delete account</strong> to begin deletion in the app. If you are the last employee in an organization, Forge clearly explains that this also deletes the organization and its CRM data before you confirm.
+          </p>
+          <p>
+            <strong className="text-white">Can&apos;t access your account?</strong> Send an email to{" "}
             <a
               href="mailto:nick@homeserviceascension.com?subject=Data%20Deletion%20Request"
               className="text-violet-400 hover:text-violet-300 font-extrabold"
@@ -98,7 +102,7 @@ export default function DataDeletionPage() {
           </p>
 
           <p>
-            <strong className="text-white">Option 2 &mdash; Remove the app on Facebook.</strong> If
+            <strong className="text-white">Facebook connection removal.</strong> If
             you are a Facebook user who connected the Service to your
             Facebook Page or Meta Business account, you can revoke our
             access at any time:
@@ -132,14 +136,12 @@ export default function DataDeletionPage() {
             Removing the app on Facebook does <em>not</em> delete records
             that a Customer entered manually into their own CRM (for
             example, a customer record the Customer typed in themselves).
-            To delete those records, use Option 1 and identify the
-            business holding the record, or contact that business
-            directly.
+            To delete those records, identify the business holding the
+            record or contact that business directly.
           </p>
 
           <p>
-            <strong className="text-white">Option 3 &mdash; Contact the business that collected your
-            information.</strong> Customers control the data in their own
+            <strong className="text-white">End-user records.</strong> Customers control the data in their own
             account and can delete End-User records directly. If you know
             which business collected your information, contacting them is
             usually the fastest route.

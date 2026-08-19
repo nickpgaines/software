@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { getDb, syncReplica, type Staff, type PermissionLevel } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
-import { requireCompanyId } from "@/lib/auth";
+import { getSessionContext, requireCompanyId } from "@/lib/auth";
+import { buildMe } from "@/lib/me";
+import { removeStaffWithSafeguards } from "@/lib/administrative-staff-removal";
 
 export const dynamic = "force-dynamic";
 
@@ -206,12 +208,58 @@ export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  const companyId = await requireCompanyId();
+  const ctx = await getSessionContext();
+  if (!ctx) {
+    return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  }
+  const me = await buildMe(ctx);
+  if (!me.permissions.includes("team.manage")) {
+    return NextResponse.json(
+      { error: "You do not have permission to remove employees." },
+      { status: 403 }
+    );
+  }
+
+  const companyId = ctx.companyId;
   const db = await getDb();
   const id = Number(params.id);
-  await db
-    .prepare("DELETE FROM staff WHERE id = ? AND company_id = ?")
-    .run(id, companyId);
+  const result = await removeStaffWithSafeguards({
+    db,
+    companyId,
+    actorStaffId: ctx.staffId,
+    targetStaffId: id,
+  });
+  if (result.kind === "not_found") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  if (result.kind === "self_deletion") {
+    return NextResponse.json(
+      {
+        error:
+          "Delete your own account from Settings > Profile > Delete account.",
+      },
+      { status: 409 }
+    );
+  }
+  if (result.kind === "blocked" && result.reason === "final_employee") {
+    return NextResponse.json(
+      {
+        error:
+          "The last employee must delete the organization from Settings > Profile > Delete account.",
+        reason: result.reason,
+      },
+      { status: 409 }
+    );
+  }
+  if (result.kind === "blocked" && result.reason === "final_admin") {
+    return NextResponse.json(
+      {
+        error: "Promote another employee to administrator before removing this employee.",
+        reason: result.reason,
+      },
+      { status: 409 }
+    );
+  }
   await syncReplica();
   return NextResponse.json({ ok: true });
 }

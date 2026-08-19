@@ -5,6 +5,14 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -413,8 +421,200 @@ function ProfilePanel({
           <div className="pt-6 border-t border-line">
             <AccentPicker />
           </div>
+          {!isAdminEnv && staff && <AccountDeletionSection />}
         </>
       )}
+    </div>
+  );
+}
+
+type AccountDeletionPreview = {
+  scope: "employee" | "organization";
+  companyName: string;
+  employeeCount: number;
+  adminCount: number;
+  blockedReason: "last_admin" | null;
+};
+
+function AccountDeletionSection() {
+  const router = useRouter();
+  const [open, setOpen] = useState(false);
+  const [preview, setPreview] = useState<AccountDeletionPreview | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  async function loadPreview() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/account/deletion", { cache: "no-store" });
+      const data = (await res.json().catch(() => ({}))) as
+        | AccountDeletionPreview
+        | { error?: string };
+      if (!res.ok || !("scope" in data)) {
+        setPreview(null);
+        setError(("error" in data && data.error) || "Could not load deletion details.");
+        return;
+      }
+      setPreview(data);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function changeOpen(next: boolean) {
+    setOpen(next);
+    if (!next) {
+      setPreview(null);
+      setPassword("");
+      setConfirmation("");
+      setError(null);
+      return;
+    }
+    void loadPreview();
+  }
+
+  async function submit() {
+    if (!preview) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/account/deletion", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          password,
+          confirmation,
+          expected_scope: preview.scope,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) {
+        setError(data.error || "Could not delete your account.");
+        if (res.status === 409) void loadPreview();
+        return;
+      }
+      router.replace("/login?deleted=1");
+      router.refresh();
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  const organizationDeletion = preview?.scope === "organization";
+  const blocked = preview?.blockedReason === "last_admin";
+  const canSubmit =
+    !!preview &&
+    !blocked &&
+    !!password &&
+    (!organizationDeletion || confirmation === "DELETE");
+
+  return (
+    <div className="pt-6 border-t border-line">
+      <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-5 sm:p-6">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="text-[15px] font-extrabold tracking-tight text-white">
+              Delete account
+            </h3>
+            <p className="mt-1 text-xs font-bold text-zinc-400">
+              Permanently remove your account and its associated data.
+            </p>
+          </div>
+          <Dialog open={open} onOpenChange={changeOpen}>
+            <Button variant="destructive" type="button" onClick={() => changeOpen(true)}>
+              Delete account
+            </Button>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>
+                  {organizationDeletion ? "Delete organization" : "Delete account"}
+                </DialogTitle>
+                <DialogDescription>
+                  This action cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+
+              {loading && <p className="text-sm font-bold text-zinc-400">Loading deletion details…</p>}
+
+              {!loading && error && (
+                <p className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm font-bold text-red-300">
+                  {error}
+                </p>
+              )}
+
+              {!loading && preview && blocked && (
+                <div className="space-y-3 text-sm font-bold text-zinc-300">
+                  <p>
+                    You are the only administrator for {preview.companyName}. Promote another employee before deleting your account.
+                  </p>
+                  <a href="/employees" className="text-sm font-extrabold text-white hover:text-zinc-300">
+                    Go to Employees →
+                  </a>
+                </div>
+              )}
+
+              {!loading && preview && !blocked && (
+                <div className="space-y-4">
+                  <p className="text-sm font-bold text-zinc-300">
+                    {organizationDeletion
+                      ? `You are the last employee at ${preview.companyName}. This permanently deletes the organization, its employees, customers, jobs, messages, invoices, settings, and other CRM data.`
+                      : `Other employees will remain at ${preview.companyName}. This deletes only your login, profile, and personal connections; organization records remain available to your team.`}
+                  </p>
+                  <div className="space-y-2">
+                    <Label htmlFor="delete-account-password">Current password</Label>
+                    <Input
+                      id="delete-account-password"
+                      type="password"
+                      value={password}
+                      onChange={(event) => setPassword(event.target.value)}
+                      autoComplete="current-password"
+                    />
+                  </div>
+                  {organizationDeletion && (
+                    <div className="space-y-2">
+                      <Label htmlFor="delete-organization-confirmation">
+                        Type DELETE to confirm
+                      </Label>
+                      <Input
+                        id="delete-organization-confirmation"
+                        value={confirmation}
+                        onChange={(event) => setConfirmation(event.target.value)}
+                        autoCapitalize="characters"
+                        autoCorrect="off"
+                        spellCheck={false}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <DialogFooter>
+                <Button variant="outline" type="button" onClick={() => changeOpen(false)}>
+                  Cancel
+                </Button>
+                {!blocked && preview && (
+                  <Button
+                    variant="destructive"
+                    type="button"
+                    disabled={!canSubmit || submitting}
+                    onClick={submit}
+                  >
+                    {submitting
+                      ? "Deleting…"
+                      : organizationDeletion
+                      ? "Delete organization"
+                      : "Delete account"}
+                  </Button>
+                )}
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
     </div>
   );
 }
