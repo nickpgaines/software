@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, syncReplica } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
+import { getLeaderboardRows } from "@/lib/widget-metrics";
 
 export const dynamic = "force-dynamic";
 
@@ -63,32 +64,13 @@ export async function GET(req: Request) {
     url.searchParams.get("to")
   );
 
-  const rows = (await db
-    .prepare(
-      `SELECT s.id, s.name, s.role, s.permission_level, s.photo_url, s.color,
-              COALESCE(SUM(j.price_cents), 0) AS revenue_cents,
-              COUNT(j.id) AS job_count,
-              MAX(j.scheduled_at) AS last_sale_at
-       FROM staff s
-       LEFT JOIN job_assignments ja ON ja.staff_id = s.id AND ja.role = ?
-       LEFT JOIN jobs j ON j.id = ja.job_id
-         AND j.company_id = ?
-         AND j.scheduled_at >= ? AND j.scheduled_at < ?
-       WHERE s.company_id = ?
-       GROUP BY s.id
-       ORDER BY revenue_cents DESC, s.name COLLATE NOCASE ASC`
-    )
-    .all(role, companyId, start, end, companyId)) as {
-    id: number;
-    name: string;
-    role: string | null;
-    permission_level: string | null;
-    photo_url: string | null;
-    color: string | null;
-    revenue_cents: number;
-    job_count: number;
-    last_sale_at: string | null;
-  }[];
+  const rows = await getLeaderboardRows(
+    db,
+    companyId,
+    role,
+    new Date(start),
+    new Date(end)
+  );
 
   return NextResponse.json({ range, view, start, end, rows });
 }
