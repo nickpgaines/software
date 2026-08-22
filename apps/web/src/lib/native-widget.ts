@@ -1,11 +1,16 @@
-type WidgetCredential = {
+export type WidgetCredential = {
   token: string;
   company_id: number;
   staff_id: number;
   expires_at: string;
 };
 
-type ForgeWidgetPlugin = {
+type WidgetPrincipal = {
+  company_id: number;
+  staff_id: number;
+};
+
+export type ForgeWidgetPlugin = {
   getInstallation(): Promise<{ installation_id: string }>;
   storeCredential(credential: WidgetCredential): Promise<void>;
   credentialMetadata(): Promise<{ credential: WidgetCredential | null }>;
@@ -13,8 +18,13 @@ type ForgeWidgetPlugin = {
   refreshSnapshot(): Promise<{ refreshed: boolean; reconnect?: boolean }>;
 };
 
+type PluginLoader = () => Promise<ForgeWidgetPlugin | null>;
+type Fetcher = (
+  input: RequestInfo | URL,
+  init?: RequestInit
+) => Promise<Response>;
+
 let pluginPromise: Promise<ForgeWidgetPlugin | null> | null = null;
-let bootstrapPromise: Promise<void> | null = null;
 
 async function nativeWidgetPlugin(): Promise<ForgeWidgetPlugin | null> {
   if (typeof window === "undefined") return null;
@@ -41,70 +51,155 @@ export function widgetCredentialNeedsRefresh(
   return expiresAt - now.getTime() <= 30 * 24 * 60 * 60 * 1000;
 }
 
-async function bootstrapNativeWidgetCredential(): Promise<void> {
-  const plugin = await nativeWidgetPlugin();
-  if (!plugin) return;
-
-  const { credential } = await plugin.credentialMetadata();
-  if (!widgetCredentialNeedsRefresh(credential)) {
-    const refreshed = await plugin.refreshSnapshot();
-    if (!refreshed.reconnect) return;
-  }
-
-  const { installation_id } = await plugin.getInstallation();
-  const response = await fetch("/api/widget/token", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ installation_id }),
-  });
-  if (!response.ok) return;
-  const issued = (await response.json()) as WidgetCredential;
-  if (
-    !issued.token ||
-    !Number.isInteger(issued.company_id) ||
-    !Number.isInteger(issued.staff_id) ||
-    !Number.isFinite(new Date(issued.expires_at).getTime())
-  ) {
-    return;
-  }
-  await plugin.storeCredential(issued);
-  await plugin.refreshSnapshot();
+function validPrincipal(value: unknown): value is WidgetPrincipal {
+  if (!value || typeof value !== "object") return false;
+  const principal = value as WidgetPrincipal;
+  return (
+    Number.isInteger(principal.company_id) && Number.isInteger(principal.staff_id)
+  );
 }
 
-export async function ensureNativeWidgetCredential(): Promise<void> {
-  if (!bootstrapPromise) {
-    bootstrapPromise = bootstrapNativeWidgetCredential()
-      .catch(() => {
-        // Widget setup is best-effort and must never block the hosted app.
-      })
-      .finally(() => {
-        bootstrapPromise = null;
-      });
+function validCredential(value: unknown): value is WidgetCredential {
+  if (!value || typeof value !== "object") return false;
+  const credential = value as WidgetCredential;
+  return (
+    typeof credential.token === "string" &&
+    credential.token.length > 0 &&
+    validPrincipal(credential) &&
+    Number.isFinite(new Date(credential.expires_at).getTime())
+  );
+}
+
+export class NativeWidgetCredentialLifecycle {
+  private bootstrapPromise: Promise<void> | null = null;
+  private generation = 0;
+  private loggingOut = false;
+  private readonly loadPlugin: PluginLoader;
+  private readonly request: Fetcher;
+
+  constructor(loadPlugin: PluginLoader, request: Fetcher) {
+    this.loadPlugin = loadPlugin;
+    this.request = request;
   }
-  await bootstrapPromise;
+
+  private async revoke(token: string) {
+    await this.request("/api/widget/token", {
+      method: "DELETE",
+      headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => undefined);
+  }
+
+  private async bootstrap(generation: number) {
+    const plugin = await this.loadPlugin();
+    if (!plugin || this.loggingOut || generation !== this.generation) return;
+
+    const principalResponse = await this.request("/api/widget/token", {
+      method: "GET",
+    });
+    if (!principalResponse.ok) return;
+    const principal = (await principalResponse.json().catch(() => null)) as unknown;
+    if (!validPrincipal(principal)) return;
+
+    let { credential } = await plugin.credentialMetadata();
+    if (
+      credential &&
+      (credential.company_id !== principal.company_id ||
+        credential.staff_id !== principal.staff_id)
+    ) {
+      await this.revoke(credential.token);
+      await plugin.clearCredential();
+      credential = null;
+    }
+
+    if (!widgetCredentialNeedsRefresh(credential)) {
+      const refreshed = await plugin.refreshSnapshot();
+      if (!refreshed.reconnect) return;
+    }
+
+    const { installation_id } = await plugin.getInstallation();
+    const response = await this.request("/api/widget/token", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ installation_id }),
+    });
+    if (!response.ok) return;
+    const issued = (await response.json().catch(() => null)) as unknown;
+    if (
+      !validCredential(issued) ||
+      issued.company_id !== principal.company_id ||
+      issued.staff_id !== principal.staff_id
+    ) {
+      return;
+    }
+
+    if (this.loggingOut || generation !== this.generation) {
+      await this.revoke(issued.token);
+      return;
+    }
+    await plugin.storeCredential(issued);
+    if (this.loggingOut || generation !== this.generation) {
+      await plugin.clearCredential();
+      await this.revoke(issued.token);
+      return;
+    }
+    await plugin.refreshSnapshot();
+  }
+
+  async ensure(): Promise<void> {
+    if (this.loggingOut) return;
+    if (!this.bootstrapPromise) {
+      const generation = this.generation;
+      const promise = this.bootstrap(generation)
+        .catch(() => {
+          // Widget setup is best-effort and must never block the hosted app.
+        })
+        .finally(() => {
+          if (this.bootstrapPromise === promise) this.bootstrapPromise = null;
+        });
+      this.bootstrapPromise = promise;
+    }
+    await this.bootstrapPromise;
+  }
+
+  async clear(): Promise<void> {
+    const plugin = await this.loadPlugin();
+    if (!plugin) return;
+    try {
+      const { credential } = await plugin.credentialMetadata();
+      if (credential?.token) await this.revoke(credential.token);
+    } finally {
+      await plugin.clearCredential();
+    }
+  }
+
+  async logout(): Promise<void> {
+    this.loggingOut = true;
+    this.generation += 1;
+    try {
+      await this.bootstrapPromise;
+      await this.clear().catch(() => undefined);
+      await this.request("/api/logout", { method: "POST" });
+    } finally {
+      const plugin = await this.loadPlugin().catch(() => null);
+      await plugin?.clearCredential().catch(() => undefined);
+      this.loggingOut = false;
+    }
+  }
+}
+
+const lifecycle = new NativeWidgetCredentialLifecycle(
+  nativeWidgetPlugin,
+  (input, init) => fetch(input, init)
+);
+
+export async function ensureNativeWidgetCredential(): Promise<void> {
+  await lifecycle.ensure();
 }
 
 export async function clearNativeWidgetCredential(): Promise<void> {
-  const plugin = await nativeWidgetPlugin();
-  if (!plugin) return;
-  try {
-    const { credential } = await plugin.credentialMetadata();
-    if (credential?.token) {
-      await fetch("/api/widget/token", {
-        method: "DELETE",
-        headers: { Authorization: `Bearer ${credential.token}` },
-      }).catch(() => undefined);
-    }
-  } finally {
-    await plugin.clearCredential();
-  }
+  await lifecycle.clear();
 }
 
 export async function logoutForgeSession(): Promise<void> {
-  try {
-    await clearNativeWidgetCredential();
-  } catch {
-    // Local cleanup is retried by the native bridge; web logout must continue.
-  }
-  await fetch("/api/logout", { method: "POST" });
+  await lifecycle.logout();
 }

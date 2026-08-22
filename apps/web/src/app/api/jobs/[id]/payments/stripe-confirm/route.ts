@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { getDb, type Payment } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
-import { autoCompleteSteps } from "@/lib/jobs";
+import {
+  autoCompleteSteps,
+  dispatchPaymentCompletionNotification,
+} from "@/lib/payment-job-completion";
 import {
   getStripe,
   isStripeConfigured,
@@ -107,7 +110,7 @@ export async function POST(
   const payment_date = new Date().toISOString().slice(0, 10);
   const notes = body.notes ? String(body.notes) : null;
 
-  const insertedId = await db.transaction(async (tx) => {
+  const { insertedId, completedChanged } = await db.transaction(async (tx) => {
     const result = await tx
       .prepare(
         `INSERT INTO payments
@@ -126,8 +129,15 @@ export async function POST(
         send_sms,
         intentId
       );
-    await autoCompleteSteps(tx, jobId, companyId);
-    return Number(result.lastInsertRowid);
+    const completedChanged = await autoCompleteSteps(tx, jobId, companyId);
+    return { insertedId: Number(result.lastInsertRowid), completedChanged };
+  });
+
+  await dispatchPaymentCompletionNotification({
+    db,
+    companyId,
+    jobId,
+    changed: completedChanged,
   });
 
   const created = (await db

@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isWidgetBearerRoute } from "./lib/widget-http";
 
 const COOKIE_NAME = "crm_session";
 const encoder = new TextEncoder();
@@ -85,6 +86,12 @@ export async function middleware(req: NextRequest) {
   // cookie session. Skip the cookie check so Claude (which has no cookie)
   // can reach it; the route handler enforces auth itself.
   if (pathname === "/api/mcp") {
+    return NextResponse.next();
+  }
+
+  // WidgetKit refreshes in the background without the web session cookie.
+  // These two operations authenticate their scoped bearer token in the route.
+  if (isWidgetBearerRoute(req)) {
     return NextResponse.next();
   }
 

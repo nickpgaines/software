@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { getDb, type Payment, type PaymentMethod } from "@/lib/db";
 import { getSessionContext } from "@/lib/auth";
-import { autoCompleteSteps } from "@/lib/jobs";
+import {
+  autoCompleteSteps,
+  dispatchPaymentCompletionNotification,
+} from "@/lib/payment-job-completion";
 import { sendPaymentReceipt } from "@/lib/payment-receipts";
 import { recordActivity } from "@/lib/activity";
 
@@ -107,7 +110,7 @@ export async function POST(
   // Atomic: insert the payment row AND auto-complete any unset work
   // steps in the same transaction. If anything throws, BOTH the row
   // and the step timestamps roll back.
-  const insertedId = await db.transaction(async (tx) => {
+  const { insertedId, completedChanged } = await db.transaction(async (tx) => {
     const result = await tx
       .prepare(
         `INSERT INTO payments
@@ -125,8 +128,15 @@ export async function POST(
         send_email,
         send_sms
       );
-    await autoCompleteSteps(tx, jobId, companyId);
-    return Number(result.lastInsertRowid);
+    const completedChanged = await autoCompleteSteps(tx, jobId, companyId);
+    return { insertedId: Number(result.lastInsertRowid), completedChanged };
+  });
+
+  await dispatchPaymentCompletionNotification({
+    db,
+    companyId,
+    jobId,
+    changed: completedChanged,
   });
 
   const created = (await db

@@ -5,9 +5,46 @@ import {
   handleWidgetRevocationRequest,
   handleWidgetSummaryRequest,
   isNativeWidgetRequest,
+  isWidgetBearerRoute,
   readWidgetBearer,
   validateWidgetInstallationId,
 } from "../src/lib/widget-http.ts";
+
+test("middleware bypasses cookie auth only for bearer widget operations", () => {
+  const token = "w".repeat(43);
+  assert.equal(
+    isWidgetBearerRoute(
+      new Request("https://www.forgecrm.app/api/widget/summary", {
+        headers: { authorization: `Bearer ${token}` },
+      })
+    ),
+    true
+  );
+  assert.equal(
+    isWidgetBearerRoute(
+      new Request("https://www.forgecrm.app/api/widget/token", {
+        method: "DELETE",
+        headers: { authorization: `Bearer ${token}` },
+      })
+    ),
+    true
+  );
+  assert.equal(
+    isWidgetBearerRoute(
+      new Request("https://www.forgecrm.app/api/widget/token", {
+        method: "POST",
+        headers: { authorization: `Bearer ${token}` },
+      })
+    ),
+    false
+  );
+  assert.equal(
+    isWidgetBearerRoute(
+      new Request("https://www.forgecrm.app/api/widget/summary")
+    ),
+    false
+  );
+});
 
 test("accepts only a base64url bearer credential, never a cookie", () => {
   assert.equal(

@@ -74,6 +74,18 @@ final class WidgetProviderTests: XCTestCase {
         XCTAssertNil(try store.loadSnapshot())
     }
 
+    func testForbiddenClearsCredentialAndCache() async throws {
+        try store.saveSnapshot(.fixture())
+        let loader = ForgeWidgetSnapshotLoader(
+            store: store,
+            transport: StubWidgetTransport(result: .success((Data(), 403)))
+        )
+        let result = await loader.load(now: now)
+        XCTAssertEqual(result.state, .reconnect)
+        XCTAssertNil(try store.loadCredential())
+        XCTAssertNil(try store.loadSnapshot())
+    }
+
     func testIdentityMismatchPreservesExistingCache() async throws {
         try store.saveSnapshot(.fixture(monthlyRevenueCents: 111))
         let mismatched = validJSON(companyID: 99)

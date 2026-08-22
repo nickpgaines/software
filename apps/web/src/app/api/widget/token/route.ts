@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionContext } from "@/lib/auth";
+import { getSessionContext, type SessionContext } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import {
   authenticateWidgetToken,
@@ -14,23 +14,47 @@ import {
 
 export const dynamic = "force-dynamic";
 
-export async function POST(req: Request) {
+type NativeWidgetSession =
+  | { ctx: SessionContext & { staffId: number } }
+  | { response: NextResponse };
+
+async function nativeWidgetSession(req: Request): Promise<NativeWidgetSession> {
   const ctx = await getSessionContext();
   if (!ctx) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return { response: NextResponse.json({ error: "Unauthorized" }, { status: 401 }) };
   }
   if (!isNativeWidgetRequest(req)) {
-    return NextResponse.json(
-      { error: "Widget credentials are available only in the iOS app." },
-      { status: 403 }
-    );
+    return {
+      response: NextResponse.json(
+        { error: "Widget credentials are available only in the iOS app." },
+        { status: 403 }
+      ),
+    };
   }
   if (ctx.staffId === null || ctx.isPlatformAdmin) {
-    return NextResponse.json(
-      { error: "A company employee account is required." },
-      { status: 403 }
-    );
+    return {
+      response: NextResponse.json(
+        { error: "A company employee account is required." },
+        { status: 403 }
+      ),
+    };
   }
+  return { ctx: ctx as SessionContext & { staffId: number } };
+}
+
+export async function GET(req: Request) {
+  const session = await nativeWidgetSession(req);
+  if ("response" in session) return session.response;
+  return NextResponse.json({
+    company_id: session.ctx.companyId,
+    staff_id: session.ctx.staffId,
+  });
+}
+
+export async function POST(req: Request) {
+  const session = await nativeWidgetSession(req);
+  if ("response" in session) return session.response;
+  const { ctx } = session;
   const body = (await req.json().catch(() => ({}))) as {
     installation_id?: unknown;
   };

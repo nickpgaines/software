@@ -97,7 +97,7 @@ public final class ForgeWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
                     call.reject("Invalid widget response.")
                     return
                 }
-                if http.statusCode == 401 {
+                if http.statusCode == 401 || http.statusCode == 403 {
                     try store.clearCredentialAndCache()
                     WidgetCenter.shared.reloadAllTimelines()
                     call.resolve(["refreshed": false, "reconnect": true])

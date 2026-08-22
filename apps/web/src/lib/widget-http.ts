@@ -6,6 +6,15 @@ export function readWidgetBearer(req: Request) {
   return auth?.match(/^Bearer ([A-Za-z0-9_-]{40,128})$/)?.[1] ?? null;
 }
 
+export function isWidgetBearerRoute(req: Request) {
+  if (!readWidgetBearer(req)) return false;
+  const pathname = new URL(req.url).pathname;
+  return (
+    (req.method === "GET" && pathname === "/api/widget/summary") ||
+    (req.method === "DELETE" && pathname === "/api/widget/token")
+  );
+}
+
 export function isNativeWidgetRequest(req: Request) {
   return isNativeAppUserAgent(req.headers.get("user-agent"));
 }
