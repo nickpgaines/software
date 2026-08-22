@@ -480,7 +480,7 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
 // Bump when init() gains migrations that must run on existing deploys.
 // First call after deploy runs the full init; subsequent cold starts hit
 // the fast-path below (one SELECT) and skip the ~150 DDL statements.
-const SCHEMA_VERSION = 16;
+const SCHEMA_VERSION = 17;
 
 async function init(): Promise<void> {
   // Fast path: if the schema is already at the current version, skip the
@@ -1093,6 +1093,21 @@ async function init(): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS idx_messages_customer_id ON messages(customer_id);
     CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
+
+    CREATE TABLE IF NOT EXISTS job_lifecycle_notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      company_id INTEGER NOT NULL REFERENCES company(id) ON DELETE CASCADE,
+      job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+      step TEXT NOT NULL CHECK (step IN ('en_route', 'arrived', 'started', 'completed')),
+      outcome TEXT NOT NULL DEFAULT 'claimed',
+      message_id INTEGER REFERENCES messages(id) ON DELETE SET NULL,
+      error TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (job_id, step)
+    );
+    CREATE INDEX IF NOT EXISTS idx_job_lifecycle_notifications_company_job
+      ON job_lifecycle_notifications(company_id, job_id);
 
     CREATE TABLE IF NOT EXISTS messaging_settings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2091,6 +2106,25 @@ async function init(): Promise<void> {
       `CREATE INDEX IF NOT EXISTS idx_${table}_company_id ON ${table}(company_id)`
     );
   }
+
+  // Existing jobs may already have lifecycle timestamps when this ledger is
+  // introduced. Mark those transitions as skipped so clearing and reapplying
+  // a legacy status cannot send a notification retroactively.
+  await _db.exec(`
+    INSERT OR IGNORE INTO job_lifecycle_notifications
+      (company_id, job_id, step, outcome)
+    SELECT company_id, id, 'en_route', 'skipped'
+      FROM jobs WHERE en_route_at IS NOT NULL AND company_id IS NOT NULL
+    UNION ALL
+    SELECT company_id, id, 'arrived', 'skipped'
+      FROM jobs WHERE arrived_at IS NOT NULL AND company_id IS NOT NULL
+    UNION ALL
+    SELECT company_id, id, 'started', 'skipped'
+      FROM jobs WHERE started_at IS NOT NULL AND company_id IS NOT NULL
+    UNION ALL
+    SELECT company_id, id, 'completed', 'skipped'
+      FROM jobs WHERE completed_at IS NOT NULL AND company_id IS NOT NULL
+  `);
 
   // Per-tenant local-part for the shared platform sending domain. Assigned once
   // (slug of the company name, de-duped across tenants) and reused, so a

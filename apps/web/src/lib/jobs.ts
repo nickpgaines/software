@@ -541,29 +541,7 @@ export async function getJobDetail(
   };
 }
 
-export async function setStatusStep(
-  db: Db,
-  id: number,
-  step: "en_route" | "arrived" | "started" | "completed",
-  companyId: number,
-  clear = false
-): Promise<void> {
-  const col =
-    step === "en_route"
-      ? "en_route_at"
-      : step === "arrived"
-      ? "arrived_at"
-      : step === "started"
-      ? "started_at"
-      : "completed_at";
-  const newStatus = clear ? "scheduled" : step;
-  const ts = clear ? null : new Date().toISOString();
-  await db
-    .prepare(
-      `UPDATE jobs SET ${col} = ?, status = ? WHERE id = ? AND company_id = ?`
-    )
-    .run(ts, newStatus, id, companyId);
-}
+export { setStatusStep } from "./job-status-transitions";
 
 // JobAssignment is re-exported for callers
 export type { JobAssignment };
