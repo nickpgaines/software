@@ -4,6 +4,7 @@ import type { Db, Stmt } from "../src/lib/db.ts";
 import {
   buildWidgetMetrics,
   calculateCurrentMrrCents,
+  getRevenueMetric,
 } from "../src/lib/widget-metrics.ts";
 
 function metricsDb() {
@@ -95,4 +96,17 @@ test("current MRR includes only active subscriptions for the widget", () => {
     { includeTax: true, includeRecentCanceled: false, now: new Date("2026-08-22T18:00:00Z") }
   );
   assert.equal(mrr, 10000);
+});
+
+test("loads one requested revenue metric without computing other sections", async () => {
+  const { db, queries } = metricsDb();
+  const metric = await getRevenueMetric(
+    db,
+    42,
+    "monthly",
+    new Date("2026-08-22T18:00:00.000Z")
+  );
+  assert.equal(metric.total_cents, 990200);
+  assert.equal(queries.length, 1);
+  assert.match(queries[0].sql, /FROM jobs/);
 });

@@ -229,34 +229,48 @@ export async function getSalesLeaderboard(
   }));
 }
 
+export async function getRevenueMetric(
+  db: Pick<Db, "prepare">,
+  companyId: number,
+  range: "monthly" | "ytd",
+  now = new Date()
+): Promise<WidgetRevenueMetric> {
+  if (range === "monthly") {
+    const start = new Date(now.getFullYear(), now.getMonth(), 1);
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    end.setMilliseconds(end.getMilliseconds() - 1);
+    const rows = await getRevenueRows(db, companyId, start, end);
+    return {
+      total_cents: sumRevenueRows(rows),
+      trend: dailyTrend(rows, start, end),
+    };
+  }
+
+  const start = new Date(now.getFullYear(), 0, 1);
+  const end = endOfDay(now);
+  const rows = await getRevenueRows(db, companyId, start, end);
+  return {
+    total_cents: sumRevenueRows(rows),
+    trend: monthlyTrend(rows, now.getFullYear()),
+  };
+}
+
 export async function buildWidgetMetrics(
   db: Db,
   companyId: number,
   now = new Date()
 ): Promise<WidgetMetricsSnapshot> {
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-  monthEnd.setMilliseconds(monthEnd.getMilliseconds() - 1);
-  const yearStart = new Date(now.getFullYear(), 0, 1);
-  const yearEnd = endOfDay(now);
-
-  const [monthRows, yearRows, currentArrCents, salesLeaderboard] =
+  const [monthlyRevenue, ytdRevenue, currentArrCents, salesLeaderboard] =
     await Promise.all([
-      getRevenueRows(db, companyId, monthStart, monthEnd),
-      getRevenueRows(db, companyId, yearStart, yearEnd),
+      getRevenueMetric(db, companyId, "monthly", now),
+      getRevenueMetric(db, companyId, "ytd", now),
       getCurrentArrCents(db, companyId, now),
       getSalesLeaderboard(db, companyId, now),
     ]);
 
   return {
-    monthly_revenue: {
-      total_cents: sumRevenueRows(monthRows),
-      trend: dailyTrend(monthRows, monthStart, monthEnd),
-    },
-    ytd_revenue: {
-      total_cents: sumRevenueRows(yearRows),
-      trend: monthlyTrend(yearRows, now.getFullYear()),
-    },
+    monthly_revenue: monthlyRevenue,
+    ytd_revenue: ytdRevenue,
     current_arr_cents: currentArrCents,
     sales_leaderboard: salesLeaderboard,
   };
