@@ -102,7 +102,9 @@ test("schema initializes the durable lifecycle notification ledger", () => {
     new URL("../src/lib/db.ts", import.meta.url),
     "utf8"
   );
-  assert.match(source, /const SCHEMA_VERSION = 17/);
+  const schemaVersion = source.match(/const SCHEMA_VERSION = (\d+)/);
+  assert.ok(schemaVersion);
+  assert.ok(Number(schemaVersion[1]) >= 17);
   assert.match(
     source,
     /CREATE TABLE IF NOT EXISTS job_lifecycle_notifications/

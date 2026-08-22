@@ -480,7 +480,7 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
 // Bump when init() gains migrations that must run on existing deploys.
 // First call after deploy runs the full init; subsequent cold starts hit
 // the fast-path below (one SELECT) and skip the ~150 DDL statements.
-const SCHEMA_VERSION = 17;
+const SCHEMA_VERSION = 18;
 
 async function init(): Promise<void> {
   // Fast path: if the schema is already at the current version, skip the
@@ -1108,6 +1108,23 @@ async function init(): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS idx_job_lifecycle_notifications_company_job
       ON job_lifecycle_notifications(company_id, job_id);
+
+    CREATE TABLE IF NOT EXISTS widget_access_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      token_hash TEXT NOT NULL UNIQUE,
+      installation_id_hash TEXT NOT NULL,
+      company_id INTEGER NOT NULL REFERENCES company(id) ON DELETE CASCADE,
+      staff_id INTEGER NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      scope TEXT NOT NULL DEFAULT 'widget:read',
+      expires_at TEXT NOT NULL,
+      revoked_at TEXT,
+      last_used_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_widget_tokens_company_staff_install
+      ON widget_access_tokens(company_id, staff_id, installation_id_hash);
+    CREATE INDEX IF NOT EXISTS idx_widget_tokens_expires_at
+      ON widget_access_tokens(expires_at);
 
     CREATE TABLE IF NOT EXISTS messaging_settings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
