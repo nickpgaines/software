@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import NewMenu from "@/components/NewMenu";
 import { Button } from "@/components/ui/button";
+import { logoutForgeSession } from "@/lib/native-widget";
 
 type NavLink = {
   href: string;
@@ -119,7 +120,7 @@ export default function NavBar() {
   }, [pathname]);
 
   async function logout() {
-    await fetch("/api/logout", { method: "POST" });
+    await logoutForgeSession();
     router.push("/login");
     router.refresh();
   }

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { PulseIcon } from "@/components/pulse/Icon";
+import { logoutForgeSession } from "@/lib/native-widget";
 import { NAV, SECTIONS, initials } from "@/components/pulse/Sidebar";
 
 type Me = {
@@ -72,7 +73,7 @@ export default function MorePage() {
   }, []);
 
   async function logout() {
-    await fetch("/api/logout", { method: "POST" });
+    await logoutForgeSession();
     router.push("/login");
     router.refresh();
   }

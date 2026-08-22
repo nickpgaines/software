@@ -1,9 +1,11 @@
 "use client";
 
 import { useEffect } from "react";
+import { usePathname } from "next/navigation";
 import type { PluginListenerHandle } from "@capacitor/core";
 import { isNativeApp } from "@/lib/native";
 import { NATIVE_APP_COOKIE } from "@/lib/native-auth";
+import { ensureNativeWidgetCredential } from "@/lib/native-widget";
 
 // One-time native UX chrome setup for the Capacitor shell (Phase 3/4). No-op in
 // any browser. Plugins are imported dynamically so they never load during SSR
@@ -11,6 +13,12 @@ import { NATIVE_APP_COOKIE } from "@/lib/native-auth";
 // the launch splash once the hosted app has painted, and wires the Android
 // hardware back button to webview history (Phase 4).
 export function NativeChrome() {
+  const pathname = usePathname();
+
+  useEffect(() => {
+    void ensureNativeWidgetCredential();
+  }, [pathname]);
+
   useEffect(() => {
     if (!isNativeApp()) return;
     const secure = window.location.protocol === "https:" ? "; Secure" : "";
@@ -109,6 +117,13 @@ export function NativeChrome() {
           openDeepLink(url);
         });
 
+        const stateHandle = await App.addListener(
+          "appStateChange",
+          ({ isActive }) => {
+            if (isActive) void ensureNativeWidgetCredential();
+          }
+        );
+
         // Android hardware back button: step back through webview history, and
         // exit the app at the history root instead of leaving a blank webview.
         // iOS never fires this event, so the listener is inert there.
@@ -125,9 +140,10 @@ export function NativeChrome() {
 
         if (cancelled) {
           urlHandle.remove();
+          stateHandle.remove();
           backHandle.remove();
         } else {
-          handles.push(urlHandle, backHandle);
+          handles.push(urlHandle, stateHandle, backHandle);
         }
       } catch {
         // No App plugin (e.g. web); ignore.

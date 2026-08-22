@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { PULSE } from "./theme";
 import { PulseIcon } from "./Icon";
 import ThemeToggle from "@/components/ThemeToggle";
+import { logoutForgeSession } from "@/lib/native-widget";
 
 type Me = {
   identity: string;
@@ -113,7 +114,7 @@ export function PulseSidebar({ initialMe = null }: { initialMe?: Me | null }) {
   }, [newOpen]);
 
   async function logout() {
-    await fetch("/api/logout", { method: "POST" });
+    await logoutForgeSession();
     router.push("/login");
     router.refresh();
   }
