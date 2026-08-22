@@ -321,7 +321,7 @@ function MessageBlockEditor({
       />
       {showDriverImage && (
         <ToggleRow
-          label="Include driver name and image (if available) in the notification"
+          label="Include assigned technician's name"
           checked={block.include_driver_name_image}
           onChange={(v) =>
             onChange({ ...block, include_driver_name_image: v })
@@ -384,6 +384,7 @@ function MessagesSection({
         block={config.drive_start}
         onChange={(b) => set("drive_start", b)}
         showDriverImage
+        showEnabled
       />
 
       <Separator className="bg-line" />
@@ -392,6 +393,7 @@ function MessagesSection({
         title="Drive End"
         block={config.drive_end}
         onChange={(b) => set("drive_end", b)}
+        showEnabled
       />
 
       <Separator className="bg-line" />
@@ -410,6 +412,7 @@ function MessagesSection({
         block={config.job_finish}
         onChange={(b) => set("job_finish", b)}
         showHeader={false}
+        showEnabled
       />
 
       <Separator className="bg-line" />

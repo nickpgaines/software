@@ -18,6 +18,10 @@ import {
 } from "@/components/JobForm";
 import type { JobAttachment, JobAttachmentKind } from "@/lib/db";
 import { captureNativePhoto, isNativeApp } from "@/lib/native";
+import {
+  notificationWarning,
+  type JobLifecycleNotificationResult,
+} from "@/lib/job-lifecycle-notifications";
 import { LEAD_METHODS } from "@/components/forms/LeadSourceField";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -375,16 +379,31 @@ export default function JobDetailClient({
     const stepDef = STEPS.find((s) => s.key === step)!;
     const already = !!job[stepDef.ts];
     setBusy(step);
-    const res = await fetch(`/api/jobs/${job.id}/status`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ step, clear: already }),
-    });
-    setBusy(null);
-    if (res.ok) {
-      const updated = (await res.json()) as Detail;
+    try {
+      const res = await fetch(`/api/jobs/${job.id}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step, clear: already }),
+      });
+      const payload = (await res.json().catch(() => ({}))) as Partial<Detail> & {
+        error?: string;
+        status_notification?: JobLifecycleNotificationResult | null;
+      };
+      if (!res.ok) {
+        alert(payload.error || "Could not update the job status.");
+        return;
+      }
+      const updated = payload as Detail & {
+        status_notification?: JobLifecycleNotificationResult | null;
+      };
       setJob(updated);
       router.refresh();
+      const warning = notificationWarning(updated.status_notification ?? null);
+      if (warning) alert(warning);
+    } catch {
+      alert("Could not update the job status.");
+    } finally {
+      setBusy(null);
     }
   }
 
