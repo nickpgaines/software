@@ -117,6 +117,11 @@ public final class ForgeWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
                     call.reject("Widget response did not match this account.")
                     return
                 }
+                guard let activeCredential = try store.loadCredential(),
+                      activeCredential == credential else {
+                    call.resolve(["refreshed": false, "reconnect": true])
+                    return
+                }
                 try store.saveSnapshot(snapshot)
                 WidgetCenter.shared.reloadAllTimelines()
                 call.resolve(["refreshed": true])

@@ -84,6 +84,14 @@ struct ForgeWidgetSnapshotLoader {
                   snapshot.staffID == credential.staffID else {
                 return fallback(cached: cached, refreshDate: refreshDate)
             }
+            guard let activeCredential = try store.loadCredential(),
+                  activeCredential == credential else {
+                return ForgeWidgetLoadResult(
+                    snapshot: nil,
+                    state: .reconnect,
+                    refreshDate: refreshDate
+                )
+            }
             try store.saveSnapshot(snapshot)
             return ForgeWidgetLoadResult(
                 snapshot: snapshot,

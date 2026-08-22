@@ -17,6 +17,25 @@ private enum StubNetworkError: Error {
     case offline
 }
 
+private actor DeferredWidgetTransport: WidgetNetworkTransport {
+    private var continuation: CheckedContinuation<(Data, Int), Error>?
+
+    func data(for request: URLRequest) async throws -> (Data, Int) {
+        try await withCheckedThrowingContinuation { continuation in
+            self.continuation = continuation
+        }
+    }
+
+    func waitUntilStarted() async {
+        while continuation == nil { await Task.yield() }
+    }
+
+    func succeed(data: Data, statusCode: Int) {
+        continuation?.resume(returning: (data, statusCode))
+        continuation = nil
+    }
+}
+
 final class WidgetProviderTests: XCTestCase {
     private var defaults: UserDefaults!
     private var cacheDirectory: URL!
@@ -137,6 +156,21 @@ final class WidgetProviderTests: XCTestCase {
         XCTAssertFalse(result.snapshot?.permissions.reports ?? true)
         XCTAssertNil(result.snapshot?.metrics.monthlyRevenue)
         XCTAssertNil(try store.loadSnapshot()?.metrics.monthlyRevenue)
+    }
+
+    func testResponseArrivingAfterLogoutCannotRecreateSnapshot() async throws {
+        let transport = DeferredWidgetTransport()
+        let loader = ForgeWidgetSnapshotLoader(store: store, transport: transport)
+        let loading = Task { await loader.load(now: now) }
+        await transport.waitUntilStarted()
+
+        try store.clearCredentialAndCache()
+        await transport.succeed(data: validJSON(), statusCode: 200)
+        let result = await loading.value
+
+        XCTAssertEqual(result.state, .reconnect)
+        XCTAssertNil(result.snapshot)
+        XCTAssertNil(try store.loadSnapshot())
     }
 
     private func validJSON(companyID: Int = 42) -> Data {
