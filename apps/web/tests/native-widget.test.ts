@@ -147,3 +147,58 @@ test("logout cannot leave behind a credential issued by an in-flight bootstrap",
   assert.ok(native.cleared >= 1);
   assert.deepEqual(deletedTokens, [`Bearer ${issued.token}`]);
 });
+
+test("logout completes and clears local data while bootstrap is stalled", async () => {
+  const native = fakePlugin(currentCredential);
+  const never = new Promise<Response>(() => undefined);
+  let loggedOut = false;
+  const lifecycle = new NativeWidgetCredentialLifecycle(
+    async () => native.plugin,
+    async (input) => {
+      if (String(input) === "/api/logout") {
+        loggedOut = true;
+        return Response.json({ ok: true });
+      }
+      return never;
+    }
+  );
+
+  void lifecycle.ensure();
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  await Promise.race([
+    lifecycle.logout(),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("logout stalled behind bootstrap")), 100)
+    ),
+  ]);
+
+  assert.equal(loggedOut, true);
+  assert.ok(native.cleared >= 1);
+});
+
+test("a stalled token revocation never delays local clearing or web logout", async () => {
+  const native = fakePlugin(currentCredential);
+  const never = new Promise<Response>(() => undefined);
+  let loggedOut = false;
+  const lifecycle = new NativeWidgetCredentialLifecycle(
+    async () => native.plugin,
+    async (input, init) => {
+      if (String(input) === "/api/logout") {
+        loggedOut = true;
+        return Response.json({ ok: true });
+      }
+      if (init?.method === "DELETE") return never;
+      return Response.json({ company_id: 1, staff_id: 2 });
+    }
+  );
+
+  await Promise.race([
+    lifecycle.logout(),
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error("logout stalled behind revocation")), 100)
+    ),
+  ]);
+
+  assert.equal(loggedOut, true);
+  assert.ok(native.cleared >= 1);
+});

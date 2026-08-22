@@ -106,8 +106,9 @@ export class NativeWidgetCredentialLifecycle {
       (credential.company_id !== principal.company_id ||
         credential.staff_id !== principal.staff_id)
     ) {
-      await this.revoke(credential.token);
+      const previousToken = credential.token;
       await plugin.clearCredential();
+      void this.revoke(previousToken);
       credential = null;
     }
 
@@ -164,24 +165,20 @@ export class NativeWidgetCredentialLifecycle {
   async clear(): Promise<void> {
     const plugin = await this.loadPlugin();
     if (!plugin) return;
-    try {
-      const { credential } = await plugin.credentialMetadata();
-      if (credential?.token) await this.revoke(credential.token);
-    } finally {
-      await plugin.clearCredential();
-    }
+    const { credential } = await plugin.credentialMetadata();
+    await plugin.clearCredential();
+    if (credential?.token) void this.revoke(credential.token);
   }
 
   async logout(): Promise<void> {
     this.loggingOut = true;
     this.generation += 1;
     try {
-      await this.bootstrapPromise;
-      await this.clear().catch(() => undefined);
-      await this.request("/api/logout", { method: "POST" });
+      await Promise.allSettled([
+        this.clear(),
+        this.request("/api/logout", { method: "POST" }),
+      ]);
     } finally {
-      const plugin = await this.loadPlugin().catch(() => null);
-      await plugin?.clearCredential().catch(() => undefined);
       this.loggingOut = false;
     }
   }
