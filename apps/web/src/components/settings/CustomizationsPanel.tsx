@@ -397,6 +397,15 @@ function MessagesSection({
       <Separator className="bg-line" />
 
       <MessageBlockEditor
+        title="Job Started"
+        block={config.job_started}
+        onChange={(b) => set("job_started", b)}
+        showEnabled
+      />
+
+      <Separator className="bg-line" />
+
+      <MessageBlockEditor
         title="Job Finish"
         block={config.job_finish}
         onChange={(b) => set("job_finish", b)}
