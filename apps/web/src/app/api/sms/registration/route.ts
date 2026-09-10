@@ -48,10 +48,17 @@ async function readStatus(companyId: number): Promise<RegistrationStatus> {
 export async function GET(req: Request) {
   const companyId = await requireCompanyId();
   const url = new URL(req.url);
-  if (url.searchParams.get("refresh") === "1") {
+  let status = await readStatus(companyId);
+  // Reconcile in-review records on panel open as well as explicit refresh.
+  // Callbacks can be missed; showing the stored state alone leaves a rejected
+  // profile labelled "in review" and prevents the user from correcting it.
+  if (
+    status.company.a2p_registration_state.endsWith("_pending") ||
+    url.searchParams.get("refresh") === "1"
+  ) {
     await advanceRegistration(companyId).catch(() => {});
+    status = await readStatus(companyId);
   }
-  const status = await readStatus(companyId);
   return NextResponse.json(status, {
     headers: { "Cache-Control": "no-store" },
   });
@@ -255,7 +262,7 @@ export async function POST(req: Request) {
   // Flip the state machine forward. The orchestrator catches all errors and
   // persists them as failure states; the user-facing response always succeeds
   // so the upstream isn't allowed to break the form submission UX.
-  await advanceRegistration(companyId).catch((e) => {
+  await advanceRegistration(companyId, { retryFailed: true }).catch((e) => {
     console.error(
       `[sms/registration] advanceRegistration threw for company ${companyId}:`,
       e

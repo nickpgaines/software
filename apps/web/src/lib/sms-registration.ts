@@ -45,6 +45,7 @@ import {
   fetchCustomerProfileEvaluations,
   fetchTrustProduct,
   summarizeEvaluationFailures,
+  summarizeRegistrationErrors,
   findAvailableLocalNumber,
   listCustomerProfiles,
   purchasePhoneNumber,
@@ -261,7 +262,7 @@ function isFailed(status: string): boolean {
 // One step. Returns whether the caller should immediately recurse to try the
 // next step in the same request (true for steps that complete synchronously
 // like creating resources; false for steps that wait on Twilio review).
-async function step(companyId: number): Promise<{
+async function step(companyId: number, retryFailed: boolean): Promise<{
   state: A2pRegistrationState;
   error: string | null;
   recurse: boolean;
@@ -292,6 +293,11 @@ async function step(companyId: number): Promise<{
   }
 
   const state = company.a2p_registration_state;
+  // Status reads and duplicate callbacks must not resubmit rejected details.
+  // Only an explicit form submission authorizes another registration attempt.
+  if (state.endsWith("_failed") && !retryFailed) {
+    return { state, error: company.a2p_registration_error, recurse: false };
+  }
   const { brandType, companyType, businessType } = entityTypeToA2p(
     registration.entity_type
   );
@@ -465,9 +471,11 @@ async function step(companyId: number): Promise<{
       if (isFailed(cp.status)) {
         const evals = await fetchCustomerProfileEvaluations({
           creds,
-          sid: company.twilio_customer_profile_sid,
+          sid: cp.sid,
         }).catch(() => []);
-        const reason = summarizeEvaluationFailures(evals);
+        const reason =
+          summarizeRegistrationErrors(cp.errors) ||
+          summarizeEvaluationFailures(evals);
         const msg = reason
           ? `Customer Profile rejected by Twilio: ${reason}`
           : `Customer Profile rejected by Twilio (status=${cp.status})`;
@@ -759,7 +767,8 @@ async function step(companyId: number): Promise<{
 }
 
 export async function advanceRegistration(
-  companyId: number
+  companyId: number,
+  options: { retryFailed?: boolean } = {}
 ): Promise<AdvanceResult> {
   // Cap the loop in case a step incorrectly returns recurse=true forever.
   let remaining = 12;
@@ -768,7 +777,7 @@ export async function advanceRegistration(
     error: null,
   };
   while (remaining-- > 0) {
-    const r = await step(companyId);
+    const r = await step(companyId, options.retryFailed === true);
     last = { state: r.state, error: r.error };
     if (!r.recurse) break;
   }

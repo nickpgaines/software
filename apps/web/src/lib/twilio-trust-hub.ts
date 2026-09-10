@@ -106,7 +106,29 @@ export type CustomerProfileResource = {
   status: string;
   friendly_name: string;
   policy_sid: string;
+  errors?: RegistrationError[];
 };
+
+type RegistrationError = {
+  code?: number | string;
+  message?: string;
+};
+
+// Final Trust Hub review errors live on the profile itself. Its preliminary
+// evaluation can be compliant even when business identity verification fails.
+export function summarizeRegistrationErrors(
+  errors: RegistrationError[] | null | undefined
+): string | null {
+  const reasons = (errors ?? []).map((error) => {
+    const code = error.code == null ? "" : String(error.code);
+    if (code === "18602") {
+      return "[18602] Twilio could not verify the business ID. Check that the legal company name and EIN exactly match your tax records. If they match, contact Twilio Trust Hub support at trusthub-verify@twilio.com before submitting again.";
+    }
+    const message = error.message?.trim();
+    return [code ? `[${code}]` : "", message].filter(Boolean).join(" ");
+  }).filter(Boolean);
+  return reasons.length ? [...new Set(reasons)].join("; ") : null;
+}
 
 export async function createSecondaryCustomerProfile(args: {
   creds: TwilioCreds;

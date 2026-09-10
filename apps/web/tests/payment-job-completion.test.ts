@@ -13,8 +13,8 @@ function completionDb(existing: { completed_at: string | null; status: string })
   const db: Db = {
     prepare(sql: string): Stmt {
       return {
-        get: async () =>
-          sql.includes("SELECT completed_at, status") ? existing : undefined,
+        get: async <T>() =>
+          (sql.includes("SELECT completed_at, status") ? existing : undefined) as T | undefined,
         all: async () => [],
         run: async (...args) => {
           if (sql.includes("job_lifecycle_notifications")) {
