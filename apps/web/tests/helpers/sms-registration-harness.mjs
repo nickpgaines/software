@@ -45,6 +45,10 @@ export async function loadRegistrationRoute() {
   }
 }
 
+export async function loadRegistrationInput() {
+  return import("../../src/lib/sms-registration-input.ts");
+}
+
 export function registrationDatabase(state) {
   database = new DatabaseSync(":memory:");
   database.exec(`
@@ -62,13 +66,14 @@ export function registrationDatabase(state) {
       company_id INTEGER, submitted_at TEXT, legal_company_name TEXT,
       entity_type TEXT, ein TEXT, business_email TEXT, business_phone TEXT,
       business_website TEXT, business_description TEXT, auth_rep_name TEXT,
+      social_media_profile_urls TEXT,
       auth_rep_email TEXT, auth_rep_title TEXT, address_line1 TEXT,
       address_line2 TEXT, city TEXT, region TEXT, postal_code TEXT, iso_country TEXT
     );
     INSERT INTO sms_brand_registrations VALUES (
       1, '2026-09-04', 'Example Cleaning LLC', 'LLC', '12-3456789',
       'owner@example.com', '2025550100', 'https://example.com', 'Cleaning',
-      'Example Owner', 'owner@example.com', 'Owner', '1 Main Street',
+      'Example Owner', NULL, 'owner@example.com', 'Owner', '1 Main Street',
       NULL, 'Washington', 'DC', '20001', 'US'
     );
   `);

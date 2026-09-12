@@ -4,9 +4,12 @@ import {
   getDb,
   type Company,
   type SmsBrandRegistration,
-  type SmsMonthlyVolume,
 } from "@/lib/db";
 import { advanceRegistration } from "@/lib/sms-registration";
+import {
+  type SmsRegistrationFormPayload,
+  validateSmsRegistrationForm,
+} from "@/lib/sms-registration-input";
 
 export const dynamic = "force-dynamic";
 
@@ -24,8 +27,6 @@ type RegistrationStatus = {
     | "twilio_campaign_sid"
   >;
 };
-
-const VOLUMES: SmsMonthlyVolume[] = ["under_1k", "1k_6k", "6k_plus"];
 
 async function readStatus(companyId: number): Promise<RegistrationStatus> {
   const db = await getDb();
@@ -64,73 +65,16 @@ export async function GET(req: Request) {
   });
 }
 
-type FormPayload = Partial<{
-  legal_company_name: string;
-  dba: string;
-  ein: string;
-  address_line1: string;
-  address_line2: string;
-  city: string;
-  region: string;
-  postal_code: string;
-  iso_country: string;
-  business_email: string;
-  business_phone: string;
-  business_website: string;
-  industry: string;
-  entity_type: string;
-  monthly_volume: string;
-  business_description: string;
-  auth_rep_name: string;
-  auth_rep_title: string;
-  auth_rep_email: string;
-  confirmed_authorized: boolean;
-  confirmed_aup_tcpa: boolean;
-  confirmed_consent: boolean;
-}>;
-
 function s(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";
 }
 
-function validate(body: FormPayload): string | null {
-  const required: Array<[keyof FormPayload, string]> = [
-    ["legal_company_name", "Legal company name"],
-    ["ein", "EIN / business number"],
-    ["address_line1", "Business address"],
-    ["city", "City"],
-    ["region", "State / region"],
-    ["postal_code", "Postal code"],
-    ["business_email", "Business email"],
-    ["business_phone", "Business phone"],
-    ["business_website", "Business website"],
-    ["monthly_volume", "Estimated monthly volume"],
-  ];
-  for (const [k, label] of required) {
-    if (!s(body[k])) return `${label} is required.`;
-  }
-  if (!VOLUMES.includes(s(body.monthly_volume) as SmsMonthlyVolume)) {
-    return "Choose a valid monthly volume estimate.";
-  }
-  if (!/^\d{2}-?\d{7}$/.test(s(body.ein))) {
-    return "EIN must be in format XX-XXXXXXX.";
-  }
-  if (!body.confirmed_authorized) {
-    return "You must confirm you're authorized to register this business.";
-  }
-  if (!body.confirmed_aup_tcpa) {
-    return "You must confirm agreement with the SMS AUP and TCPA.";
-  }
-  if (!body.confirmed_consent) {
-    return "You must confirm recipients have provided consent.";
-  }
-  return null;
-}
-
 export async function POST(req: Request) {
   const companyId = await requireCompanyId();
-  const body = (await req.json().catch(() => ({}))) as FormPayload;
-  const error = validate(body);
+  const body = (await req
+    .json()
+    .catch(() => ({}))) as SmsRegistrationFormPayload;
+  const error = validateSmsRegistrationForm(body);
   if (error) return NextResponse.json({ error }, { status: 400 });
 
   const db = await getDb();
@@ -140,10 +84,8 @@ export async function POST(req: Request) {
     )
     .get<{ id: number }>(companyId);
 
-  // Defaulted server-side now that the form no longer collects them: home-
-  // service tenants are always low-volume "Home services," the description is
-  // templated from the business name, and the authorized rep is the account
-  // owner (an admin on this company).
+  // Home-service industry and use-case copy are standardized. If the form
+  // leaves representative fields blank, fall back to the first company admin.
   const legalName = s(body.legal_company_name);
   const owner = await db
     .prepare(
@@ -163,8 +105,9 @@ export async function POST(req: Request) {
     business_email: s(body.business_email),
     business_phone: s(body.business_phone),
     business_website: s(body.business_website) || null,
+    social_media_profile_urls: s(body.social_media_profile_urls) || null,
     industry: s(body.industry) || "Home services",
-    entity_type: s(body.entity_type) || "LLC",
+    entity_type: s(body.entity_type),
     monthly_volume: s(body.monthly_volume) || "under_1k",
     business_description:
       s(body.business_description) ||
@@ -186,6 +129,7 @@ export async function POST(req: Request) {
            address_line1 = ?, address_line2 = ?, city = ?, region = ?,
            postal_code = ?, iso_country = ?,
            business_email = ?, business_phone = ?, business_website = ?,
+           social_media_profile_urls = ?,
            industry = ?, entity_type = ?, monthly_volume = ?,
            business_description = ?,
            auth_rep_name = ?, auth_rep_title = ?, auth_rep_email = ?,
@@ -207,6 +151,7 @@ export async function POST(req: Request) {
         fields.business_email,
         fields.business_phone,
         fields.business_website,
+        fields.social_media_profile_urls,
         fields.industry,
         fields.entity_type,
         fields.monthly_volume,
@@ -226,11 +171,12 @@ export async function POST(req: Request) {
            (company_id, legal_company_name, dba, ein,
             address_line1, address_line2, city, region, postal_code, iso_country,
             business_email, business_phone, business_website,
+            social_media_profile_urls,
             industry, entity_type, monthly_volume, business_description,
             auth_rep_name, auth_rep_title, auth_rep_email,
             confirmed_authorized, confirmed_aup_tcpa, confirmed_consent,
             submitted_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
       )
       .run(
         companyId,
@@ -246,6 +192,7 @@ export async function POST(req: Request) {
         fields.business_email,
         fields.business_phone,
         fields.business_website,
+        fields.social_media_profile_urls,
         fields.industry,
         fields.entity_type,
         fields.monthly_volume,

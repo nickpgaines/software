@@ -480,7 +480,7 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
 // Bump when init() gains migrations that must run on existing deploys.
 // First call after deploy runs the full init; subsequent cold starts hit
 // the fast-path below (one SELECT) and skip the ~150 DDL statements.
-const SCHEMA_VERSION = 18;
+const SCHEMA_VERSION = 19;
 
 async function init(): Promise<void> {
   // Fast path: if the schema is already at the current version, skip the
@@ -1181,6 +1181,7 @@ async function init(): Promise<void> {
       business_email TEXT NOT NULL,
       business_phone TEXT NOT NULL,
       business_website TEXT,
+      social_media_profile_urls TEXT,
       industry TEXT NOT NULL,
       entity_type TEXT NOT NULL,
       monthly_volume TEXT NOT NULL,
@@ -1809,6 +1810,16 @@ async function init(): Promise<void> {
     );
     INSERT OR IGNORE INTO payroll_settings (id) VALUES (1);
   `);
+
+  const smsRegistrationCols = await _db
+    .prepare("PRAGMA table_info(sms_brand_registrations)")
+    .all<{ name: string }>();
+  await alterAddColumn(
+    "sms_brand_registrations",
+    "social_media_profile_urls",
+    "TEXT",
+    smsRegistrationCols
+  );
 
   // Make payments.job_id nullable so subscription auto-charges can be recorded
   // without anchoring to a service visit — recurring plans bill on their own
@@ -2729,6 +2740,7 @@ export type SmsBrandRegistration = {
   business_email: string;
   business_phone: string;
   business_website: string | null;
+  social_media_profile_urls: string | null;
   industry: string;
   entity_type: string;
   monthly_volume: SmsMonthlyVolume;

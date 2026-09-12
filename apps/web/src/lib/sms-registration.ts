@@ -97,7 +97,14 @@ function buildWebhookUrl(path: string): string | null {
   return `${base.replace(/\/$/, "")}${path}`;
 }
 
-function entityTypeToA2p(formEntityType: string): {
+function trustHubNotificationEmail(): string {
+  return (
+    process.env.TWILIO_TRUST_HUB_NOTIFICATION_EMAIL?.trim() ||
+    "support@forgecrm.app"
+  );
+}
+
+export function entityTypeToA2p(formEntityType: string): {
   brandType: "STANDARD" | "SOLE_PROPRIETOR";
   companyType: string;
   businessType: string;
@@ -105,7 +112,9 @@ function entityTypeToA2p(formEntityType: string): {
   const v = formEntityType.toLowerCase();
   if (v.includes("sole")) {
     return {
-      brandType: "SOLE_PROPRIETOR",
+      // This form requires an EIN. Twilio's no-EIN sole-proprietor path is a
+      // separate flow; EIN-backed sole proprietors use a standard brand.
+      brandType: "STANDARD",
       companyType: "private",
       businessType: "Sole Proprietorship",
     };
@@ -131,7 +140,14 @@ function entityTypeToA2p(formEntityType: string): {
       businessType: "Partnership",
     };
   }
-  // Default LLC (form removed entity_type and defaults to LLC server-side).
+  if (v.includes("corporation")) {
+    return {
+      brandType: "STANDARD",
+      companyType: "private",
+      businessType: "Corporation",
+    };
+  }
+  // The API validates the value before the state machine runs.
   return {
     brandType: "STANDARD",
     companyType: "private",
@@ -348,9 +364,9 @@ async function step(companyId: number, retryFailed: boolean): Promise<{
           : company.twilio_customer_profile_sid;
       if (!cpSid) {
         const cp = await createSecondaryCustomerProfile({
-        creds,
+          creds,
           friendlyName: `nick360 tenant ${companyId} customer profile`,
-          email: registration.business_email,
+          email: trustHubNotificationEmail(),
           statusCallback: cpCallback,
         });
         cpSid = cp.sid;
@@ -378,6 +394,7 @@ async function step(companyId: number, retryFailed: boolean): Promise<{
         entityType: businessType,
         industry: TWILIO_BUSINESS_INDUSTRY,
         website: registration.business_website,
+        socialMediaProfileUrls: registration.social_media_profile_urls,
         description: registration.business_description,
       });
       await attachToCustomerProfile({
@@ -514,9 +531,9 @@ async function step(companyId: number, retryFailed: boolean): Promise<{
           : company.twilio_trust_product_sid;
       if (!tpSid) {
         const tp = await createA2pTrustProduct({
-        creds,
+          creds,
           friendlyName: `nick360 tenant ${companyId} A2P trust product`,
-          email: registration.business_email,
+          email: trustHubNotificationEmail(),
           statusCallback: cpCallback,
         });
         tpSid = tp.sid;

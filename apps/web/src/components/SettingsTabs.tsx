@@ -2338,7 +2338,9 @@ type RegistrationStatus = {
     business_email: string;
     business_phone: string;
     business_website: string | null;
+    social_media_profile_urls: string | null;
     industry: string;
+    entity_type: string;
     monthly_volume: "under_1k" | "1k_6k" | "6k_plus";
     business_description: string;
     auth_rep_name: string;
@@ -2393,7 +2395,9 @@ function MessagingPanel() {
     business_email: "",
     business_phone: "",
     business_website: "",
+    social_media_profile_urls: "",
     industry: "",
+    entity_type: "",
     monthly_volume: "under_1k" as "under_1k" | "1k_6k" | "6k_plus",
     business_description: "",
     auth_rep_name: "",
@@ -2427,7 +2431,10 @@ function MessagingPanel() {
           business_email: s.registration!.business_email,
           business_phone: s.registration!.business_phone,
           business_website: s.registration!.business_website ?? "",
+          social_media_profile_urls:
+            s.registration!.social_media_profile_urls ?? "",
           industry: s.registration!.industry,
+          entity_type: s.registration!.entity_type,
           monthly_volume: s.registration!.monthly_volume,
           business_description: s.registration!.business_description,
           auth_rep_name: s.registration!.auth_rep_name,
@@ -2596,6 +2603,28 @@ function MessagingPanel() {
                 className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
               />
             </Field>
+            <Field label="Business Entity Type">
+              {/* Native <select> kept: Radix Select forbids empty-string item values, which are needed for the required placeholder. */}
+              <select
+                value={form.entity_type}
+                onChange={(e) => set("entity_type", e.target.value)}
+                disabled={loading || saving}
+                required
+                className="w-full border border-line rounded-lg px-3 py-2 text-sm bg-card disabled:opacity-50"
+              >
+                <option value="">Select business type…</option>
+                <option value="LLC">LLC</option>
+                <option value="Corporation">Corporation</option>
+                <option value="Partnership">Partnership</option>
+                <option value="Sole Proprietorship">
+                  Sole proprietorship (with EIN)
+                </option>
+                <option value="Non-Profit Corporation">
+                  Non-profit corporation
+                </option>
+                <option value="Public Corporation">Public corporation</option>
+              </select>
+            </Field>
             <Field label="EIN (format XX-XXXXXXX)">
               <Input
                 value={form.ein}
@@ -2644,13 +2673,18 @@ function MessagingPanel() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Business Email">
-                <Input
-                  type="email"
-                  value={form.business_email}
-                  onChange={(e) => set("business_email", e.target.value)}
-                  disabled={loading || saving}
-                  className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
-                />
+                <div>
+                  <Input
+                    type="email"
+                    value={form.business_email}
+                    onChange={(e) => set("business_email", e.target.value)}
+                    disabled={loading || saving}
+                    className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+                  />
+                  <p className="mt-1.5 text-xs text-zinc-500">
+                    Use an email on the same domain as your business website.
+                  </p>
+                </div>
               </Field>
               <Field label="Business Phone">
                 <Input
@@ -2664,14 +2698,81 @@ function MessagingPanel() {
               </Field>
             </div>
             <Field label="Business Website">
-              <Input
-                value={form.business_website}
-                onChange={(e) => set("business_website", e.target.value)}
-                disabled={loading || saving}
-                placeholder="https://example.com or social media URL"
-                className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
-              />
+              <div>
+                <Input
+                  type="url"
+                  value={form.business_website}
+                  onChange={(e) => set("business_website", e.target.value)}
+                  disabled={loading || saving}
+                  placeholder="https://example.com"
+                  className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+                />
+                <p className="mt-1.5 text-xs text-zinc-500">
+                  Must be a working HTTPS site that visibly shows your legal
+                  company name or DBA.
+                </p>
+              </div>
             </Field>
+            <Field label="Social Media Profile (optional)">
+              <div>
+                <Input
+                  type="url"
+                  value={form.social_media_profile_urls}
+                  onChange={(e) =>
+                    set("social_media_profile_urls", e.target.value)
+                  }
+                  disabled={loading || saving}
+                  placeholder="https://www.facebook.com/yourbusiness"
+                  className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+                />
+                <p className="mt-1.5 text-xs text-zinc-500">
+                  Put Facebook, Instagram, LinkedIn, or another social profile
+                  here—not in the business website field.
+                </p>
+              </div>
+            </Field>
+
+            <div className="border-t border-line pt-4 space-y-3">
+              <div>
+                <div className="text-sm font-extrabold text-white">
+                  Authorized Representative
+                </div>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Twilio verifies this person against the business. Their phone
+                  number is the business phone entered above.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Full Name">
+                  <Input
+                    value={form.auth_rep_name}
+                    onChange={(e) => set("auth_rep_name", e.target.value)}
+                    disabled={loading || saving}
+                    placeholder="Business owner or authorized officer"
+                    className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+                  />
+                </Field>
+                <Field label="Job Title">
+                  <Input
+                    value={form.auth_rep_title}
+                    onChange={(e) => set("auth_rep_title", e.target.value)}
+                    disabled={loading || saving}
+                    placeholder="Owner"
+                    className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+                  />
+                </Field>
+              </div>
+              <Field label="Business Email">
+                <Input
+                  type="email"
+                  value={form.auth_rep_email}
+                  onChange={(e) => set("auth_rep_email", e.target.value)}
+                  disabled={loading || saving}
+                  placeholder="name@example.com"
+                  className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+                />
+              </Field>
+            </div>
 
             <div className="space-y-2 pt-2">
               <label className="flex items-start gap-2 text-sm text-zinc-300 cursor-pointer">

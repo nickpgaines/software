@@ -124,6 +124,15 @@ export function summarizeRegistrationErrors(
     if (code === "18602") {
       return "[18602] Twilio could not verify the business ID. Check that the legal company name and EIN exactly match your tax records. If they match, contact Twilio Trust Hub support at trusthub-verify@twilio.com before submitting again.";
     }
+    if (code === "18601") {
+      return "[18601] Twilio could not verify the relationship between the legal company name and website. Use a working company website that visibly shows the legal name or DBA before submitting again.";
+    }
+    if (code === "18604") {
+      return "[18604] Twilio could not verify the authorized representative. Confirm their full name, company email, phone, title, and relationship to the business match official records before submitting again.";
+    }
+    if (code === "18606") {
+      return "[18606] Twilio could not match the business email domain to the website. Use a company email address whose domain matches the business website before submitting again.";
+    }
     const message = error.message?.trim();
     return [code ? `[${code}]` : "", message].filter(Boolean).join(" ");
   }).filter(Boolean);
@@ -258,6 +267,7 @@ export async function createBusinessInformationEndUser(args: {
   entityType: string;
   industry: string;
   website: string | null;
+  socialMediaProfileUrls: string | null;
   description: string;
 }): Promise<EndUserResource> {
   return twilioRequest<EndUserResource>(
@@ -270,13 +280,13 @@ export async function createBusinessInformationEndUser(args: {
       Attributes: JSON.stringify({
         business_name: args.legalCompanyName,
         business_registration_number: args.ein,
-        business_identity: "isv_reseller_or_partner",
+        business_identity: "direct_customer",
         business_industry: args.industry,
         business_type: args.entityType,
         business_registration_identifier: "EIN",
         business_regions_of_operation: "USA_AND_CANADA",
         website_url: args.website ?? "",
-        social_media_profile_urls: "",
+        social_media_profile_urls: args.socialMediaProfileUrls ?? "",
       }),
     }
   );
