@@ -7,6 +7,9 @@ let database;
 let companyId = 1;
 let beforeCreateReturn = async () => {};
 let createProviderIntent = null;
+let providerHistory = [];
+let reconciliationVisible = true;
+export function setReconciliationVisible(value) { reconciliationVisible = value; }
 export function setBeforeCreateReturn(value) { beforeCreateReturn = value; }
 
 // Models Stripe's per-account key cache: distinct keys can create distinct
@@ -45,13 +48,20 @@ export async function getCompany() { return { stripe_account_id: `acct_${company
 export async function getOrCreateTerminalLocation() { return { stripe_terminal_location_id: "tml_test" }; }
 export function getStripe() {
   return { paymentIntents: {
-    retrieve: async () => providerIntent,
+    retrieve: async (id, _params, options) => providerHistory.find(entry => entry.intent.id === id && entry.account === options?.stripeAccount)?.intent ?? providerIntent,
+    search: async (params, options) => ({ data: reconciliationVisible
+      ? providerHistory.filter(entry => entry.account === options.stripeAccount &&
+        params.query === `metadata['saved_card_attempt_id']:'${entry.intent.metadata.saved_card_attempt_id}'`).map(entry => entry.intent)
+      : [], has_more: false }),
     create: async (body, options) => {
       effects.creates.push({ body, options });
       providerIntent = createProviderIntent
         ? createProviderIntent(body, options)
         : { ...providerIntent, metadata: body.metadata };
       const created = { ...providerIntent, client_secret: "secret" };
+      if (!providerHistory.some(entry => entry.intent.id === created.id && entry.account === options.stripeAccount)) {
+        providerHistory.push({ intent: created, account: options.stripeAccount });
+      }
       await beforeCreateReturn();
       return created;
     },
@@ -103,6 +113,13 @@ export function paymentDatabase() {
     INSERT INTO jobs (id, company_id, customer_id, price_cents) VALUES (12,1,90,5000), (13,1,90,5000), (22,2,90,5000);
     CREATE TABLE payments (id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER, job_id INTEGER, amount_cents INTEGER, tip_cents INTEGER DEFAULT 0, method TEXT, payment_date TEXT, notes TEXT, send_email INTEGER DEFAULT 0, send_sms INTEGER DEFAULT 0, stripe_payment_intent_id TEXT, subscription_id INTEGER, source TEXT DEFAULT 'job', created_at TEXT DEFAULT (datetime('now')), idempotency_key TEXT, request_fingerprint TEXT);
     CREATE UNIQUE INDEX idx_payments_idempotency ON payments(company_id, idempotency_key) WHERE idempotency_key IS NOT NULL;
+    CREATE TABLE saved_card_payment_attempts (
+      company_id INTEGER NOT NULL, idempotency_key TEXT NOT NULL,
+      attempt_id TEXT NOT NULL UNIQUE, request_fingerprint TEXT NOT NULL,
+      stripe_account_id TEXT NOT NULL, stripe_payment_intent_id TEXT, payment_date TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (company_id, idempotency_key)
+    );
     CREATE TABLE stripe_payment_methods (id INTEGER, company_id INTEGER, customer_id INTEGER, stripe_customer_id TEXT, stripe_payment_method_id TEXT, is_default INTEGER, created_at TEXT);
     INSERT INTO stripe_payment_methods VALUES (5,1,90,'cus_test','pm_test',1,'2026-09-11');
   `);
@@ -141,6 +158,8 @@ export function paymentDatabase() {
   receiptError = false;
   beforeCreateReturn = async () => {};
   createProviderIntent = null;
+  providerHistory = [];
+  reconciliationVisible = true;
   providerIntent = { id: "pi_test", status: "succeeded", amount: 1100, amount_received: 1100, metadata: { job_id: "12", amount_cents: "1000", tip_cents: "100" } };
   for (const list of Object.values(effects)) list.length = 0;
   return { sqlite, db: database, setStalePaymentReads: value => { stalePaymentReads = value; }, close: () => sqlite.close() };

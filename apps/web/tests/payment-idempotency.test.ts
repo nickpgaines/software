@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, afterEach, test } from "node:test";
-import { loadPaymentRoutes, paymentDatabase, effects, setCompanyId, setProviderIntent, setReceiptError, setBeforeCreateReturn, useIdempotentProvider } from "./helpers/payment-harness.mjs";
+import { loadPaymentRoutes, paymentDatabase, effects, setCompanyId, setProviderIntent, setReceiptError, setBeforeCreateReturn, setReconciliationVisible, useIdempotentProvider } from "./helpers/payment-harness.mjs";
 
 const routes = await loadPaymentRoutes();
 let database: ReturnType<typeof paymentDatabase>;
@@ -139,7 +139,7 @@ test("concurrent cross-job payment idempotency cannot create a second saved-card
     post("charge-saved-card", manualBody, "shared-attempt", 13),
   ]);
   assert.deepEqual(responses.map(response => response.status).sort(), [201, 409]);
-  assert.equal(effects.creates.length, 2, "both initial requests must reach the provider before payment recording");
+  assert.equal(effects.creates.length, 1, "reserve the tenant key before either job can charge it");
   assert.equal(provider.intents.length, 1, "one caller key must authorize only one provider charge across jobs");
   const rows = database.sqlite.prepare("SELECT stripe_payment_intent_id FROM payments").all() as Array<{ stripe_payment_intent_id: string }>;
   assert.deepEqual(rows.map(row => row.stripe_payment_intent_id), [provider.intents[0].id]);
@@ -187,6 +187,65 @@ test("saved-card payment idempotency remains durable when confirmation records t
   assert.equal(effects.creates.length, 1);
   assert.equal(effects.receipts.length, 1);
   assert.equal(effects.completions.length, 1);
+});
+
+test("saved-card accepted charge survives payment commit failure and Stripe key-cache expiry", async () => {
+  const provider = useIdempotentProvider();
+  database.sqlite.exec("CREATE TRIGGER reject_payment BEFORE INSERT ON payments BEGIN SELECT RAISE(ABORT, 'database unavailable'); END");
+  await assert.rejects(post("charge-saved-card", manualBody, "lost-record-123"), /database unavailable/);
+  assert.equal(provider.intents.length, 1);
+  assert.equal(database.sqlite.prepare("SELECT COUNT(*) AS count FROM payments").get().count, 0);
+  database.sqlite.exec("DROP TRIGGER reject_payment");
+  provider.expireKeys();
+  const retry = await post("charge-saved-card", manualBody, "lost-record-123");
+  assert.equal(retry.status, 201);
+  assert.equal((await retry.json()).stripe_payment_intent_id, provider.intents[0].id);
+  assert.equal(provider.intents.length, 1);
+  assert.equal(effects.creates.length, 1);
+  assert.equal(effects.receipts.length, 1);
+});
+
+test("saved-card lost intent binding remains unresolved until positive reconciliation after key expiry", async () => {
+  const provider = useIdempotentProvider();
+  database.sqlite.exec("CREATE TRIGGER reject_binding BEFORE UPDATE ON saved_card_payment_attempts WHEN NEW.stripe_payment_intent_id IS NOT NULL BEGIN SELECT RAISE(ABORT, 'binding unavailable'); END");
+  await assert.rejects(post("charge-saved-card"), /binding unavailable/);
+  assert.equal(provider.intents.length, 1);
+  database.sqlite.exec("DROP TRIGGER reject_binding");
+  provider.expireKeys();
+  setReconciliationVisible(false);
+  assert.equal((await post("charge-saved-card")).status, 409);
+  assert.equal((await post("charge-saved-card", { ...manualBody, amount_cents: 2000 })).status, 409);
+  assert.equal((await post("charge-saved-card", manualBody, "attempt-123", 13)).status, 409);
+  assert.equal(provider.intents.length, 1, "unresolved reservations never create another intent even after cache expiry");
+  setReconciliationVisible(true);
+  assert.equal((await post("charge-saved-card")).status, 201);
+  assert.equal(database.sqlite.prepare("SELECT stripe_payment_intent_id FROM payments").get().stripe_payment_intent_id, provider.intents[0].id);
+  assert.equal(effects.creates.length, 1);
+});
+
+test("saved-card connection loss after acceptance leaves a durable tenant fingerprint for recovery", async () => {
+  const provider = useIdempotentProvider();
+  setBeforeCreateReturn(async () => { throw new Error("connection lost after acceptance"); });
+  const failedResponse = await post("charge-saved-card");
+  assert.equal(failedResponse.status, 409);
+  assert.match((await failedResponse.json()).error, /unconfirmed|unknown/i);
+  const reserved = database.sqlite.prepare("SELECT * FROM saved_card_payment_attempts WHERE company_id=1 AND idempotency_key='saved-card:attempt-123'").get();
+  assert.ok(reserved, "reservation must commit before provider creation");
+  assert.equal(reserved.stripe_account_id, "acct_1");
+  assert.match(String(reserved.request_fingerprint), /^[0-9a-f]{64}$/);
+  assert.equal(reserved.stripe_payment_intent_id, null);
+  provider.expireKeys();
+  setBeforeCreateReturn(async () => {});
+  assert.equal((await post("charge-saved-card")).status, 201);
+  assert.equal(provider.intents.length, 1);
+  assert.equal(effects.creates.length, 1);
+});
+
+test("saved-card reservation failure prevents a provider charge", async () => {
+  const provider = useIdempotentProvider();
+  database.sqlite.exec("CREATE TRIGGER reject_attempt BEFORE INSERT ON saved_card_payment_attempts BEGIN SELECT RAISE(ABORT, 'attempt unavailable'); END");
+  await assert.rejects(post("charge-saved-card"), /attempt unavailable/);
+  assert.equal(provider.intents.length, 0);
 });
 
 test("payment idempotency keeps a committed payment successful when receipt delivery throws", async () => {

@@ -18,6 +18,7 @@ const POLICY_A2P_TRUST_PRODUCT = "RNb0d4771c2c98518d916a3d4cd70a8f8b";
 export type TwilioCreds = {
   accountSid: string;
   authToken: string;
+  beforeRequest?: () => Promise<void>;
 };
 
 export function normalizeTwilioStatus(status: string): string {
@@ -37,6 +38,7 @@ async function twilioRequest<T>(
   url: string,
   form?: Record<string, string | string[] | undefined>
 ): Promise<T> {
+  await creds.beforeRequest?.();
   const body =
     form && method === "POST" ? buildForm(form).toString() : undefined;
   const res = await fetch(url, {
@@ -606,6 +608,7 @@ export async function findAvailableLocalNumber(args: {
   creds: TwilioCreds;
   areaCode: string;
 }): Promise<string | null> {
+  await args.creds.beforeRequest?.();
   const params = new URLSearchParams({
     AreaCode: args.areaCode,
     SmsEnabled: "true",
@@ -631,6 +634,18 @@ export async function findAvailableLocalNumber(args: {
 }
 
 export type IncomingPhoneNumber = { sid: string; phone_number: string };
+
+export async function findOwnedPhoneNumber(args: {
+  creds: TwilioCreds; phoneNumber: string;
+}): Promise<IncomingPhoneNumber | null> {
+  const query = new URLSearchParams({ PhoneNumber: args.phoneNumber, PageSize: "1000" });
+  const result = await twilioRequest<{ incoming_phone_numbers?: IncomingPhoneNumber[] }>(
+    args.creds, "GET",
+    `${API_BASE}/2010-04-01/Accounts/${encodeURIComponent(args.creds.accountSid)}/IncomingPhoneNumbers.json?${query}`
+  );
+  // Twilio's phone filter is a partial match; accept only the reserved number.
+  return result.incoming_phone_numbers?.find(number => number.phone_number === args.phoneNumber && number.sid) ?? null;
+}
 
 export async function purchasePhoneNumber(args: {
   creds: TwilioCreds;
@@ -669,6 +684,16 @@ export async function attachNumberToMessagingService(args: {
     )}/PhoneNumbers`,
     { PhoneNumberSid: args.phoneNumberSid }
   );
+}
+
+export async function isNumberAttachedToMessagingService(args: {
+  creds: TwilioCreds; messagingServiceSid: string; phoneNumberSid: string;
+}): Promise<boolean> {
+  const number = await twilioRequest<{ sid: string; service_sid: string }>(
+    args.creds, "GET",
+    `${MESSAGING_BASE}/v1/Services/${encodeURIComponent(args.messagingServiceSid)}/PhoneNumbers/${encodeURIComponent(args.phoneNumberSid)}`
+  );
+  return number.sid === args.phoneNumberSid && number.service_sid === args.messagingServiceSid;
 }
 
 // US Trust Hub Policy SIDs are platform-wide constants published by Twilio:

@@ -480,7 +480,7 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
 // Bump when init() gains migrations that must run on existing deploys.
 // First call after deploy runs the full init; subsequent cold starts hit
 // the fast-path below (one SELECT) and skip the ~150 DDL statements.
-const SCHEMA_VERSION = 22;
+const SCHEMA_VERSION = 23;
 
 async function init(): Promise<void> {
   // Fast path: if the schema is already at the current version, skip the
@@ -1217,6 +1217,15 @@ async function init(): Promise<void> {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS sms_number_provisioning (
+      company_id INTEGER PRIMARY KEY REFERENCES company(id) ON DELETE CASCADE,
+      phone_number TEXT NOT NULL,
+      phone_sid TEXT,
+      status TEXT NOT NULL DEFAULT 'purchasing' CHECK (status IN ('purchasing', 'purchased', 'attached')),
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
     CREATE TABLE IF NOT EXISTS calls (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
@@ -1353,6 +1362,19 @@ async function init(): Promise<void> {
     );
     CREATE INDEX IF NOT EXISTS idx_payments_job_id     ON payments(job_id);
     CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments(created_at);
+
+    CREATE TABLE IF NOT EXISTS saved_card_payment_attempts (
+      company_id INTEGER NOT NULL REFERENCES company(id) ON DELETE CASCADE,
+      idempotency_key TEXT NOT NULL,
+      attempt_id TEXT NOT NULL UNIQUE,
+      request_fingerprint TEXT NOT NULL,
+      stripe_account_id TEXT NOT NULL,
+      stripe_payment_intent_id TEXT,
+      payment_date TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (company_id, idempotency_key)
+    );
 
     CREATE TABLE IF NOT EXISTS subscription_terms (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,

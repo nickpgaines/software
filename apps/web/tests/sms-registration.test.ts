@@ -30,6 +30,11 @@ let requests: Array<{ url: string; method: string; body: string }>;
 function registrationDatabase(state: string) {
   const database = createRegistrationDatabase(state);
   database.exec(`
+    CREATE TABLE sms_number_provisioning (
+      company_id INTEGER PRIMARY KEY, phone_number TEXT NOT NULL,
+      phone_sid TEXT, status TEXT NOT NULL DEFAULT 'purchasing',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
     CREATE TABLE sms_registration_leases (
       company_id INTEGER PRIMARY KEY,
       lease_token TEXT NOT NULL,
@@ -345,6 +350,130 @@ for (const failureStage of ["purchase", "attachment"] as const) {
     );
   });
 }
+
+test("attachment retry reuses the number durably saved before the first attachment", async () => {
+  db = registrationDatabase("campaign_approved");
+  db.prepare("UPDATE company SET twilio_messaging_service_sid='MGservice', twilio_campaign_sid='QEcampaign'").run();
+  let purchases = 0;
+  let attachments = 0;
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    if (url.includes("/AvailablePhoneNumbers/")) return Response.json({ available_phone_numbers: [{ phone_number: "+12025550199" }] });
+    if (url.endsWith("/IncomingPhoneNumbers.json") && init?.method === "POST") {
+      purchases++;
+      return Response.json({ sid: "PNfirst", phone_number: "+12025550199" });
+    }
+    if (url.endsWith("/PhoneNumbers")) {
+      attachments++;
+      const saved = db.prepare("SELECT phone_number, phone_sid FROM sms_number_provisioning WHERE company_id=1").get();
+      assert.equal(saved?.phone_number, "+12025550199");
+      assert.equal(saved?.phone_sid, "PNfirst", "purchase must be durable before attachment");
+      assert.equal(new URLSearchParams(String(init?.body)).get("PhoneNumberSid"), "PNfirst");
+      return attachments === 1 ? Response.json({ message: "attachment unavailable" }, { status: 500 }) : Response.json({});
+    }
+    throw new Error(`Unexpected request ${url}`);
+  };
+  await advanceRegistration(1);
+  assert.equal(db.prepare("SELECT sms_dedicated_number FROM company WHERE id=1").get().sms_dedicated_number, null, "number is not active until attached");
+  assert.equal((await advanceRegistration(1)).error, null);
+  assert.equal(purchases, 1);
+  assert.equal(attachments, 2);
+  assert.equal(db.prepare("SELECT sms_dedicated_number_sid FROM company WHERE id=1").get().sms_dedicated_number_sid, "PNfirst");
+});
+
+test("attachment accepted before an error is reconciled when retry reports an existing sender", async () => {
+  db = registrationDatabase("campaign_approved");
+  db.prepare("UPDATE company SET twilio_messaging_service_sid='MGservice', twilio_campaign_sid='QEcampaign'").run();
+  let purchases = 0;
+  let attachments = 0;
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    if (url.includes("/AvailablePhoneNumbers/")) return Response.json({ available_phone_numbers: [{ phone_number: "+12025550199" }] });
+    if (url.endsWith("/IncomingPhoneNumbers.json")) { purchases++; return Response.json({ sid: "PNfirst", phone_number: "+12025550199" }); }
+    if (url.endsWith("/PhoneNumbers") && init?.method === "POST") {
+      attachments++;
+      return Response.json({ message: attachments === 1 ? "response lost" : "already attached" }, { status: attachments === 1 ? 500 : 400 });
+    }
+    if (url.endsWith("/PhoneNumbers/PNfirst")) {
+      return attachments === 1 ? Response.json({}, { status: 404 }) : Response.json({ sid: "PNfirst", service_sid: "MGservice" });
+    }
+    throw new Error(`Unexpected request ${url}`);
+  };
+  await advanceRegistration(1);
+  assert.equal((await advanceRegistration(1)).error, null);
+  assert.equal(purchases, 1);
+  assert.equal(db.prepare("SELECT sms_dedicated_number_sid FROM company WHERE id=1").get().sms_dedicated_number_sid, "PNfirst");
+});
+
+for (const failure of ["network", "http500", "local_commit"] as const) {
+  test(`ambiguous phone purchase ${failure} reconciles the owned number without repurchase`, async () => {
+    db = registrationDatabase("campaign_approved");
+    db.prepare("UPDATE company SET twilio_messaging_service_sid='MGservice', twilio_campaign_sid='QEcampaign'").run();
+    if (failure === "local_commit") db.exec("CREATE TRIGGER reject_phone_sid BEFORE UPDATE ON sms_number_provisioning WHEN NEW.phone_sid IS NOT NULL BEGIN SELECT RAISE(ABORT, 'lost database'); END");
+    let purchases = 0;
+    let visible = false;
+    globalThis.fetch = async (input, init) => {
+      const url = new URL(String(input));
+      if (url.pathname.includes("/AvailablePhoneNumbers/")) return Response.json({ available_phone_numbers: [{ phone_number: "+12025550199" }] });
+      if (url.pathname.endsWith("/IncomingPhoneNumbers.json")) {
+        if (init?.method === "POST") {
+          purchases++;
+          if (failure === "network") throw new Error("connection lost after purchase accepted");
+          if (failure === "http500") return Response.json({ message: "server error" }, { status: 500 });
+          return Response.json({ sid: "PNaccepted", phone_number: "+12025550199" });
+        }
+        assert.equal(url.searchParams.get("PhoneNumber"), "+12025550199");
+        return Response.json({ incoming_phone_numbers: visible ? [{ sid: "PNaccepted", phone_number: "+12025550199" }] : [] });
+      }
+      if (url.pathname.endsWith("/PhoneNumbers")) return Response.json({});
+      throw new Error(`Unexpected request ${url}`);
+    };
+    await advanceRegistration(1);
+    if (failure === "local_commit") db.exec("DROP TRIGGER reject_phone_sid");
+    assert.match((await advanceRegistration(1)).error || "", /unconfirmed|unknown|reconcil/i);
+    assert.equal(purchases, 1, "an absent reconciliation result must not authorize another purchase");
+    visible = true;
+    assert.equal((await advanceRegistration(1)).error, null);
+    assert.equal(purchases, 1);
+    assert.equal(db.prepare("SELECT sms_dedicated_number_sid FROM company WHERE id=1").get().sms_dedicated_number_sid, "PNaccepted");
+  });
+}
+
+test("expired registration owner cannot repurchase or overwrite the new owner's provisioning progress", async () => {
+  db = registrationDatabase("campaign_approved");
+  db.prepare("UPDATE company SET twilio_messaging_service_sid='MGservice', twilio_campaign_sid='QEcampaign'").run();
+  let releasePurchase!: (response: Response) => void;
+  let purchaseStarted!: () => void;
+  const started = new Promise<void>(resolve => { purchaseStarted = resolve; });
+  let purchases = 0;
+  let attachments = 0;
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    if (url.includes("/AvailablePhoneNumbers/")) return Response.json({ available_phone_numbers: [{ phone_number: "+12025550199" }] });
+    if (url.includes("/IncomingPhoneNumbers.json")) {
+      if (init?.method === "POST") {
+        purchases++;
+        if (purchases === 1) { purchaseStarted(); return new Promise<Response>(resolve => { releasePurchase = resolve; }); }
+        return Response.json({ sid: "PNduplicate", phone_number: "+12025550199" });
+      }
+      return Response.json({ incoming_phone_numbers: [{ sid: "PNaccepted", phone_number: "+12025550199" }] });
+    }
+    if (url.endsWith("/PhoneNumbers")) { attachments++; return Response.json({}); }
+    throw new Error(`Unexpected request ${url}`);
+  };
+  const first = advanceRegistration(1);
+  await started;
+  db.prepare("UPDATE sms_registration_leases SET expires_at=datetime('now', '-6 minutes')").run();
+  await advanceRegistration(1);
+  db.prepare("UPDATE company SET a2p_registration_error='new owner diagnostic'").run();
+  releasePurchase(Response.json({ sid: "PNaccepted", phone_number: "+12025550199" }));
+  await first;
+  assert.equal(purchases, 1);
+  assert.equal(attachments, 1);
+  const saved = db.prepare("SELECT sms_dedicated_number_sid, a2p_registration_error FROM company WHERE id=1").get();
+  assert.equal(saved.sms_dedicated_number_sid, "PNaccepted");
+  assert.equal(saved.a2p_registration_error, "new owner diagnostic");
+});
 
 test("explicit resubmission preserves a rejected brand and directs support correction", async () => {
   db = registrationDatabase("brand_failed");

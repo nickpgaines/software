@@ -85,6 +85,42 @@ test("lifecycle outbox enqueue preparation error still commits a failed diagnost
   assert.ok((await db.prepare("SELECT en_route_at FROM jobs WHERE id=12").get())?.en_route_at);
 });
 
+for (const recovery of ["ready", "consent_revoked", "disabled"] as const) {
+  test(`operator retry re-prepares missing lifecycle content with current ${recovery} checks`, async t => {
+    const { db, close } = lifecycleDatabase(); t.after(close);
+    await db.exec("DROP TABLE customization_settings");
+    await setStatusStep(db, 12, "en_route", 1);
+    const notification = await db.prepare("SELECT id, outcome, body FROM job_lifecycle_notifications").get() as { id: number; outcome: string; body: string | null };
+    assert.equal(notification.outcome, "failed");
+    assert.equal(notification.body, null);
+    await db.exec("CREATE TABLE customization_settings (company_id INTEGER, config TEXT)");
+    if (recovery === "consent_revoked") await db.exec("DELETE FROM estimates");
+    if (recovery === "disabled") await db.prepare("INSERT INTO customization_settings VALUES (1, ?)").run(JSON.stringify({ messages: { drive_start: { enabled: false } } }));
+    const outbox = await import("../src/lib/job-lifecycle-outbox.ts");
+    assert.deepEqual(await outbox.requestJobLifecycleNotificationRetry({ db, companyId: 1, jobId: 12,
+      notificationId: notification.id, actorStaffId: 7, confirmUnknown: false }), { ok: true, step: "en_route" });
+    const bodies: string[] = [];
+    const delivered = await outbox.deliverJobLifecycleNotification({ db, companyId: 1, jobId: 12, step: "en_route",
+      send: async input => { bodies.push(input.body); return { ok: true, messageId: 88, status: "queued", error: null }; } });
+    assert.equal(delivered?.outcome, recovery === "ready" ? "sent" : "skipped");
+    assert.equal(bodies.length, recovery === "ready" ? 1 : 0);
+    if (recovery === "ready") assert.match(bodies[0], /on their way/);
+  });
+}
+
+test("operator retry preserves content already prepared before a delivery failure", async t => {
+  const { db, close } = lifecycleDatabase(); t.after(close);
+  await setStatusStep(db, 12, "en_route", 1);
+  const original = await db.prepare("SELECT id, body FROM job_lifecycle_notifications").get() as { id: number; body: string };
+  await db.exec("UPDATE job_lifecycle_notifications SET outcome='failed'; DROP TABLE customization_settings");
+  const outbox = await import("../src/lib/job-lifecycle-outbox.ts");
+  await outbox.requestJobLifecycleNotificationRetry({ db, companyId: 1, jobId: 12,
+    notificationId: original.id, actorStaffId: 7, confirmUnknown: false });
+  const result = await outbox.deliverJobLifecycleNotification({ db, companyId: 1, jobId: 12, step: "en_route",
+    send: async input => { assert.equal(input.body, original.body); return { ok: true, messageId: 88, status: "queued", error: null }; } });
+  assert.equal(result?.outcome, "sent");
+});
+
 test("lifecycle outbox concurrent cron runs count each provider submission only once", async t => {
   const { db, close } = lifecycleDatabase(); t.after(close);
   await setStatusStep(db, 12, "en_route", 1);

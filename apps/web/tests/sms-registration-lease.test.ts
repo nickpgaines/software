@@ -130,6 +130,23 @@ test("lease release permits a later attempt", async () => {
   db.close();
 });
 
+test("registration lease renews while provider work is still awaiting a response", async t => {
+  const db = leaseDatabase(); t.after(() => db.close());
+  t.mock.timers.enable({ apis: ["setInterval"] });
+  const started = deferred();
+  const release = deferred();
+  const first = withSmsRegistrationLease(db, 1, async () => { started.resolve(); await release.promise; });
+  await started.promise;
+  await db.prepare("UPDATE sms_registration_leases SET expires_at=datetime('now','+1 minute') WHERE company_id=1").run();
+  const before = (await db.prepare("SELECT expires_at FROM sms_registration_leases WHERE company_id=1").get<{ expires_at: string }>())!.expires_at;
+  t.mock.timers.tick(60_000);
+  await new Promise<void>(resolve => setImmediate(resolve));
+  const after = (await db.prepare("SELECT expires_at FROM sms_registration_leases WHERE company_id=1").get<{ expires_at: string }>())!.expires_at;
+  release.resolve();
+  await first;
+  assert.ok(after > before, "active provider work must extend its lease before expiry");
+});
+
 test("lease older than five minutes can be reclaimed", async () => {
   const db = leaseDatabase();
   await db.prepare(

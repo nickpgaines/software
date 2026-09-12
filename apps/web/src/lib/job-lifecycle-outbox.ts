@@ -1,4 +1,5 @@
 import type { Db } from "./db.ts";
+import { prepareJobLifecycleNotification } from "./job-lifecycle-dispatch.ts";
 import type {
   JobLifecycleNotificationRecord,
   JobLifecycleNotificationResult,
@@ -150,10 +151,10 @@ export async function requestJobLifecycleNotificationRetry(input: {
   confirmUnknown: boolean;
 }): Promise<LifecycleRetryRequestResult> {
   return input.db.transaction(async tx => {
-    const row = await tx.prepare(`SELECT step, outcome
+    const row = await tx.prepare(`SELECT step, outcome, customer_id, body
       FROM job_lifecycle_notifications
       WHERE id = ? AND company_id = ? AND job_id = ? LIMIT 1`
-    ).get<{ step: JobLifecycleStep; outcome: LifecycleOutcome }>(
+    ).get<Pick<NotificationRow, "step" | "outcome" | "customer_id" | "body">>(
       input.notificationId, input.companyId, input.jobId
     );
     if (!row) return { ok: false, reason: "not_found" };
@@ -163,11 +164,18 @@ export async function requestJobLifecycleNotificationRetry(input: {
     if (row.outcome !== "failed" && row.outcome !== "unknown") {
       return { ok: false, reason: "not_retryable", outcome: row.outcome };
     }
+    // A preparation failure has no frozen content to replay. Recheck consent
+    // and current configuration under the same primary transaction as retry.
+    // Already prepared content remains tied to its original event details.
+    const prepared = row.customer_id == null || !row.body
+      ? await prepareJobLifecycleNotification({ db: tx, companyId: input.companyId, jobId: input.jobId, step: row.step })
+      : { outcome: "pending", customerId: row.customer_id, body: row.body, error: null };
     const updated = await tx.prepare(`UPDATE job_lifecycle_notifications
-      SET outcome = 'pending', message_id = NULL, error = NULL, locked_at = NULL,
+      SET outcome = ?, customer_id = ?, body = ?, message_id = NULL, error = ?, locked_at = NULL,
           retry_requested_at = datetime('now'), retry_requested_by = ?, updated_at = datetime('now')
       WHERE id = ? AND company_id = ? AND job_id = ? AND outcome = ?`
-    ).run(input.actorStaffId, input.notificationId, input.companyId, input.jobId, row.outcome);
+    ).run(prepared.outcome, prepared.customerId, prepared.body, prepared.error,
+      input.actorStaffId, input.notificationId, input.companyId, input.jobId, row.outcome);
     if (updated.changes !== 1) {
       const current = await tx.prepare(`SELECT outcome FROM job_lifecycle_notifications
         WHERE id = ? AND company_id = ? AND job_id = ? LIMIT 1`

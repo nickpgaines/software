@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { test, type TestContext } from "node:test";
 import { lifecycleDatabase, loadRealLifecycleSmsSender } from "./helpers/lifecycle-harness.mjs";
 import { setStatusStep } from "../src/lib/job-status-transitions.ts";
-import { runPendingJobLifecycleNotifications } from "../src/lib/job-lifecycle-outbox.ts";
+import { requestJobLifecycleNotificationRetry, runPendingJobLifecycleNotifications } from "../src/lib/job-lifecycle-outbox.ts";
 
 const send = await loadRealLifecycleSmsSender();
 type Mode = "dedicated" | "trial" | "platform" | "byo";
@@ -40,6 +40,25 @@ function fixture(t: TestContext, mode: Mode) {
 }
 
 for (const mode of ["dedicated", "trial", "platform", "byo"] as const) {
+  test(`lifecycle ${mode} SMS HTTP 500 requires uncertain-delivery confirmation before retry`, async t => {
+    const { db } = fixture(t, mode);
+    let requests = 0;
+    t.mock.method(globalThis, "fetch", async () => {
+      requests++;
+      return Response.json({ code: 20500, message: "Internal server error" }, { status: 500 });
+    });
+    await setStatusStep(db, 12, "en_route", 1);
+    assert.deepEqual(await runPendingJobLifecycleNotifications({ db, send }), { sent: 0, failed: 0, unknown: 1 });
+    const row = await db.prepare("SELECT id, outcome FROM job_lifecycle_notifications").get() as { id: number; outcome: string };
+    assert.equal(row.outcome, "unknown");
+    assert.deepEqual(await requestJobLifecycleNotificationRetry({ db, companyId: 1, jobId: 12,
+      notificationId: row.id, actorStaffId: 7, confirmUnknown: false }),
+    { ok: false, reason: "confirmation_required", outcome: "unknown" });
+    await runPendingJobLifecycleNotifications({ db, send });
+    assert.equal(requests, 1);
+    assert.equal((await db.prepare("SELECT status FROM messages").get())?.status, "unknown");
+  });
+
   test(`lifecycle ${mode} SMS transport preserves uncertain acceptance through the real logged sender`, async t => {
     const { db } = fixture(t, mode);
     let requests = 0;

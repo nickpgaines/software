@@ -216,6 +216,7 @@ export async function sendSms(args: {
       ok: false,
       error: data.message || `Twilio error ${res.status}`,
       code: data.code,
+      acceptanceUnknown: res.status >= 500,
     };
   }
   return { ok: true, sid: data.sid || "", status: data.status || "queued" };

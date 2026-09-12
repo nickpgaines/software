@@ -13,6 +13,7 @@ import {
 } from "@/lib/stripe";
 import { sendPaymentReceipt } from "@/lib/payment-receipts";
 import { requireIdempotencyKey, insertPaymentIdempotently, findPaymentReplay, paymentRequestFingerprint, PaymentIdempotencyError } from "@/lib/payment-idempotency";
+import { bindSavedCardPaymentIntent, findSavedCardPaymentAttempt, reconcileSavedCardPaymentAttempt, reserveSavedCardPaymentAttempt, validateSavedCardPaymentIntent } from "@/lib/saved-card-payment-attempts";
 
 export const dynamic = "force-dynamic";
 
@@ -127,34 +128,50 @@ async function chargeSavedCard(
   // its provider-side idempotency cache or the saved card has been removed.
   // Write transactions read the primary; a top-level replica read can miss
   // the committed payment. Release the transaction before contacting Stripe.
-  const replay = await db.transaction(tx => findPaymentReplay(tx, paymentInput));
-  if (replay) return NextResponse.json({ ...replay, idempotent_replay: true, lifecycle_notification: null, warning: null });
+  const preflight = await db.transaction(async tx => ({
+    replay: await findPaymentReplay(tx, paymentInput),
+    attempt: await findSavedCardPaymentAttempt(tx, paymentInput),
+  }));
+  if (preflight.replay) return NextResponse.json({ ...preflight.replay, idempotent_replay: true, lifecycle_notification: null, warning: null });
+  let attempt = preflight.attempt;
+  let mayCreate = false;
 
   // Pick the PM: explicit id wins, otherwise the customer's default.
   let pm: StripePaymentMethod | undefined;
-  if (body.payment_method_id) {
-    pm = (await db
-      .prepare(
-        "SELECT * FROM stripe_payment_methods WHERE id = ? AND company_id = ? AND customer_id = ? LIMIT 1"
-      )
-      .get(Number(body.payment_method_id), companyId, job.customer_id)) as
-      | StripePaymentMethod
-      | undefined;
-  } else {
-    pm = (await db
-      .prepare(
-        `SELECT * FROM stripe_payment_methods
-         WHERE company_id = ? AND customer_id = ?
-         ORDER BY is_default DESC, created_at DESC, id DESC LIMIT 1`
-      )
-      .get(companyId, job.customer_id)) as StripePaymentMethod | undefined;
+  if (!attempt) {
+    if (body.payment_method_id) {
+      pm = (await db
+        .prepare(
+          "SELECT * FROM stripe_payment_methods WHERE id = ? AND company_id = ? AND customer_id = ? LIMIT 1"
+        )
+        .get(Number(body.payment_method_id), companyId, job.customer_id)) as
+        | StripePaymentMethod
+        | undefined;
+    } else {
+      pm = (await db
+        .prepare(
+          `SELECT * FROM stripe_payment_methods
+           WHERE company_id = ? AND customer_id = ?
+           ORDER BY is_default DESC, created_at DESC, id DESC LIMIT 1`
+        )
+        .get(companyId, job.customer_id)) as StripePaymentMethod | undefined;
+    }
+    if (!pm) {
+      return NextResponse.json(
+        { error: "No saved card on file for this customer" },
+        { status: 400 }
+      );
+    }
+    const reservation = await db.transaction(async tx => {
+      const replay = await findPaymentReplay(tx, paymentInput);
+      if (replay) return { replay, attempt: undefined, created: false };
+      return { replay: undefined, ...await reserveSavedCardPaymentAttempt(tx, paymentInput, company.stripe_account_id!) };
+    });
+    if (reservation.replay) return NextResponse.json({ ...reservation.replay, idempotent_replay: true, lifecycle_notification: null, warning: null });
+    attempt = reservation.attempt!;
+    mayCreate = reservation.created;
   }
-  if (!pm) {
-    return NextResponse.json(
-      { error: "No saved card on file for this customer" },
-      { status: 400 }
-    );
-  }
+  paymentInput.payment_date = attempt.payment_date;
 
   const feeBps = Number(process.env.STRIPE_APPLICATION_FEE_BPS ?? 50);
   const applicationFee =
@@ -164,56 +181,72 @@ async function chargeSavedCard(
 
   const stripe = getStripe();
   let intent;
-  try {
-    intent = await stripe.paymentIntents.create(
-      {
-        amount: total,
-        currency: "usd",
-        customer: pm.stripe_customer_id,
-        payment_method: pm.stripe_payment_method_id,
-        confirm: true,
-        off_session: true,
-        description: `Job #${jobId} — ${job.name ?? "Customer"} (saved card)`,
-        metadata: {
-          job_id: String(jobId),
-          customer_id: String(job.customer_id),
-          amount_cents: String(amount),
-          tip_cents: String(tip),
-          application_fee_cents: String(applicationFee),
-          subscription_id:
-            subscriptionId ? String(subscriptionId) : "",
-          source: "saved_card",
-          payment_idempotency_key: paymentInput.idempotency_key,
-          payment_method_row_id: paymentInput.payment_method_id ? String(paymentInput.payment_method_id) : "",
-          request_fingerprint: paymentRequestFingerprint(paymentInput),
+  if (!mayCreate) {
+    intent = await reconcileSavedCardPaymentAttempt(stripe, attempt);
+  } else {
+    try {
+      intent = await stripe.paymentIntents.create(
+        {
+          amount: total,
+          currency: "usd",
+          customer: pm!.stripe_customer_id,
+          payment_method: pm!.stripe_payment_method_id,
+          confirm: true,
+          off_session: true,
+          description: `Job #${jobId} — ${job.name ?? "Customer"} (saved card)`,
+          metadata: {
+            job_id: String(jobId),
+            customer_id: String(job.customer_id),
+            amount_cents: String(amount),
+            tip_cents: String(tip),
+            application_fee_cents: String(applicationFee),
+            subscription_id: subscriptionId ? String(subscriptionId) : "",
+            source: "saved_card",
+            company_id: String(companyId),
+            saved_card_attempt_id: attempt.attempt_id,
+            payment_idempotency_key: paymentInput.idempotency_key,
+            payment_method_row_id: paymentInput.payment_method_id ? String(paymentInput.payment_method_id) : "",
+            request_fingerprint: paymentRequestFingerprint(paymentInput),
+          },
+          receipt_email: job.email || undefined,
+          ...(applicationFee > 0
+            ? { application_fee_amount: applicationFee }
+            : {}),
         },
-        receipt_email: job.email || undefined,
-        ...(applicationFee > 0
-          ? { application_fee_amount: applicationFee }
-          : {}),
-      },
-      { stripeAccount: company.stripe_account_id, idempotencyKey: `forge:${companyId}:saved:${key}` }
-    );
-  } catch (e) {
-    // Stripe throws on declines, including 3DS required. Surface the
-    // `requires_action` case as a 402 so the UI can fall back to an
-    // on-session collection flow.
-    const err = e as { type?: string; code?: string; message?: string; payment_intent?: { id?: string; status?: string } };
-    if (err.type === "StripeIdempotencyError" || err.code === "idempotency_key_in_use") {
-      throw new PaymentIdempotencyError("This payment key is already in use; retry the original payment details", 409);
+        { stripeAccount: attempt.stripe_account_id, idempotencyKey: `forge:${companyId}:saved:${key}` }
+      );
+    } catch (e) {
+      // Stripe throws on declines, including 3DS required. Surface the
+      // `requires_action` case as a 402 so the UI can fall back to an
+      // on-session collection flow.
+      const err = e as { type?: string; code?: string; message?: string; payment_intent?: { id?: string; status?: string } };
+      if (err.type === "StripeIdempotencyError" || err.code === "idempotency_key_in_use") {
+        throw new PaymentIdempotencyError("This payment key is already in use; retry the original payment details", 409);
+      }
+      const requiresAction =
+        err.code === "authentication_required" ||
+        err.payment_intent?.status === "requires_action";
+      if (err.payment_intent?.id) {
+        await db.transaction(tx => bindSavedCardPaymentIntent(tx, attempt!, err.payment_intent!.id!));
+      }
+      if (!err.payment_intent?.id && !requiresAction &&
+        !["StripeCardError", "StripeInvalidRequestError", "StripeAuthenticationError", "StripePermissionError", "StripeRateLimitError"].includes(err.type || "")) {
+        throw new PaymentIdempotencyError("This payment attempt is unconfirmed. Retry with the same payment key to check its status, or contact support before collecting another payment.", 409);
+      }
+      return NextResponse.json(
+        {
+          error: err.message || "Card was declined",
+          requires_action: requiresAction,
+          payment_intent_id: err.payment_intent?.id,
+        },
+        { status: requiresAction ? 402 : 400 }
+      );
     }
-    const requiresAction =
-      err.code === "authentication_required" ||
-      err.payment_intent?.status === "requires_action";
-    return NextResponse.json(
-      {
-        error: err.message || "Card was declined",
-        requires_action: requiresAction,
-        payment_intent_id: err.payment_intent?.id,
-      },
-      { status: requiresAction ? 402 : 400 }
-    );
   }
+  validateSavedCardPaymentIntent(intent, attempt);
+  // Bind acceptance in its own durable commit before preparing/recording the
+  // payment. If this write fails, the reservation remains for reconciliation.
+  await db.transaction(tx => bindSavedCardPaymentIntent(tx, attempt!, intent.id));
 
   if (intent.status !== "succeeded") {
     return NextResponse.json(

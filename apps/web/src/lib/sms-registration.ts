@@ -19,8 +19,10 @@ import {
   type A2pRegistrationState,
   type Company,
   type SmsBrandRegistration,
+  type Db,
 } from "@/lib/db";
-import { withSmsRegistrationLease } from "@/lib/sms-registration-lease";
+import { SmsRegistrationLeaseLostError, withSmsRegistrationLease, type SmsRegistrationLease } from "@/lib/sms-registration-lease";
+import { provisionDedicatedNumber } from "@/lib/sms-number-provisioning";
 import {
   ensureTenantSubaccount,
   getPlatformConfig,
@@ -28,7 +30,6 @@ import {
 import type { TwilioCreds } from "@/lib/twilio-trust-hub";
 import {
   attachA2pProfileInfoEndUser,
-  attachNumberToMessagingService,
   attachToCustomerProfile,
   attachToTrustProduct,
   createA2pTrustProduct,
@@ -47,10 +48,8 @@ import {
   fetchTrustProduct,
   summarizeEvaluationFailures,
   summarizeRegistrationErrors,
-  findAvailableLocalNumber,
   listCustomerProfiles,
   normalizeTwilioStatus,
-  purchasePhoneNumber,
   submitCustomerProfile,
   submitTrustProduct,
 } from "@/lib/twilio-trust-hub";
@@ -201,11 +200,10 @@ function buildMessageSamples(name: string): string[] {
   ];
 }
 
-async function loadContext(companyId: number): Promise<{
+async function loadContext(companyId: number, db: Db): Promise<{
   company: Company;
   registration: SmsBrandRegistration | null;
 }> {
-  const db = await getDb();
   const company = await db
     .prepare("SELECT * FROM company WHERE id = ? LIMIT 1")
     .get<Company>(companyId);
@@ -218,13 +216,13 @@ async function loadContext(companyId: number): Promise<{
   return { company, registration: registration ?? null };
 }
 
-async function persistState(
+async function persistRegistrationState(
+  db: Db,
   companyId: number,
   state: A2pRegistrationState,
   error: string | null,
   patch: Partial<Company> = {}
 ): Promise<void> {
-  const db = await getDb();
   const fields: string[] = [
     "a2p_registration_state = ?",
     "a2p_registration_error = ?",
@@ -286,11 +284,13 @@ function failedProviderResourceGuidance(
 // One step. Returns whether the caller should immediately recurse to try the
 // next step in the same request (true for steps that complete synchronously
 // like creating resources; false for steps that wait on Twilio review).
-async function step(companyId: number, retryFailed: boolean): Promise<{
+async function step(companyId: number, retryFailed: boolean, lease: SmsRegistrationLease): Promise<{
   state: A2pRegistrationState;
   error: string | null;
   recurse: boolean;
 }> {
+  const persistState = (id: number, state: A2pRegistrationState, error: string | null, patch: Partial<Company> = {}) =>
+    lease.transaction(tx => persistRegistrationState(tx, id, state, error, patch));
   const cfg = getPlatformConfig();
   if (!cfg) {
     return {
@@ -300,7 +300,7 @@ async function step(companyId: number, retryFailed: boolean): Promise<{
     };
   }
 
-  const { company, registration } = await loadContext(companyId);
+  const { company, registration } = await lease.transaction(tx => loadContext(companyId, tx));
   if (!registration) {
     return {
       state: company.a2p_registration_state,
@@ -337,7 +337,9 @@ async function step(companyId: number, retryFailed: boolean): Promise<{
     creds = await ensureTenantSubaccount({
       companyId,
       friendlyName: registration.legal_company_name,
+      lease,
     });
+    creds.beforeRequest = lease.assertOwned;
   } catch (e) {
     const msg = (e as Error).message;
     await persistState(
@@ -778,64 +780,10 @@ async function step(companyId: number, retryFailed: boolean): Promise<{
 
   // 9. Campaign approved → buy and attach the dedicated number.
   if (state === "campaign_approved" && !company.sms_dedicated_number) {
-    let number: string | null;
-    try {
-      const areaCode =
-        (registration.business_phone.replace(/\D/g, "").match(/\d{10}$/)?.[0] ?? "")
-          .slice(0, 3) || "843";
-      number = await findAvailableLocalNumber({ creds, areaCode });
-      if (!number) {
-        const msg =
-          `No phone numbers are currently available in area code ${areaCode}. ` +
-          "The campaign remains approved; refresh status to retry phone number provisioning.";
-        await persistState(companyId, "campaign_approved", msg);
-        return { state: "campaign_approved", error: msg, recurse: false };
-      }
-    } catch (e) {
-      const msg =
-        `Phone number search failed: ${(e as Error).message}. ` +
-        "The campaign remains approved; refresh status to retry phone number provisioning.";
-      await persistState(companyId, "campaign_approved", msg);
-      return { state: "campaign_approved", error: msg, recurse: false };
-    }
-
-    let purchased: { sid: string; phone_number: string };
-    try {
-      const inboundUrl = buildWebhookUrl("/api/messages/webhook");
-      const voiceUrl = buildWebhookUrl("/api/voice/outbound");
-      purchased = await purchasePhoneNumber({
-        creds,
-        phoneNumber: number,
-        friendlyName: `nick360:${companyId}:${registration.legal_company_name}`,
-        smsUrl: inboundUrl,
-        voiceUrl,
-      });
-    } catch (e) {
-      const msg =
-        `Phone number purchase failed: ${(e as Error).message}. ` +
-        "The campaign remains approved; refresh status to retry phone number provisioning.";
-      await persistState(companyId, "campaign_approved", msg);
-      return { state: "campaign_approved", error: msg, recurse: false };
-    }
-
-    try {
-      await attachNumberToMessagingService({
-        creds,
-        messagingServiceSid: company.twilio_messaging_service_sid!,
-        phoneNumberSid: purchased.sid,
-      });
-      await persistState(companyId, "campaign_approved", null, {
-        sms_dedicated_number: purchased.phone_number,
-        sms_dedicated_number_sid: purchased.sid,
-      });
-      return { state: "campaign_approved", error: null, recurse: false };
-    } catch (e) {
-      const msg =
-        `Phone number attachment failed: ${(e as Error).message}. ` +
-        "The campaign remains approved; refresh status to retry phone number provisioning.";
-      await persistState(companyId, "campaign_approved", msg);
-      return { state: "campaign_approved", error: msg, recurse: false };
-    }
+    const error = await provisionDedicatedNumber({ company, registration, creds, lease,
+      smsUrl: buildWebhookUrl("/api/messages/webhook"), voiceUrl: buildWebhookUrl("/api/voice/outbound") });
+    await persistState(companyId, "campaign_approved", error);
+    return { state: "campaign_approved", error, recurse: false };
   }
 
   return { state, error: company.a2p_registration_error, recurse: false };
@@ -843,7 +791,8 @@ async function step(companyId: number, retryFailed: boolean): Promise<{
 
 async function advanceRegistrationAttempt(
   companyId: number,
-  retryFailed: boolean
+  retryFailed: boolean,
+  lease: SmsRegistrationLease
 ): Promise<AdvanceResult> {
   // Cap the loop in case a step incorrectly returns recurse=true forever.
   let remaining = 12;
@@ -852,7 +801,7 @@ async function advanceRegistrationAttempt(
     error: null,
   };
   while (remaining-- > 0) {
-    const r = await step(companyId, retryFailed);
+    const r = await step(companyId, retryFailed, lease);
     last = { state: r.state, error: r.error };
     if (!r.recurse) break;
   }
@@ -868,12 +817,18 @@ export async function advanceRegistration(
   options: { retryFailed?: boolean } = {}
 ): Promise<AdvanceResult> {
   const db = await getDb();
-  const lease = await withSmsRegistrationLease(db, companyId, () =>
-    advanceRegistrationAttempt(companyId, options.retryFailed === true)
-  );
-  if (lease.acquired) return lease.value!;
+  try {
+    const lease = await withSmsRegistrationLease(db, companyId, owner =>
+      advanceRegistrationAttempt(companyId, options.retryFailed === true, owner)
+    );
+    if (lease.acquired) return lease.value!;
+  } catch (error) {
+    if (!(error instanceof SmsRegistrationLeaseLostError)) throw error;
+    // The current owner has authority. Return its state without writing or
+    // beginning another provider step from this stale invocation.
+  }
 
-  const { company } = await loadContext(companyId);
+  const { company } = await db.transaction(tx => loadContext(companyId, tx));
   return {
     state: company.a2p_registration_state,
     error: company.a2p_registration_error,
