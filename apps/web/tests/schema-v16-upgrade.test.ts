@@ -3,27 +3,13 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createClient } from "@libsql/client";
-import { registerHooks } from "node:module";
 import test from "node:test";
-import { loadRealPaymentDb } from "./helpers/payment-harness.mjs";
+import { loadRealDbModule, loadRealPaymentDb } from "./helpers/payment-harness.mjs";
 
 test("legacy job backfill uses one set-based database batch", async () => {
-  const hooks = registerHooks({
-    resolve(specifier, context, nextResolve) {
-      if (specifier.startsWith("@/")) {
-        return nextResolve(new URL(`../src/${specifier.slice(2)}.ts`, import.meta.url).href, context);
-      }
-      return nextResolve(specifier, context);
-    },
-  });
-  let dbModule: {
+  const dbModule = (await loadRealDbModule("?legacy-backfill-contract")) as {
     backfillLegacyJobData?: (db: { exec(sql: string): Promise<void> }) => Promise<void>;
   };
-  try {
-    dbModule = (await import("../src/lib/db.ts?legacy-backfill-contract")) as typeof dbModule;
-  } finally {
-    hooks.deregister();
-  }
   assert.equal(typeof dbModule.backfillLegacyJobData, "function");
 
   const batches: string[] = [];

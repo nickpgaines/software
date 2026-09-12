@@ -79,13 +79,19 @@ export async function dispatchPaymentCompletionNotification(value) {
 export async function getDb() { return database; }
 
 /** @returns {Promise<import("../../src/lib/db.ts").Db>} */
-export async function loadRealPaymentDb(suffix = "") {
+/** @returns {Promise<typeof import("../../src/lib/db.ts")>} */
+export async function loadRealDbModule(suffix = "") {
   const hooks = registerHooks({ resolve(specifier, context, nextResolve) {
     if (specifier.startsWith("@/")) return nextResolve(new URL(`../../src/${specifier.slice(2)}.ts`, import.meta.url).href, context);
     return nextResolve(specifier, context);
   } });
-  try { return await (await import(`../../src/lib/db.ts${suffix}`)).getDb(); }
+  try { return await import(`../../src/lib/db.ts${suffix}`); }
   finally { hooks.deregister(); }
+}
+
+/** @returns {Promise<import("../../src/lib/db.ts").Db>} */
+export async function loadRealPaymentDb(suffix = "") {
+  return (await loadRealDbModule(suffix)).getDb();
 }
 
 export async function loadPaymentRoutes() {
