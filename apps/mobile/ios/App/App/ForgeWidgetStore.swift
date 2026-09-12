@@ -128,6 +128,66 @@ protocol KeychainItemWriting {
     func add(_ attributes: [String: Any]) -> OSStatus
 }
 
+protocol WidgetCredentialCacheLocking {
+    func withLock<T>(_ operation: () throws -> T) throws -> T
+}
+
+final class FileWidgetCredentialCacheLock: WidgetCredentialCacheLocking {
+    private let cacheDirectory: URL?
+    private let lockFile = ".widget-credential-cache.lock"
+
+    init(cacheDirectory: URL?) {
+        self.cacheDirectory = cacheDirectory
+    }
+
+    func withLock<T>(_ operation: () throws -> T) throws -> T {
+        guard let cacheDirectory else {
+            throw ForgeWidgetStoreError.missingSharedContainer
+        }
+        try FileManager.default.createDirectory(
+            at: cacheDirectory,
+            withIntermediateDirectories: true
+        )
+        let lockURL = cacheDirectory.appendingPathComponent(
+            lockFile,
+            isDirectory: false
+        )
+        if !FileManager.default.fileExists(atPath: lockURL.path) {
+            _ = FileManager.default.createFile(
+                atPath: lockURL.path,
+                contents: Data()
+            )
+        }
+
+        let coordinator = NSFileCoordinator(filePresenter: nil)
+        var coordinationError: NSError?
+        var operationResult: Result<T, Swift.Error>?
+        coordinator.coordinate(
+            writingItemAt: lockURL,
+            options: [],
+            error: &coordinationError
+        ) { _ in
+            operationResult = Result { try operation() }
+        }
+        if let coordinationError {
+            throw ForgeWidgetStoreError.processSharedLock(coordinationError)
+        }
+        guard let operationResult else {
+            throw ForgeWidgetStoreError.processSharedLock(
+                NSError(
+                    domain: "ForgeWidgetStore",
+                    code: 1,
+                    userInfo: [
+                        NSLocalizedDescriptionKey:
+                            "Credential/cache coordination did not run.",
+                    ]
+                )
+            )
+        }
+        return try operationResult.get()
+    }
+}
+
 struct SystemKeychainItemWriter: KeychainItemWriting {
     func update(
         _ query: [String: Any],
@@ -145,6 +205,7 @@ enum ForgeWidgetStoreError: Error {
     case keychain(OSStatus)
     case randomIdentifier(OSStatus)
     case missingSharedContainer
+    case processSharedLock(NSError)
 }
 
 final class KeychainWidgetSecretStore: WidgetSecretStoring {
@@ -228,6 +289,7 @@ final class ForgeWidgetStore {
     private let secretStore: WidgetSecretStoring
     private let defaults: UserDefaults
     private let cacheDirectory: URL?
+    private let processSharedLock: WidgetCredentialCacheLocking
     private let installationKey = "installation-id"
     private let credentialKey = "widget-credential"
     private let snapshotFile = "widget-summary.json"
@@ -237,11 +299,14 @@ final class ForgeWidgetStore {
         defaults: UserDefaults? = UserDefaults(suiteName: ForgeWidgetStore.appGroup),
         cacheDirectory: URL? = FileManager.default.containerURL(
             forSecurityApplicationGroupIdentifier: ForgeWidgetStore.appGroup
-        )
+        ),
+        processSharedLock: WidgetCredentialCacheLocking? = nil
     ) {
         self.secretStore = secretStore
         self.defaults = defaults ?? .standard
         self.cacheDirectory = cacheDirectory
+        self.processSharedLock = processSharedLock
+            ?? FileWidgetCredentialCacheLock(cacheDirectory: cacheDirectory)
     }
 
     func installationIdentifier() throws -> String {
@@ -408,9 +473,9 @@ final class ForgeWidgetStore {
 
     private func withCredentialCacheLock<T>(
         _ operation: () throws -> T
-    ) rethrows -> T {
+    ) throws -> T {
         Self.credentialCacheLock.lock()
         defer { Self.credentialCacheLock.unlock() }
-        return try operation()
+        return try processSharedLock.withLock(operation)
     }
 }

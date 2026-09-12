@@ -37,6 +37,116 @@ private final class MemoryWidgetSecretStore: WidgetSecretStoring {
     }
 }
 
+private final class DeterministicCredentialCacheLock: WidgetCredentialCacheLocking {
+    private let gate = NSLock()
+    private let stateLock = NSLock()
+    private var held = false
+
+    var isHeld: Bool {
+        stateLock.lock()
+        defer { stateLock.unlock() }
+        return held
+    }
+
+    func withLock<T>(_ operation: () throws -> T) throws -> T {
+        gate.lock()
+        stateLock.lock()
+        held = true
+        stateLock.unlock()
+        defer {
+            stateLock.lock()
+            held = false
+            stateLock.unlock()
+            gate.unlock()
+        }
+        return try operation()
+    }
+}
+
+private final class ExternalReplacementSecretStore: WidgetSecretStoring {
+    enum ReplacementError: Swift.Error {
+        case timedOut
+    }
+
+    var values: [String: Data] = [:]
+
+    private let cacheDirectory: URL
+    private let replacementLock: DeterministicCredentialCacheLock
+    private let replacementAttempted = DispatchSemaphore(value: 0)
+    private let replacementFinished = DispatchSemaphore(value: 0)
+    private var replacement: (credential: Data, snapshot: Data)?
+    private(set) var replacementError: Swift.Error?
+
+    init(
+        cacheDirectory: URL,
+        replacementLock: DeterministicCredentialCacheLock
+    ) {
+        self.cacheDirectory = cacheDirectory
+        self.replacementLock = replacementLock
+    }
+
+    func data(for key: String) throws -> Data? {
+        let current = values[key]
+        guard key == "widget-credential",
+              let replacement else {
+            return current
+        }
+        self.replacement = nil
+        DispatchQueue.global().async {
+            defer { self.replacementFinished.signal() }
+            self.replacementAttempted.signal()
+            do {
+                try self.replacementLock.withLock {
+                    self.values[key] = replacement.credential
+                    try replacement.snapshot.write(
+                        to: self.cacheDirectory.appendingPathComponent(
+                            "widget-summary.json"
+                        ),
+                        options: .atomic
+                    )
+                }
+            } catch {
+                self.replacementError = error
+            }
+        }
+        guard replacementAttempted.wait(timeout: .now() + 2) == .success else {
+            throw ReplacementError.timedOut
+        }
+        if !replacementLock.isHeld,
+           replacementFinished.wait(timeout: .now() + 2) != .success {
+            throw ReplacementError.timedOut
+        }
+        return current
+    }
+
+    func set(_ data: Data, for key: String) throws {
+        values[key] = data
+    }
+
+    func removeValue(for key: String) throws {
+        values.removeValue(forKey: key)
+    }
+
+    func replaceOnNextCredentialRead(
+        credential: ForgeWidgetCredential,
+        snapshot: ForgeWidgetSnapshot
+    ) throws {
+        replacement = (
+            try JSONEncoder.forgeWidgetEncoder().encode(credential),
+            try JSONEncoder.forgeWidgetEncoder().encode(snapshot)
+        )
+    }
+
+    func waitForReplacement() throws {
+        guard replacementFinished.wait(timeout: .now() + 2) == .success else {
+            throw ReplacementError.timedOut
+        }
+        if let replacementError {
+            throw replacementError
+        }
+    }
+}
+
 private extension ForgeWidgetSnapshot {
     static func fixture(
         companyID: Int,
@@ -223,6 +333,98 @@ final class ForgeWidgetStoreTests: XCTestCase {
         )
     }
 
+    func testFileLockExcludesAnIndependentLockInstance() throws {
+        let first = FileWidgetCredentialCacheLock(cacheDirectory: cacheDirectory)
+        let second = FileWidgetCredentialCacheLock(cacheDirectory: cacheDirectory)
+        let firstEntered = DispatchSemaphore(value: 0)
+        let releaseFirst = DispatchSemaphore(value: 0)
+        let secondAttempted = DispatchSemaphore(value: 0)
+        let secondEntered = DispatchSemaphore(value: 0)
+
+        DispatchQueue.global().async {
+            try? first.withLock {
+                firstEntered.signal()
+                releaseFirst.wait()
+            }
+        }
+        XCTAssertEqual(firstEntered.wait(timeout: .now() + 2), .success)
+
+        DispatchQueue.global().async {
+            secondAttempted.signal()
+            _ = try? second.withLock {
+                secondEntered.signal()
+            }
+        }
+        XCTAssertEqual(secondAttempted.wait(timeout: .now() + 2), .success)
+        XCTAssertEqual(secondEntered.wait(timeout: .now() + 0.1), .timedOut)
+
+        releaseFirst.signal()
+        XCTAssertEqual(secondEntered.wait(timeout: .now() + 2), .success)
+    }
+
+    func testIndependentCredentialReplacementCannotBeClearedAfterFinalComparison() throws {
+        let (raceStore, raceSecrets, accountA, accountB, accountBSnapshot) =
+            try makeExternalReplacementStore()
+        try raceStore.saveCredential(accountA)
+        try raceStore.saveSnapshot(
+            .fixture(companyID: 42, staffID: 9, monthlyRevenueCents: 111)
+        )
+        try raceSecrets.replaceOnNextCredentialRead(
+            credential: accountB,
+            snapshot: accountBSnapshot
+        )
+
+        _ = try raceStore.clearCredentialAndCache(ifCredentialMatches: accountA)
+        try raceSecrets.waitForReplacement()
+
+        XCTAssertEqual(try raceStore.loadCredential(), accountB)
+        XCTAssertEqual(try raceStore.loadSnapshot(), accountBSnapshot)
+    }
+
+    func testIndependentCredentialReplacementCannotBeOverwrittenAfterFinalComparison() throws {
+        let (raceStore, raceSecrets, accountA, accountB, accountBSnapshot) =
+            try makeExternalReplacementStore()
+        try raceStore.saveCredential(accountA)
+        try raceSecrets.replaceOnNextCredentialRead(
+            credential: accountB,
+            snapshot: accountBSnapshot
+        )
+
+        _ = try raceStore.saveSnapshot(
+            .fixture(companyID: 42, staffID: 9, monthlyRevenueCents: 111),
+            ifCredentialMatches: accountA
+        )
+        try raceSecrets.waitForReplacement()
+
+        XCTAssertEqual(try raceStore.loadCredential(), accountB)
+        XCTAssertEqual(try raceStore.loadSnapshot(), accountBSnapshot)
+    }
+
+    func testIndependentCredentialReplacementCannotSplitFallbackComparisonAndRead() throws {
+        let (raceStore, raceSecrets, accountA, accountB, accountBSnapshot) =
+            try makeExternalReplacementStore()
+        let accountASnapshot = ForgeWidgetSnapshot.fixture(
+            companyID: 42,
+            staffID: 9,
+            monthlyRevenueCents: 111
+        )
+        try raceStore.saveCredential(accountA)
+        try raceStore.saveSnapshot(accountASnapshot)
+        try raceSecrets.replaceOnNextCredentialRead(
+            credential: accountB,
+            snapshot: accountBSnapshot
+        )
+
+        let fallback = try raceStore.loadSnapshot(
+            ifCredentialMatches: accountA
+        )
+        try raceSecrets.waitForReplacement()
+
+        XCTAssertEqual(fallback, accountASnapshot)
+        XCTAssertEqual(try raceStore.loadCredential(), accountB)
+        XCTAssertEqual(try raceStore.loadSnapshot(), accountBSnapshot)
+    }
+
     private func credential(
         token: Character,
         companyID: Int,
@@ -241,5 +443,33 @@ final class ForgeWidgetStoreTests: XCTestCase {
             return false
         }
         return CFEqual(accessibility as CFTypeRef, kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly)
+    }
+
+    private func makeExternalReplacementStore() throws -> (
+        ForgeWidgetStore,
+        ExternalReplacementSecretStore,
+        ForgeWidgetCredential,
+        ForgeWidgetCredential,
+        ForgeWidgetSnapshot
+    ) {
+        let processSharedLock = DeterministicCredentialCacheLock()
+        let raceSecrets = ExternalReplacementSecretStore(
+            cacheDirectory: cacheDirectory,
+            replacementLock: processSharedLock
+        )
+        let raceStore = ForgeWidgetStore(
+            secretStore: raceSecrets,
+            defaults: defaults,
+            cacheDirectory: cacheDirectory,
+            processSharedLock: processSharedLock
+        )
+        let accountA = credential(token: "a", companyID: 42, staffID: 9)
+        let accountB = credential(token: "b", companyID: 77, staffID: 10)
+        let accountBSnapshot = ForgeWidgetSnapshot.fixture(
+            companyID: 77,
+            staffID: 10,
+            monthlyRevenueCents: 777
+        )
+        return (raceStore, raceSecrets, accountA, accountB, accountBSnapshot)
     }
 }
