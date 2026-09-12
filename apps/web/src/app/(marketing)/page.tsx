@@ -87,7 +87,7 @@ export default function MarketingHome() {
             <SectionHeading className="mt-5">
               Founder pricing.
               <br />
-              30% off list.
+              Not public pricing.
             </SectionHeading>
             <SectionSubhead className="mt-6 mx-auto">
               Not public pricing. Pay annually and get 2 months free. Free
