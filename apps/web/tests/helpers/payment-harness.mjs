@@ -1,6 +1,7 @@
 import { registerHooks } from "node:module";
 import { DatabaseSync } from "node:sqlite";
-export { autoCompleteSteps } from "../../src/lib/payment-job-completion.ts";
+export { autoCompleteSteps, preparePaymentCompletionNotification } from "../../src/lib/payment-job-completion.ts";
+import { installLifecycleSchema } from "./lifecycle-harness.mjs";
 
 let database;
 let companyId = 1;
@@ -96,16 +97,17 @@ export async function loadPaymentRoutes() {
 export function paymentDatabase() {
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec(`
-    CREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT, first_name TEXT, last_name TEXT, email TEXT);
-    INSERT INTO customers VALUES (90, 'Ada', 'Ada', 'Lovelace', 'ada@example.com');
-    CREATE TABLE jobs (id INTEGER PRIMARY KEY, company_id INTEGER, customer_id INTEGER, price_cents INTEGER, status TEXT DEFAULT 'scheduled', completed_at TEXT, started_at TEXT, arrived_at TEXT, en_route_at TEXT);
+    CREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT, first_name TEXT, last_name TEXT, email TEXT, company_id INTEGER);
+    INSERT INTO customers VALUES (90, 'Ada', 'Ada', 'Lovelace', 'ada@example.com', 1);
+    CREATE TABLE jobs (id INTEGER PRIMARY KEY, company_id INTEGER, customer_id INTEGER, price_cents INTEGER, scheduled_at TEXT DEFAULT '2026-08-24T15:00:00.000Z', status TEXT DEFAULT 'scheduled', completed_at TEXT, started_at TEXT, arrived_at TEXT, en_route_at TEXT);
     INSERT INTO jobs (id, company_id, customer_id, price_cents) VALUES (12,1,90,5000), (13,1,90,5000), (22,2,90,5000);
     CREATE TABLE payments (id INTEGER PRIMARY KEY AUTOINCREMENT, company_id INTEGER, job_id INTEGER, amount_cents INTEGER, tip_cents INTEGER DEFAULT 0, method TEXT, payment_date TEXT, notes TEXT, send_email INTEGER DEFAULT 0, send_sms INTEGER DEFAULT 0, stripe_payment_intent_id TEXT, subscription_id INTEGER, source TEXT DEFAULT 'job', created_at TEXT DEFAULT (datetime('now')), idempotency_key TEXT, request_fingerprint TEXT);
     CREATE UNIQUE INDEX idx_payments_idempotency ON payments(company_id, idempotency_key) WHERE idempotency_key IS NOT NULL;
-    CREATE TABLE job_lifecycle_notifications (company_id INTEGER, job_id INTEGER, step TEXT, outcome TEXT, UNIQUE(job_id,step));
     CREATE TABLE stripe_payment_methods (id INTEGER, company_id INTEGER, customer_id INTEGER, stripe_customer_id TEXT, stripe_payment_method_id TEXT, is_default INTEGER, created_at TEXT);
     INSERT INTO stripe_payment_methods VALUES (5,1,90,'cus_test','pm_test',1,'2026-09-11');
   `);
+  installLifecycleSchema(sqlite);
+  sqlite.exec("INSERT INTO estimates VALUES (1,90,1)");
   let pending = Promise.resolve();
   let stalePaymentReads = false;
   function prepare(sql, authoritative = false) {
@@ -124,7 +126,7 @@ export function paymentDatabase() {
       const result = pending.then(async () => {
         sqlite.exec("BEGIN IMMEDIATE");
         try {
-          const tx = { ...database, prepare: sql => prepare(sql, true) };
+          const tx = { ...database, prepare: sql => prepare(sql, true), transaction: async nested => nested(tx) };
           const result = await fn(tx);
           sqlite.exec("COMMIT");
           return result;

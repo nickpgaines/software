@@ -50,17 +50,10 @@ export async function POST(
     ? await dispatchJobLifecycleNotification({
         db,
         companyId,
+        jobId: id,
         step,
         changed,
         clear: !!clear,
-        job: {
-          id: detail.id,
-          customerId: detail.customer_id,
-          customerName: detail.customer_name,
-          scheduledAt: detail.scheduled_at,
-          totalCents: detail.price_cents,
-          technicianName: detail.techs[0]?.name || null,
-        },
         send: ({ customerId, body }) =>
           sendAndLogCompanySms({ companyId, customerId, body }),
       })

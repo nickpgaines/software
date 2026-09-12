@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
 import {
   autoCompleteSteps,
+  preparePaymentCompletionNotification,
   dispatchPaymentCompletionNotification,
 } from "@/lib/payment-job-completion";
 import {
@@ -132,9 +133,10 @@ async function confirmPayment(
     throw new PaymentIdempotencyError("Payment intent was charged with different payment details", 409);
   }
 
+  const completionNotification = await preparePaymentCompletionNotification(db, jobId, companyId);
   const { payment: created, created: isNew, completedChanged } = await db.transaction(async (tx) => {
     const result = await insertPaymentIdempotently(tx, paymentInput);
-    const completedChanged = result.created ? await autoCompleteSteps(tx, jobId, companyId) : false;
+    const completedChanged = result.created ? await autoCompleteSteps(tx, jobId, companyId, undefined, completionNotification) : false;
     return { ...result, completedChanged };
   });
 

@@ -3,6 +3,7 @@ import { getDb, type StripePaymentMethod } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
 import {
   autoCompleteSteps,
+  preparePaymentCompletionNotification,
   dispatchPaymentCompletionNotification,
 } from "@/lib/payment-job-completion";
 import {
@@ -225,9 +226,10 @@ async function chargeSavedCard(
     );
   }
 
+  const completionNotification = await preparePaymentCompletionNotification(db, jobId, companyId);
   const { payment: created, created: isNew, completedChanged } = await db.transaction(async (tx) => {
     const result = await insertPaymentIdempotently(tx, { ...paymentInput, stripe_payment_intent_id: intent.id });
-    const completedChanged = result.created ? await autoCompleteSteps(tx, jobId, companyId) : false;
+    const completedChanged = result.created ? await autoCompleteSteps(tx, jobId, companyId, undefined, completionNotification) : false;
     return { ...result, completedChanged };
   });
 

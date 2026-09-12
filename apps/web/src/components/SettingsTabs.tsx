@@ -638,6 +638,7 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
 
 type Company = {
   id: number;
+  time_zone: string;
   name: string | null;
   address: string | null;
   phone: string | null;
@@ -675,6 +676,7 @@ async function processLogoImage(file: File): Promise<string> {
 }
 
 function CompanyPanel() {
+  const [timeZone, setTimeZone] = useState("America/New_York");
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
@@ -694,6 +696,7 @@ function CompanyPanel() {
       .then((r) => (r.ok ? r.json() : null))
       .then((c: Company | null) => {
         if (c) {
+          setTimeZone(c.time_zone ?? "America/New_York");
           setName(c.name ?? "");
           setAddress(c.address ?? "");
           setPhone(c.phone ?? "");
@@ -745,6 +748,7 @@ function CompanyPanel() {
           email,
           website,
           logo_url: logoUrl,
+          time_zone: timeZone,
         }),
       });
     } catch (err) {
@@ -829,6 +833,20 @@ function CompanyPanel() {
           className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card"
           placeholder="Acme Window Cleaning"
         />
+      </Field>
+      <Field label="Time zone">
+        <Input
+          value={timeZone}
+          disabled={loading}
+          onChange={(e) => setTimeZone(e.target.value)}
+          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card"
+          placeholder="America/Chicago"
+          list="company-time-zones"
+        />
+        <datalist id="company-time-zones">
+          {["America/New_York", "America/Chicago", "America/Denver", "America/Phoenix", "America/Los_Angeles", "America/Anchorage", "Pacific/Honolulu"].map(zone => <option key={zone} value={zone} />)}
+        </datalist>
+        <p className="mt-1 text-xs text-muted">Used for appointment times in customer status texts.</p>
       </Field>
       <Field label="Address">
         <Input

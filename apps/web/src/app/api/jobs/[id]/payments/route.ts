@@ -3,6 +3,7 @@ import { getDb, type Payment, type PaymentMethod } from "@/lib/db";
 import { getSessionContext } from "@/lib/auth";
 import {
   autoCompleteSteps,
+  preparePaymentCompletionNotification,
   dispatchPaymentCompletionNotification,
 } from "@/lib/payment-job-completion";
 import { sendPaymentReceipt } from "@/lib/payment-receipts";
@@ -126,13 +127,14 @@ async function recordPayment(
   // Atomic: insert the payment row AND auto-complete any unset work
   // steps in the same transaction. If anything throws, BOTH the row
   // and the step timestamps roll back.
+  const completionNotification = await preparePaymentCompletionNotification(db, jobId, companyId);
   const { payment: created, created: isNew, completedChanged } = await db.transaction(async (tx) => {
     const result = await insertPaymentIdempotently(tx, {
       company_id: companyId, job_id: jobId, amount_cents: amountCents,
       tip_cents: tipCents, method, payment_date, notes: body.notes ? String(body.notes) : null,
       send_email, send_sms, idempotency_key: `manual:${key}`,
     });
-    const completedChanged = result.created ? await autoCompleteSteps(tx, jobId, companyId) : false;
+    const completedChanged = result.created ? await autoCompleteSteps(tx, jobId, companyId, undefined, completionNotification) : false;
     return { ...result, completedChanged };
   });
 

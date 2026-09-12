@@ -480,7 +480,7 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
 // Bump when init() gains migrations that must run on existing deploys.
 // First call after deploy runs the full init; subsequent cold starts hit
 // the fast-path below (one SELECT) and skip the ~150 DDL statements.
-const SCHEMA_VERSION = 21;
+const SCHEMA_VERSION = 22;
 
 async function init(): Promise<void> {
   // Fast path: if the schema is already at the current version, skip the
@@ -773,6 +773,7 @@ async function init(): Promise<void> {
     .prepare("PRAGMA table_info(company)")
     .all<{ name: string }>();
   const companyAdds: [string, string][] = [
+    ["time_zone", "TEXT NOT NULL DEFAULT 'America/New_York'"],
     ["stripe_account_id", "TEXT"],
     ["stripe_charges_enabled", "INTEGER NOT NULL DEFAULT 0"],
     ["stripe_payouts_enabled", "INTEGER NOT NULL DEFAULT 0"],
@@ -1033,6 +1034,7 @@ async function init(): Promise<void> {
 
     CREATE TABLE IF NOT EXISTS company (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      time_zone TEXT NOT NULL DEFAULT 'America/New_York',
       name TEXT,
       address TEXT,
       phone TEXT,
@@ -1101,7 +1103,14 @@ async function init(): Promise<void> {
       company_id INTEGER NOT NULL REFERENCES company(id) ON DELETE CASCADE,
       job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
       step TEXT NOT NULL CHECK (step IN ('en_route', 'arrived', 'started', 'completed')),
-      outcome TEXT NOT NULL DEFAULT 'claimed',
+      outcome TEXT NOT NULL DEFAULT 'pending',
+      customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
+      body TEXT,
+      attempt_count INTEGER NOT NULL DEFAULT 0,
+      locked_at TEXT,
+      last_attempt_at TEXT,
+      retry_requested_at TEXT,
+      retry_requested_by INTEGER,
       message_id INTEGER REFERENCES messages(id) ON DELETE SET NULL,
       error TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
@@ -2155,6 +2164,22 @@ async function init(): Promise<void> {
       ON payments(company_id, idempotency_key) WHERE idempotency_key IS NOT NULL;
   `);
 
+  const lifecycleCols = await _db.prepare("PRAGMA table_info(job_lifecycle_notifications)").all<{ name: string }>();
+  for (const [column, definition] of [
+    ["customer_id", "INTEGER REFERENCES customers(id) ON DELETE SET NULL"],
+    ["body", "TEXT"], ["attempt_count", "INTEGER NOT NULL DEFAULT 0"],
+    ["locked_at", "TEXT"], ["last_attempt_at", "TEXT"],
+    ["retry_requested_at", "TEXT"], ["retry_requested_by", "INTEGER"],
+  ]) {
+    await alterAddColumn("job_lifecycle_notifications", column, definition, lifecycleCols);
+  }
+  await _db.exec(`
+    UPDATE job_lifecycle_notifications SET outcome = 'unknown', updated_at = datetime('now')
+      WHERE outcome = 'claimed';
+    CREATE INDEX IF NOT EXISTS idx_job_lifecycle_notifications_pending
+      ON job_lifecycle_notifications(outcome, created_at);
+  `);
+
   // Existing jobs may already have lifecycle timestamps when this ledger is
   // introduced. Mark those transitions as skipped so clearing and reapplying
   // a legacy status cannot send a notification retroactively.
@@ -2778,6 +2803,7 @@ export type SmsBrandRegistration = {
 
 export type Company = {
   id: number;
+  time_zone: string;
   name: string | null;
   address: string | null;
   phone: string | null;

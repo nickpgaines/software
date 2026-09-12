@@ -1,263 +1,69 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import type { Db, Stmt } from "../src/lib/db.ts";
-import { DEFAULT_CUSTOMIZATIONS } from "../src/lib/customizations.ts";
+import { lifecycleDatabase } from "./helpers/lifecycle-harness.mjs";
 import { dispatchJobLifecycleNotification } from "../src/lib/job-lifecycle-dispatch.ts";
+import { setStatusStep } from "../src/lib/job-status-transitions.ts";
 
-function dispatchDb(options?: {
-  claimChanges?: number;
-  config?: string;
-  companyName?: string;
-  failConfig?: boolean;
-  estimates?: Array<{
-    companyId: number;
-    customerId: number;
-    smsTransactionalConsent: number;
-  }>;
-}) {
-  const outcomes: unknown[][] = [];
-  const consentQueries: Array<{ sql: string; bindings: unknown[] }> = [];
-  const db = {
-    prepare(sql: string) {
-      return {
-        async get(...args: unknown[]) {
-          if (options?.failConfig && sql.includes("customization_settings")) {
-            throw new Error("database unavailable");
-          }
-          if (sql.includes("customization_settings")) {
-            return {
-              config:
-                options?.config ?? JSON.stringify(DEFAULT_CUSTOMIZATIONS),
-            };
-          }
-          if (sql.includes("SELECT name FROM company")) {
-            return { name: options?.companyName ?? "Summit Window Cleaning" };
-          }
-          if (sql.includes("FROM estimates")) {
-            const [companyId, customerId] = args;
-            consentQueries.push({ sql, bindings: args });
-            return (
-              sql.includes("sms_transactional_consent = 1") &&
-              options?.estimates?.some(
-                (estimate) =>
-                  estimate.companyId === companyId &&
-                  estimate.customerId === customerId &&
-                  estimate.smsTransactionalConsent === 1
-              )
-            )
-              ? { consented: 1 }
-              : undefined;
-          }
-          return undefined;
-        },
-        async all() {
-          return [];
-        },
-        async run(...args: unknown[]) {
-          if (sql.includes("INSERT INTO job_lifecycle_notifications")) {
-            return {
-              changes: options?.claimChanges ?? 1,
-              lastInsertRowid: 1,
-            };
-          }
-          if (sql.includes("UPDATE job_lifecycle_notifications")) {
-            outcomes.push(args);
-          }
-          return { changes: 1, lastInsertRowid: 1 };
-        },
-      } as Stmt;
-    },
-    async exec() {},
-    async transaction<T>(fn: (tx: Db) => Promise<T>) {
-      return fn(this as Db);
-    },
-  } as Db;
-  return { db, outcomes, consentQueries };
-}
-
-const job = {
-  id: 7,
-  customerId: 19,
-  customerName: "Nicholas Gaines",
-  scheduledAt: "2026-08-24T15:00:00.000Z",
-  totalCents: 24900,
-  technicianName: "David Beazley",
-};
-
-test("lifecycle consent permits a configured first lifecycle transition", async () => {
-  const { db, outcomes, consentQueries } = dispatchDb({
-    estimates: [
-      { companyId: 3, customerId: 19, smsTransactionalConsent: 1 },
-    ],
+test("lifecycle consent permits a configured first lifecycle transition", async t => {
+  const { db, close } = lifecycleDatabase(); t.after(close);
+  const changed = await setStatusStep(db, 12, "en_route", 1);
+  const sends: unknown[] = [];
+  const result = await dispatchJobLifecycleNotification({ db, companyId: 1, jobId: 12, step: "en_route", changed, clear: false,
+    send: async message => { sends.push(message); return { ok: true, messageId: 88, status: "queued", error: null }; },
   });
-  const sent: { customerId: number; body: string }[] = [];
-  const result = await dispatchJobLifecycleNotification({
-    db,
-    companyId: 3,
-    step: "en_route",
-    changed: true,
-    clear: false,
-    job,
-    send: async ({ customerId, body }) => {
-      sent.push({ customerId, body });
-      return {
-        ok: true,
-        messageId: 88,
-        status: "queued",
-        error: null,
-      };
-    },
-  });
-
-  assert.equal(result?.ok, true);
-  assert.equal(sent.length, 1);
-  assert.equal(sent[0].customerId, 19);
-  assert.match(sent[0].body, /on their way/);
-  assert.equal(outcomes.length, 1);
-  assert.equal(outcomes[0][0], "sent");
-  assert.equal(outcomes[0][1], 88);
-  assert.equal(consentQueries.length, 1);
-  assert.match(consentQueries[0].sql, /WHERE company_id = \?/);
-  assert.match(consentQueries[0].sql, /AND customer_id = \?/);
-  assert.match(consentQueries[0].sql, /sms_transactional_consent = 1/);
-  assert.deepEqual(consentQueries[0].bindings, [3, 19]);
+  assert.equal(result?.ok, true); assert.equal(result?.outcome, "sent");
+  assert.equal(sends.length, 1);
+  assert.equal((sends[0] as { customerId: number }).customerId, 90);
+  assert.match((sends[0] as { body: string }).body, /on their way/);
+  assert.equal((await db.prepare("SELECT message_id FROM job_lifecycle_notifications").get())?.message_id, 88);
 });
 
-test("lifecycle consent skips every notification step when matching estimate consent is 0", async () => {
-  for (const step of ["en_route", "arrived", "started", "completed"] as const) {
-    const { db, outcomes, consentQueries } = dispatchDb({
-      estimates: [
-        { companyId: 3, customerId: 19, smsTransactionalConsent: 0 },
-      ],
-    });
+test("lifecycle consent skips all steps for absent, declined, or another tenant/customer consent", async t => {
+  for (const consent of [null, [1,90,0], [2,90,1], [1,91,1]]) {
+    const { db, close } = lifecycleDatabase(); t.after(close);
+    await db.exec("DELETE FROM estimates");
+    if (consent) await db.prepare("INSERT INTO estimates VALUES (?,?,?)").run(...consent);
     let sends = 0;
-
-    const result = await dispatchJobLifecycleNotification({
-      db,
-      companyId: 3,
-      step,
-      changed: true,
-      clear: false,
-      job,
-      send: async () => {
-        sends += 1;
-        return { ok: true, messageId: 1, status: "queued", error: null };
-      },
-    });
-
-    assert.equal(result, null);
+    for (const step of ["en_route", "arrived", "started", "completed"] as const) {
+      const changed = await setStatusStep(db, 12, step, 1);
+      const result = await dispatchJobLifecycleNotification({ db, companyId: 1, jobId: 12, step, changed, clear: false,
+        send: async () => { sends++; throw new Error("must not send"); },
+      });
+      assert.equal(result?.outcome, "skipped");
+      assert.match(result?.error ?? "", /consent/);
+    }
     assert.equal(sends, 0);
-    assert.deepEqual(outcomes, [
-      [
-        "skipped",
-        null,
-        "Transactional SMS consent has not been recorded for this customer.",
-        3,
-        7,
-        step,
-      ],
-    ]);
-    assert.equal(consentQueries.length, 1);
-    assert.match(consentQueries[0].sql, /sms_transactional_consent = 1/);
-    assert.deepEqual(consentQueries[0].bindings, [3, 19]);
+    assert.equal((await db.prepare("SELECT COUNT(*) AS count FROM job_lifecycle_notifications WHERE outcome='skipped'").get())?.count, 4);
   }
 });
 
-test("lifecycle consent ignores estimates for another company or customer", async () => {
-  for (const estimates of [
-    [{ companyId: 4, customerId: 19, smsTransactionalConsent: 1 }],
-    [{ companyId: 3, customerId: 20, smsTransactionalConsent: 1 }],
-  ]) {
-    const { db, outcomes } = dispatchDb({ estimates });
-    let sends = 0;
-
-    const result = await dispatchJobLifecycleNotification({
-      db,
-      companyId: 3,
-      step: "en_route",
-      changed: true,
-      clear: false,
-      job,
-      send: async () => {
-        sends += 1;
-        return { ok: true, messageId: 1, status: "queued", error: null };
-      },
-    });
-
-    assert.equal(result, null);
-    assert.equal(sends, 0);
-    assert.equal(outcomes[0][0], "skipped");
-    assert.equal(
-      outcomes[0][2],
-      "Transactional SMS consent has not been recorded for this customer."
-    );
-  }
-});
-
-test("does not send on clear, repeat, duplicate claim, or disabled block", async () => {
+test("lifecycle outbox does not send on clear, repeat, duplicate dispatch, or disabled block", async t => {
+  const { db, close } = lifecycleDatabase(); t.after(close);
   let sends = 0;
-  const send = async () => {
-    sends += 1;
-    return { ok: true, messageId: 1, status: "queued", error: null };
+  const input = { db, companyId: 1, jobId: 12, step: "en_route" as const, changed: true, clear: false,
+    send: async () => { sends++; return { ok: true, messageId: 88, status: "queued", error: null }; },
   };
-
-  for (const input of [
-    { changed: true, clear: true, step: "arrived" as const, db: dispatchDb().db },
-    { changed: false, clear: false, step: "arrived" as const, db: dispatchDb().db },
-    {
-      changed: true,
-      clear: false,
-      step: "arrived" as const,
-      db: dispatchDb({ claimChanges: 0 }).db,
-    },
-    {
-      changed: true,
-      clear: false,
-      step: "started" as const,
-      db: dispatchDb({
-        estimates: [
-          { companyId: 3, customerId: 19, smsTransactionalConsent: 1 },
-        ],
-      }).db,
-    },
-  ]) {
-    assert.equal(
-      await dispatchJobLifecycleNotification({
-        ...input,
-        companyId: 3,
-        job,
-        send,
-      }),
-      null
-    );
-  }
-  assert.equal(sends, 0);
+  await setStatusStep(db, 12, "en_route", 1);
+  await dispatchJobLifecycleNotification(input);
+  await dispatchJobLifecycleNotification(input);
+  await setStatusStep(db, 12, "en_route", 1, true);
+  assert.equal(await dispatchJobLifecycleNotification({ ...input, clear: true }), null);
+  await setStatusStep(db, 12, "en_route", 1);
+  await dispatchJobLifecycleNotification(input);
+  assert.equal(await dispatchJobLifecycleNotification({ ...input, changed: false }), null);
+  await setStatusStep(db, 12, "started", 1);
+  assert.equal((await dispatchJobLifecycleNotification({ ...input, step: "started" }))?.outcome, "skipped");
+  assert.equal(sends, 1);
 });
 
-test("returns a warning result without rolling back when notification setup throws", async () => {
-  const { db, outcomes } = dispatchDb({
-    failConfig: true,
-    estimates: [
-      { companyId: 3, customerId: 19, smsTransactionalConsent: 1 },
-    ],
+test("lifecycle preparation failure returns a durable warning after status commits", async t => {
+  const { db, close } = lifecycleDatabase(); t.after(close);
+  await db.exec("DROP TABLE customization_settings");
+  await setStatusStep(db, 12, "completed", 1);
+  const result = await dispatchJobLifecycleNotification({ db, companyId: 1, jobId: 12, step: "completed", changed: true, clear: false,
+    send: async () => { throw new Error("must not send"); },
   });
-  const result = await dispatchJobLifecycleNotification({
-    db,
-    companyId: 3,
-    step: "completed",
-    changed: true,
-    clear: false,
-    job,
-    send: async () => {
-      throw new Error("should not reach send");
-    },
-  });
-
-  assert.deepEqual(result, {
-    attempted: true,
-    ok: false,
-    error: "The customer text could not be prepared or delivered.",
-  });
-  assert.equal(outcomes[0][0], "failed");
-  assert.equal(outcomes[0][2], "database unavailable");
+  assert.equal(result?.ok, false); assert.equal(result?.outcome, "failed");
+  assert.match(result?.error ?? "", /customization_settings/);
+  assert.ok((await db.prepare("SELECT completed_at FROM jobs WHERE id=12").get())?.completed_at);
 });
