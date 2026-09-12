@@ -10,7 +10,7 @@ import {
 
 export type SmsSendResult =
   | { ok: true; sid: string; status: string }
-  | { ok: false; error: string; code?: number };
+  | { ok: false; error: string; code?: number; acceptanceUnknown?: boolean };
 
 async function isOptedOut(
   companyId: number,
@@ -200,7 +200,9 @@ export async function sendSms(args: {
       body: form.toString(),
     });
   } catch (e) {
-    return { ok: false, error: (e as Error).message || "Network error" };
+    // Fetch cannot tell us whether Twilio accepted the POST before the
+    // connection failed. Preserve that uncertainty for retry decisions.
+    return { ok: false, error: (e as Error).message || "Network error", acceptanceUnknown: true };
   }
 
   const data = (await res.json().catch(() => ({}))) as {
@@ -227,9 +229,9 @@ export async function sendSms(args: {
  * but does not dispatch to Twilio.
  *
  * Mirrors the dispatch+log pattern in `/api/messages` POST (manual replies).
- * Never throws on Twilio errors: the failure is captured on the message row
- * so the conversation thread surfaces a "Not delivered" badge, and the caller
- * gets `ok: false` to act on if it wants.
+ * Never throws on Twilio errors: definitive failures are logged as failed,
+ * while transport failures with uncertain provider acceptance are logged as
+ * unknown. Both return `ok: false`; unknown must not be treated as safe to retry.
  */
 export async function sendAndLogCompanySms(args: {
   companyId: number;
@@ -274,7 +276,7 @@ export async function sendAndLogCompanySms(args: {
       status = result.status || "queued";
       providerSid = result.sid;
     } else {
-      status = "failed";
+      status = result.acceptanceUnknown ? "unknown" : "failed";
       errorMsg = result.error;
     }
   }
@@ -297,7 +299,7 @@ export async function sendAndLogCompanySms(args: {
     );
 
   return {
-    ok: status !== "failed" && status !== "not_configured",
+    ok: status !== "failed" && status !== "not_configured" && status !== "unknown",
     messageId: Number(insert.lastInsertRowid),
     status,
     error: errorMsg,

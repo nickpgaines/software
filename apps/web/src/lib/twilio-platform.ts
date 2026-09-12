@@ -199,7 +199,7 @@ export function hasPlatformSms(
 
 export type PlatformSmsResult =
   | { ok: true; sid: string; status: string }
-  | { ok: false; error: string; code?: number };
+  | { ok: false; error: string; code?: number; acceptanceUnknown?: boolean };
 
 // Send via the master account. We pass both From (the tenant's platform
 // number, so the recipient sees the right caller ID) and MessagingServiceSid
@@ -246,7 +246,7 @@ export async function sendPlatformSms(args: {
       body: form.toString(),
     });
   } catch (e) {
-    return { ok: false, error: (e as Error).message || "Network error" };
+    return { ok: false, error: (e as Error).message || "Network error", acceptanceUnknown: true };
   }
 
   const data = (await res.json().catch(() => ({}))) as {
@@ -392,7 +392,8 @@ async function postTwilioMessage(args: {
       }
     );
   } catch (e) {
-    return { ok: false, error: (e as Error).message || "Network error" };
+    // A failed POST transport does not establish whether Twilio accepted it.
+    return { ok: false, error: (e as Error).message || "Network error", acceptanceUnknown: true };
   }
   const data = (await res.json().catch(() => ({}))) as {
     sid?: string;

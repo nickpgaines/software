@@ -5,6 +5,15 @@ export async function getDb() { return activeDb; }
 export async function requireCompanyId() { return 1; }
 export const sends = [];
 export async function sendAndLogCompanySms(input) { sends.push(input); return { ok: true, messageId: 88, status: "queued", error: null }; }
+export async function loadRealLifecycleSmsSender() {
+  const hooks = registerHooks({ resolve(specifier, context, nextResolve) {
+    if (specifier === "@/lib/db") return { url: import.meta.url, shortCircuit: true };
+    if (specifier.startsWith("@/")) return nextResolve(new URL(`../../src/${specifier.slice(2)}.ts`, import.meta.url).href, context);
+    return nextResolve(specifier, context);
+  } });
+  try { return (await import("../../src/lib/sms.ts")).sendAndLogCompanySms; }
+  finally { hooks.deregister(); }
+}
 export async function loadLifecycleRoute(path) {
   const hooks = registerHooks({ resolve(specifier, context, nextResolve) {
     if (["@/lib/db", "@/lib/auth", "@/lib/sms"].includes(specifier)) return { url: import.meta.url, shortCircuit: true };

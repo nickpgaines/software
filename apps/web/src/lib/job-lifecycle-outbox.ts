@@ -66,7 +66,7 @@ async function deliverNotification(input: DeliveryInput, pendingOnly: boolean): 
   } else {
     try {
       const sent = await input.send({ companyId: input.companyId, customerId: claimed.row.customer_id, body: claimed.row.body });
-      outcome = sent.ok ? "sent" : "failed";
+      outcome = sent.ok ? "sent" : sent.status === "unknown" ? "unknown" : "failed";
       messageId = sent.messageId;
       error = sent.error;
     } catch (cause) {
