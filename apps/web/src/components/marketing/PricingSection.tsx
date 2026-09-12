@@ -39,7 +39,7 @@ const PLANS: Plan[] = [
     name: "Team",
     tag: "Most popular",
     monthly: 229,
-    yearly: 179,
+    yearly: 159,
     blurb: "More reps. More doors. More revenue.",
     features: [
       "Up to 8 users",
@@ -57,8 +57,8 @@ const PLANS: Plan[] = [
   {
     name: "Business",
     tag: "Scale",
-    monthly: 379,
-    yearly: 279,
+    monthly: 359,
+    yearly: 249,
     blurb: "For scaled operations.",
     features: [
       "Up to 30 users",
