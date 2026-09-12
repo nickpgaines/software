@@ -8,19 +8,39 @@ import { cn } from "@/lib/utils";
 type Plan = {
   name: string;
   tag: string;
-  monthly: number;
-  yearly: number;
+  /** Public list price per month. Founder pricing is derived from this. */
+  anchor: number;
   blurb: string;
   features: string[];
   highlight?: boolean;
 };
 
+/** Founder pricing is 30% off the list price, rounded to the nearest 9. */
+const FOUNDER_DISCOUNT = 0.3;
+
+function roundToNearest9(value: number) {
+  return Math.round((value - 9) / 10) * 10 + 9;
+}
+
+function founderMonthly(anchor: number) {
+  return roundToNearest9(anchor * (1 - FOUNDER_DISCOUNT));
+}
+
+/** Annual founder plans pay for 10 months and get 12. */
+function founderAnnualTotal(anchor: number) {
+  return founderMonthly(anchor) * 10;
+}
+
+/** Annual price expressed per month, so cards always show a monthly number. */
+function founderAnnualPerMonth(anchor: number) {
+  return Math.round(founderAnnualTotal(anchor) / 12);
+}
+
 const PLANS: Plan[] = [
   {
     name: "Solo",
     tag: "Starter",
-    monthly: 99,
-    yearly: 79,
+    anchor: 109,
     blurb: "Start solo. Scale into the next plan.",
     features: [
       "1 user",
@@ -38,8 +58,7 @@ const PLANS: Plan[] = [
   {
     name: "Team",
     tag: "Most popular",
-    monthly: 229,
-    yearly: 159,
+    anchor: 219,
     blurb: "More reps. More doors. More revenue.",
     features: [
       "Up to 8 users",
@@ -57,8 +76,7 @@ const PLANS: Plan[] = [
   {
     name: "Business",
     tag: "Scale",
-    monthly: 359,
-    yearly: 249,
+    anchor: 329,
     blurb: "For scaled operations.",
     features: [
       "Up to 30 users",
@@ -78,13 +96,22 @@ export function PricingSection() {
 
   return (
     <div>
-      <div className="flex justify-center">
+      <div className="flex flex-col items-center gap-5">
+        <div className="inline-flex items-center gap-2 bg-card border border-line rounded-full pl-2 pr-4 py-1.5">
+          <span className="text-[10px] font-extrabold tracking-[0.18em] uppercase bg-white text-black rounded-full px-2.5 py-1">
+            Founder
+          </span>
+          <span className="text-[12.5px] font-bold text-zinc-300">
+            30% off list pricing
+          </span>
+        </div>
+
         <div className="inline-flex items-center bg-card border border-line rounded-full p-1">
           <BillingTab active={!yearly} onClick={() => setYearly(false)}>
             Monthly
           </BillingTab>
           <BillingTab active={yearly} onClick={() => setYearly(true)}>
-            Yearly
+            Annual — 2 months free
           </BillingTab>
         </div>
       </div>
@@ -122,7 +149,9 @@ function BillingTab({
 }
 
 function PlanCard({ plan, yearly }: { plan: Plan; yearly: boolean }) {
-  const price = yearly ? plan.yearly : plan.monthly;
+  const price = yearly
+    ? founderAnnualPerMonth(plan.anchor)
+    : founderMonthly(plan.anchor);
   return (
     <div
       className={cn(
@@ -158,16 +187,14 @@ function PlanCard({ plan, yearly }: { plan: Plan; yearly: boolean }) {
       </p>
 
       <div className="mt-8 flex items-baseline gap-2">
-        {yearly && (
-          <span
-            className={cn(
-              "text-[18px] font-bold line-through tabular-nums",
-              plan.highlight ? "text-black/40" : "text-zinc-600",
-            )}
-          >
-            ${plan.monthly}
-          </span>
-        )}
+        <span
+          className={cn(
+            "text-[18px] font-bold line-through tabular-nums",
+            plan.highlight ? "text-black/40" : "text-zinc-600",
+          )}
+        >
+          ${plan.anchor}
+        </span>
         <span className="text-[56px] font-black tracking-tight leading-none tabular-nums">
           ${price}
         </span>
@@ -186,7 +213,9 @@ function PlanCard({ plan, yearly }: { plan: Plan; yearly: boolean }) {
           plan.highlight ? "text-black/60" : "text-zinc-500",
         )}
       >
-        {yearly ? "Billed yearly" : "Billed monthly"}
+        {yearly
+          ? `Founder price · $${founderAnnualTotal(plan.anchor).toLocaleString()} billed yearly (2 months free)`
+          : "Founder price · billed monthly"}
       </div>
 
       <Button

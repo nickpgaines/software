@@ -83,14 +83,15 @@ export default function MarketingHome() {
       >
         <div className="max-w-app mx-auto">
           <div className="text-center max-w-2xl mx-auto">
-            <Eyebrow>Pricing</Eyebrow>
+            <Eyebrow>Founder Pricing</Eyebrow>
             <SectionHeading className="mt-5">
-              Built and priced
+              Founder pricing.
               <br />
-              for growth.
+              30% off list.
             </SectionHeading>
             <SectionSubhead className="mt-6 mx-auto">
-              Free trial. No credit card required. Cancel any time.
+              Not public pricing. Pay annually and get 2 months free. Free
+              trial, no credit card required, cancel any time.
             </SectionSubhead>
           </div>
 
