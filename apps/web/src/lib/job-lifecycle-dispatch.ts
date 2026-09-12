@@ -50,6 +50,28 @@ export async function dispatchJobLifecycleNotification(input: {
     );
     if (!claimed) return null;
 
+    const consent = await input.db
+      .prepare(
+        `SELECT 1
+           FROM estimates
+          WHERE company_id = ?
+            AND customer_id = ?
+            AND sms_transactional_consent = 1
+          LIMIT 1`
+      )
+      .get(input.companyId, input.job.customerId);
+    if (!consent) {
+      await recordJobLifecycleNotificationOutcome(input.db, {
+        companyId: input.companyId,
+        jobId: input.job.id,
+        step: input.step,
+        outcome: "skipped",
+        messageId: null,
+        error: "Transactional SMS consent has not been recorded for this customer.",
+      });
+      return null;
+    }
+
     const [config, company] = await Promise.all([
       loadCustomizations(input.db, input.companyId),
       input.db
