@@ -1,26 +1,44 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createClient } from "@libsql/client";
+import { registerHooks } from "node:module";
 import test from "node:test";
 import { loadRealPaymentDb } from "./helpers/payment-harness.mjs";
 
-test("version 16 upgrades production-sized legacy jobs with constant database round trips", async () => {
-  const source = readFileSync(new URL("../src/lib/db.ts", import.meta.url), "utf8");
-  const start = source.indexOf("// This backfill runs when an old schema version is upgraded.");
-  const end = source.indexOf("// Multi-tenancy migration", start);
-  const legacyJobMigration = source.slice(start, end);
+test("legacy job backfill uses one set-based database batch", async () => {
+  const hooks = registerHooks({
+    resolve(specifier, context, nextResolve) {
+      if (specifier.startsWith("@/")) {
+        return nextResolve(new URL(`../src/${specifier.slice(2)}.ts`, import.meta.url).href, context);
+      }
+      return nextResolve(specifier, context);
+    },
+  });
+  let dbModule: {
+    backfillLegacyJobData?: (db: { exec(sql: string): Promise<void> }) => Promise<void>;
+  };
+  try {
+    dbModule = (await import("../src/lib/db.ts?legacy-backfill-contract")) as typeof dbModule;
+  } finally {
+    hooks.deregister();
+  }
+  assert.equal(typeof dbModule.backfillLegacyJobData, "function");
 
-  assert.ok(start >= 0 && end > start, "legacy job migration section exists");
-  assert.doesNotMatch(
-    legacyJobMigration,
-    /for\s*\(const j of legacy\)/,
-    "the migration must not issue one remote write per legacy job"
-  );
-  assert.match(legacyJobMigration, /INSERT OR IGNORE INTO job_assignments[\s\S]*SELECT/);
-  assert.match(legacyJobMigration, /UPDATE jobs SET end_time/);
+  const batches: string[] = [];
+  await dbModule.backfillLegacyJobData!({
+    async exec(sql: string) {
+      batches.push(sql);
+    },
+  });
 
+  assert.equal(batches.length, 1, "job count must not change the database round-trip count");
+  assert.match(batches[0], /INSERT OR IGNORE INTO job_assignments[\s\S]*SELECT/);
+  assert.match(batches[0], /UPDATE jobs SET end_time/);
+});
+
+test("version 16 upgrades production-sized partially migrated legacy jobs", async () => {
   const directory = mkdtempSync(join(tmpdir(), "schema-v16-upgrade-"));
   const url = `file:${join(directory, "migration.db")}`;
   const fixture = createClient({ url });
@@ -65,9 +83,13 @@ test("version 16 upgrades production-sized legacy jobs with constant database ro
       1,
       '2026-09-12T12:00:00.000Z',
       CASE WHEN id = 1 THEN -30 WHEN id = 2 THEN 0 ELSE 60 END,
-      CASE WHEN id % 2 = 0 THEN 1 END,
-      CASE WHEN id % 4 = 0 THEN 2 END,
-      CASE WHEN id % 3 = 0 THEN '2026-09-12T13:00:00.000Z' END
+      CASE WHEN id = 1 THEN 0 WHEN id % 2 = 0 THEN 1 END,
+      CASE WHEN id = 1 THEN 0 WHEN id % 4 = 0 THEN 2 END,
+      CASE
+        WHEN id = 3 THEN '1999-01-01T00:00:00.000Z'
+        WHEN id = 4 THEN ''
+        WHEN id % 3 = 0 THEN '2026-09-12T13:00:00.000Z'
+      END
     FROM sequence;
     CREATE TABLE job_assignments (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -98,10 +120,10 @@ test("version 16 upgrades production-sized legacy jobs with constant database ro
       .prepare("SELECT role, COUNT(*) AS count FROM job_assignments GROUP BY role ORDER BY role")
       .all<{ role: string; count: number }>();
     const missingEnds = await db
-      .prepare("SELECT COUNT(*) AS count FROM jobs WHERE end_time IS NULL")
+      .prepare("SELECT COUNT(*) AS count FROM jobs WHERE end_time IS NULL OR end_time = ''")
       .get<{ count: number }>();
     const durationEdges = await db
-      .prepare("SELECT id, end_time FROM jobs WHERE id IN (1, 2) ORDER BY id")
+      .prepare("SELECT id, end_time FROM jobs WHERE id IN (1, 2, 3, 4) ORDER BY id")
       .all<{ id: number; end_time: string }>();
 
     assert.equal(version?.version, 23);
@@ -113,6 +135,8 @@ test("version 16 upgrades production-sized legacy jobs with constant database ro
     assert.deepEqual(durationEdges, [
       { id: 1, end_time: "2026-09-12T11:30:00.000Z" },
       { id: 2, end_time: "2026-09-12T13:00:00.000Z" },
+      { id: 3, end_time: "1999-01-01T00:00:00.000Z" },
+      { id: 4, end_time: "2026-09-12T13:00:00.000Z" },
     ]);
   } finally {
     for (const [index, key] of [
