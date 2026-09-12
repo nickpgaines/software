@@ -4,6 +4,7 @@ import type { Db, Stmt } from "../src/lib/db.ts";
 import {
   buildWidgetMetrics,
   calculateCurrentMrrCents,
+  getCurrentArrCents,
   getRevenueMetric,
 } from "../src/lib/widget-metrics.ts";
 
@@ -96,6 +97,55 @@ test("current MRR includes only active subscriptions for the widget", () => {
     { includeTax: true, includeRecentCanceled: false, now: new Date("2026-08-22T18:00:00Z") }
   );
   assert.equal(mrr, 10000);
+});
+
+test("widget ARR matches report defaults for tax and recent paid cancellations", async () => {
+  const rows = [
+    {
+      status: "active",
+      price_cents: 10000,
+      interval: "monthly",
+      tax_rate_bps: 500,
+      canceled_at: null,
+    },
+    {
+      status: "canceled",
+      price_cents: 5000,
+      interval: "monthly",
+      tax_rate_bps: 1000,
+      canceled_at: "2026-08-01T00:00:00.000Z",
+    },
+    {
+      status: "canceled",
+      price_cents: 7000,
+      interval: "monthly",
+      tax_rate_bps: 0,
+      canceled_at: "2026-07-01T00:00:00.000Z",
+    },
+  ];
+  let subscriptionSql = "";
+  const db = {
+    prepare(sql: string) {
+      subscriptionSql = sql;
+      return {
+        async all() {
+          return rows;
+        },
+      } as Stmt;
+    },
+  } as Pick<Db, "prepare">;
+  const now = new Date("2026-08-22T18:00:00.000Z");
+
+  const arr = await getCurrentArrCents(db, 42, now);
+  const reportDefaultMrr = calculateCurrentMrrCents(rows, {
+    includeTax: true,
+    includeRecentCanceled: true,
+    now,
+  });
+
+  assert.equal(arr, 192000);
+  assert.equal(arr, reportDefaultMrr * 12);
+  assert.match(subscriptionSql, /status IN \('active', 'canceled'\)/);
 });
 
 test("loads one requested revenue metric without computing other sections", async () => {

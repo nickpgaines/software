@@ -122,3 +122,20 @@ export async function revokeWidgetToken(
     .run(now.toISOString(), hashWidgetSecret(token));
   return result.changes > 0;
 }
+
+export async function revokeWidgetTokensForStaff(
+  db: Db,
+  companyId: number,
+  staffId: number
+): Promise<number> {
+  const result = await db
+    .prepare(
+      `UPDATE widget_access_tokens
+          SET revoked_at = datetime('now')
+        WHERE company_id = ?
+          AND staff_id = ?
+          AND revoked_at IS NULL`
+    )
+    .run(companyId, staffId);
+  return result.changes;
+}

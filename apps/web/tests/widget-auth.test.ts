@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import type { Db, Stmt } from "../src/lib/db.ts";
-import {
+import * as widgetAuth from "../src/lib/widget-auth.ts";
+
+const {
   authenticateWidgetToken,
   hashWidgetSecret,
   issueWidgetToken,
   revokeWidgetToken,
-} from "../src/lib/widget-auth.ts";
+} = widgetAuth;
 
 function authDb(options?: {
   principal?: { id: number; company_id: number; staff_id: number };
@@ -127,6 +129,30 @@ test("rejects an invalid principal and revokes only the matching hash", async ()
   assert.match(update.sql, /WHERE token_hash = \? AND revoked_at IS NULL/);
   assert.ok(update.args.includes(hashWidgetSecret("opaque-token")));
   assert.equal(update.args.includes("opaque-token"), false);
+});
+
+test("logout revokes every active widget token for only the current tenant staff", async () => {
+  const { db, statements } = authDb({ changes: 2 });
+  const revokeWidgetTokensForStaff = (
+    widgetAuth as typeof widgetAuth & {
+      revokeWidgetTokensForStaff?: (
+        db: Db,
+        companyId: number,
+        staffId: number
+      ) => Promise<number>;
+    }
+  ).revokeWidgetTokensForStaff;
+
+  assert.equal(typeof revokeWidgetTokensForStaff, "function");
+  assert.equal(await revokeWidgetTokensForStaff!(db, 42, 9), 2);
+
+  const update = statements.find(({ kind }) => kind === "run")!;
+  assert.match(update.sql, /UPDATE widget_access_tokens/);
+  assert.match(update.sql, /SET revoked_at = datetime\('now'\)/);
+  assert.match(update.sql, /company_id = \?/);
+  assert.match(update.sql, /staff_id = \?/);
+  assert.match(update.sql, /revoked_at IS NULL/);
+  assert.deepEqual(update.args, [42, 9]);
 });
 
 test("schema creates tenant and staff cascading widget credentials", () => {

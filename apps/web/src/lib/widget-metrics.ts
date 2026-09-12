@@ -158,13 +158,13 @@ export async function getCurrentArrCents(
     .prepare(
       `SELECT status, price_cents, interval, tax_rate_bps, canceled_at
          FROM customer_subscriptions
-        WHERE company_id = ? AND status = 'active'`
+        WHERE company_id = ? AND status IN ('active', 'canceled')`
     )
     .all<CurrentMrrRow>(companyId);
   return (
     calculateCurrentMrrCents(rows, {
       includeTax: true,
-      includeRecentCanceled: false,
+      includeRecentCanceled: true,
       now,
     }) * 12
   );
