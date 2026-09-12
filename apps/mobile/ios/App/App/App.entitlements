@@ -2,6 +2,14 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>com.apple.security.application-groups</key>
+	<array>
+		<string>group.app.forgecrm</string>
+	</array>
+	<key>keychain-access-groups</key>
+	<array>
+		<string>$(AppIdentifierPrefix)app.forgecrm.widgets</string>
+	</array>
 	<!-- Universal Links (see CAPACITOR_PLAN.md, Phase 5). Lets https links on
 	     our domain open in the app. The entitlement content needs no Team ID;
 	     only signing does. When the Apple account exists, enable the

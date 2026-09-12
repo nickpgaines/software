@@ -1,6 +1,7 @@
 import twilio from "twilio";
 import { getDb, type Company } from "@/lib/db";
 import { createSubaccount, type TwilioCreds } from "@/lib/twilio-trust-hub";
+import type { SmsRegistrationLease } from "@/lib/sms-registration-lease";
 
 // Resolve the master-account credentials. Returns null if env vars are
 // unset; callers should treat that as a configuration error.
@@ -21,14 +22,14 @@ export function getMasterCreds(): TwilioCreds | null {
 export async function ensureTenantSubaccount(args: {
   companyId: number;
   friendlyName: string;
+  lease?: SmsRegistrationLease;
 }): Promise<TwilioCreds> {
   const master = getMasterCreds();
   if (!master) throw new Error("Platform Twilio is not configured");
 
   const db = await getDb();
-  const company = await db
-    .prepare("SELECT * FROM company WHERE id = ? LIMIT 1")
-    .get<Company>(args.companyId);
+  const read = (tx: typeof db) => tx.prepare("SELECT * FROM company WHERE id = ? LIMIT 1").get<Company>(args.companyId);
+  const company = await (args.lease ? args.lease.transaction(read) : read(db));
   if (!company) throw new Error(`Company ${args.companyId} not found`);
 
   if (company.twilio_subaccount_sid && company.twilio_subaccount_auth_token) {
@@ -39,10 +40,10 @@ export async function ensureTenantSubaccount(args: {
   }
 
   const sub = await createSubaccount({
-    masterCreds: master,
+    masterCreds: { ...master, beforeRequest: args.lease?.assertOwned },
     friendlyName: `nick360 tenant ${args.companyId} (${args.friendlyName})`,
   });
-  await db
+  const save = (tx: typeof db) => tx
     .prepare(
       `UPDATE company
           SET twilio_subaccount_sid = ?,
@@ -51,6 +52,7 @@ export async function ensureTenantSubaccount(args: {
         WHERE id = ?`
     )
     .run(sub.sid, sub.auth_token, args.companyId);
+  await (args.lease ? args.lease.transaction(save) : save(db));
   return { accountSid: sub.sid, authToken: sub.auth_token };
 }
 
@@ -199,7 +201,7 @@ export function hasPlatformSms(
 
 export type PlatformSmsResult =
   | { ok: true; sid: string; status: string }
-  | { ok: false; error: string; code?: number };
+  | { ok: false; error: string; code?: number; acceptanceUnknown?: boolean };
 
 // Send via the master account. We pass both From (the tenant's platform
 // number, so the recipient sees the right caller ID) and MessagingServiceSid
@@ -246,7 +248,7 @@ export async function sendPlatformSms(args: {
       body: form.toString(),
     });
   } catch (e) {
-    return { ok: false, error: (e as Error).message || "Network error" };
+    return { ok: false, error: (e as Error).message || "Network error", acceptanceUnknown: true };
   }
 
   const data = (await res.json().catch(() => ({}))) as {
@@ -260,6 +262,7 @@ export async function sendPlatformSms(args: {
       ok: false,
       error: data.message || `Twilio error ${res.status}`,
       code: data.code,
+      acceptanceUnknown: res.status >= 500,
     };
   }
   return { ok: true, sid: data.sid || "", status: data.status || "queued" };
@@ -392,7 +395,8 @@ async function postTwilioMessage(args: {
       }
     );
   } catch (e) {
-    return { ok: false, error: (e as Error).message || "Network error" };
+    // A failed POST transport does not establish whether Twilio accepted it.
+    return { ok: false, error: (e as Error).message || "Network error", acceptanceUnknown: true };
   }
   const data = (await res.json().catch(() => ({}))) as {
     sid?: string;
@@ -405,6 +409,7 @@ async function postTwilioMessage(args: {
       ok: false,
       error: data.message || `Twilio error ${res.status}`,
       code: data.code,
+      acceptanceUnknown: res.status >= 500,
     };
   }
   return { ok: true, sid: data.sid || "", status: data.status || "queued" };

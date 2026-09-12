@@ -1,17 +1,37 @@
 import { NextResponse } from "next/server";
-import { getDb, type Payment } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
-import { autoCompleteSteps } from "@/lib/jobs";
+import {
+  autoCompleteSteps,
+  preparePaymentCompletionNotification,
+  dispatchPaymentCompletionNotification,
+} from "@/lib/payment-job-completion";
 import {
   getStripe,
   isStripeConfigured,
   getCompany,
 } from "@/lib/stripe";
 import { sendPaymentReceipt } from "@/lib/payment-receipts";
+import { requireIdempotencyKey, insertPaymentIdempotently, paymentRequestFingerprint, PaymentIdempotencyError } from "@/lib/payment-idempotency";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(
+  req: Request,
+  context: { params: { id: string } }
+) {
+  try {
+    requireIdempotencyKey(req);
+    return await confirmPayment(req, context);
+  } catch (error) {
+    if (error instanceof PaymentIdempotencyError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    throw error;
+  }
+}
+
+async function confirmPayment(
   req: Request,
   { params }: { params: { id: string } }
 ) {
@@ -79,16 +99,6 @@ export async function POST(
     );
   }
 
-  // Idempotency: if we already recorded this intent, return the existing row.
-  const existing = (await db
-    .prepare(
-      "SELECT * FROM payments WHERE stripe_payment_intent_id = ? AND company_id = ? LIMIT 1"
-    )
-    .get(intentId, companyId)) as Payment | undefined;
-  if (existing) {
-    return NextResponse.json(existing, { status: 200 });
-  }
-
   const amountCents = Number(intent.metadata?.amount_cents);
   const tipCents = Number(intent.metadata?.tip_cents ?? 0);
   // Trust the intent's actual charged amount as the source of truth for the
@@ -107,46 +117,57 @@ export async function POST(
   const payment_date = new Date().toISOString().slice(0, 10);
   const notes = body.notes ? String(body.notes) : null;
 
-  const insertedId = await db.transaction(async (tx) => {
-    const result = await tx
-      .prepare(
-        `INSERT INTO payments
-           (company_id, job_id, amount_cents, tip_cents, method, payment_date, notes,
-            send_email, send_sms, stripe_payment_intent_id)
-         VALUES (?, ?, ?, ?, 'card', ?, ?, ?, ?, ?)`
-      )
-      .run(
-        companyId,
-        jobId,
-        finalAmount,
-        finalTip,
-        payment_date,
-        notes,
-        send_email,
-        send_sms,
-        intentId
-      );
-    await autoCompleteSteps(tx, jobId, companyId);
-    return Number(result.lastInsertRowid);
-  });
-
-  const created = (await db
-    .prepare("SELECT * FROM payments WHERE id = ? AND company_id = ?")
-    .get(insertedId, companyId)) as Payment;
-
-  if (send_email || send_sms) {
-    await sendPaymentReceipt({
-      jobId,
-      paymentId: created.id,
-      companyId,
-      amountCents: created.amount_cents,
-      tipCents: created.tip_cents ?? 0,
-      method: "card",
-      paymentDate: created.payment_date || payment_date,
-      sendEmail: !!send_email,
-      sendSms: !!send_sms,
-    });
+  // A saved-card intent can be confirmed before its charging request commits.
+  // Use its provider-stored request key so later saved-card retries still find
+  // the durable row after Stripe's own idempotency cache has expired.
+  const savedKey = intent.metadata?.source === "saved_card"
+    ? intent.metadata.payment_idempotency_key : null;
+  const paymentInput = {
+    company_id: companyId, job_id: jobId, amount_cents: finalAmount,
+    tip_cents: finalTip, method: "card" as const, payment_date, notes, send_email, send_sms,
+    stripe_payment_intent_id: intentId, idempotency_key: savedKey || `stripe-confirm:${intentId}`,
+    payment_method_id: savedKey && intent.metadata.payment_method_row_id ? Number(intent.metadata.payment_method_row_id) : null,
+    subscription_id: savedKey && intent.metadata.subscription_id ? Number(intent.metadata.subscription_id) : null,
+  };
+  if (savedKey && intent.metadata.request_fingerprint !== paymentRequestFingerprint(paymentInput)) {
+    throw new PaymentIdempotencyError("Payment intent was charged with different payment details", 409);
   }
 
-  return NextResponse.json(created, { status: 201 });
+  const completionNotification = await preparePaymentCompletionNotification(db, jobId, companyId);
+  const { payment: created, created: isNew, completedChanged } = await db.transaction(async (tx) => {
+    const result = await insertPaymentIdempotently(tx, paymentInput);
+    const completedChanged = result.created ? await autoCompleteSteps(tx, jobId, companyId, undefined, completionNotification) : false;
+    return { ...result, completedChanged };
+  });
+
+  if (!isNew) return NextResponse.json({ ...created, idempotent_replay: true, lifecycle_notification: null, warning: null });
+
+  const lifecycle_notification = await dispatchPaymentCompletionNotification({
+    db,
+    companyId,
+    jobId,
+    changed: completedChanged,
+  });
+
+  let warning = lifecycle_notification?.error || null;
+
+  if (send_email || send_sms) {
+    try {
+      await sendPaymentReceipt({
+        jobId,
+        paymentId: created.id,
+        companyId,
+        amountCents: created.amount_cents,
+        tipCents: created.tip_cents ?? 0,
+        method: "card",
+        paymentDate: created.payment_date || payment_date,
+        sendEmail: !!send_email,
+        sendSms: !!send_sms,
+      });
+    } catch {
+      warning = [warning, "Payment recorded, but the receipt could not be delivered."].filter(Boolean).join(" ");
+    }
+  }
+
+  return NextResponse.json({ ...created, idempotent_replay: false, lifecycle_notification, warning }, { status: 201 });
 }

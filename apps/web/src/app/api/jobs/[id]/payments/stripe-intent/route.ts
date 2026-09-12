@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
+import { requireIdempotencyKey, PaymentIdempotencyError } from "@/lib/payment-idempotency";
 import {
   getStripe,
   isStripeConfigured,
@@ -21,6 +22,7 @@ export async function POST(
   }
 
   try {
+    const key = requireIdempotencyKey(req);
     const companyId = await requireCompanyId();
     const company = await getCompany(companyId);
     if (!company.stripe_account_id) {
@@ -118,7 +120,7 @@ export async function POST(
           ? { application_fee_amount: applicationFee }
           : {}),
       },
-      { stripeAccount: company.stripe_account_id }
+      { stripeAccount: company.stripe_account_id, idempotencyKey: `forge:${companyId}:intent:${key}` }
     );
 
     return NextResponse.json({
@@ -127,6 +129,12 @@ export async function POST(
       stripe_account: company.stripe_account_id,
     });
   } catch (e) {
+    if (e instanceof PaymentIdempotencyError) {
+      return NextResponse.json({ error: e.message }, { status: e.status });
+    }
+    if ((e as { type?: string; code?: string }).type === "StripeIdempotencyError" || (e as { code?: string }).code === "idempotency_key_in_use") {
+      return NextResponse.json({ error: "This payment key is already in use; retry the original payment details" }, { status: 409 });
+    }
     const message = e instanceof Error ? e.message : "Unknown error";
     console.error("POST stripe-intent failed:", e);
     return NextResponse.json(

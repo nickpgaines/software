@@ -19,7 +19,10 @@ import {
   type A2pRegistrationState,
   type Company,
   type SmsBrandRegistration,
+  type Db,
 } from "@/lib/db";
+import { SmsRegistrationLeaseLostError, withSmsRegistrationLease, type SmsRegistrationLease } from "@/lib/sms-registration-lease";
+import { provisionDedicatedNumber } from "@/lib/sms-number-provisioning";
 import {
   ensureTenantSubaccount,
   getPlatformConfig,
@@ -27,7 +30,6 @@ import {
 import type { TwilioCreds } from "@/lib/twilio-trust-hub";
 import {
   attachA2pProfileInfoEndUser,
-  attachNumberToMessagingService,
   attachToCustomerProfile,
   attachToTrustProduct,
   createA2pTrustProduct,
@@ -45,9 +47,9 @@ import {
   fetchCustomerProfileEvaluations,
   fetchTrustProduct,
   summarizeEvaluationFailures,
-  findAvailableLocalNumber,
+  summarizeRegistrationErrors,
   listCustomerProfiles,
-  purchasePhoneNumber,
+  normalizeTwilioStatus,
   submitCustomerProfile,
   submitTrustProduct,
 } from "@/lib/twilio-trust-hub";
@@ -96,7 +98,14 @@ function buildWebhookUrl(path: string): string | null {
   return `${base.replace(/\/$/, "")}${path}`;
 }
 
-function entityTypeToA2p(formEntityType: string): {
+function trustHubNotificationEmail(): string {
+  return (
+    process.env.TWILIO_TRUST_HUB_NOTIFICATION_EMAIL?.trim() ||
+    "support@forgecrm.app"
+  );
+}
+
+export function entityTypeToA2p(formEntityType: string): {
   brandType: "STANDARD" | "SOLE_PROPRIETOR";
   companyType: string;
   businessType: string;
@@ -104,7 +113,9 @@ function entityTypeToA2p(formEntityType: string): {
   const v = formEntityType.toLowerCase();
   if (v.includes("sole")) {
     return {
-      brandType: "SOLE_PROPRIETOR",
+      // This form requires an EIN. Twilio's no-EIN sole-proprietor path is a
+      // separate flow; EIN-backed sole proprietors use a standard brand.
+      brandType: "STANDARD",
       companyType: "private",
       businessType: "Sole Proprietorship",
     };
@@ -130,7 +141,14 @@ function entityTypeToA2p(formEntityType: string): {
       businessType: "Partnership",
     };
   }
-  // Default LLC (form removed entity_type and defaults to LLC server-side).
+  if (v.includes("corporation")) {
+    return {
+      brandType: "STANDARD",
+      companyType: "private",
+      businessType: "Corporation",
+    };
+  }
+  // The API validates the value before the state machine runs.
   return {
     brandType: "STANDARD",
     companyType: "private",
@@ -182,11 +200,10 @@ function buildMessageSamples(name: string): string[] {
   ];
 }
 
-async function loadContext(companyId: number): Promise<{
+async function loadContext(companyId: number, db: Db): Promise<{
   company: Company;
   registration: SmsBrandRegistration | null;
 }> {
-  const db = await getDb();
   const company = await db
     .prepare("SELECT * FROM company WHERE id = ? LIMIT 1")
     .get<Company>(companyId);
@@ -199,13 +216,13 @@ async function loadContext(companyId: number): Promise<{
   return { company, registration: registration ?? null };
 }
 
-async function persistState(
+async function persistRegistrationState(
+  db: Db,
   companyId: number,
   state: A2pRegistrationState,
   error: string | null,
   patch: Partial<Company> = {}
 ): Promise<void> {
-  const db = await getDb();
   const fields: string[] = [
     "a2p_registration_state = ?",
     "a2p_registration_error = ?",
@@ -217,7 +234,9 @@ async function persistState(
     args.push(v as string | number | null);
   }
   if (state === "campaign_approved") {
-    fields.push("a2p_registration_approved_at = datetime('now')");
+    fields.push(
+      "a2p_registration_approved_at = COALESCE(a2p_registration_approved_at, datetime('now'))"
+    );
   }
   if (state === "customer_profile_pending") {
     fields.push(
@@ -234,38 +253,44 @@ async function persistState(
 }
 
 function isPending(status: string): boolean {
-  return (
-    status === "pending-review" ||
-    status === "in-review" ||
-    status === "pending"
+  return ["PENDING", "PENDING_REVIEW", "IN_REVIEW", "IN_PROGRESS"].includes(
+    normalizeTwilioStatus(status)
   );
 }
 
 function isApproved(status: string): boolean {
-  return (
-    status === "twilio-approved" ||
-    status === "approved" ||
-    status === "compliant"
+  return ["TWILIO_APPROVED", "APPROVED", "COMPLIANT", "VERIFIED"].includes(
+    normalizeTwilioStatus(status)
   );
 }
 
 function isFailed(status: string): boolean {
-  return (
-    status === "twilio-rejected" ||
-    status === "rejected" ||
-    status === "failed" ||
-    status === "noncompliant"
+  return ["TWILIO_REJECTED", "REJECTED", "FAILED", "NONCOMPLIANT"].includes(
+    normalizeTwilioStatus(status)
   );
+}
+
+function failedProviderResourceGuidance(
+  stage: "Brand Registration" | "campaign",
+  sid: string | null,
+  reason: string | null
+): string {
+  const existing = `existing ${stage}${sid ? ` (${sid})` : ""}`;
+  const guidance = `Contact support to correct the ${existing}; resubmitting this form will not create a replacement ${stage.toLowerCase()}.`;
+  if (reason?.includes(guidance)) return reason.trim();
+  return [reason?.trim(), guidance].filter(Boolean).join(" ");
 }
 
 // One step. Returns whether the caller should immediately recurse to try the
 // next step in the same request (true for steps that complete synchronously
 // like creating resources; false for steps that wait on Twilio review).
-async function step(companyId: number): Promise<{
+async function step(companyId: number, retryFailed: boolean, lease: SmsRegistrationLease): Promise<{
   state: A2pRegistrationState;
   error: string | null;
   recurse: boolean;
 }> {
+  const persistState = (id: number, state: A2pRegistrationState, error: string | null, patch: Partial<Company> = {}) =>
+    lease.transaction(tx => persistRegistrationState(tx, id, state, error, patch));
   const cfg = getPlatformConfig();
   if (!cfg) {
     return {
@@ -275,7 +300,7 @@ async function step(companyId: number): Promise<{
     };
   }
 
-  const { company, registration } = await loadContext(companyId);
+  const { company, registration } = await lease.transaction(tx => loadContext(companyId, tx));
   if (!registration) {
     return {
       state: company.a2p_registration_state,
@@ -292,6 +317,11 @@ async function step(companyId: number): Promise<{
   }
 
   const state = company.a2p_registration_state;
+  // Status reads and duplicate callbacks must not resubmit rejected details.
+  // Only an explicit form submission authorizes another registration attempt.
+  if (state.endsWith("_failed") && !retryFailed) {
+    return { state, error: company.a2p_registration_error, recurse: false };
+  }
   const { brandType, companyType, businessType } = entityTypeToA2p(
     registration.entity_type
   );
@@ -307,7 +337,9 @@ async function step(companyId: number): Promise<{
     creds = await ensureTenantSubaccount({
       companyId,
       friendlyName: registration.legal_company_name,
+      lease,
     });
+    creds.beforeRequest = lease.assertOwned;
   } catch (e) {
     const msg = (e as Error).message;
     await persistState(
@@ -342,9 +374,9 @@ async function step(companyId: number): Promise<{
           : company.twilio_customer_profile_sid;
       if (!cpSid) {
         const cp = await createSecondaryCustomerProfile({
-        creds,
+          creds,
           friendlyName: `nick360 tenant ${companyId} customer profile`,
-          email: registration.business_email,
+          email: trustHubNotificationEmail(),
           statusCallback: cpCallback,
         });
         cpSid = cp.sid;
@@ -372,6 +404,7 @@ async function step(companyId: number): Promise<{
         entityType: businessType,
         industry: TWILIO_BUSINESS_INDUSTRY,
         website: registration.business_website,
+        socialMediaProfileUrls: registration.social_media_profile_urls,
         description: registration.business_description,
       });
       await attachToCustomerProfile({
@@ -465,9 +498,11 @@ async function step(companyId: number): Promise<{
       if (isFailed(cp.status)) {
         const evals = await fetchCustomerProfileEvaluations({
           creds,
-          sid: company.twilio_customer_profile_sid,
+          sid: cp.sid,
         }).catch(() => []);
-        const reason = summarizeEvaluationFailures(evals);
+        const reason =
+          summarizeRegistrationErrors(cp.errors) ||
+          summarizeEvaluationFailures(evals);
         const msg = reason
           ? `Customer Profile rejected by Twilio: ${reason}`
           : `Customer Profile rejected by Twilio (status=${cp.status})`;
@@ -506,9 +541,9 @@ async function step(companyId: number): Promise<{
           : company.twilio_trust_product_sid;
       if (!tpSid) {
         const tp = await createA2pTrustProduct({
-        creds,
+          creds,
           friendlyName: `nick360 tenant ${companyId} A2P trust product`,
-          email: registration.business_email,
+          email: trustHubNotificationEmail(),
           statusCallback: cpCallback,
         });
         tpSid = tp.sid;
@@ -565,7 +600,17 @@ async function step(companyId: number): Promise<{
   }
 
   // 5. Trust Product approved → create Brand Registration.
-  if (state === "trust_product_approved" || state === "brand_failed") {
+  if (state === "brand_failed") {
+    const msg = failedProviderResourceGuidance(
+      "Brand Registration",
+      company.twilio_brand_sid,
+      company.a2p_registration_error
+    );
+    await persistState(companyId, "brand_failed", msg);
+    return { state: "brand_failed", error: msg, recurse: false };
+  }
+
+  if (state === "trust_product_approved") {
     try {
       let brandSid = company.twilio_brand_sid;
       if (!brandSid) {
@@ -607,9 +652,12 @@ async function step(companyId: number): Promise<{
         return { state: "brand_approved", error: null, recurse: true };
       }
       if (isFailed(brand.status)) {
-        const msg =
+        const msg = failedProviderResourceGuidance(
+          "Brand Registration",
+          company.twilio_brand_sid,
           brand.failure_reason ||
-          `Brand registration rejected (status=${brand.status})`;
+            `Brand registration rejected (status=${brand.status})`
+        );
         await persistState(companyId, "brand_failed", msg);
         return { state: "brand_failed", error: msg, recurse: false };
       }
@@ -624,7 +672,17 @@ async function step(companyId: number): Promise<{
   }
 
   // 7. Brand approved → create Messaging Service + Campaign.
-  if (state === "brand_approved" || state === "campaign_failed") {
+  if (state === "campaign_failed") {
+    const msg = failedProviderResourceGuidance(
+      "campaign",
+      company.twilio_campaign_sid,
+      company.a2p_registration_error
+    );
+    await persistState(companyId, "campaign_failed", msg);
+    return { state: "campaign_failed", error: msg, recurse: false };
+  }
+
+  if (state === "brand_approved") {
     try {
       let msSid = company.twilio_messaging_service_sid;
       if (!msSid) {
@@ -696,14 +754,17 @@ async function step(companyId: number): Promise<{
         messagingServiceSid: company.twilio_messaging_service_sid,
         campaignSid: company.twilio_campaign_sid,
       });
-      if (isApproved(campaign.status) || campaign.status === "VERIFIED") {
+      if (isApproved(campaign.campaign_status)) {
         await persistState(companyId, "campaign_approved", null);
         return { state: "campaign_approved", error: null, recurse: true };
       }
-      if (isFailed(campaign.status) || campaign.status === "FAILED") {
-        const msg =
+      if (isFailed(campaign.campaign_status)) {
+        const msg = failedProviderResourceGuidance(
+          "campaign",
+          company.twilio_campaign_sid,
           campaign.failure_reason ||
-          `Campaign rejected (status=${campaign.status})`;
+            `Campaign rejected (status=${campaign.campaign_status})`
+        );
         await persistState(companyId, "campaign_failed", msg);
         return { state: "campaign_failed", error: msg, recurse: false };
       }
@@ -717,49 +778,21 @@ async function step(companyId: number): Promise<{
     }
   }
 
-  // 9. Campaign approved → buy + attach dedicated number, flip to paid_approved.
+  // 9. Campaign approved → buy and attach the dedicated number.
   if (state === "campaign_approved" && !company.sms_dedicated_number) {
-    try {
-      const areaCode =
-        (registration.business_phone.replace(/\D/g, "").match(/\d{10}$/)?.[0] ?? "")
-          .slice(0, 3) || "843";
-      const number = await findAvailableLocalNumber({ creds, areaCode });
-      if (!number) {
-        const msg = `No numbers available in area code ${areaCode}`;
-        await persistState(companyId, "campaign_failed", msg);
-        return { state: "campaign_failed", error: msg, recurse: false };
-      }
-      const inboundUrl = buildWebhookUrl("/api/messages/webhook");
-      const voiceUrl = buildWebhookUrl("/api/voice/outbound");
-      const purchased = await purchasePhoneNumber({
-        creds,
-        phoneNumber: number,
-        friendlyName: `nick360:${companyId}:${registration.legal_company_name}`,
-        smsUrl: inboundUrl,
-        voiceUrl,
-      });
-      await attachNumberToMessagingService({
-        creds,
-        messagingServiceSid: company.twilio_messaging_service_sid!,
-        phoneNumberSid: purchased.sid,
-      });
-      await persistState(companyId, "campaign_approved", null, {
-        sms_dedicated_number: purchased.phone_number,
-        sms_dedicated_number_sid: purchased.sid,
-      });
-      return { state: "campaign_approved", error: null, recurse: false };
-    } catch (e) {
-      const msg = (e as Error).message;
-      await persistState(companyId, "campaign_failed", msg);
-      return { state: "campaign_failed", error: msg, recurse: false };
-    }
+    const error = await provisionDedicatedNumber({ company, registration, creds, lease,
+      smsUrl: buildWebhookUrl("/api/messages/webhook"), voiceUrl: buildWebhookUrl("/api/voice/outbound") });
+    await persistState(companyId, "campaign_approved", error);
+    return { state: "campaign_approved", error, recurse: false };
   }
 
   return { state, error: company.a2p_registration_error, recurse: false };
 }
 
-export async function advanceRegistration(
-  companyId: number
+async function advanceRegistrationAttempt(
+  companyId: number,
+  retryFailed: boolean,
+  lease: SmsRegistrationLease
 ): Promise<AdvanceResult> {
   // Cap the loop in case a step incorrectly returns recurse=true forever.
   let remaining = 12;
@@ -768,7 +801,7 @@ export async function advanceRegistration(
     error: null,
   };
   while (remaining-- > 0) {
-    const r = await step(companyId);
+    const r = await step(companyId, retryFailed, lease);
     last = { state: r.state, error: r.error };
     if (!r.recurse) break;
   }
@@ -776,6 +809,30 @@ export async function advanceRegistration(
     state: last.state,
     error: last.error,
     done: last.state === "campaign_approved",
+  };
+}
+
+export async function advanceRegistration(
+  companyId: number,
+  options: { retryFailed?: boolean } = {}
+): Promise<AdvanceResult> {
+  const db = await getDb();
+  try {
+    const lease = await withSmsRegistrationLease(db, companyId, owner =>
+      advanceRegistrationAttempt(companyId, options.retryFailed === true, owner)
+    );
+    if (lease.acquired) return lease.value!;
+  } catch (error) {
+    if (!(error instanceof SmsRegistrationLeaseLostError)) throw error;
+    // The current owner has authority. Return its state without writing or
+    // beginning another provider step from this stale invocation.
+  }
+
+  const { company } = await db.transaction(tx => loadContext(companyId, tx));
+  return {
+    state: company.a2p_registration_state,
+    error: company.a2p_registration_error,
+    done: company.a2p_registration_state === "campaign_approved",
   };
 }
 

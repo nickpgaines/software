@@ -1,0 +1,316 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { lifecycleDatabase } from "./helpers/lifecycle-harness.mjs";
+import { setStatusStep } from "../src/lib/job-status-transitions.ts";
+import { autoCompleteSteps } from "../src/lib/payment-job-completion.ts";
+import type { Db } from "../src/lib/db.ts";
+import { dispatchJobLifecycleNotification } from "../src/lib/job-lifecycle-dispatch.ts";
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>(done => { resolve = done; });
+  return { promise, resolve };
+}
+
+test("lifecycle outbox survives a status commit without immediate delivery", async t => {
+  const { db, close } = lifecycleDatabase(); t.after(close);
+  assert.equal(await setStatusStep(db, 12, "en_route", 1), true);
+  const row = await db.prepare("SELECT outcome, body, customer_id, attempt_count FROM job_lifecycle_notifications").get();
+  assert.equal(row?.outcome, "pending");
+  assert.equal(row?.customer_id, 90);
+  assert.match(row?.body, /on their way/);
+  assert.equal(row?.attempt_count, 0);
+});
+
+test("lifecycle outbox failure rolls back the status transition", async t => {
+  const { db, close } = lifecycleDatabase(); t.after(close);
+  await db.exec("CREATE TRIGGER reject_enqueue BEFORE INSERT ON job_lifecycle_notifications BEGIN SELECT RAISE(ABORT, 'outbox unavailable'); END;");
+  await assert.rejects(setStatusStep(db, 12, "en_route", 1), /outbox unavailable/);
+  assert.equal((await db.prepare("SELECT en_route_at FROM jobs WHERE id=12").get())?.en_route_at, null);
+});
+
+test("payment lifecycle outbox records skipped synthetic steps and pending completion together", async t => {
+  const { db, close } = lifecycleDatabase(); t.after(close);
+  await db.transaction((tx: Db) => autoCompleteSteps(tx, 12, 1));
+  const rows = await db.prepare("SELECT step, outcome FROM job_lifecycle_notifications ORDER BY step").all();
+  assert.deepEqual(rows.map((r: { step: string; outcome: string }) => [r.step,r.outcome]), [["arrived","skipped"],["completed","pending"],["en_route","skipped"],["started","skipped"]]);
+});
+
+test("lifecycle outbox concurrent immediate and cron drainers submit once", async t => {
+  const { db, close } = lifecycleDatabase(); t.after(close);
+  await setStatusStep(db, 12, "en_route", 1);
+  const outbox = await import("../src/lib/job-lifecycle-outbox.ts");
+  let sends = 0;
+  const send = async () => { sends++; return { ok: true, messageId: 88, status: "queued", error: null }; };
+  await Promise.all([
+    ...Array.from({ length: 5 }, () => outbox.deliverJobLifecycleNotification({ db, companyId: 1, jobId: 12, step: "en_route", send })),
+    ...Array.from({ length: 5 }, () => outbox.runPendingJobLifecycleNotifications({ db, send })),
+  ]);
+  assert.equal(sends, 1);
+  const row = await db.prepare("SELECT outcome, attempt_count FROM job_lifecycle_notifications").get();
+  assert.equal(row?.outcome, "sent"); assert.equal(row?.attempt_count, 1);
+});
+
+test("lifecycle outbox failed provider submission is durable and never auto-retried", async t => {
+  const { db, close } = lifecycleDatabase(); t.after(close);
+  await setStatusStep(db, 12, "en_route", 1);
+  const outbox = await import("../src/lib/job-lifecycle-outbox.ts");
+  let sends = 0;
+  const send = async () => { sends++; return { ok: false, messageId: 88, status: "failed", error: "provider rejected" }; };
+  const counts = await outbox.runPendingJobLifecycleNotifications({ db, send });
+  await outbox.runPendingJobLifecycleNotifications({ db, send });
+  assert.equal(sends, 1); assert.equal(counts.failed, 1);
+  assert.equal((await db.prepare("SELECT outcome FROM job_lifecycle_notifications").get())?.outcome, "failed");
+});
+
+test("lifecycle outbox stale sending becomes unknown without another submission", async t => {
+  const { db, close } = lifecycleDatabase(); t.after(close);
+  await setStatusStep(db, 12, "en_route", 1);
+  await db.exec("UPDATE job_lifecycle_notifications SET outcome='sending', attempt_count=1, locked_at=datetime('now','-11 minutes')");
+  const outbox = await import("../src/lib/job-lifecycle-outbox.ts");
+  let sends = 0;
+  const send = async () => { sends++; throw new Error("must not retry"); };
+  const counts = await outbox.runPendingJobLifecycleNotifications({ db, send });
+  await outbox.runPendingJobLifecycleNotifications({ db, send });
+  assert.equal(sends, 0); assert.equal(counts.unknown, 1);
+  assert.equal((await db.prepare("SELECT outcome FROM job_lifecycle_notifications").get())?.outcome, "unknown");
+});
+
+test("lifecycle outbox enqueue preparation error still commits a failed diagnostic", async t => {
+  const { db, close } = lifecycleDatabase(); t.after(close);
+  await db.exec("DROP TABLE customization_settings");
+  await setStatusStep(db, 12, "en_route", 1);
+  const row = await db.prepare("SELECT outcome, error FROM job_lifecycle_notifications").get();
+  assert.equal(row?.outcome, "failed"); assert.match(row?.error, /customization_settings/);
+  assert.ok((await db.prepare("SELECT en_route_at FROM jobs WHERE id=12").get())?.en_route_at);
+});
+
+for (const recovery of ["ready", "consent_revoked", "disabled"] as const) {
+  test(`operator retry re-prepares missing lifecycle content with current ${recovery} checks`, async t => {
+    const { db, close } = lifecycleDatabase(); t.after(close);
+    await db.exec("DROP TABLE customization_settings");
+    await setStatusStep(db, 12, "en_route", 1);
+    const notification = await db.prepare("SELECT id, outcome, body FROM job_lifecycle_notifications").get() as { id: number; outcome: string; body: string | null };
+    assert.equal(notification.outcome, "failed");
+    assert.equal(notification.body, null);
+    await db.exec("CREATE TABLE customization_settings (company_id INTEGER, config TEXT)");
+    if (recovery === "consent_revoked") await db.exec("DELETE FROM estimates");
+    if (recovery === "disabled") await db.prepare("INSERT INTO customization_settings VALUES (1, ?)").run(JSON.stringify({ messages: { drive_start: { enabled: false } } }));
+    const outbox = await import("../src/lib/job-lifecycle-outbox.ts");
+    assert.deepEqual(await outbox.requestJobLifecycleNotificationRetry({ db, companyId: 1, jobId: 12,
+      notificationId: notification.id, actorStaffId: 7, confirmUnknown: false }), { ok: true, step: "en_route" });
+    const bodies: string[] = [];
+    const delivered = await outbox.deliverJobLifecycleNotification({ db, companyId: 1, jobId: 12, step: "en_route",
+      send: async input => { bodies.push(input.body); return { ok: true, messageId: 88, status: "queued", error: null }; } });
+    assert.equal(delivered?.outcome, recovery === "ready" ? "sent" : "skipped");
+    assert.equal(bodies.length, recovery === "ready" ? 1 : 0);
+    if (recovery === "ready") assert.match(bodies[0], /on their way/);
+  });
+}
+
+test("operator retry preserves content already prepared before a delivery failure", async t => {
+  const { db, close } = lifecycleDatabase(); t.after(close);
+  await setStatusStep(db, 12, "en_route", 1);
+  const original = await db.prepare("SELECT id, body FROM job_lifecycle_notifications").get() as { id: number; body: string };
+  await db.exec("UPDATE job_lifecycle_notifications SET outcome='failed'; DROP TABLE customization_settings");
+  const outbox = await import("../src/lib/job-lifecycle-outbox.ts");
+  await outbox.requestJobLifecycleNotificationRetry({ db, companyId: 1, jobId: 12,
+    notificationId: original.id, actorStaffId: 7, confirmUnknown: false });
+  const result = await outbox.deliverJobLifecycleNotification({ db, companyId: 1, jobId: 12, step: "en_route",
+    send: async input => { assert.equal(input.body, original.body); return { ok: true, messageId: 88, status: "queued", error: null }; } });
+  assert.equal(result?.outcome, "sent");
+});
+
+test("lifecycle outbox concurrent cron runs count each provider submission only once", async t => {
+  const { db, close } = lifecycleDatabase(); t.after(close);
+  await setStatusStep(db, 12, "en_route", 1);
+  const outbox = await import("../src/lib/job-lifecycle-outbox.ts");
+  const send = async () => ({ ok: true, messageId: 88, status: "queued", error: null });
+  let transactions = 0;
+  let first: Promise<{ sent: number; failed: number; unknown: number }>;
+  const delayed: Db = { ...db, transaction: async fn => {
+    if (++transactions > 1) await first;
+    return db.transaction(fn);
+  } };
+  first = outbox.runPendingJobLifecycleNotifications({ db, send });
+  const results = await Promise.all([first, outbox.runPendingJobLifecycleNotifications({ db: delayed, send })]);
+  assert.equal(results.reduce((sum, counts) => sum + counts.sent, 0), 1);
+});
+
+test("lifecycle outbox unavailable immediate claim returns a queued warning after commit", async t => {
+  const { db, close } = lifecycleDatabase(); t.after(close);
+  await setStatusStep(db, 12, "en_route", 1);
+  const unavailable: Db = { ...db, transaction: async () => { throw new Error("temporarily offline"); } };
+  const result = await dispatchJobLifecycleNotification({ db: unavailable, companyId: 1, jobId: 12, step: "en_route", changed: true, clear: false,
+    send: async () => { throw new Error("must not send"); },
+  });
+  assert.equal(result?.outcome, "pending");
+  assert.equal((await db.prepare("SELECT outcome FROM job_lifecycle_notifications").get())?.outcome, "pending");
+});
+
+test("lifecycle outbox ambiguous provider throws are unknown and never replayed", async t => {
+  const { db, close } = lifecycleDatabase(); t.after(close);
+  await setStatusStep(db, 12, "en_route", 1);
+  const outbox = await import("../src/lib/job-lifecycle-outbox.ts");
+  let sends = 0;
+  const send = async () => { sends++; throw new Error("connection lost after acceptance"); };
+  await outbox.runPendingJobLifecycleNotifications({ db, send });
+  await outbox.runPendingJobLifecycleNotifications({ db, send });
+  assert.equal(sends, 1);
+  assert.equal((await db.prepare("SELECT outcome FROM job_lifecycle_notifications").get())?.outcome, "unknown");
+});
+
+test("lifecycle outbox interrupted result persistence becomes unknown and does not retry", async t => {
+  const { db, close } = lifecycleDatabase(); t.after(close);
+  await setStatusStep(db, 12, "en_route", 1);
+  const outbox = await import("../src/lib/job-lifecycle-outbox.ts");
+  await db.exec("CREATE TRIGGER reject_sent BEFORE UPDATE ON job_lifecycle_notifications WHEN NEW.outcome='sent' BEGIN SELECT RAISE(ABORT,'lost database'); END;");
+  let sends = 0;
+  const send = async () => { sends++; return { ok: true, messageId: 88, status: "queued", error: null }; };
+  const result = await outbox.deliverJobLifecycleNotification({ db, companyId: 1, jobId: 12, step: "en_route", send });
+  assert.equal(result?.outcome, "unknown");
+  assert.equal((await db.prepare("SELECT outcome FROM job_lifecycle_notifications").get())?.outcome, "sending");
+  await db.exec("UPDATE job_lifecycle_notifications SET locked_at=datetime('now','-11 minutes')");
+  await outbox.runPendingJobLifecycleNotifications({ db, send });
+  assert.equal(sends, 1);
+  assert.equal((await db.prepare("SELECT outcome FROM job_lifecycle_notifications").get())?.outcome, "unknown");
+});
+
+test("notification retry atomically reopens only the tenant and job record with an audit", async t => {
+  const { db, close } = lifecycleDatabase(); t.after(close);
+  await setStatusStep(db, 12, "en_route", 1);
+  await db.prepare("UPDATE job_lifecycle_notifications SET outcome='failed', error='provider rejected' WHERE job_id=12").run();
+  const outbox = await import("../src/lib/job-lifecycle-outbox.ts");
+  assert.equal(typeof outbox.requestJobLifecycleNotificationRetry, "function");
+  const notification = await db.prepare("SELECT id FROM job_lifecycle_notifications WHERE job_id=12").get() as { id: number } | undefined;
+  const result = await outbox.requestJobLifecycleNotificationRetry({
+    db, companyId: 1, jobId: 12, notificationId: notification!.id,
+    actorStaffId: 7, confirmUnknown: false,
+  });
+  assert.deepEqual(result, { ok: true, step: "en_route" });
+  const row = await db.prepare("SELECT outcome, retry_requested_at, retry_requested_by FROM job_lifecycle_notifications WHERE id=?").get(notification!.id);
+  assert.equal(row?.outcome, "pending");
+  assert.match(String(row?.retry_requested_at), /^\d{4}-\d{2}-\d{2}/);
+  assert.equal(row?.retry_requested_by, 7);
+});
+
+test("payment warning and lifecycle UI contracts preserve successful warnings and guarded retry actions", async () => {
+  const lifecycle = await import("../src/lib/job-lifecycle-notifications.ts");
+  assert.equal(typeof lifecycle.paymentResponseWarning, "function");
+  assert.equal(
+    lifecycle.paymentResponseWarning({ warning: "Payment recorded, but the customer text was not delivered." }),
+    "Payment recorded, but the customer text was not delivered."
+  );
+  assert.equal(lifecycle.paymentResponseWarning({ error: "payment failed" }), null);
+
+  assert.deepEqual(lifecycle.lifecycleNotificationPresentation("pending"), {
+    label: "Pending", retryLabel: null, requiresConfirmation: false, duplicateRisk: null,
+  });
+  assert.deepEqual(lifecycle.lifecycleNotificationPresentation("failed"), {
+    label: "Failed", retryLabel: "Retry text", requiresConfirmation: false, duplicateRisk: null,
+  });
+  assert.deepEqual(lifecycle.lifecycleNotificationPresentation("unknown"), {
+    label: "Delivery unknown", retryLabel: "Retry text anyway", requiresConfirmation: true,
+    duplicateRisk: "Delivery may have succeeded. Retrying could send a duplicate text.",
+  });
+});
+
+async function staleRecoveryRetryCompletionOrder(order: "old-first" | "new-first") {
+  const { db, close } = lifecycleDatabase();
+  await setStatusStep(db, 12, "en_route", 1);
+  const outbox = await import("../src/lib/job-lifecycle-outbox.ts");
+  const firstStarted = deferred<void>();
+  const secondStarted = deferred<void>();
+  const firstResult = deferred<{ ok: boolean; messageId: number; status: string; error: string | null }>();
+  const secondResult = deferred<{ ok: boolean; messageId: number; status: string; error: string | null }>();
+  let sends = 0;
+  const send = async () => {
+    sends++;
+    if (sends === 1) { firstStarted.resolve(); return firstResult.promise; }
+    secondStarted.resolve(); return secondResult.promise;
+  };
+
+  const oldDelivery = outbox.deliverJobLifecycleNotification({ db, companyId: 1, jobId: 12, step: "en_route", send });
+  await firstStarted.promise;
+  await db.exec("UPDATE job_lifecycle_notifications SET locked_at=datetime('now','-11 minutes') WHERE job_id=12");
+  assert.equal((await outbox.runPendingJobLifecycleNotifications({ db, send })).unknown, 1);
+  const notification = await db.prepare("SELECT id FROM job_lifecycle_notifications WHERE job_id=12").get() as { id: number };
+  assert.deepEqual(await outbox.requestJobLifecycleNotificationRetry({
+    db, companyId: 1, jobId: 12, notificationId: notification.id,
+    actorStaffId: 7, confirmUnknown: true,
+  }), { ok: true, step: "en_route" });
+  const newDelivery = outbox.deliverJobLifecycleNotification({ db, companyId: 1, jobId: 12, step: "en_route", send });
+  await secondStarted.promise;
+
+  if (order === "old-first") {
+    firstResult.resolve({ ok: false, messageId: 10, status: "failed", error: "old rejection" });
+    await oldDelivery;
+    secondResult.resolve({ ok: true, messageId: 20, status: "queued", error: null });
+  } else {
+    secondResult.resolve({ ok: true, messageId: 20, status: "queued", error: null });
+    await newDelivery;
+    firstResult.resolve({ ok: false, messageId: 10, status: "failed", error: "old rejection" });
+  }
+  await Promise.all([oldDelivery, newDelivery]);
+  const row = await db.prepare("SELECT outcome, message_id, error, attempt_count FROM job_lifecycle_notifications WHERE job_id=12").get();
+  close();
+  return row;
+}
+
+test("lifecycle retry keeps the newer claim authoritative when the stale sender completes first", async () => {
+  const row = await staleRecoveryRetryCompletionOrder("old-first");
+  assert.equal(row?.outcome, "sent");
+  assert.equal(row?.message_id, 20);
+  assert.equal(row?.error, null);
+  assert.equal(row?.attempt_count, 2);
+});
+
+test("lifecycle retry keeps the newer claim authoritative when the stale sender completes last", async () => {
+  const row = await staleRecoveryRetryCompletionOrder("new-first");
+  assert.equal(row?.outcome, "sent");
+  assert.equal(row?.message_id, 20);
+  assert.equal(row?.error, null);
+  assert.equal(row?.attempt_count, 2);
+});
+
+test("simultaneous operator retries reopen a failed notification once", async t => {
+  const { db, close } = lifecycleDatabase(); t.after(close);
+  await setStatusStep(db, 12, "en_route", 1);
+  await db.exec("UPDATE job_lifecycle_notifications SET outcome='failed' WHERE job_id=12");
+  const outbox = await import("../src/lib/job-lifecycle-outbox.ts");
+  const notification = await db.prepare("SELECT id FROM job_lifecycle_notifications WHERE job_id=12").get() as { id: number };
+  const retries = await Promise.all([7, 8].map(actorStaffId => outbox.requestJobLifecycleNotificationRetry({
+    db, companyId: 1, jobId: 12, notificationId: notification.id,
+    actorStaffId, confirmUnknown: false,
+  })));
+  assert.equal(retries.filter(result => result.ok).length, 1);
+  assert.equal(retries.filter(result => !result.ok && result.reason === "not_retryable").length, 1);
+  assert.equal((await db.prepare("SELECT outcome FROM job_lifecycle_notifications WHERE id=?").get(notification.id))?.outcome, "pending");
+});
+
+test("operator retry and cron compete for one claimed provider submission", async t => {
+  const { db, close } = lifecycleDatabase(); t.after(close);
+  await setStatusStep(db, 12, "en_route", 1);
+  await db.exec("UPDATE job_lifecycle_notifications SET outcome='failed', attempt_count=1 WHERE job_id=12");
+  const outbox = await import("../src/lib/job-lifecycle-outbox.ts");
+  const notification = await db.prepare("SELECT id FROM job_lifecycle_notifications WHERE job_id=12").get() as { id: number };
+  assert.equal((await outbox.requestJobLifecycleNotificationRetry({
+    db, companyId: 1, jobId: 12, notificationId: notification.id,
+    actorStaffId: 7, confirmUnknown: false,
+  })).ok, true);
+  let sends = 0;
+  const send = async () => {
+    sends++;
+    await new Promise<void>(resolve => setImmediate(resolve));
+    return { ok: true, messageId: 30, status: "queued", error: null };
+  };
+  await Promise.all([
+    outbox.deliverJobLifecycleNotification({ db, companyId: 1, jobId: 12, step: "en_route", send }),
+    outbox.runPendingJobLifecycleNotifications({ db, send }),
+  ]);
+  assert.equal(sends, 1);
+  const row = await db.prepare("SELECT outcome, message_id, attempt_count FROM job_lifecycle_notifications WHERE id=?").get(notification.id);
+  assert.equal(row?.outcome, "sent");
+  assert.equal(row?.message_id, 30);
+  assert.equal(row?.attempt_count, 2);
+});

@@ -1,12 +1,19 @@
 import { NextResponse } from "next/server";
-import { requireCompanyId } from "@/lib/auth";
 import {
   getDb,
   type Company,
   type SmsBrandRegistration,
-  type SmsMonthlyVolume,
 } from "@/lib/db";
 import { advanceRegistration } from "@/lib/sms-registration";
+import {
+  requireSmsRegistrationAccess,
+  SmsRegistrationAccessError,
+} from "@/lib/sms-registration-access";
+import {
+  type SmsRegistrationFormPayload,
+  validateSmsRegistrationForm,
+} from "@/lib/sms-registration-input";
+import { verifyPublicWebsite } from "@/lib/public-website";
 
 export const dynamic = "force-dynamic";
 
@@ -24,8 +31,6 @@ type RegistrationStatus = {
     | "twilio_campaign_sid"
   >;
 };
-
-const VOLUMES: SmsMonthlyVolume[] = ["under_1k", "1k_6k", "6k_plus"];
 
 async function readStatus(companyId: number): Promise<RegistrationStatus> {
   const db = await getDb();
@@ -46,85 +51,78 @@ async function readStatus(companyId: number): Promise<RegistrationStatus> {
 }
 
 export async function GET(req: Request) {
-  const companyId = await requireCompanyId();
-  const url = new URL(req.url);
-  if (url.searchParams.get("refresh") === "1") {
-    await advanceRegistration(companyId).catch(() => {});
+  let companyId: number;
+  try {
+    ({ companyId } = await requireSmsRegistrationAccess());
+  } catch (error) {
+    if (error instanceof SmsRegistrationAccessError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    throw error;
   }
-  const status = await readStatus(companyId);
+  const url = new URL(req.url);
+  let status = await readStatus(companyId);
+  // Reconcile in-review records on panel open as well as explicit refresh.
+  // Callbacks can be missed; showing the stored state alone leaves a rejected
+  // profile labelled "in review" and prevents the user from correcting it.
+  if (
+    status.company.a2p_registration_state.endsWith("_pending") ||
+    url.searchParams.get("refresh") === "1"
+  ) {
+    await advanceRegistration(companyId).catch(() => {});
+    status = await readStatus(companyId);
+  }
   return NextResponse.json(status, {
     headers: { "Cache-Control": "no-store" },
   });
 }
 
-type FormPayload = Partial<{
-  legal_company_name: string;
-  dba: string;
-  ein: string;
-  address_line1: string;
-  address_line2: string;
-  city: string;
-  region: string;
-  postal_code: string;
-  iso_country: string;
-  business_email: string;
-  business_phone: string;
-  business_website: string;
-  industry: string;
-  entity_type: string;
-  monthly_volume: string;
-  business_description: string;
-  auth_rep_name: string;
-  auth_rep_title: string;
-  auth_rep_email: string;
-  confirmed_authorized: boolean;
-  confirmed_aup_tcpa: boolean;
-  confirmed_consent: boolean;
-}>;
-
 function s(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";
 }
 
-function validate(body: FormPayload): string | null {
-  const required: Array<[keyof FormPayload, string]> = [
-    ["legal_company_name", "Legal company name"],
-    ["ein", "EIN / business number"],
-    ["address_line1", "Business address"],
-    ["city", "City"],
-    ["region", "State / region"],
-    ["postal_code", "Postal code"],
-    ["business_email", "Business email"],
-    ["business_phone", "Business phone"],
-    ["business_website", "Business website"],
-    ["monthly_volume", "Estimated monthly volume"],
-  ];
-  for (const [k, label] of required) {
-    if (!s(body[k])) return `${label} is required.`;
-  }
-  if (!VOLUMES.includes(s(body.monthly_volume) as SmsMonthlyVolume)) {
-    return "Choose a valid monthly volume estimate.";
-  }
-  if (!/^\d{2}-?\d{7}$/.test(s(body.ein))) {
-    return "EIN must be in format XX-XXXXXXX.";
-  }
-  if (!body.confirmed_authorized) {
-    return "You must confirm you're authorized to register this business.";
-  }
-  if (!body.confirmed_aup_tcpa) {
-    return "You must confirm agreement with the SMS AUP and TCPA.";
-  }
-  if (!body.confirmed_consent) {
-    return "You must confirm recipients have provided consent.";
-  }
-  return null;
-}
+type SmsRegistrationPostDependencies = {
+  verifyWebsite?: typeof verifyPublicWebsite;
+  advance?: typeof advanceRegistration;
+};
 
-export async function POST(req: Request) {
-  const companyId = await requireCompanyId();
-  const body = (await req.json().catch(() => ({}))) as FormPayload;
-  const error = validate(body);
+async function handleSmsRegistrationPost(
+  req: Request,
+  dependencies: SmsRegistrationPostDependencies = {}
+) {
+  let companyId: number;
+  try {
+    ({ companyId } = await requireSmsRegistrationAccess());
+  } catch (error) {
+    if (error instanceof SmsRegistrationAccessError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    throw error;
+  }
+
+  const current = await readStatus(companyId);
+  if (
+    current.company.sms_tier === "paid_approved" ||
+    current.company.a2p_registration_state === "campaign_approved"
+  ) {
+    return NextResponse.json(
+      { error: "This registration is already approved and is read-only." },
+      { status: 409 }
+    );
+  }
+  const body = (await req
+    .json()
+    .catch(() => ({}))) as SmsRegistrationFormPayload;
+  const error = validateSmsRegistrationForm(body);
   if (error) return NextResponse.json({ error }, { status: 400 });
+
+  const website = new URL(s(body.business_website));
+  const websiteError = await (dependencies.verifyWebsite ?? verifyPublicWebsite)(
+    website
+  );
+  if (websiteError) {
+    return NextResponse.json({ error: websiteError }, { status: 400 });
+  }
 
   const db = await getDb();
   const existing = await db
@@ -133,10 +131,8 @@ export async function POST(req: Request) {
     )
     .get<{ id: number }>(companyId);
 
-  // Defaulted server-side now that the form no longer collects them: home-
-  // service tenants are always low-volume "Home services," the description is
-  // templated from the business name, and the authorized rep is the account
-  // owner (an admin on this company).
+  // Home-service industry and use-case copy are standardized. If the form
+  // leaves representative fields blank, fall back to the first company admin.
   const legalName = s(body.legal_company_name);
   const owner = await db
     .prepare(
@@ -156,8 +152,9 @@ export async function POST(req: Request) {
     business_email: s(body.business_email),
     business_phone: s(body.business_phone),
     business_website: s(body.business_website) || null,
+    social_media_profile_urls: s(body.social_media_profile_urls) || null,
     industry: s(body.industry) || "Home services",
-    entity_type: s(body.entity_type) || "LLC",
+    entity_type: s(body.entity_type),
     monthly_volume: s(body.monthly_volume) || "under_1k",
     business_description:
       s(body.business_description) ||
@@ -166,26 +163,34 @@ export async function POST(req: Request) {
     auth_rep_title: s(body.auth_rep_title) || "Owner",
     auth_rep_email:
       s(body.auth_rep_email) || owner?.email?.trim() || s(body.business_email),
-    confirmed_authorized: body.confirmed_authorized ? 1 : 0,
-    confirmed_aup_tcpa: body.confirmed_aup_tcpa ? 1 : 0,
-    confirmed_consent: body.confirmed_consent ? 1 : 0,
+    confirmed_authorized: body.confirmed_authorized === true ? 1 : 0,
+    confirmed_aup_tcpa: body.confirmed_aup_tcpa === true ? 1 : 0,
+    confirmed_consent: body.confirmed_consent === true ? 1 : 0,
   };
 
+  let writeResult: { changes: number };
   if (existing) {
-    await db
+    writeResult = await db
       .prepare(
         `UPDATE sms_brand_registrations SET
            legal_company_name = ?, dba = ?, ein = ?,
            address_line1 = ?, address_line2 = ?, city = ?, region = ?,
            postal_code = ?, iso_country = ?,
            business_email = ?, business_phone = ?, business_website = ?,
+           social_media_profile_urls = ?,
            industry = ?, entity_type = ?, monthly_volume = ?,
            business_description = ?,
            auth_rep_name = ?, auth_rep_title = ?, auth_rep_email = ?,
            confirmed_authorized = ?, confirmed_aup_tcpa = ?, confirmed_consent = ?,
-           submitted_at = COALESCE(submitted_at, datetime('now')),
+           submitted_at = datetime('now'),
            updated_at = datetime('now')
-         WHERE id = ?`
+         WHERE id = ?
+           AND EXISTS (
+             SELECT 1 FROM company
+              WHERE id = ?
+                AND COALESCE(sms_tier, 'trial') <> 'paid_approved'
+                AND COALESCE(a2p_registration_state, 'not_started') <> 'campaign_approved'
+           )`
       )
       .run(
         fields.legal_company_name,
@@ -200,6 +205,7 @@ export async function POST(req: Request) {
         fields.business_email,
         fields.business_phone,
         fields.business_website,
+        fields.social_media_profile_urls,
         fields.industry,
         fields.entity_type,
         fields.monthly_volume,
@@ -210,20 +216,26 @@ export async function POST(req: Request) {
         fields.confirmed_authorized,
         fields.confirmed_aup_tcpa,
         fields.confirmed_consent,
-        existing.id
+        existing.id,
+        companyId
       );
   } else {
-    await db
+    writeResult = await db
       .prepare(
         `INSERT INTO sms_brand_registrations
            (company_id, legal_company_name, dba, ein,
             address_line1, address_line2, city, region, postal_code, iso_country,
             business_email, business_phone, business_website,
+            social_media_profile_urls,
             industry, entity_type, monthly_volume, business_description,
             auth_rep_name, auth_rep_title, auth_rep_email,
             confirmed_authorized, confirmed_aup_tcpa, confirmed_consent,
             submitted_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+         SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now')
+           FROM company
+          WHERE id = ?
+            AND COALESCE(sms_tier, 'trial') <> 'paid_approved'
+            AND COALESCE(a2p_registration_state, 'not_started') <> 'campaign_approved'`
       )
       .run(
         companyId,
@@ -239,6 +251,7 @@ export async function POST(req: Request) {
         fields.business_email,
         fields.business_phone,
         fields.business_website,
+        fields.social_media_profile_urls,
         fields.industry,
         fields.entity_type,
         fields.monthly_volume,
@@ -248,14 +261,24 @@ export async function POST(req: Request) {
         fields.auth_rep_email,
         fields.confirmed_authorized,
         fields.confirmed_aup_tcpa,
-        fields.confirmed_consent
+        fields.confirmed_consent,
+        companyId
       );
+  }
+
+  if (writeResult.changes !== 1) {
+    return NextResponse.json(
+      { error: "This registration is already approved and is read-only." },
+      { status: 409 }
+    );
   }
 
   // Flip the state machine forward. The orchestrator catches all errors and
   // persists them as failure states; the user-facing response always succeeds
   // so the upstream isn't allowed to break the form submission UX.
-  await advanceRegistration(companyId).catch((e) => {
+  await (dependencies.advance ?? advanceRegistration)(companyId, {
+    retryFailed: true,
+  }).catch((e) => {
     console.error(
       `[sms/registration] advanceRegistration threw for company ${companyId}:`,
       e
@@ -266,4 +289,11 @@ export async function POST(req: Request) {
   return NextResponse.json(status, {
     headers: { "Cache-Control": "no-store" },
   });
+}
+
+export async function POST(
+  req: Request,
+  dependencies: SmsRegistrationPostDependencies = {}
+) {
+  return handleSmsRegistrationPost(req, dependencies);
 }

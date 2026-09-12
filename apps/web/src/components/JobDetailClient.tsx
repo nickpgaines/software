@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import CheckoutModal from "@/components/jobs/CheckoutModal";
 import PaymentsSection from "@/components/jobs/PaymentsSection";
 import RecordPaymentModal from "@/components/jobs/RecordPaymentModal";
+import LifecycleNotificationPanel from "@/components/jobs/LifecycleNotificationPanel";
 import {
   PickerInput,
   StaffMultiPicker,
@@ -18,6 +19,10 @@ import {
 } from "@/components/JobForm";
 import type { JobAttachment, JobAttachmentKind } from "@/lib/db";
 import { captureNativePhoto, isNativeApp } from "@/lib/native";
+import {
+  notificationWarning,
+  type JobLifecycleNotificationResult,
+} from "@/lib/job-lifecycle-notifications";
 import { LEAD_METHODS } from "@/components/forms/LeadSourceField";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -330,6 +335,8 @@ export default function JobDetailClient({
   const [job, setJob] = useState<Detail>(initialJob);
   const [busy, setBusy] = useState<Step | null>(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paymentWarning, setPaymentWarning] = useState<string | null>(null);
+  const [lifecycleRefreshKey, setLifecycleRefreshKey] = useState(0);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [creatingInvoice, setCreatingInvoice] = useState(false);
@@ -353,6 +360,7 @@ export default function JobDetailClient({
       const updated = (await res.json()) as Detail;
       setJob(updated);
     }
+    setLifecycleRefreshKey((key) => key + 1);
     router.refresh();
   }
 
@@ -365,6 +373,7 @@ export default function JobDetailClient({
     if (res.ok) {
       const updated = (await res.json()) as Detail;
       setJob(updated);
+      setLifecycleRefreshKey((key) => key + 1);
       router.refresh();
       return true;
     }
@@ -375,16 +384,32 @@ export default function JobDetailClient({
     const stepDef = STEPS.find((s) => s.key === step)!;
     const already = !!job[stepDef.ts];
     setBusy(step);
-    const res = await fetch(`/api/jobs/${job.id}/status`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ step, clear: already }),
-    });
-    setBusy(null);
-    if (res.ok) {
-      const updated = (await res.json()) as Detail;
+    try {
+      const res = await fetch(`/api/jobs/${job.id}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ step, clear: already }),
+      });
+      const payload = (await res.json().catch(() => ({}))) as Partial<Detail> & {
+        error?: string;
+        status_notification?: JobLifecycleNotificationResult | null;
+      };
+      if (!res.ok) {
+        alert(payload.error || "Could not update the job status.");
+        return;
+      }
+      const updated = payload as Detail & {
+        status_notification?: JobLifecycleNotificationResult | null;
+      };
       setJob(updated);
+      setLifecycleRefreshKey((key) => key + 1);
       router.refresh();
+      const warning = notificationWarning(updated.status_notification ?? null);
+      if (warning) alert(warning);
+    } catch {
+      alert("Could not update the job status.");
+    } finally {
+      setBusy(null);
     }
   }
 
@@ -709,6 +734,24 @@ export default function JobDetailClient({
             onSave={patchJob}
           />
 
+          {paymentWarning && (
+            <div role="alert" className="rounded-2xl border border-amber-700/50 bg-amber-950/30 px-4 py-3 text-sm text-amber-200">
+              <div className="flex items-start justify-between gap-3">
+                <span>{paymentWarning}</span>
+                <button
+                  type="button"
+                  onClick={() => setPaymentWarning(null)}
+                  aria-label="Dismiss payment warning"
+                  className="font-bold text-amber-300 hover:text-amber-100"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          )}
+
+          <LifecycleNotificationPanel jobId={job.id} refreshKey={lifecycleRefreshKey} />
+
           <PaymentsSection
             jobId={job.id}
             customerId={job.customer_id}
@@ -758,8 +801,9 @@ export default function JobDetailClient({
           customerEmail={job.customer_email}
           customerPhone={job.customer_phone}
           onClose={() => setPaymentModalOpen(false)}
-          onRecorded={async () => {
+          onRecorded={async (warning) => {
             setPaymentModalOpen(false);
+            setPaymentWarning(warning);
             await refreshJob();
           }}
         />

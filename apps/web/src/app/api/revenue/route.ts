@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
+import { getRevenueRows, sumRevenueRows } from "@/lib/widget-metrics";
 
 export const dynamic = "force-dynamic";
 
@@ -303,27 +304,19 @@ export async function GET(req: Request) {
     earliest,
   );
 
-  let sql = `SELECT scheduled_at, price_cents
-             FROM jobs
-             WHERE company_id = ?
-               AND scheduled_at >= ? AND scheduled_at <= ?`;
-  const args: (string | number)[] = [
+  const rows = await getRevenueRows(
+    db,
     companyId,
-    start.toISOString(),
-    end.toISOString(),
-  ];
-  if (salesStaffId && /^\d+$/.test(salesStaffId)) {
-    sql += ` AND (sold_by_id = ? OR salesperson_id = ?)`;
-    args.push(Number(salesStaffId), Number(salesStaffId));
-  }
-  const rows = (await db.prepare(sql).all(...args)) as {
-    scheduled_at: string;
-    price_cents: number;
-  }[];
+    start,
+    end,
+    salesStaffId && /^\d+$/.test(salesStaffId)
+      ? Number(salesStaffId)
+      : null
+  );
 
   // The headline total/average is the true range total, independent of how the
   // chart series is bucketed below.
-  const total = rows.reduce((a, r) => a + r.price_cents, 0);
+  const total = sumRevenueRows(rows);
 
   let series: SeriesPoint[];
   if (grain === "hour") {

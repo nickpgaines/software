@@ -7,6 +7,24 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F10000000000000000000001 /* ForgeWidgetStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000011 /* ForgeWidgetStoreTests.swift */; };
+		F10000000000000000000002 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F10000000000000000000014 /* XCTest.framework */; };
+		F10000000000000000000003 /* ForgeWidgetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000013 /* ForgeWidgetStore.swift */; };
+		F10000000000000000000004 /* ForgeWidgetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000013 /* ForgeWidgetStore.swift */; };
+		F10000000000000000000005 /* ForgeWidgetPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000015 /* ForgeWidgetPlugin.swift */; };
+		F10000000000000000000006 /* ForgeBridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000016 /* ForgeBridgeViewController.swift */; };
+		F10000000000000000000007 /* WidgetProviderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000017 /* WidgetProviderTests.swift */; };
+		F10000000000000000000008 /* WidgetAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000018 /* WidgetAPIClient.swift */; };
+		F10000000000000000000009 /* WidgetFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000019 /* WidgetFormattingTests.swift */; };
+		F20000000000000000000001 /* ForgeWidgetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000013 /* ForgeWidgetStore.swift */; };
+		F20000000000000000000002 /* WidgetAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000018 /* WidgetAPIClient.swift */; };
+		F20000000000000000000003 /* ForgeWidgetIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000011 /* ForgeWidgetIntent.swift */; };
+		F20000000000000000000004 /* ForgeWidgetProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000012 /* ForgeWidgetProvider.swift */; };
+		F20000000000000000000005 /* ForgeWidgetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000013 /* ForgeWidgetView.swift */; };
+		F20000000000000000000006 /* ForgeWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000014 /* ForgeWidgets.swift */; };
+		F20000000000000000000007 /* ForgeWidgets.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = F20000000000000000000010 /* ForgeWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		F20000000000000000000009 /* WidgetFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000017 /* WidgetFormatting.swift */; };
+		F2000000000000000000000A /* WidgetFormatting.swift in Sources */ = {isa = PBXBuildFile; fileRef = F20000000000000000000017 /* WidgetFormatting.swift */; };
 		2FAD9763203C412B000D30F8 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* config.xml */; };
 		4D22ABE92AF431CB00220026 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
 		50379B232058CBB4000EE86E /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = 50379B222058CBB4000EE86E /* capacitor.config.json */; };
@@ -18,7 +36,49 @@
 		50B271D11FEDC1A000F3C39B /* public in Resources */ = {isa = PBXBuildFile; fileRef = 50B271D01FEDC1A000F3C39B /* public */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		F20000000000000000000060 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 504EC2FC1FED79650016851F /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F20000000000000000000040;
+			remoteInfo = ForgeWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		F20000000000000000000023 /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				F20000000000000000000007 /* ForgeWidgets.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
+		F10000000000000000000010 /* ForgeWidgetTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ForgeWidgetTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		F10000000000000000000011 /* ForgeWidgetStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgeWidgetStoreTests.swift; sourceTree = "<group>"; };
+		F10000000000000000000012 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F10000000000000000000013 /* ForgeWidgetStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgeWidgetStore.swift; sourceTree = "<group>"; };
+		F10000000000000000000014 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = System/Library/Frameworks/XCTest.framework; sourceTree = SDKROOT; };
+		F10000000000000000000015 /* ForgeWidgetPlugin.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgeWidgetPlugin.swift; sourceTree = "<group>"; };
+		F10000000000000000000016 /* ForgeBridgeViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgeBridgeViewController.swift; sourceTree = "<group>"; };
+		F10000000000000000000017 /* WidgetProviderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetProviderTests.swift; sourceTree = "<group>"; };
+		F10000000000000000000018 /* WidgetAPIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetAPIClient.swift; sourceTree = "<group>"; };
+		F10000000000000000000019 /* WidgetFormattingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetFormattingTests.swift; sourceTree = "<group>"; };
+		F20000000000000000000010 /* ForgeWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ForgeWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		F20000000000000000000011 /* ForgeWidgetIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgeWidgetIntent.swift; sourceTree = "<group>"; };
+		F20000000000000000000012 /* ForgeWidgetProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgeWidgetProvider.swift; sourceTree = "<group>"; };
+		F20000000000000000000013 /* ForgeWidgetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgeWidgetView.swift; sourceTree = "<group>"; };
+		F20000000000000000000014 /* ForgeWidgets.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForgeWidgets.swift; sourceTree = "<group>"; };
+		F20000000000000000000015 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F20000000000000000000016 /* ForgeWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = ForgeWidgets.entitlements; sourceTree = "<group>"; };
+		F20000000000000000000017 /* WidgetFormatting.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WidgetFormatting.swift; sourceTree = "<group>"; };
 		2FAD9762203C412B000D30F8 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
 		50379B222058CBB4000EE86E /* capacitor.config.json */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		504EC3041FED79650016851F /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -33,6 +93,21 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		F20000000000000000000021 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F10000000000000000000021 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F10000000000000000000002 /* XCTest.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		504EC3011FED79650016851F /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -49,7 +124,10 @@
 			children = (
 				958DCC722DB07C7200EA8C5F /* debug.xcconfig */,
 				504EC3061FED79650016851F /* App */,
+				F10000000000000000000030 /* ForgeWidgetTests */,
+				F10000000000000000000031 /* ForgeWidgets */,
 				504EC3051FED79650016851F /* Products */,
+				F10000000000000000000014 /* XCTest.framework */,
 			);
 			sourceTree = "<group>";
 		};
@@ -57,6 +135,8 @@
 			isa = PBXGroup;
 			children = (
 				504EC3041FED79650016851F /* App.app */,
+				F10000000000000000000010 /* ForgeWidgetTests.xctest */,
+				F20000000000000000000010 /* ForgeWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -66,6 +146,9 @@
 			children = (
 				50379B222058CBB4000EE86E /* capacitor.config.json */,
 				504EC3071FED79650016851F /* AppDelegate.swift */,
+				F10000000000000000000013 /* ForgeWidgetStore.swift */,
+				F10000000000000000000015 /* ForgeWidgetPlugin.swift */,
+				F10000000000000000000016 /* ForgeBridgeViewController.swift */,
 				504EC30B1FED79650016851F /* Main.storyboard */,
 				504EC30E1FED79650016851F /* Assets.xcassets */,
 				504EC3101FED79650016851F /* LaunchScreen.storyboard */,
@@ -77,9 +160,69 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		F10000000000000000000030 /* ForgeWidgetTests */ = {
+			isa = PBXGroup;
+			children = (
+				F10000000000000000000011 /* ForgeWidgetStoreTests.swift */,
+				F10000000000000000000017 /* WidgetProviderTests.swift */,
+				F10000000000000000000019 /* WidgetFormattingTests.swift */,
+				F10000000000000000000012 /* Info.plist */,
+			);
+			path = ForgeWidgetTests;
+			sourceTree = "<group>";
+		};
+		F10000000000000000000031 /* ForgeWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				F10000000000000000000018 /* WidgetAPIClient.swift */,
+				F20000000000000000000011 /* ForgeWidgetIntent.swift */,
+				F20000000000000000000012 /* ForgeWidgetProvider.swift */,
+				F20000000000000000000013 /* ForgeWidgetView.swift */,
+				F20000000000000000000014 /* ForgeWidgets.swift */,
+				F20000000000000000000015 /* Info.plist */,
+				F20000000000000000000016 /* ForgeWidgets.entitlements */,
+				F20000000000000000000017 /* WidgetFormatting.swift */,
+			);
+			path = ForgeWidgets;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		F20000000000000000000040 /* ForgeWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F20000000000000000000050 /* Build configuration list for PBXNativeTarget "ForgeWidgets" */;
+			buildPhases = (
+				F20000000000000000000020 /* Sources */,
+				F20000000000000000000021 /* Frameworks */,
+				F20000000000000000000022 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ForgeWidgets;
+			productName = ForgeWidgets;
+			productReference = F20000000000000000000010 /* ForgeWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		F10000000000000000000040 /* ForgeWidgetTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = F10000000000000000000050 /* Build configuration list for PBXNativeTarget "ForgeWidgetTests" */;
+			buildPhases = (
+				F10000000000000000000020 /* Sources */,
+				F10000000000000000000021 /* Frameworks */,
+				F10000000000000000000022 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = ForgeWidgetTests;
+			productName = ForgeWidgetTests;
+			productReference = F10000000000000000000010 /* ForgeWidgetTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 		504EC3031FED79650016851F /* App */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 504EC3161FED79650016851F /* Build configuration list for PBXNativeTarget "App" */;
@@ -87,10 +230,12 @@
 				504EC3001FED79650016851F /* Sources */,
 				504EC3011FED79650016851F /* Frameworks */,
 				504EC3021FED79650016851F /* Resources */,
+				F20000000000000000000023 /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				F20000000000000000000061 /* PBXTargetDependency */,
 			);
 			name = App;
 			packageProductDependencies = (
@@ -114,6 +259,14 @@
 						LastSwiftMigration = 1100;
 						ProvisioningStyle = Automatic;
 					};
+					F10000000000000000000040 = {
+						CreatedOnToolsVersion = 26.3;
+						ProvisioningStyle = Automatic;
+					};
+					F20000000000000000000040 = {
+						CreatedOnToolsVersion = 26.3;
+						ProvisioningStyle = Automatic;
+					};
 				};
 			};
 			buildConfigurationList = 504EC2FF1FED79650016851F /* Build configuration list for PBXProject "App" */;
@@ -133,11 +286,27 @@
 			projectRoot = "";
 			targets = (
 				504EC3031FED79650016851F /* App */,
+				F10000000000000000000040 /* ForgeWidgetTests */,
+				F20000000000000000000040 /* ForgeWidgets */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		F20000000000000000000022 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F10000000000000000000022 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		504EC3021FED79650016851F /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -155,15 +324,53 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		F20000000000000000000020 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F20000000000000000000001 /* ForgeWidgetStore.swift in Sources */,
+				F20000000000000000000002 /* WidgetAPIClient.swift in Sources */,
+				F20000000000000000000003 /* ForgeWidgetIntent.swift in Sources */,
+				F20000000000000000000004 /* ForgeWidgetProvider.swift in Sources */,
+				F20000000000000000000005 /* ForgeWidgetView.swift in Sources */,
+				F20000000000000000000006 /* ForgeWidgets.swift in Sources */,
+				F20000000000000000000009 /* WidgetFormatting.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F10000000000000000000020 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				F10000000000000000000001 /* ForgeWidgetStoreTests.swift in Sources */,
+				F10000000000000000000004 /* ForgeWidgetStore.swift in Sources */,
+				F10000000000000000000007 /* WidgetProviderTests.swift in Sources */,
+				F10000000000000000000008 /* WidgetAPIClient.swift in Sources */,
+				F10000000000000000000009 /* WidgetFormattingTests.swift in Sources */,
+				F2000000000000000000000A /* WidgetFormatting.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		504EC3001FED79650016851F /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				504EC3081FED79650016851F /* AppDelegate.swift in Sources */,
+				F10000000000000000000003 /* ForgeWidgetStore.swift in Sources */,
+				F10000000000000000000005 /* ForgeWidgetPlugin.swift in Sources */,
+				F10000000000000000000006 /* ForgeBridgeViewController.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		F20000000000000000000061 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F20000000000000000000040 /* ForgeWidgets */;
+			targetProxy = F20000000000000000000060 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		504EC30B1FED79650016851F /* Main.storyboard */ = {
@@ -185,6 +392,104 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		F20000000000000000000051 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ForgeWidgets/ForgeWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 4;
+				DEVELOPMENT_TEAM = TG27DQJ464;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ForgeWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.forgecrm.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		F20000000000000000000052 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_ENTITLEMENTS = ForgeWidgets/ForgeWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 4;
+				DEVELOPMENT_TEAM = TG27DQJ464;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ForgeWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = app.forgecrm.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		F10000000000000000000051 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TG27DQJ464;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ForgeWidgetTests/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.forgecrm.widgettests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "";
+			};
+			name = Debug;
+		};
+		F10000000000000000000052 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = TG27DQJ464;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ForgeWidgetTests/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = app.forgecrm.widgettests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "";
+			};
+			name = Release;
+		};
 		504EC3141FED79650016851F /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 958DCC722DB07C7200EA8C5F /* debug.xcconfig */;
@@ -301,7 +606,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = TG27DQJ464;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -325,7 +630,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 3;
+				CURRENT_PROJECT_VERSION = 4;
 				DEVELOPMENT_TEAM = TG27DQJ464;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -345,6 +650,24 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		F20000000000000000000050 /* Build configuration list for PBXNativeTarget "ForgeWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F20000000000000000000051 /* Debug */,
+				F20000000000000000000052 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		F10000000000000000000050 /* Build configuration list for PBXNativeTarget "ForgeWidgetTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F10000000000000000000051 /* Debug */,
+				F10000000000000000000052 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		504EC2FF1FED79650016851F /* Build configuration list for PBXProject "App" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

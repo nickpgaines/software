@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, type Company, type Db } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
+import { DEFAULT_COMPANY_TIME_ZONE, isValidTimeZone } from "@/lib/time-zone";
 
 export const dynamic = "force-dynamic";
 
@@ -13,6 +14,7 @@ async function ensureCompanyColumns(db: Db): Promise<void> {
     .all()) as { name: string }[];
   const have = new Set(cols.map((c) => c.name));
   const adds: [string, string][] = [
+    ["time_zone", "TEXT NOT NULL DEFAULT 'America/New_York'"],
     ["email", "TEXT"],
     ["website", "TEXT"],
     ["logo_url", "TEXT"],
@@ -34,6 +36,7 @@ export async function GET() {
   return NextResponse.json(
     row ?? {
       id: companyId,
+      time_zone: DEFAULT_COMPANY_TIME_ZONE,
       name: null,
       address: null,
       phone: null,
@@ -56,7 +59,11 @@ export async function PUT(req: Request) {
     email: string;
     website: string;
     logo_url: string | null;
+    time_zone: string;
   }>;
+  if (Object.prototype.hasOwnProperty.call(body, "time_zone") && !isValidTimeZone(body.time_zone)) {
+    return NextResponse.json({ error: "Enter a valid time zone, such as America/Chicago." }, { status: 400 });
+  }
   try {
     await db
       .prepare(
@@ -67,6 +74,7 @@ export async function PUT(req: Request) {
                email = ?,
                website = ?,
                logo_url = ?,
+               time_zone = COALESCE(?, time_zone),
                updated_at = datetime('now')
          WHERE id = ?`
       )
@@ -81,6 +89,7 @@ export async function PUT(req: Request) {
           : typeof body.logo_url === "string" && body.logo_url.length > 0
             ? body.logo_url
             : null,
+        body.time_zone ?? null,
         companyId
       );
   } catch (e) {

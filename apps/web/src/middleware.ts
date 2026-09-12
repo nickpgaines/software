@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { isWidgetBearerRoute } from "./lib/widget-http";
 
 const COOKIE_NAME = "crm_session";
 const encoder = new TextEncoder();
@@ -81,10 +82,21 @@ function sameOrigin(req: NextRequest): boolean {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // Scheduled lifecycle delivery authenticates with CRON_SECRET in its handler.
+  if (pathname === "/api/cron/job-lifecycle-notifications" && (req.method === "GET" || req.method === "POST")) {
+    return NextResponse.next();
+  }
+
   // MCP connector endpoint authenticates via OAuth bearer token, not the
   // cookie session. Skip the cookie check so Claude (which has no cookie)
   // can reach it; the route handler enforces auth itself.
   if (pathname === "/api/mcp") {
+    return NextResponse.next();
+  }
+
+  // WidgetKit refreshes in the background without the web session cookie.
+  // These two operations authenticate their scoped bearer token in the route.
+  if (isWidgetBearerRoute(req)) {
     return NextResponse.next();
   }
 

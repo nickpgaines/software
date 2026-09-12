@@ -3,6 +3,8 @@ import { getDb } from "@/lib/db";
 import { getSessionContext } from "@/lib/auth";
 import { getJobDetail, setStatusStep } from "@/lib/jobs";
 import { recordActivity } from "@/lib/activity";
+import { dispatchJobLifecycleNotification } from "@/lib/job-lifecycle-dispatch";
+import { sendAndLogCompanySms } from "@/lib/sms";
 
 export const dynamic = "force-dynamic";
 
@@ -26,25 +28,10 @@ export async function POST(
     return NextResponse.json({ error: "Invalid step" }, { status: 400 });
   }
 
-  // Snapshot the prior timestamp on the column the step is about to set,
-  // so we only record an event when the state actually transitions
-  // (and not on idempotent re-clicks of the same button).
-  const col =
-    step === "en_route"
-      ? "en_route_at"
-      : step === "arrived"
-      ? "arrived_at"
-      : step === "started"
-      ? "started_at"
-      : "completed_at";
-  const before = (await db
-    .prepare(`SELECT ${col} AS ts FROM jobs WHERE id = ? AND company_id = ?`)
-    .get(id, companyId)) as { ts: string | null } | undefined;
-
-  await setStatusStep(db, id, step, companyId, !!clear);
+  const changed = await setStatusStep(db, id, step, companyId, !!clear);
   const detail = await getJobDetail(db, id, companyId);
 
-  if (!clear && detail && before && before.ts == null && (step === "started" || step === "completed")) {
+  if (!clear && changed && detail && (step === "started" || step === "completed")) {
     try {
       await recordActivity(db, companyId, {
         type: step === "started" ? "job.started" : "job.completed",
@@ -59,5 +46,20 @@ export async function POST(
     }
   }
 
-  return NextResponse.json(detail);
+  const statusNotification = detail
+    ? await dispatchJobLifecycleNotification({
+        db,
+        companyId,
+        jobId: id,
+        step,
+        changed,
+        clear: !!clear,
+        send: ({ customerId, body }) =>
+          sendAndLogCompanySms({ companyId, customerId, body }),
+      })
+    : null;
+
+  return NextResponse.json(
+    detail ? { ...detail, status_notification: statusNotification } : detail
+  );
 }

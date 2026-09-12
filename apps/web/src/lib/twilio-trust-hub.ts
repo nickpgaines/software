@@ -18,7 +18,12 @@ const POLICY_A2P_TRUST_PRODUCT = "RNb0d4771c2c98518d916a3d4cd70a8f8b";
 export type TwilioCreds = {
   accountSid: string;
   authToken: string;
+  beforeRequest?: () => Promise<void>;
 };
+
+export function normalizeTwilioStatus(status: string): string {
+  return status.trim().toUpperCase().replaceAll("-", "_");
+}
 
 function authHeader(creds: TwilioCreds): string {
   return (
@@ -33,6 +38,7 @@ async function twilioRequest<T>(
   url: string,
   form?: Record<string, string | string[] | undefined>
 ): Promise<T> {
+  await creds.beforeRequest?.();
   const body =
     form && method === "POST" ? buildForm(form).toString() : undefined;
   const res = await fetch(url, {
@@ -106,7 +112,38 @@ export type CustomerProfileResource = {
   status: string;
   friendly_name: string;
   policy_sid: string;
+  errors?: RegistrationError[];
 };
+
+type RegistrationError = {
+  code?: number | string;
+  message?: string;
+};
+
+// Final Trust Hub review errors live on the profile itself. Its preliminary
+// evaluation can be compliant even when business identity verification fails.
+export function summarizeRegistrationErrors(
+  errors: RegistrationError[] | null | undefined
+): string | null {
+  const reasons = (errors ?? []).map((error) => {
+    const code = error.code == null ? "" : String(error.code);
+    if (code === "18602") {
+      return "[18602] Twilio could not verify the business ID. Check that the legal company name and EIN exactly match your tax records. If they match, contact Twilio Trust Hub support at trusthub-verify@twilio.com before submitting again.";
+    }
+    if (code === "18601") {
+      return "[18601] Twilio could not verify the relationship between the legal company name and website. Use a working company website that visibly shows the legal name or DBA before submitting again.";
+    }
+    if (code === "18604") {
+      return "[18604] Twilio could not verify the authorized representative. Confirm their full name, company email, phone, title, and relationship to the business match official records before submitting again.";
+    }
+    if (code === "18606") {
+      return "[18606] Twilio could not match the business email domain to the website. Use a company email address whose domain matches the business website before submitting again.";
+    }
+    const message = error.message?.trim();
+    return [code ? `[${code}]` : "", message].filter(Boolean).join(" ");
+  }).filter(Boolean);
+  return reasons.length ? [...new Set(reasons)].join("; ") : null;
+}
 
 export async function createSecondaryCustomerProfile(args: {
   creds: TwilioCreds;
@@ -193,7 +230,7 @@ export function summarizeEvaluationFailures(
   evals: EvaluationResource[]
 ): string | null {
   for (const ev of evals) {
-    if (ev.status !== "noncompliant") continue;
+    if (normalizeTwilioStatus(ev.status) !== "NONCOMPLIANT") continue;
     const reasons: string[] = [];
     for (const r of ev.results ?? []) {
       if (r.valid) continue;
@@ -236,6 +273,7 @@ export async function createBusinessInformationEndUser(args: {
   entityType: string;
   industry: string;
   website: string | null;
+  socialMediaProfileUrls: string | null;
   description: string;
 }): Promise<EndUserResource> {
   return twilioRequest<EndUserResource>(
@@ -248,13 +286,13 @@ export async function createBusinessInformationEndUser(args: {
       Attributes: JSON.stringify({
         business_name: args.legalCompanyName,
         business_registration_number: args.ein,
-        business_identity: "isv_reseller_or_partner",
+        business_identity: "direct_customer",
         business_industry: args.industry,
         business_type: args.entityType,
         business_registration_identifier: "EIN",
         business_regions_of_operation: "USA_AND_CANADA",
         website_url: args.website ?? "",
-        social_media_profile_urls: "",
+        social_media_profile_urls: args.socialMediaProfileUrls ?? "",
       }),
     }
   );
@@ -505,7 +543,7 @@ export async function createMessagingService(args: {
 
 export type CampaignResource = {
   sid: string;
-  status: string;
+  campaign_status: string;
   failure_reason: string | null;
 };
 
@@ -570,6 +608,7 @@ export async function findAvailableLocalNumber(args: {
   creds: TwilioCreds;
   areaCode: string;
 }): Promise<string | null> {
+  await args.creds.beforeRequest?.();
   const params = new URLSearchParams({
     AreaCode: args.areaCode,
     SmsEnabled: "true",
@@ -595,6 +634,18 @@ export async function findAvailableLocalNumber(args: {
 }
 
 export type IncomingPhoneNumber = { sid: string; phone_number: string };
+
+export async function findOwnedPhoneNumber(args: {
+  creds: TwilioCreds; phoneNumber: string;
+}): Promise<IncomingPhoneNumber | null> {
+  const query = new URLSearchParams({ PhoneNumber: args.phoneNumber, PageSize: "1000" });
+  const result = await twilioRequest<{ incoming_phone_numbers?: IncomingPhoneNumber[] }>(
+    args.creds, "GET",
+    `${API_BASE}/2010-04-01/Accounts/${encodeURIComponent(args.creds.accountSid)}/IncomingPhoneNumbers.json?${query}`
+  );
+  // Twilio's phone filter is a partial match; accept only the reserved number.
+  return result.incoming_phone_numbers?.find(number => number.phone_number === args.phoneNumber && number.sid) ?? null;
+}
 
 export async function purchasePhoneNumber(args: {
   creds: TwilioCreds;
@@ -633,6 +684,16 @@ export async function attachNumberToMessagingService(args: {
     )}/PhoneNumbers`,
     { PhoneNumberSid: args.phoneNumberSid }
   );
+}
+
+export async function isNumberAttachedToMessagingService(args: {
+  creds: TwilioCreds; messagingServiceSid: string; phoneNumberSid: string;
+}): Promise<boolean> {
+  const number = await twilioRequest<{ sid: string; service_sid: string }>(
+    args.creds, "GET",
+    `${MESSAGING_BASE}/v1/Services/${encodeURIComponent(args.messagingServiceSid)}/PhoneNumbers/${encodeURIComponent(args.phoneNumberSid)}`
+  );
+  return number.sid === args.phoneNumberSid && number.service_sid === args.messagingServiceSid;
 }
 
 // US Trust Hub Policy SIDs are platform-wide constants published by Twilio:
