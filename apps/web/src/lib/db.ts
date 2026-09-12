@@ -2058,44 +2058,28 @@ async function init(): Promise<void> {
     `);
   }
 
-  const legacy = await _db
-    .prepare(
-      `SELECT j.id, j.salesperson_id, j.technician_id, j.scheduled_at, j.duration_minutes, j.end_time
-       FROM jobs j`
-    )
-    .all<{
-      id: number;
-      salesperson_id: number | null;
-      technician_id: number | null;
-      scheduled_at: string;
-      duration_minutes: number;
-      end_time: string | null;
-    }>();
+  // This backfill runs when an old schema version is upgraded. Keep it in one
+  // executeMultiple call: issuing one remote write per job made production
+  // upgrades exceed Vercel's five-minute function limit, so the version stamp
+  // was never reached and every request retried the migration.
+  await _db.exec(`
+    INSERT OR IGNORE INTO job_assignments (job_id, staff_id, role)
+    SELECT id, salesperson_id, 'sales'
+    FROM jobs
+    WHERE salesperson_id IS NOT NULL;
 
-  for (const j of legacy) {
-    if (j.salesperson_id) {
-      await _db
-        .prepare(
-          `INSERT OR IGNORE INTO job_assignments (job_id, staff_id, role) VALUES (?, ?, ?)`
-        )
-        .run(j.id, j.salesperson_id, "sales");
-    }
-    if (j.technician_id) {
-      await _db
-        .prepare(
-          `INSERT OR IGNORE INTO job_assignments (job_id, staff_id, role) VALUES (?, ?, ?)`
-        )
-        .run(j.id, j.technician_id, "tech");
-    }
-    if (!j.end_time) {
-      const end = new Date(
-        new Date(j.scheduled_at).getTime() + (j.duration_minutes || 60) * 60_000
-      );
-      await _db
-        .prepare(`UPDATE jobs SET end_time = ? WHERE id = ?`)
-        .run(end.toISOString(), j.id);
-    }
-  }
+    INSERT OR IGNORE INTO job_assignments (job_id, staff_id, role)
+    SELECT id, technician_id, 'tech'
+    FROM jobs
+    WHERE technician_id IS NOT NULL;
+
+    UPDATE jobs SET end_time = strftime(
+      '%Y-%m-%dT%H:%M:%fZ',
+      scheduled_at,
+      printf('%+d minutes', COALESCE(NULLIF(duration_minutes, 0), 60))
+    )
+    WHERE end_time IS NULL;
+  `);
 
   // Multi-tenancy migration. Drops the legacy single-row CHECK on the
   // company + settings tables, then adds a company_id FK to every
