@@ -34,6 +34,11 @@ private actor DeferredWidgetTransport: WidgetNetworkTransport {
         continuation?.resume(returning: (data, statusCode))
         continuation = nil
     }
+
+    func fail(_ error: Error) {
+        continuation?.resume(throwing: error)
+        continuation = nil
+    }
 }
 
 final class WidgetProviderTests: XCTestCase {
@@ -173,6 +178,131 @@ final class WidgetProviderTests: XCTestCase {
         XCTAssertNil(try store.loadSnapshot())
     }
 
+    func testServerFailureAfterAccountReplacementDoesNotReturnOldCache() async throws {
+        try store.saveSnapshot(.fixture(monthlyRevenueCents: 111))
+        let transport = DeferredWidgetTransport()
+        let loading = Task {
+            await ForgeWidgetSnapshotLoader(store: store, transport: transport)
+                .load(now: now)
+        }
+        await transport.waitUntilStarted()
+        try replaceActiveAccountWithB()
+
+        await transport.succeed(data: Data(), statusCode: 500)
+        let result = await loading.value
+
+        assertReconnectWithoutSnapshot(result)
+        try assertAccountBRemainsActive()
+    }
+
+    func testOfflineFailureAfterAccountReplacementDoesNotReturnOldCache() async throws {
+        try store.saveSnapshot(.fixture(monthlyRevenueCents: 111))
+        let transport = DeferredWidgetTransport()
+        let loading = Task {
+            await ForgeWidgetSnapshotLoader(store: store, transport: transport)
+                .load(now: now)
+        }
+        await transport.waitUntilStarted()
+        try replaceActiveAccountWithB()
+
+        await transport.fail(StubNetworkError.offline)
+        let result = await loading.value
+
+        assertReconnectWithoutSnapshot(result)
+        try assertAccountBRemainsActive()
+    }
+
+    func testMalformedResponseAfterAccountReplacementDoesNotReturnOldCache() async throws {
+        try store.saveSnapshot(.fixture(monthlyRevenueCents: 111))
+        let transport = DeferredWidgetTransport()
+        let loading = Task {
+            await ForgeWidgetSnapshotLoader(store: store, transport: transport)
+                .load(now: now)
+        }
+        await transport.waitUntilStarted()
+        try replaceActiveAccountWithB()
+
+        await transport.succeed(data: Data("not-json".utf8), statusCode: 200)
+        let result = await loading.value
+
+        assertReconnectWithoutSnapshot(result)
+        try assertAccountBRemainsActive()
+    }
+
+    func testMismatchedResponseAfterAccountReplacementDoesNotReturnOldCache() async throws {
+        try store.saveSnapshot(.fixture(monthlyRevenueCents: 111))
+        let transport = DeferredWidgetTransport()
+        let loading = Task {
+            await ForgeWidgetSnapshotLoader(store: store, transport: transport)
+                .load(now: now)
+        }
+        await transport.waitUntilStarted()
+        try replaceActiveAccountWithB()
+
+        await transport.succeed(data: validJSON(companyID: 99), statusCode: 200)
+        let result = await loading.value
+
+        assertReconnectWithoutSnapshot(result)
+        try assertAccountBRemainsActive()
+    }
+
+    func testUnauthorizedResponseFromReplacedAccountDoesNotClearActiveAccount() async throws {
+        try store.saveSnapshot(.fixture(monthlyRevenueCents: 111))
+        let transport = DeferredWidgetTransport()
+        let loading = Task {
+            await ForgeWidgetSnapshotLoader(store: store, transport: transport)
+                .load(now: now)
+        }
+        await transport.waitUntilStarted()
+        try replaceActiveAccountWithB()
+
+        await transport.succeed(data: Data(), statusCode: 401)
+        let result = await loading.value
+
+        assertReconnectWithoutSnapshot(result)
+        try assertAccountBRemainsActive()
+    }
+
+    func testForbiddenResponseFromReplacedAccountDoesNotClearActiveAccount() async throws {
+        try store.saveSnapshot(.fixture(monthlyRevenueCents: 111))
+        let transport = DeferredWidgetTransport()
+        let loading = Task {
+            await ForgeWidgetSnapshotLoader(store: store, transport: transport)
+                .load(now: now)
+        }
+        await transport.waitUntilStarted()
+        try replaceActiveAccountWithB()
+
+        await transport.succeed(data: Data(), statusCode: 403)
+        let result = await loading.value
+
+        assertReconnectWithoutSnapshot(result)
+        try assertAccountBRemainsActive()
+    }
+
+    func testSuccessfulResponseCannotOverwriteCacheAfterValidationCredentialSwap() async throws {
+        let transport = DeferredWidgetTransport()
+        let loading = Task {
+            await ForgeWidgetSnapshotLoader(store: store, transport: transport)
+                .load(now: now)
+        }
+        await transport.waitUntilStarted()
+        try store.saveSnapshot(
+            .fixture(
+                companyID: 77,
+                staffID: 10,
+                monthlyRevenueCents: 777
+            )
+        )
+        try secrets.swapCredentialOnNextRead(to: .accountB())
+
+        await transport.succeed(data: validJSON(), statusCode: 200)
+        let result = await loading.value
+
+        assertReconnectWithoutSnapshot(result)
+        try assertAccountBRemainsActive()
+    }
+
     private func validJSON(companyID: Int = 42) -> Data {
         Data(
             """
@@ -192,13 +322,60 @@ final class WidgetProviderTests: XCTestCase {
             """.utf8
         )
     }
+
+    private func replaceActiveAccountWithB() throws {
+        try store.saveCredential(.accountB())
+        try store.saveSnapshot(
+            .fixture(
+                companyID: 77,
+                staffID: 10,
+                monthlyRevenueCents: 777
+            )
+        )
+    }
+
+    private func assertReconnectWithoutSnapshot(
+        _ result: ForgeWidgetLoadResult,
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) {
+        XCTAssertEqual(result.state, .reconnect, file: file, line: line)
+        XCTAssertNil(result.snapshot, file: file, line: line)
+    }
+
+    private func assertAccountBRemainsActive(
+        file: StaticString = #filePath,
+        line: UInt = #line
+    ) throws {
+        XCTAssertEqual(try store.loadCredential(), .accountB(), file: file, line: line)
+        XCTAssertEqual(
+            try store.loadSnapshot()?.metrics.monthlyRevenue?.totalCents,
+            777,
+            file: file,
+            line: line
+        )
+    }
 }
 
 private final class MemoryProviderSecretStore: WidgetSecretStoring {
     var values: [String: Data] = [:]
-    func data(for key: String) throws -> Data? { values[key] }
+    private var credentialReplacement: Data?
+
+    func data(for key: String) throws -> Data? {
+        let current = values[key]
+        if key == "widget-credential", let replacement = credentialReplacement {
+            values[key] = replacement
+            credentialReplacement = nil
+        }
+        return current
+    }
+
     func set(_ data: Data, for key: String) throws { values[key] = data }
     func removeValue(for key: String) throws { values.removeValue(forKey: key) }
+
+    func swapCredentialOnNextRead(to credential: ForgeWidgetCredential) throws {
+        credentialReplacement = try JSONEncoder.forgeWidgetEncoder().encode(credential)
+    }
 }
 
 private extension ForgeWidgetCredential {
@@ -210,14 +387,27 @@ private extension ForgeWidgetCredential {
             expiresAt: Date(timeIntervalSince1970: 2_000_000_000)
         )
     }
+
+    static func accountB() -> ForgeWidgetCredential {
+        ForgeWidgetCredential(
+            token: String(repeating: "b", count: 43),
+            companyID: 77,
+            staffID: 10,
+            expiresAt: Date(timeIntervalSince1970: 2_000_000_000)
+        )
+    }
 }
 
 private extension ForgeWidgetSnapshot {
-    static func fixture(monthlyRevenueCents: Int = 100) -> ForgeWidgetSnapshot {
+    static func fixture(
+        companyID: Int = 42,
+        staffID: Int = 9,
+        monthlyRevenueCents: Int = 100
+    ) -> ForgeWidgetSnapshot {
         ForgeWidgetSnapshot(
             version: 1,
-            companyID: 42,
-            staffID: 9,
+            companyID: companyID,
+            staffID: staffID,
             updatedAt: Date(timeIntervalSince1970: 1_787_400_000),
             permissions: .init(reports: true, salesLeaderboard: true),
             metrics: .init(

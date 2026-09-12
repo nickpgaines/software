@@ -120,6 +120,27 @@ protocol WidgetSecretStoring {
     func removeValue(for key: String) throws
 }
 
+protocol KeychainItemWriting {
+    func update(
+        _ query: [String: Any],
+        attributes: [String: Any]
+    ) -> OSStatus
+    func add(_ attributes: [String: Any]) -> OSStatus
+}
+
+struct SystemKeychainItemWriter: KeychainItemWriting {
+    func update(
+        _ query: [String: Any],
+        attributes: [String: Any]
+    ) -> OSStatus {
+        SecItemUpdate(query as CFDictionary, attributes as CFDictionary)
+    }
+
+    func add(_ attributes: [String: Any]) -> OSStatus {
+        SecItemAdd(attributes as CFDictionary, nil)
+    }
+}
+
 enum ForgeWidgetStoreError: Error {
     case keychain(OSStatus)
     case randomIdentifier(OSStatus)
@@ -129,15 +150,18 @@ enum ForgeWidgetStoreError: Error {
 final class KeychainWidgetSecretStore: WidgetSecretStoring {
     private let service: String
     private let accessGroup: String?
+    private let itemWriter: KeychainItemWriting
 
     init(
         service: String = "app.forgecrm.widget-secrets",
         accessGroup: String? = Bundle.main.object(
             forInfoDictionaryKey: "ForgeKeychainAccessGroup"
-        ) as? String
+        ) as? String,
+        itemWriter: KeychainItemWriting = SystemKeychainItemWriter()
     ) {
         self.service = service
         self.accessGroup = accessGroup
+        self.itemWriter = itemWriter
     }
 
     private func query(for key: String) -> [String: Any] {
@@ -167,9 +191,13 @@ final class KeychainWidgetSecretStore: WidgetSecretStoring {
 
     func set(_ data: Data, for key: String) throws {
         let base = query(for: key)
-        let updated = SecItemUpdate(
-            base as CFDictionary,
-            [kSecValueData as String: data] as CFDictionary
+        let updated = itemWriter.update(
+            base,
+            attributes: [
+                kSecValueData as String: data,
+                kSecAttrAccessible as String:
+                    kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+            ]
         )
         if updated == errSecSuccess { return }
         guard updated == errSecItemNotFound else {
@@ -177,8 +205,9 @@ final class KeychainWidgetSecretStore: WidgetSecretStoring {
         }
         var inserted = base
         inserted[kSecValueData as String] = data
-        inserted[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlock
-        let status = SecItemAdd(inserted as CFDictionary, nil)
+        inserted[kSecAttrAccessible as String] =
+            kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        let status = itemWriter.add(inserted)
         guard status == errSecSuccess else {
             throw ForgeWidgetStoreError.keychain(status)
         }
@@ -194,6 +223,7 @@ final class KeychainWidgetSecretStore: WidgetSecretStoring {
 
 final class ForgeWidgetStore {
     static let appGroup = "group.app.forgecrm"
+    private static let credentialCacheLock = NSLock()
 
     private let secretStore: WidgetSecretStoring
     private let defaults: UserDefaults
@@ -234,11 +264,19 @@ final class ForgeWidgetStore {
     }
 
     func saveCredential(_ credential: ForgeWidgetCredential) throws {
-        let data = try JSONEncoder.forgeWidgetEncoder().encode(credential)
-        try secretStore.set(data, for: credentialKey)
+        try withCredentialCacheLock {
+            let data = try JSONEncoder.forgeWidgetEncoder().encode(credential)
+            try secretStore.set(data, for: credentialKey)
+        }
     }
 
     func loadCredential() throws -> ForgeWidgetCredential? {
+        try withCredentialCacheLock {
+            try loadCredentialUnlocked()
+        }
+    }
+
+    private func loadCredentialUnlocked() throws -> ForgeWidgetCredential? {
         guard let data = try secretStore.data(for: credentialKey) else {
             return nil
         }
@@ -249,6 +287,26 @@ final class ForgeWidgetStore {
     }
 
     func saveSnapshot(_ snapshot: ForgeWidgetSnapshot) throws {
+        try withCredentialCacheLock {
+            try saveSnapshotUnlocked(snapshot)
+        }
+    }
+
+    @discardableResult
+    func saveSnapshot(
+        _ snapshot: ForgeWidgetSnapshot,
+        ifCredentialMatches expected: ForgeWidgetCredential
+    ) throws -> Bool {
+        try withCredentialCacheLock {
+            guard try loadCredentialUnlocked() == expected else {
+                return false
+            }
+            try saveSnapshotUnlocked(snapshot)
+            return true
+        }
+    }
+
+    private func saveSnapshotUnlocked(_ snapshot: ForgeWidgetSnapshot) throws {
         let cacheDirectory = try requiredCacheDirectory()
         let snapshotURL = cacheDirectory
             .appendingPathComponent(snapshotFile, isDirectory: false)
@@ -262,10 +320,35 @@ final class ForgeWidgetStore {
     }
 
     func loadSnapshot() throws -> ForgeWidgetSnapshot? {
+        try withCredentialCacheLock {
+            try loadSnapshotUnlocked()
+        }
+    }
+
+    func loadSnapshot(
+        ifCredentialMatches expected: ForgeWidgetCredential
+    ) throws -> ForgeWidgetSnapshot? {
+        try withCredentialCacheLock {
+            guard try loadCredentialUnlocked() == expected else {
+                return nil
+            }
+            return try loadSnapshotUnlocked(credential: expected)
+        }
+    }
+
+    private func loadSnapshotUnlocked() throws -> ForgeWidgetSnapshot? {
+        guard let credential = try loadCredentialUnlocked() else {
+            return nil
+        }
+        return try loadSnapshotUnlocked(credential: credential)
+    }
+
+    private func loadSnapshotUnlocked(
+        credential: ForgeWidgetCredential
+    ) throws -> ForgeWidgetSnapshot? {
         let snapshotURL = try requiredCacheDirectory()
             .appendingPathComponent(snapshotFile, isDirectory: false)
-        guard let credential = try loadCredential(),
-              let data = try? Data(contentsOf: snapshotURL),
+        guard let data = try? Data(contentsOf: snapshotURL),
               let snapshot = try? JSONDecoder.forgeWidgetDecoder().decode(
                 ForgeWidgetSnapshot.self,
                 from: data
@@ -278,11 +361,36 @@ final class ForgeWidgetStore {
     }
 
     func clearCredentialAndCache() throws {
+        try withCredentialCacheLock {
+            try clearCredentialAndCacheUnlocked()
+        }
+    }
+
+    @discardableResult
+    func clearCredentialAndCache(
+        ifCredentialMatches expected: ForgeWidgetCredential
+    ) throws -> Bool {
+        try withCredentialCacheLock {
+            guard try loadCredentialUnlocked() == expected else {
+                return false
+            }
+            try clearCredentialAndCacheUnlocked()
+            return true
+        }
+    }
+
+    private func clearCredentialAndCacheUnlocked() throws {
         try secretStore.removeValue(for: credentialKey)
-        try clearCache()
+        try clearCacheUnlocked()
     }
 
     func clearCache() throws {
+        try withCredentialCacheLock {
+            try clearCacheUnlocked()
+        }
+    }
+
+    private func clearCacheUnlocked() throws {
         let snapshotURL = try requiredCacheDirectory()
             .appendingPathComponent(snapshotFile, isDirectory: false)
         if FileManager.default.fileExists(atPath: snapshotURL.path) {
@@ -296,5 +404,13 @@ final class ForgeWidgetStore {
             throw ForgeWidgetStoreError.missingSharedContainer
         }
         return cacheDirectory
+    }
+
+    private func withCredentialCacheLock<T>(
+        _ operation: () throws -> T
+    ) rethrows -> T {
+        Self.credentialCacheLock.lock()
+        defer { Self.credentialCacheLock.unlock() }
+        return try operation()
     }
 }

@@ -98,7 +98,9 @@ public final class ForgeWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
                     return
                 }
                 if http.statusCode == 401 || http.statusCode == 403 {
-                    try store.clearCredentialAndCache()
+                    _ = try store.clearCredentialAndCache(
+                        ifCredentialMatches: credential
+                    )
                     WidgetCenter.shared.reloadAllTimelines()
                     call.resolve(["refreshed": false, "reconnect": true])
                     return
@@ -122,7 +124,13 @@ public final class ForgeWidgetPlugin: CAPPlugin, CAPBridgedPlugin {
                     call.resolve(["refreshed": false, "reconnect": true])
                     return
                 }
-                try store.saveSnapshot(snapshot)
+                guard try store.saveSnapshot(
+                    snapshot,
+                    ifCredentialMatches: credential
+                ) else {
+                    call.resolve(["refreshed": false, "reconnect": true])
+                    return
+                }
                 WidgetCenter.shared.reloadAllTimelines()
                 call.resolve(["refreshed": true])
             } catch {

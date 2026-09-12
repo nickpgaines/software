@@ -1,5 +1,25 @@
 import Foundation
+import Security
 import XCTest
+
+private final class RecordingKeychainItemWriter: KeychainItemWriting {
+    var updateStatuses: [OSStatus] = [errSecItemNotFound, errSecSuccess]
+    private(set) var updateAttributes: [[String: Any]] = []
+    private(set) var insertedAttributes: [[String: Any]] = []
+
+    func update(
+        _ query: [String: Any],
+        attributes: [String: Any]
+    ) -> OSStatus {
+        updateAttributes.append(attributes)
+        return updateStatuses.removeFirst()
+    }
+
+    func add(_ attributes: [String: Any]) -> OSStatus {
+        insertedAttributes.append(attributes)
+        return errSecSuccess
+    }
+}
 
 private final class MemoryWidgetSecretStore: WidgetSecretStoring {
     var values: [String: Data] = [:]
@@ -139,5 +159,87 @@ final class ForgeWidgetStoreTests: XCTestCase {
             try store.loadSnapshot()?.metrics.monthlyRevenue?.totalCents,
             200
         )
+    }
+
+    func testConditionalSnapshotSaveRejectsReplacedCredential() throws {
+        let accountA = credential(token: "a", companyID: 42, staffID: 9)
+        let accountB = credential(token: "b", companyID: 77, staffID: 10)
+        let accountBSnapshot = ForgeWidgetSnapshot.fixture(
+            companyID: 77,
+            staffID: 10,
+            monthlyRevenueCents: 777
+        )
+        try store.saveCredential(accountB)
+        try store.saveSnapshot(accountBSnapshot)
+
+        let saved = try store.saveSnapshot(
+            .fixture(companyID: 42, staffID: 9, monthlyRevenueCents: 111),
+            ifCredentialMatches: accountA
+        )
+
+        XCTAssertFalse(saved)
+        XCTAssertEqual(try store.loadCredential(), accountB)
+        XCTAssertEqual(try store.loadSnapshot(), accountBSnapshot)
+    }
+
+    func testConditionalClearRejectsReplacedCredential() throws {
+        let accountA = credential(token: "a", companyID: 42, staffID: 9)
+        let accountB = credential(token: "b", companyID: 77, staffID: 10)
+        let accountBSnapshot = ForgeWidgetSnapshot.fixture(
+            companyID: 77,
+            staffID: 10,
+            monthlyRevenueCents: 777
+        )
+        try store.saveCredential(accountB)
+        try store.saveSnapshot(accountBSnapshot)
+
+        let cleared = try store.clearCredentialAndCache(
+            ifCredentialMatches: accountA
+        )
+
+        XCTAssertFalse(cleared)
+        XCTAssertEqual(try store.loadCredential(), accountB)
+        XCTAssertEqual(try store.loadSnapshot(), accountBSnapshot)
+    }
+
+    func testKeychainWritesUseDeviceOnlyAccessibilityForInsertAndUpdate() throws {
+        let writer = RecordingKeychainItemWriter()
+        let secretStore = KeychainWidgetSecretStore(
+            service: "ForgeWidgetStoreTests",
+            accessGroup: nil,
+            itemWriter: writer
+        )
+
+        try secretStore.set(Data("first".utf8), for: "credential")
+        try secretStore.set(Data("second".utf8), for: "credential")
+
+        XCTAssertEqual(writer.insertedAttributes.count, 1)
+        XCTAssertEqual(writer.updateAttributes.count, 2)
+        XCTAssertTrue(
+            writer.insertedAttributes.allSatisfy(hasDeviceOnlyAccessibility)
+        )
+        XCTAssertTrue(
+            writer.updateAttributes.allSatisfy(hasDeviceOnlyAccessibility)
+        )
+    }
+
+    private func credential(
+        token: Character,
+        companyID: Int,
+        staffID: Int
+    ) -> ForgeWidgetCredential {
+        ForgeWidgetCredential(
+            token: String(repeating: token, count: 43),
+            companyID: companyID,
+            staffID: staffID,
+            expiresAt: Date(timeIntervalSince1970: 2_000_000_000)
+        )
+    }
+
+    private func hasDeviceOnlyAccessibility(_ attributes: [String: Any]) -> Bool {
+        guard let accessibility = attributes[kSecAttrAccessible as String] else {
+            return false
+        }
+        return CFEqual(accessibility as CFTypeRef, kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly)
     }
 }

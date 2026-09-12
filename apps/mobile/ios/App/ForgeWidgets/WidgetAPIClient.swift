@@ -44,7 +44,6 @@ struct ForgeWidgetSnapshotLoader {
 
     func load(now: Date = Date()) async -> ForgeWidgetLoadResult {
         let refreshDate = now.addingTimeInterval(30 * 60)
-        let cached = try? store.loadSnapshot()
         let credential = (try? store.loadCredential()) ?? nil
         guard let credential else {
             return ForgeWidgetLoadResult(
@@ -65,7 +64,9 @@ struct ForgeWidgetSnapshotLoader {
         do {
             let (data, statusCode) = try await transport.data(for: request)
             if statusCode == 401 || statusCode == 403 {
-                try? store.clearCredentialAndCache()
+                _ = try? store.clearCredentialAndCache(
+                    ifCredentialMatches: credential
+                )
                 return ForgeWidgetLoadResult(
                     snapshot: nil,
                     state: .reconnect,
@@ -73,7 +74,10 @@ struct ForgeWidgetSnapshotLoader {
                 )
             }
             guard statusCode == 200 else {
-                return fallback(cached: cached, refreshDate: refreshDate)
+                return fallback(
+                    for: credential,
+                    refreshDate: refreshDate
+                )
             }
             let snapshot = try JSONDecoder.forgeWidgetDecoder().decode(
                 ForgeWidgetSnapshot.self,
@@ -82,7 +86,10 @@ struct ForgeWidgetSnapshotLoader {
             guard snapshot.version == 1,
                   snapshot.companyID == credential.companyID,
                   snapshot.staffID == credential.staffID else {
-                return fallback(cached: cached, refreshDate: refreshDate)
+                return fallback(
+                    for: credential,
+                    refreshDate: refreshDate
+                )
             }
             guard let activeCredential = try store.loadCredential(),
                   activeCredential == credential else {
@@ -92,22 +99,45 @@ struct ForgeWidgetSnapshotLoader {
                     refreshDate: refreshDate
                 )
             }
-            try store.saveSnapshot(snapshot)
+            guard try store.saveSnapshot(
+                snapshot,
+                ifCredentialMatches: credential
+            ) else {
+                return ForgeWidgetLoadResult(
+                    snapshot: nil,
+                    state: .reconnect,
+                    refreshDate: refreshDate
+                )
+            }
             return ForgeWidgetLoadResult(
                 snapshot: snapshot,
                 state: .connected,
                 refreshDate: refreshDate
             )
         } catch {
-            return fallback(cached: cached, refreshDate: refreshDate)
+            return fallback(
+                for: credential,
+                refreshDate: refreshDate
+            )
         }
     }
 
     private func fallback(
-        cached: ForgeWidgetSnapshot?,
+        for credential: ForgeWidgetCredential,
         refreshDate: Date
     ) -> ForgeWidgetLoadResult {
-        ForgeWidgetLoadResult(
+        guard let activeCredential = try? store.loadCredential(),
+              activeCredential == credential else {
+            return ForgeWidgetLoadResult(
+                snapshot: nil,
+                state: .reconnect,
+                refreshDate: refreshDate
+            )
+        }
+        let cached = try? store.loadSnapshot(
+            ifCredentialMatches: credential
+        )
+        return ForgeWidgetLoadResult(
             snapshot: cached,
             state: cached == nil ? .unavailable : .cached,
             refreshDate: refreshDate
