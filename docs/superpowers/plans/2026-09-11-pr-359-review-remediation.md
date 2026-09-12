@@ -296,3 +296,168 @@ Expected: all web tests, production web build, iOS tests, and iOS builds pass.
 - [ ] **Step 6: Commit**
 
 Commit message: `fix: revoke widget sessions on logout`
+
+---
+
+### Task 6: Durable Job Payment Idempotency
+
+**Files:**
+- Modify: `apps/web/src/lib/db.ts`
+- Create: `apps/web/src/lib/payment-idempotency.ts`
+- Modify: `apps/web/src/app/api/jobs/[id]/payments/route.ts`
+- Modify: `apps/web/src/app/api/jobs/[id]/payments/stripe-intent/route.ts`
+- Modify: `apps/web/src/app/api/jobs/[id]/payments/stripe-confirm/route.ts`
+- Modify: `apps/web/src/app/api/jobs/[id]/payments/charge-saved-card/route.ts`
+- Modify: `apps/web/src/app/api/jobs/[id]/payments/terminal-intent/route.ts`
+- Modify: `apps/web/src/components/jobs/RecordPaymentModal.tsx`
+- Create: `apps/web/tests/payment-idempotency.test.ts`
+- Test: `apps/web/tests/payment-job-completion.test.ts`
+
+**Interfaces:**
+- Consumes: existing payment schema, Stripe connected-account calls, payment completion helper, and receipt delivery.
+- Produces: `requireIdempotencyKey(req: Request): string`; `paymentRequestFingerprint(input): string`; `insertPaymentIdempotently(tx, input): Promise<{ payment: Payment; created: boolean }>`; response fields `idempotent_replay`, `lifecycle_notification`, and `warning` consumed by Task 8.
+
+- [ ] **Step 1: Add failing replay and concurrency tests**
+
+Assert missing/invalid `Idempotency-Key` returns 400; matching manual replay returns the original payment with 200 and does not repeat receipt/completion side effects; the same key with changed amount/tip/method/notes/receipt options returns 409; simultaneous same-key inserts create one row; Stripe confirm for one PaymentIntent creates one row; an existing intent on a different job is rejected; and saved-card/intent/terminal calls pass a deterministic Stripe idempotency key.
+
+- [ ] **Step 2: Run focused tests and observe failure**
+
+Run: `cd apps/web && npm test -- --test-name-pattern='payment.*idempoten|idempoten.*payment'`
+
+Expected: repeated manual and concurrent Stripe paths create duplicate effects or accept a missing key.
+
+- [ ] **Step 3: Add backward-compatible idempotency schema**
+
+Add nullable `payments.idempotency_key` and `payments.request_fingerprint`, plus a partial unique index on `(company_id, idempotency_key) WHERE idempotency_key IS NOT NULL`. Do not add a uniqueness constraint directly to historical `stripe_payment_intent_id` before production duplicate auditing.
+
+- [ ] **Step 4: Implement shared insert and conflict semantics**
+
+Normalize caller keys to printable 8-200 character values. Hash a stable JSON representation of job, amount, tip, method, notes, and receipt choices with SHA-256. Insert with a namespaced key (`manual:`, `saved-card:`, or `stripe-confirm:`) using conflict-do-nothing, then reload by tenant/key. Return the existing payment only when fingerprints match; otherwise throw a typed conflict mapped to 409.
+
+- [ ] **Step 5: Make provider and browser retries idempotent**
+
+Pass deterministic Stripe keys such as `forge:${companyId}:${jobId}:saved:${key}` in connected-account request options. Generate one `crypto.randomUUID()` per intentional modal payment attempt, preserve it across retries and the intent/confirm sequence, and rotate it after success or material input changes. Do not resend receipts or enqueue completion for `created: false`.
+
+- [ ] **Step 6: Run focused and full web tests**
+
+Run: `cd apps/web && npm test -- --test-name-pattern='payment|Stripe'`
+
+Run: `cd apps/web && npm test`
+
+Expected: all tests pass.
+
+- [ ] **Step 7: Commit**
+
+Commit message: `fix: make job payments idempotent`
+
+---
+
+### Task 7: Crash-Recoverable Lifecycle Outbox and Tenant Time Zone
+
+**Files:**
+- Modify: `apps/web/src/lib/db.ts`
+- Create: `apps/web/src/lib/time-zone.ts`
+- Create: `apps/web/src/lib/job-lifecycle-outbox.ts`
+- Modify: `apps/web/src/lib/job-lifecycle-dispatch.ts`
+- Modify: `apps/web/src/lib/job-status-transitions.ts`
+- Modify: `apps/web/src/lib/payment-job-completion.ts`
+- Modify: `apps/web/src/app/api/jobs/[id]/status/route.ts`
+- Modify: `apps/web/src/app/api/settings/company/route.ts`
+- Modify: `apps/web/src/components/SettingsTabs.tsx`
+- Create: `apps/web/src/app/api/cron/job-lifecycle-notifications/route.ts`
+- Modify: `apps/web/vercel.json`
+- Test: `apps/web/tests/job-lifecycle-dispatch.test.ts`
+- Test: `apps/web/tests/payment-job-completion.test.ts`
+- Create: `apps/web/tests/job-lifecycle-outbox.test.ts`
+- Create: `apps/web/tests/time-zone.test.ts`
+
+**Interfaces:**
+- Consumes: Task 3 consent rule, Task 6 idempotent payment transaction, existing customization/message builders, `CRON_SECRET` route pattern, and `sendAndLogCompanySms`.
+- Produces: `prepareJobLifecycleNotification`, `enqueueJobLifecycleNotification`, `deliverJobLifecycleNotification`, and `runPendingJobLifecycleNotifications`; durable notification summaries consumed by Tasks 6 and 8.
+
+- [ ] **Step 1: Add failing atomicity, draining, and timezone tests**
+
+Assert transition/payment commit leaves a pending notification even when immediate delivery never runs; concurrent immediate/cron drainers invoke `send` once; failed provider submissions become `failed`; `sending` older than ten minutes becomes `unknown` and is not auto-retried; synthetic payment steps are skipped while completion is pending; cron authentication is enforced; Chicago and New York tenants render distinct correct times; invalid IANA zones return 400; and a legacy company retains Eastern time.
+
+- [ ] **Step 2: Run focused tests and observe failure**
+
+Run: `cd apps/web && npm test -- --test-name-pattern='outbox|lifecycle|time zone'`
+
+Expected: lifecycle claim is post-commit, no pending drain exists, or Fly/Vercel UTC is rendered through the hard-coded zone.
+
+- [ ] **Step 3: Extend the lifecycle ledger**
+
+Add nullable `customer_id` and `body`, `attempt_count INTEGER NOT NULL DEFAULT 0`, `locked_at`, `last_attempt_at`, `retry_requested_at`, and `retry_requested_by`, plus an `(outcome, created_at)` index. Supported outcomes are `pending`, `sending`, `sent`, `skipped`, `failed`, and `unknown`. Migrate legacy `claimed` to `unknown` so ambiguous provider calls are never replayed automatically.
+
+- [ ] **Step 4: Prepare then enqueue atomically**
+
+Prepare customization, company/timezone, consent, and message before mutating the job. In one transaction, conditionally update lifecycle timestamps and insert pending/skipped/failed rows; payment transactions insert the payment, synthetic skipped steps, and completion outbox row together. Commit before immediate delivery.
+
+- [ ] **Step 5: Claim and deliver at most once automatically**
+
+Claim with a conditional `pending -> sending` update and increment `attempt_count`. Set `sent` or `failed` after `sendAndLogCompanySms`. Mark `sending` rows older than ten minutes `unknown`; never auto-retry `unknown`. The cron route authenticates with the established `CRON_SECRET` contract, drains pending rows every five minutes, and returns counts.
+
+- [ ] **Step 6: Add tenant timezone configuration**
+
+Add `company.time_zone TEXT NOT NULL DEFAULT 'America/New_York'`. Validate with `Intl.DateTimeFormat(undefined, { timeZone: value })` plus exact non-empty input. Expose the value through company settings and use it in lifecycle message construction.
+
+- [ ] **Step 7: Run focused and full web tests**
+
+Run: `cd apps/web && npm test -- --test-name-pattern='outbox|lifecycle|payment|time zone'`
+
+Run: `cd apps/web && npm test`
+
+Expected: all tests pass.
+
+- [ ] **Step 8: Commit**
+
+Commit message: `fix: make lifecycle texts recoverable`
+
+---
+
+### Task 8: Operator-Visible Lifecycle Delivery and Controlled Retry
+
+**Files:**
+- Create: `apps/web/src/app/api/jobs/[id]/lifecycle-notifications/route.ts`
+- Create: `apps/web/src/app/api/jobs/[id]/lifecycle-notifications/[notificationId]/retry/route.ts`
+- Create: `apps/web/src/components/jobs/LifecycleNotificationPanel.tsx`
+- Modify: `apps/web/src/components/JobDetailClient.tsx`
+- Modify: `apps/web/src/components/jobs/RecordPaymentModal.tsx`
+- Modify: `apps/web/src/lib/job-lifecycle-notifications.ts`
+- Test: `apps/web/tests/job-lifecycle-outbox.test.ts`
+- Create: `apps/web/tests/job-lifecycle-routes.test.ts`
+
+**Interfaces:**
+- Consumes: Task 7 outbox records/delivery APIs and Task 6 payment response summary.
+- Produces: tenant-scoped notification GET and retry POST APIs plus job-page status/retry UI.
+
+- [ ] **Step 1: Add failing authorization, retry, and UI contract tests**
+
+Assert GET is scoped by both tenant and job; failed retry transitions to pending and attempts delivery; unknown retry requires `{ "confirm_unknown": true }`; sent/sending/pending/skipped cannot be retried; retry audit fields capture staff/time; another tenant cannot inspect or retry; payment success with delivery failure includes a warning; and job UI renders pending/failed/unknown labels plus the correct retry/confirmation actions.
+
+- [ ] **Step 2: Run focused tests and observe failure**
+
+Run: `cd apps/web && npm test -- --test-name-pattern='lifecycle.*route|notification.*retry|payment.*warning'`
+
+Expected: no notification read/retry API or operator UI exists.
+
+- [ ] **Step 3: Add tenant-scoped APIs and controlled retry**
+
+GET returns id, step, outcome, attempt count, message ID, error, and timestamps. Retry permits `failed -> pending`; permits `unknown -> pending` only with explicit confirmation; rejects every other state with 409; and records `retry_requested_at`/`retry_requested_by` before immediate delivery.
+
+- [ ] **Step 4: Surface state and warnings in the job UI**
+
+Show non-sent lifecycle records in a compact panel. Failed rows offer `Retry text`; unknown rows present a duplicate-risk confirmation before retry; pending/sending are informational. After a successful payment, close the modal as today and surface the API `warning` without treating the valid payment as failed.
+
+- [ ] **Step 5: Run full verification**
+
+Run: `cd apps/web && npm test`
+
+Run: `cd apps/web && npm run build`
+
+Expected: all tests and the production build pass.
+
+- [ ] **Step 6: Commit**
+
+Commit message: `feat: surface lifecycle text delivery`

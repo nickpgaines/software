@@ -20,10 +20,14 @@ Make the Twilio registration, automated lifecycle texting, and iOS widget change
 12. Web logout revokes every active widget token for the authenticated staff member before clearing the session cookie. Client-side token cleanup remains best effort.
 13. Widget ARR uses the same default semantics as the subscription report: tax included and paid cancellations from the last month included.
 14. Every behavior above has regression coverage. Existing web and iOS tests and production builds must remain green.
+15. Manual and Stripe-backed job payment attempts must be durably idempotent across browser retries and concurrent requests. A repeated key with identical input returns the original result; reusing a key for different input returns 409. Stripe creation calls receive deterministic provider idempotency keys.
+16. Job lifecycle notifications use a durable outbox committed with the lifecycle transition/payment mutation. Pending rows are recoverable; concurrent drainers submit once; an interrupted `sending` row becomes `unknown` and is never automatically retried because Twilio message creation has no application idempotency key.
+17. Operators can see pending, failed, and unknown lifecycle notification states on the job, retry failed sends, and explicitly confirm a possibly-duplicating retry for unknown sends. Payment success responses surface notification warnings without rolling back a valid payment.
+18. Lifecycle message times use a validated, tenant-configurable IANA time zone. Existing companies default to `America/New_York` to preserve current behavior.
 
 ## Out of Scope
 
 - Apple Pay.
-- A general-purpose payment outbox or rewriting pre-existing Stripe payment idempotency.
+- Changing partial-payment completion semantics, receipt policy, or historical payment reconciliation.
 - Supporting public-company stock exchange/ticker fields or nonprofit-specific Twilio qualification in this release.
 - Merging the PR; payment-adjacent changes require explicit approval before merge.
