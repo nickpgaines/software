@@ -31,6 +31,16 @@ test("pins each request to the public addresses that passed validation", async (
   assert.deepEqual(pinned, publicAddress);
 });
 
+test("accepts ordinary IPv6 addresses from allocated global-unicast ranges", async () => {
+  for (const address of ["2001:4860:4860::8888", "2606:4700:4700::1111", "2a00:1450:4009::200e"]) {
+    const error = await verifyPublicWebsite(new URL("https://safe-business.com"), {
+      resolver: async () => [{ address, family: 6 }],
+      fetcher: async () => new Response(null, { status: 200 }),
+    });
+    assert.equal(error, null, address);
+  }
+});
+
 test("rejects non-HTTPS, credentials, IP literals, localhost, and reserved names", async () => {
   const cases = [
     "http://example.com",
@@ -65,8 +75,9 @@ test("rejects every private, loopback, link-local, multicast, or reserved addres
     "224.0.0.1", "240.0.0.1", "255.255.255.255", "::", "::1",
     "::8.8.8.8", "::ffff:8.8.8.8", "::ffff:127.0.0.1",
     "64:ff9b::808:808", "100::1",
-    "2001:db8::1", "2002:7f00::1",
-    "3fff::1", "5f00::1", "100:0:0:1::1", "4000::1",
+    "3ffe::1", "2000::1", "2001:db8::1", "2002:7f00::1",
+    "2200::1", "2d00::1", "3000::1", "3fff::1", "5f00::1",
+    "100:0:0:1::1", "4000::1",
     "fc00::1", "fe80::1", "fec0::1", "ff00::1",
   ];
   for (const address of addresses) {

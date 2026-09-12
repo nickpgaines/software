@@ -121,6 +121,61 @@ function parseIpv6(address: string): number[] | null {
   });
 }
 
+// IANA IPv6 Global Unicast Address Space allocations, updated 2025-10-10.
+// All other addresses in 2000::/3 are reserved for future allocation.
+// https://www.iana.org/assignments/ipv6-unicast-address-assignments/
+const ALLOCATED_GLOBAL_UNICAST_PREFIXES = [
+  ["2001:200::", 23],
+  ["2001:400::", 23],
+  ["2001:600::", 23],
+  ["2001:800::", 22],
+  ["2001:c00::", 23],
+  ["2001:e00::", 23],
+  ["2001:1200::", 23],
+  ["2001:1400::", 22],
+  ["2001:1800::", 23],
+  ["2001:1a00::", 23],
+  ["2001:1c00::", 22],
+  ["2001:2000::", 19],
+  ["2001:4000::", 23],
+  ["2001:4200::", 23],
+  ["2001:4400::", 23],
+  ["2001:4600::", 23],
+  ["2001:4800::", 23],
+  ["2001:4a00::", 23],
+  ["2001:4c00::", 23],
+  ["2001:5000::", 20],
+  ["2001:8000::", 19],
+  ["2001:a000::", 20],
+  ["2001:b000::", 20],
+  ["2003::", 18],
+  ["2400::", 12],
+  ["2410::", 12],
+  ["2600::", 12],
+  ["2610::", 23],
+  ["2620::", 23],
+  ["2630::", 12],
+  ["2800::", 12],
+  ["2a00::", 12],
+  ["2a10::", 12],
+  ["2c00::", 12],
+] as const;
+
+function matchesIpv6Prefix(
+  address: readonly number[],
+  prefix: readonly number[],
+  prefixLength: number
+): boolean {
+  const completeBytes = Math.floor(prefixLength / 8);
+  for (let index = 0; index < completeBytes; index += 1) {
+    if (address[index] !== prefix[index]) return false;
+  }
+  const remainingBits = prefixLength % 8;
+  if (remainingBits === 0) return true;
+  const mask = (0xff << (8 - remainingBits)) & 0xff;
+  return (address[completeBytes] & mask) === (prefix[completeBytes] & mask);
+}
+
 function isPublicIpv6(address: string): boolean {
   const bytes = parseIpv6(address);
   if (!bytes) return false;
@@ -134,13 +189,19 @@ function isPublicIpv6(address: string): boolean {
     bytes[11] === 0xff;
   if (mappedIpv4) return false;
 
-  // IANA currently allocates global unicast addresses from 2000::/3.
-  // Treat every other unicast block as reserved instead of trying to keep a
-  // denylist of historical site-local, discard-only, benchmarking, and
-  // future-use ranges.
-  if ((bytes[0] & 0xe0) !== 0x20) return false;
+  const allocated = ALLOCATED_GLOBAL_UNICAST_PREFIXES.some(
+    ([prefix, prefixLength]) => {
+      const prefixBytes = parseIpv6(prefix);
+      return (
+        prefixBytes !== null &&
+        matchesIpv6Prefix(bytes, prefixBytes, prefixLength)
+      );
+    }
+  );
+  if (!allocated) return false;
 
-  if (bytes[0] === 0x20 && bytes[1] === 0x01 && (bytes[2] & 0xfe) === 0) return false;
+  // Documentation space sits inside APNIC's otherwise allocated
+  // 2001:c00::/23 parent and therefore needs a narrower exclusion.
   if (
     bytes[0] === 0x20 &&
     bytes[1] === 0x01 &&
@@ -149,8 +210,6 @@ function isPublicIpv6(address: string): boolean {
   ) {
     return false;
   }
-  if (bytes[0] === 0x20 && bytes[1] === 0x02) return false;
-  if (bytes[0] === 0x3f && bytes[1] === 0xff && (bytes[2] & 0xf0) === 0) return false;
   return true;
 }
 
