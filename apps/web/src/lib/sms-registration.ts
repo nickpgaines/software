@@ -235,7 +235,9 @@ async function persistState(
     args.push(v as string | number | null);
   }
   if (state === "campaign_approved") {
-    fields.push("a2p_registration_approved_at = datetime('now')");
+    fields.push(
+      "a2p_registration_approved_at = COALESCE(a2p_registration_approved_at, datetime('now'))"
+    );
   }
   if (state === "customer_profile_pending") {
     fields.push(
@@ -773,27 +775,49 @@ async function step(companyId: number, retryFailed: boolean): Promise<{
     }
   }
 
-  // 9. Campaign approved → buy + attach dedicated number, flip to paid_approved.
+  // 9. Campaign approved → buy and attach the dedicated number.
   if (state === "campaign_approved" && !company.sms_dedicated_number) {
+    let number: string | null;
     try {
       const areaCode =
         (registration.business_phone.replace(/\D/g, "").match(/\d{10}$/)?.[0] ?? "")
           .slice(0, 3) || "843";
-      const number = await findAvailableLocalNumber({ creds, areaCode });
+      number = await findAvailableLocalNumber({ creds, areaCode });
       if (!number) {
-        const msg = `No numbers available in area code ${areaCode}`;
-        await persistState(companyId, "campaign_failed", msg);
-        return { state: "campaign_failed", error: msg, recurse: false };
+        const msg =
+          `No phone numbers are currently available in area code ${areaCode}. ` +
+          "The campaign remains approved; refresh status to retry phone number provisioning.";
+        await persistState(companyId, "campaign_approved", msg);
+        return { state: "campaign_approved", error: msg, recurse: false };
       }
+    } catch (e) {
+      const msg =
+        `Phone number search failed: ${(e as Error).message}. ` +
+        "The campaign remains approved; refresh status to retry phone number provisioning.";
+      await persistState(companyId, "campaign_approved", msg);
+      return { state: "campaign_approved", error: msg, recurse: false };
+    }
+
+    let purchased: { sid: string; phone_number: string };
+    try {
       const inboundUrl = buildWebhookUrl("/api/messages/webhook");
       const voiceUrl = buildWebhookUrl("/api/voice/outbound");
-      const purchased = await purchasePhoneNumber({
+      purchased = await purchasePhoneNumber({
         creds,
         phoneNumber: number,
         friendlyName: `nick360:${companyId}:${registration.legal_company_name}`,
         smsUrl: inboundUrl,
         voiceUrl,
       });
+    } catch (e) {
+      const msg =
+        `Phone number purchase failed: ${(e as Error).message}. ` +
+        "The campaign remains approved; refresh status to retry phone number provisioning.";
+      await persistState(companyId, "campaign_approved", msg);
+      return { state: "campaign_approved", error: msg, recurse: false };
+    }
+
+    try {
       await attachNumberToMessagingService({
         creds,
         messagingServiceSid: company.twilio_messaging_service_sid!,
@@ -805,9 +829,11 @@ async function step(companyId: number, retryFailed: boolean): Promise<{
       });
       return { state: "campaign_approved", error: null, recurse: false };
     } catch (e) {
-      const msg = (e as Error).message;
-      await persistState(companyId, "campaign_failed", msg);
-      return { state: "campaign_failed", error: msg, recurse: false };
+      const msg =
+        `Phone number attachment failed: ${(e as Error).message}. ` +
+        "The campaign remains approved; refresh status to retry phone number provisioning.";
+      await persistState(companyId, "campaign_approved", msg);
+      return { state: "campaign_approved", error: msg, recurse: false };
     }
   }
 

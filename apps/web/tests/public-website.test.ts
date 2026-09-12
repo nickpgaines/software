@@ -66,7 +66,8 @@ test("rejects every private, loopback, link-local, multicast, or reserved addres
     "::8.8.8.8", "::ffff:8.8.8.8", "::ffff:127.0.0.1",
     "64:ff9b::808:808", "100::1",
     "2001:db8::1", "2002:7f00::1",
-    "3fff::1", "5f00::1", "fc00::1", "fe80::1", "ff00::1",
+    "3fff::1", "5f00::1", "100:0:0:1::1", "4000::1",
+    "fc00::1", "fe80::1", "fec0::1", "ff00::1",
   ];
   for (const address of addresses) {
     const error = await verifyPublicWebsite(new URL("https://safe-business.com"), {

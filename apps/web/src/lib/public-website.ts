@@ -134,31 +134,12 @@ function isPublicIpv6(address: string): boolean {
     bytes[11] === 0xff;
   if (mappedIpv4) return false;
 
-  if (bytes.slice(0, 12).every((byte) => byte === 0)) return false;
-  if (
-    bytes[0] === 0x00 &&
-    bytes[1] === 0x64 &&
-    bytes[2] === 0xff &&
-    bytes[3] === 0x9b &&
-    bytes.slice(4, 12).every((byte) => byte === 0)
-  ) {
-    return false;
-  }
-  if (
-    bytes[0] === 0x00 &&
-    bytes[1] === 0x64 &&
-    bytes[2] === 0xff &&
-    bytes[3] === 0x9b &&
-    bytes[4] === 0x00 &&
-    bytes[5] === 0x01
-  ) {
-    return false;
-  }
+  // IANA currently allocates global unicast addresses from 2000::/3.
+  // Treat every other unicast block as reserved instead of trying to keep a
+  // denylist of historical site-local, discard-only, benchmarking, and
+  // future-use ranges.
+  if ((bytes[0] & 0xe0) !== 0x20) return false;
 
-  if ((bytes[0] & 0xfe) === 0xfc) return false;
-  if (bytes[0] === 0xfe && (bytes[1] & 0xc0) === 0x80) return false;
-  if (bytes[0] === 0xff) return false;
-  if (bytes[0] === 0x01 && bytes.slice(1, 8).every((byte) => byte === 0)) return false;
   if (bytes[0] === 0x20 && bytes[1] === 0x01 && (bytes[2] & 0xfe) === 0) return false;
   if (
     bytes[0] === 0x20 &&
@@ -170,7 +151,6 @@ function isPublicIpv6(address: string): boolean {
   }
   if (bytes[0] === 0x20 && bytes[1] === 0x02) return false;
   if (bytes[0] === 0x3f && bytes[1] === 0xff && (bytes[2] & 0xf0) === 0) return false;
-  if (bytes[0] === 0x5f && bytes[1] === 0x00) return false;
   return true;
 }
 

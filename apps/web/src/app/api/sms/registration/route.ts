@@ -168,8 +168,9 @@ async function handleSmsRegistrationPost(
     confirmed_consent: body.confirmed_consent === true ? 1 : 0,
   };
 
+  let writeResult: { changes: number };
   if (existing) {
-    await db
+    writeResult = await db
       .prepare(
         `UPDATE sms_brand_registrations SET
            legal_company_name = ?, dba = ?, ein = ?,
@@ -183,7 +184,13 @@ async function handleSmsRegistrationPost(
            confirmed_authorized = ?, confirmed_aup_tcpa = ?, confirmed_consent = ?,
            submitted_at = datetime('now'),
            updated_at = datetime('now')
-         WHERE id = ?`
+         WHERE id = ?
+           AND EXISTS (
+             SELECT 1 FROM company
+              WHERE id = ?
+                AND COALESCE(sms_tier, 'trial') <> 'paid_approved'
+                AND COALESCE(a2p_registration_state, 'not_started') <> 'campaign_approved'
+           )`
       )
       .run(
         fields.legal_company_name,
@@ -209,10 +216,11 @@ async function handleSmsRegistrationPost(
         fields.confirmed_authorized,
         fields.confirmed_aup_tcpa,
         fields.confirmed_consent,
-        existing.id
+        existing.id,
+        companyId
       );
   } else {
-    await db
+    writeResult = await db
       .prepare(
         `INSERT INTO sms_brand_registrations
            (company_id, legal_company_name, dba, ein,
@@ -223,7 +231,11 @@ async function handleSmsRegistrationPost(
             auth_rep_name, auth_rep_title, auth_rep_email,
             confirmed_authorized, confirmed_aup_tcpa, confirmed_consent,
             submitted_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+         SELECT ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now')
+           FROM company
+          WHERE id = ?
+            AND COALESCE(sms_tier, 'trial') <> 'paid_approved'
+            AND COALESCE(a2p_registration_state, 'not_started') <> 'campaign_approved'`
       )
       .run(
         companyId,
@@ -249,8 +261,16 @@ async function handleSmsRegistrationPost(
         fields.auth_rep_email,
         fields.confirmed_authorized,
         fields.confirmed_aup_tcpa,
-        fields.confirmed_consent
+        fields.confirmed_consent,
+        companyId
       );
+  }
+
+  if (writeResult.changes !== 1) {
+    return NextResponse.json(
+      { error: "This registration is already approved and is read-only." },
+      { status: 409 }
+    );
   }
 
   // Flip the state machine forward. The orchestrator catches all errors and

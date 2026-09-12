@@ -21,6 +21,10 @@ import ConnectorsSettingsPanel from "@/components/settings/ConnectorsSettingsPan
 import AccentPicker from "@/components/AccentPicker";
 import ThemeToggle from "@/components/ThemeToggle";
 import { PulseIcon } from "@/components/pulse/Icon";
+import {
+  registrationConfirmationValues,
+  SmsRegistrationConfirmationFields,
+} from "@/components/SmsRegistrationConfirmationFields";
 
 type Tab =
   | "profile"
@@ -2346,6 +2350,9 @@ type RegistrationStatus = {
     auth_rep_name: string;
     auth_rep_title: string;
     auth_rep_email: string;
+    confirmed_authorized: number;
+    confirmed_aup_tcpa: number;
+    confirmed_consent: number;
     submitted_at: string | null;
   } | null;
   company: {
@@ -2417,6 +2424,7 @@ function MessagingPanel() {
       const s = (await res.json()) as RegistrationStatus;
       setData(s);
       if (s.registration) {
+        const confirmations = registrationConfirmationValues(s.registration);
         setForm((f) => ({
           ...f,
           legal_company_name: s.registration!.legal_company_name,
@@ -2440,6 +2448,7 @@ function MessagingPanel() {
           auth_rep_name: s.registration!.auth_rep_name,
           auth_rep_title: s.registration!.auth_rep_title,
           auth_rep_email: s.registration!.auth_rep_email,
+          ...confirmations,
         }));
       }
     }
@@ -2780,41 +2789,16 @@ function MessagingPanel() {
               </Field>
             </div>
 
-            <div className="space-y-2 pt-2">
-              <label className="flex items-start gap-2 text-sm text-zinc-300 cursor-pointer">
-                <Checkbox
-                  checked={form.confirmed_authorized}
-                  onCheckedChange={(v) =>
-                    set("confirmed_authorized", v === true)
-                  }
-                />
-                <span>
-                  I am authorized to register this business with carriers.
-                </span>
-              </label>
-              <label className="flex items-start gap-2 text-sm text-zinc-300 cursor-pointer">
-                <Checkbox
-                  checked={form.confirmed_aup_tcpa}
-                  onCheckedChange={(v) =>
-                    set("confirmed_aup_tcpa", v === true)
-                  }
-                />
-                <span>
-                  I agree to the SMS Acceptable Use Policy and the TCPA.
-                </span>
-              </label>
-              <label className="flex items-start gap-2 text-sm text-zinc-300 cursor-pointer">
-                <Checkbox
-                  checked={form.confirmed_consent}
-                  onCheckedChange={(v) =>
-                    set("confirmed_consent", v === true)
-                  }
-                />
-                <span>
-                  Every recipient I will text has provided express consent.
-                </span>
-              </label>
-            </div>
+            <SmsRegistrationConfirmationFields
+              values={{
+                confirmed_authorized: form.confirmed_authorized,
+                confirmed_aup_tcpa: form.confirmed_aup_tcpa,
+                confirmed_consent: form.confirmed_consent,
+              }}
+              disabled={isApproved}
+              onChange={(key, value) => set(key, value)}
+              renderCheckbox={(props) => <Checkbox {...props} />}
+            />
 
             {error && <p className="text-sm text-rose-500">{error}</p>}
 

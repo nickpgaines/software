@@ -145,3 +145,36 @@ test("validates website reachability before writing registration data", async ()
     "Example Cleaning LLC"
   );
 });
+
+test("does not overwrite a registration approved during website validation", async () => {
+  db = registrationDatabase("customer_profile_failed");
+  let advanced = false;
+  const response = await POST(
+    new Request("https://www.forgecrm.app/api/sms/registration", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(validForm),
+    }),
+    {
+      verifyWebsite: async () => {
+        db.prepare(
+          "UPDATE company SET a2p_registration_state = 'campaign_approved' WHERE id = 1"
+        ).run();
+        return null;
+      },
+      advance: async () => {
+        advanced = true;
+        return { state: "campaign_approved", error: null, done: true };
+      },
+    }
+  );
+
+  assert.equal(response.status, 409);
+  assert.equal(advanced, false);
+  assert.equal(
+    db.prepare(
+      "SELECT legal_company_name FROM sms_brand_registrations WHERE company_id = 1"
+    ).get().legal_company_name,
+    "Example Cleaning LLC"
+  );
+});

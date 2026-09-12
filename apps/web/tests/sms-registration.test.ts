@@ -215,6 +215,113 @@ test("reads the exact campaign_status field returned by Twilio", async () => {
   assert.equal(result.done, true);
 });
 
+test("keeps an approved campaign retryable when no phone number is available", async () => {
+  db = registrationDatabase("campaign_approved");
+  db.prepare(`UPDATE company SET
+    twilio_messaging_service_sid = 'MGservice',
+    twilio_campaign_sid = 'QEcampaign',
+    a2p_registration_approved_at = '2026-09-01 12:00:00'
+    WHERE id = 1`).run();
+  let inventoryAvailable = false;
+  globalThis.fetch = async (input, init) => {
+    const request = {
+      url: String(input),
+      method: init?.method || "GET",
+      body: String(init?.body || ""),
+    };
+    requests.push(request);
+    if (request.url.includes("/AvailablePhoneNumbers/US/Local.json")) {
+      return Response.json({
+        available_phone_numbers: inventoryAvailable
+          ? [{ phone_number: "+12025550199" }]
+          : [],
+      });
+    }
+    if (request.url.endsWith("/IncomingPhoneNumbers.json")) {
+      return Response.json({ sid: "PNnew", phone_number: "+12025550199" });
+    }
+    if (request.url.endsWith("/PhoneNumbers")) return Response.json({});
+    throw new Error(`Unexpected Twilio request: ${request.method} ${request.url}`);
+  };
+
+  const unavailable = await advanceRegistration(1);
+  assert.equal(unavailable.state, "campaign_approved");
+  assert.match(unavailable.error || "", /phone number.*not available|no phone numbers/i);
+  let stored = db.prepare(`SELECT a2p_registration_state,
+    a2p_registration_approved_at, sms_dedicated_number
+    FROM company WHERE id = 1`).get();
+  assert.equal(stored.a2p_registration_state, "campaign_approved");
+  assert.equal(stored.a2p_registration_approved_at, "2026-09-01 12:00:00");
+  assert.equal(stored.sms_dedicated_number, null);
+
+  inventoryAvailable = true;
+  const retried = await advanceRegistration(1);
+  assert.equal(retried.state, "campaign_approved");
+  assert.equal(retried.error, null);
+  stored = db.prepare(`SELECT a2p_registration_state, sms_dedicated_number
+    FROM company WHERE id = 1`).get();
+  assert.equal(stored.a2p_registration_state, "campaign_approved");
+  assert.equal(stored.sms_dedicated_number, "+12025550199");
+  assert.equal(
+    requests.some((request) => request.url.includes("/Compliance/Usa2p")),
+    false
+  );
+});
+
+for (const failureStage of ["purchase", "attachment"] as const) {
+  test(`keeps an approved campaign retryable after phone number ${failureStage} failure`, async () => {
+    db = registrationDatabase("campaign_approved");
+    db.prepare(`UPDATE company SET
+      twilio_messaging_service_sid = 'MGservice',
+      twilio_campaign_sid = 'QEcampaign'
+      WHERE id = 1`).run();
+    globalThis.fetch = async (input, init) => {
+      const request = {
+        url: String(input),
+        method: init?.method || "GET",
+        body: String(init?.body || ""),
+      };
+      requests.push(request);
+      if (request.url.includes("/AvailablePhoneNumbers/US/Local.json")) {
+        return Response.json({
+          available_phone_numbers: [{ phone_number: "+12025550199" }],
+        });
+      }
+      if (request.url.endsWith("/IncomingPhoneNumbers.json")) {
+        if (failureStage === "purchase") {
+          return Response.json(
+            { message: "simulated purchase failure" },
+            { status: 500 }
+          );
+        }
+        return Response.json({ sid: "PNnew", phone_number: "+12025550199" });
+      }
+      if (request.url.endsWith("/PhoneNumbers")) {
+        return Response.json(
+          { message: "simulated attachment failure" },
+          { status: 500 }
+        );
+      }
+      throw new Error(`Unexpected Twilio request: ${request.method} ${request.url}`);
+    };
+
+    const result = await advanceRegistration(1);
+
+    assert.equal(result.state, "campaign_approved");
+    assert.match(result.error || "", new RegExp(`phone number.*${failureStage}`, "i"));
+    const stored = db.prepare(`SELECT a2p_registration_state,
+      twilio_campaign_sid, sms_dedicated_number
+      FROM company WHERE id = 1`).get();
+    assert.equal(stored.a2p_registration_state, "campaign_approved");
+    assert.equal(stored.twilio_campaign_sid, "QEcampaign");
+    assert.equal(stored.sms_dedicated_number, null);
+    assert.equal(
+      requests.some((request) => request.url.includes("/Compliance/Usa2p")),
+      false
+    );
+  });
+}
+
 test("explicit resubmission preserves a rejected brand and directs support correction", async () => {
   db = registrationDatabase("brand_failed");
   db.prepare("UPDATE company SET twilio_brand_sid = 'BNexisting' WHERE id = 1").run();
