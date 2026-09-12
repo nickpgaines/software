@@ -20,6 +20,7 @@ import {
   type Company,
   type SmsBrandRegistration,
 } from "@/lib/db";
+import { withSmsRegistrationLease } from "@/lib/sms-registration-lease";
 import {
   ensureTenantSubaccount,
   getPlatformConfig,
@@ -840,9 +841,9 @@ async function step(companyId: number, retryFailed: boolean): Promise<{
   return { state, error: company.a2p_registration_error, recurse: false };
 }
 
-export async function advanceRegistration(
+async function advanceRegistrationAttempt(
   companyId: number,
-  options: { retryFailed?: boolean } = {}
+  retryFailed: boolean
 ): Promise<AdvanceResult> {
   // Cap the loop in case a step incorrectly returns recurse=true forever.
   let remaining = 12;
@@ -851,7 +852,7 @@ export async function advanceRegistration(
     error: null,
   };
   while (remaining-- > 0) {
-    const r = await step(companyId, options.retryFailed === true);
+    const r = await step(companyId, retryFailed);
     last = { state: r.state, error: r.error };
     if (!r.recurse) break;
   }
@@ -859,6 +860,24 @@ export async function advanceRegistration(
     state: last.state,
     error: last.error,
     done: last.state === "campaign_approved",
+  };
+}
+
+export async function advanceRegistration(
+  companyId: number,
+  options: { retryFailed?: boolean } = {}
+): Promise<AdvanceResult> {
+  const db = await getDb();
+  const lease = await withSmsRegistrationLease(db, companyId, () =>
+    advanceRegistrationAttempt(companyId, options.retryFailed === true)
+  );
+  if (lease.acquired) return lease.value!;
+
+  const { company } = await loadContext(companyId);
+  return {
+    state: company.a2p_registration_state,
+    error: company.a2p_registration_error,
+    done: company.a2p_registration_state === "campaign_approved",
   };
 }
 

@@ -480,7 +480,7 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
 // Bump when init() gains migrations that must run on existing deploys.
 // First call after deploy runs the full init; subsequent cold starts hit
 // the fast-path below (one SELECT) and skip the ~150 DDL statements.
-const SCHEMA_VERSION = 19;
+const SCHEMA_VERSION = 19 + 1; // v20 adds sms_registration_leases.
 
 async function init(): Promise<void> {
   // Fast path: if the schema is already at the current version, skip the
@@ -1198,6 +1198,13 @@ async function init(): Promise<void> {
     );
     CREATE UNIQUE INDEX IF NOT EXISTS idx_sms_brand_registrations_company
       ON sms_brand_registrations(company_id);
+
+    CREATE TABLE IF NOT EXISTS sms_registration_leases (
+      company_id INTEGER PRIMARY KEY,
+      lease_token TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
 
     CREATE TABLE IF NOT EXISTS calls (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

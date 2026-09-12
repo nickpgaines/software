@@ -4,7 +4,7 @@ import {
   loadRegistration,
   loadRegistrationInput,
   loadRegistrationRoute,
-  registrationDatabase,
+  registrationDatabase as createRegistrationDatabase,
 } from "./helpers/sms-registration-harness.mjs";
 
 const {
@@ -26,6 +26,30 @@ const envKeys = [
 const originalEnv = Object.fromEntries(envKeys.map((key) => [key, process.env[key]]));
 let db: ReturnType<typeof registrationDatabase>;
 let requests: Array<{ url: string; method: string; body: string }>;
+
+function registrationDatabase(state: string) {
+  const database = createRegistrationDatabase(state);
+  database.exec(`
+    CREATE TABLE sms_registration_leases (
+      company_id INTEGER PRIMARY KEY,
+      lease_token TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `);
+  let transactionChain: Promise<void> = Promise.resolve();
+  database.transaction = (
+    work: (db: typeof database) => Promise<unknown>
+  ) => {
+    const run = transactionChain.then(() => work(database));
+    transactionChain = run.then(
+      () => undefined,
+      () => undefined
+    );
+    return run;
+  };
+  return database;
+}
 
 beforeEach(() => {
   for (const key of envKeys) process.env[key] = "test-only";
@@ -417,4 +441,63 @@ test("repeated Refresh status requests leave a rejection actionable without resu
     assert.match(data.company.a2p_registration_error, /18602/);
   }
   assert.equal(requests.filter((r) => r.method === "POST").length, 0);
+});
+
+test("concurrent registration advancement creates one Twilio resource", async () => {
+  db = registrationDatabase("not_started");
+  db.prepare(
+    "UPDATE company SET twilio_customer_profile_sid = NULL WHERE id = 1"
+  ).run();
+  let profileCreateCount = 0;
+  let releaseCreate!: () => void;
+  const createBlocked = new Promise<void>((resolve) => {
+    releaseCreate = resolve;
+  });
+  let createStarted!: () => void;
+  const createWasStarted = new Promise<void>((resolve) => {
+    createStarted = resolve;
+  });
+  let duplicateCreateStarted!: () => void;
+  const duplicateCreateWasStarted = new Promise<void>((resolve) => {
+    duplicateCreateStarted = resolve;
+  });
+  globalThis.fetch = async (input, init) => {
+    const request = {
+      url: String(input),
+      method: init?.method || "GET",
+      body: String(init?.body || ""),
+    };
+    requests.push(request);
+    if (
+      request.method === "POST" &&
+      request.url.endsWith("/CustomerProfiles")
+    ) {
+      profileCreateCount++;
+      createStarted();
+      if (profileCreateCount === 2) duplicateCreateStarted();
+      await createBlocked;
+      return Response.json({ sid: "BUcreated", status: "draft" });
+    }
+    if (request.method === "POST") {
+      return Response.json({ sid: "ITfixture", status: "pending-review" });
+    }
+    throw new Error(
+      `Unexpected Twilio request: ${request.method} ${request.url}`
+    );
+  };
+
+  const first = advanceRegistration(1);
+  await createWasStarted;
+  const second = advanceRegistration(1);
+  await Promise.race([second, duplicateCreateWasStarted]);
+  releaseCreate();
+  await Promise.all([first, second]);
+
+  assert.equal(profileCreateCount, 1);
+  assert.equal(
+    db.prepare(
+      "SELECT twilio_customer_profile_sid FROM company WHERE id = 1"
+    ).get().twilio_customer_profile_sid,
+    "BUcreated"
+  );
 });
