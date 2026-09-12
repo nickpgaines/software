@@ -134,7 +134,7 @@ test("schema creates tenant and staff cascading widget credentials", () => {
     new URL("../src/lib/db.ts", import.meta.url),
     "utf8"
   );
-  assert.match(source, /const SCHEMA_VERSION = 19/);
+  assert.match(source, /const SCHEMA_VERSION = 20/);
   assert.match(source, /CREATE TABLE IF NOT EXISTS widget_access_tokens/);
   assert.match(
     source,
