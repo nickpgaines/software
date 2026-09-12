@@ -96,16 +96,7 @@ export function PricingSection() {
 
   return (
     <div>
-      <div className="flex flex-col items-center gap-5">
-        <div className="inline-flex items-center gap-2 bg-card border border-line rounded-full pl-2 pr-4 py-1.5">
-          <span className="text-[10px] font-extrabold tracking-[0.18em] uppercase bg-white text-black rounded-full px-2.5 py-1">
-            Founder
-          </span>
-          <span className="text-[12.5px] font-bold text-zinc-300">
-            30% off list pricing
-          </span>
-        </div>
-
+      <div className="flex justify-center">
         <div className="inline-flex items-center bg-card border border-line rounded-full p-1">
           <BillingTab active={!yearly} onClick={() => setYearly(false)}>
             Monthly
@@ -213,9 +204,7 @@ function PlanCard({ plan, yearly }: { plan: Plan; yearly: boolean }) {
           plan.highlight ? "text-black/60" : "text-zinc-500",
         )}
       >
-        {yearly
-          ? `Founder price · $${founderAnnualTotal(plan.anchor).toLocaleString()} billed yearly (2 months free)`
-          : "Founder price · billed monthly"}
+        {yearly ? "Founder price · billed yearly" : "Founder price · billed monthly"}
       </div>
 
       <Button
