@@ -6,6 +6,12 @@ import { autoCompleteSteps } from "../src/lib/payment-job-completion.ts";
 import type { Db } from "../src/lib/db.ts";
 import { dispatchJobLifecycleNotification } from "../src/lib/job-lifecycle-dispatch.ts";
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>(done => { resolve = done; });
+  return { promise, resolve };
+}
+
 test("lifecycle outbox survives a status commit without immediate delivery", async t => {
   const { db, close } = lifecycleDatabase(); t.after(close);
   assert.equal(await setStatusStep(db, 12, "en_route", 1), true);
@@ -171,4 +177,104 @@ test("payment warning and lifecycle UI contracts preserve successful warnings an
     label: "Delivery unknown", retryLabel: "Retry text anyway", requiresConfirmation: true,
     duplicateRisk: "Delivery may have succeeded. Retrying could send a duplicate text.",
   });
+});
+
+async function staleRecoveryRetryCompletionOrder(order: "old-first" | "new-first") {
+  const { db, close } = lifecycleDatabase();
+  await setStatusStep(db, 12, "en_route", 1);
+  const outbox = await import("../src/lib/job-lifecycle-outbox.ts");
+  const firstStarted = deferred<void>();
+  const secondStarted = deferred<void>();
+  const firstResult = deferred<{ ok: boolean; messageId: number; status: string; error: string | null }>();
+  const secondResult = deferred<{ ok: boolean; messageId: number; status: string; error: string | null }>();
+  let sends = 0;
+  const send = async () => {
+    sends++;
+    if (sends === 1) { firstStarted.resolve(); return firstResult.promise; }
+    secondStarted.resolve(); return secondResult.promise;
+  };
+
+  const oldDelivery = outbox.deliverJobLifecycleNotification({ db, companyId: 1, jobId: 12, step: "en_route", send });
+  await firstStarted.promise;
+  await db.exec("UPDATE job_lifecycle_notifications SET locked_at=datetime('now','-11 minutes') WHERE job_id=12");
+  assert.equal((await outbox.runPendingJobLifecycleNotifications({ db, send })).unknown, 1);
+  const notification = await db.prepare("SELECT id FROM job_lifecycle_notifications WHERE job_id=12").get() as { id: number };
+  assert.deepEqual(await outbox.requestJobLifecycleNotificationRetry({
+    db, companyId: 1, jobId: 12, notificationId: notification.id,
+    actorStaffId: 7, confirmUnknown: true,
+  }), { ok: true, step: "en_route" });
+  const newDelivery = outbox.deliverJobLifecycleNotification({ db, companyId: 1, jobId: 12, step: "en_route", send });
+  await secondStarted.promise;
+
+  if (order === "old-first") {
+    firstResult.resolve({ ok: false, messageId: 10, status: "failed", error: "old rejection" });
+    await oldDelivery;
+    secondResult.resolve({ ok: true, messageId: 20, status: "queued", error: null });
+  } else {
+    secondResult.resolve({ ok: true, messageId: 20, status: "queued", error: null });
+    await newDelivery;
+    firstResult.resolve({ ok: false, messageId: 10, status: "failed", error: "old rejection" });
+  }
+  await Promise.all([oldDelivery, newDelivery]);
+  const row = await db.prepare("SELECT outcome, message_id, error, attempt_count FROM job_lifecycle_notifications WHERE job_id=12").get();
+  close();
+  return row;
+}
+
+test("lifecycle retry keeps the newer claim authoritative when the stale sender completes first", async () => {
+  const row = await staleRecoveryRetryCompletionOrder("old-first");
+  assert.equal(row?.outcome, "sent");
+  assert.equal(row?.message_id, 20);
+  assert.equal(row?.error, null);
+  assert.equal(row?.attempt_count, 2);
+});
+
+test("lifecycle retry keeps the newer claim authoritative when the stale sender completes last", async () => {
+  const row = await staleRecoveryRetryCompletionOrder("new-first");
+  assert.equal(row?.outcome, "sent");
+  assert.equal(row?.message_id, 20);
+  assert.equal(row?.error, null);
+  assert.equal(row?.attempt_count, 2);
+});
+
+test("simultaneous operator retries reopen a failed notification once", async t => {
+  const { db, close } = lifecycleDatabase(); t.after(close);
+  await setStatusStep(db, 12, "en_route", 1);
+  await db.exec("UPDATE job_lifecycle_notifications SET outcome='failed' WHERE job_id=12");
+  const outbox = await import("../src/lib/job-lifecycle-outbox.ts");
+  const notification = await db.prepare("SELECT id FROM job_lifecycle_notifications WHERE job_id=12").get() as { id: number };
+  const retries = await Promise.all([7, 8].map(actorStaffId => outbox.requestJobLifecycleNotificationRetry({
+    db, companyId: 1, jobId: 12, notificationId: notification.id,
+    actorStaffId, confirmUnknown: false,
+  })));
+  assert.equal(retries.filter(result => result.ok).length, 1);
+  assert.equal(retries.filter(result => !result.ok && result.reason === "not_retryable").length, 1);
+  assert.equal((await db.prepare("SELECT outcome FROM job_lifecycle_notifications WHERE id=?").get(notification.id))?.outcome, "pending");
+});
+
+test("operator retry and cron compete for one claimed provider submission", async t => {
+  const { db, close } = lifecycleDatabase(); t.after(close);
+  await setStatusStep(db, 12, "en_route", 1);
+  await db.exec("UPDATE job_lifecycle_notifications SET outcome='failed', attempt_count=1 WHERE job_id=12");
+  const outbox = await import("../src/lib/job-lifecycle-outbox.ts");
+  const notification = await db.prepare("SELECT id FROM job_lifecycle_notifications WHERE job_id=12").get() as { id: number };
+  assert.equal((await outbox.requestJobLifecycleNotificationRetry({
+    db, companyId: 1, jobId: 12, notificationId: notification.id,
+    actorStaffId: 7, confirmUnknown: false,
+  })).ok, true);
+  let sends = 0;
+  const send = async () => {
+    sends++;
+    await new Promise<void>(resolve => setImmediate(resolve));
+    return { ok: true, messageId: 30, status: "queued", error: null };
+  };
+  await Promise.all([
+    outbox.deliverJobLifecycleNotification({ db, companyId: 1, jobId: 12, step: "en_route", send }),
+    outbox.runPendingJobLifecycleNotifications({ db, send }),
+  ]);
+  assert.equal(sends, 1);
+  const row = await db.prepare("SELECT outcome, message_id, attempt_count FROM job_lifecycle_notifications WHERE id=?").get(notification.id);
+  assert.equal(row?.outcome, "sent");
+  assert.equal(row?.message_id, 30);
+  assert.equal(row?.attempt_count, 2);
 });

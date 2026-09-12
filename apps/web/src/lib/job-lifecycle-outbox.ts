@@ -62,6 +62,7 @@ async function deliverNotification(input: DeliveryInput, pendingOnly: boolean): 
   });
   if (!claimed.row) return null;
   if (!claimed.acquired) return pendingOnly ? null : summary(claimed.row);
+  const claimedAttempt = claimed.row.attempt_count;
 
   let outcome: "sent" | "failed" | "unknown" = "failed";
   let messageId: number | null = null;
@@ -84,8 +85,9 @@ async function deliverNotification(input: DeliveryInput, pendingOnly: boolean): 
     return await input.db.transaction(async tx => {
       await tx.prepare(`UPDATE job_lifecycle_notifications
         SET outcome = ?, message_id = ?, error = ?, locked_at = NULL, updated_at = datetime('now')
-        WHERE company_id = ? AND job_id = ? AND step = ? AND outcome = 'sending'`
-      ).run(outcome, messageId, error, input.companyId, input.jobId, input.step);
+        WHERE company_id = ? AND job_id = ? AND step = ?
+          AND outcome = 'sending' AND attempt_count = ?`
+      ).run(outcome, messageId, error, input.companyId, input.jobId, input.step, claimedAttempt);
       const row = await tx.prepare(`SELECT * FROM job_lifecycle_notifications
         WHERE company_id = ? AND job_id = ? AND step = ?`
       ).get<NotificationRow>(input.companyId, input.jobId, input.step);
