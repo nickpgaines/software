@@ -1,50 +1,14 @@
 import assert from "node:assert/strict";
-import { registerHooks } from "node:module";
 import test from "node:test";
 
 import type { Db, Stmt } from "../src/lib/db.ts";
-import type { SessionContext } from "../src/lib/auth.ts";
+import {
+  loadLogoutRoute,
+  SESSION_COOKIE,
+  setLogoutRouteHarness,
+} from "./helpers/logout-route-harness.mjs";
 
-const SESSION_COOKIE = "crm_session";
-
-const harnessState: {
-  sessionContext: SessionContext | null;
-  database: Db | null;
-} = {
-  sessionContext: null,
-  database: null,
-};
-(globalThis as typeof globalThis & { __logoutRouteHarness?: typeof harnessState })
-  .__logoutRouteHarness = harnessState;
-
-const harnessModuleUrl = `data:text/javascript,${encodeURIComponent(`
-  export const SESSION_COOKIE = "crm_session";
-  export async function getSessionContext() {
-    return globalThis.__logoutRouteHarness.sessionContext;
-  }
-  export async function getDb() {
-    return globalThis.__logoutRouteHarness.database;
-  }
-`)}`;
-
-const hooks = registerHooks({
-  resolve(specifier, context, nextResolve) {
-    if (specifier === "@/lib/auth" || specifier === "@/lib/db") {
-      return { url: harnessModuleUrl, shortCircuit: true };
-    }
-    if (specifier === "next/server") return nextResolve("next/server.js", context);
-    if (specifier.startsWith("@/")) {
-      return nextResolve(
-        new URL(`../src/${specifier.slice(2)}.ts`, import.meta.url).href,
-        context
-      );
-    }
-    return nextResolve(specifier, context);
-  },
-});
-
-const { POST } = await import("../src/app/api/logout/route.ts");
-hooks.deregister();
+const { POST } = await loadLogoutRoute();
 
 type TokenRow = {
   companyId: number;
@@ -52,13 +16,17 @@ type TokenRow = {
   revoked: boolean;
 };
 
-function logoutDb(tokens: TokenRow[], error?: Error) {
-  return {
+function logoutDb(
+  tokens: TokenRow[],
+  options: { error?: Error; beforeRun?: () => Promise<void> } = {}
+) {
+  const db: Db = {
     prepare(sql: string) {
       return {
         async run(...args: unknown[]) {
-          if (error) throw error;
+          if (options.error) throw options.error;
           assert.match(sql, /UPDATE widget_access_tokens/);
+          await options.beforeRun?.();
           const [companyId, staffId] = args as [number, number];
           let changes = 0;
           for (const token of tokens) {
@@ -75,7 +43,12 @@ function logoutDb(tokens: TokenRow[], error?: Error) {
         },
       } as Stmt;
     },
-  } as Db;
+    async exec() {},
+    async transaction<T>(fn: (tx: Db) => Promise<T>) {
+      return fn(db);
+    },
+  };
+  return db;
 }
 
 function cookieWasCleared(response: Response) {
@@ -91,15 +64,40 @@ test("logout revokes all current staff widget tokens without affecting another s
     { companyId: 7, staffId: 9, revoked: false },
     { companyId: 42, staffId: 9, revoked: true },
   ];
-  harnessState.sessionContext = {
-    identity: "staff@example.com",
-    staffId: 9,
-    companyId: 42,
-    isPlatformAdmin: false,
-  };
-  harnessState.database = logoutDb(tokens);
+  let releaseRevocation!: () => void;
+  let markRevocationStarted!: () => void;
+  const revocationGate = new Promise<void>((resolve) => {
+    releaseRevocation = resolve;
+  });
+  const revocationStarted = new Promise<void>((resolve) => {
+    markRevocationStarted = resolve;
+  });
+  setLogoutRouteHarness({
+    sessionContext: {
+      identity: "staff@example.com",
+      staffId: 9,
+      companyId: 42,
+      isPlatformAdmin: false,
+    },
+    database: logoutDb(tokens, {
+      beforeRun: async () => {
+        markRevocationStarted();
+        await revocationGate;
+      },
+    }),
+  });
 
-  const response = await POST();
+  let logoutSettled = false;
+  const responsePromise = POST().then((response: Response) => {
+    logoutSettled = true;
+    return response;
+  });
+  await revocationStarted;
+  await Promise.resolve();
+  assert.equal(logoutSettled, false);
+
+  releaseRevocation();
+  const response = await responsePromise;
 
   assert.equal(response.status, 200);
   assert.deepEqual(
@@ -110,17 +108,24 @@ test("logout revokes all current staff widget tokens without affecting another s
 });
 
 test("platform administrator logout succeeds without a staff-token revocation", async () => {
-  harnessState.sessionContext = {
-    identity: "admin",
-    staffId: null,
-    companyId: 1,
-    isPlatformAdmin: true,
-  };
-  harnessState.database = {
+  const db: Db = {
     prepare() {
       throw new Error("platform logout must not access widget tokens");
     },
-  } as Db;
+    async exec() {},
+    async transaction<T>(fn: (tx: Db) => Promise<T>) {
+      return fn(db);
+    },
+  };
+  setLogoutRouteHarness({
+    sessionContext: {
+      identity: "admin",
+      staffId: null,
+      companyId: 1,
+      isPlatformAdmin: true,
+    },
+    database: db,
+  });
 
   const response = await POST();
 
@@ -129,13 +134,15 @@ test("platform administrator logout succeeds without a staff-token revocation", 
 });
 
 test("logout keeps the session cookie when durable widget revocation fails", async () => {
-  harnessState.sessionContext = {
-    identity: "staff@example.com",
-    staffId: 9,
-    companyId: 42,
-    isPlatformAdmin: false,
-  };
-  harnessState.database = logoutDb([], new Error("database unavailable"));
+  setLogoutRouteHarness({
+    sessionContext: {
+      identity: "staff@example.com",
+      staffId: 9,
+      companyId: 42,
+      isPlatformAdmin: false,
+    },
+    database: logoutDb([], { error: new Error("database unavailable") }),
+  });
 
   const response = await POST();
 

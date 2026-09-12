@@ -24,6 +24,9 @@ type Fetcher = (
   init?: RequestInit
 ) => Promise<Response>;
 
+export const LOGOUT_FAILURE_MESSAGE =
+  "Could not log out. Please check your connection and try again.";
+
 let pluginPromise: Promise<ForgeWidgetPlugin | null> | null = null;
 
 async function nativeWidgetPlugin(): Promise<ForgeWidgetPlugin | null> {
@@ -174,10 +177,12 @@ export class NativeWidgetCredentialLifecycle {
     this.loggingOut = true;
     this.generation += 1;
     try {
-      await Promise.allSettled([
+      const [, logoutResult] = await Promise.allSettled([
         this.clear(),
         this.request("/api/logout", { method: "POST" }),
       ]);
+      if (logoutResult.status === "rejected") throw logoutResult.reason;
+      if (!logoutResult.value.ok) throw new Error(LOGOUT_FAILURE_MESSAGE);
     } finally {
       this.loggingOut = false;
     }

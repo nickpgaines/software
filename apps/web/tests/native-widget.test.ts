@@ -202,3 +202,33 @@ test("a stalled token revocation never delays local clearing or web logout", asy
   assert.equal(loggedOut, true);
   assert.ok(native.cleared >= 1);
 });
+
+test("HTTP failure from authoritative server logout is propagated after best-effort cleanup", async () => {
+  const native = fakePlugin(currentCredential);
+  const lifecycle = new NativeWidgetCredentialLifecycle(
+    async () => native.plugin,
+    async (input) => {
+      if (String(input) === "/api/logout") {
+        return Response.json({ error: "Could not log out." }, { status: 500 });
+      }
+      return Response.json({ revoked: true });
+    }
+  );
+
+  await assert.rejects(lifecycle.logout(), /could not log out/i);
+  assert.ok(native.cleared >= 1);
+});
+
+test("network failure from authoritative server logout is propagated after best-effort cleanup", async () => {
+  const native = fakePlugin(currentCredential);
+  const lifecycle = new NativeWidgetCredentialLifecycle(
+    async () => native.plugin,
+    async (input) => {
+      if (String(input) === "/api/logout") throw new Error("network offline");
+      return Response.json({ revoked: true });
+    }
+  );
+
+  await assert.rejects(lifecycle.logout(), /network offline/i);
+  assert.ok(native.cleared >= 1);
+});

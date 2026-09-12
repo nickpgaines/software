@@ -5,7 +5,10 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { ChevronRight } from "lucide-react";
 import { PulseIcon } from "@/components/pulse/Icon";
-import { logoutForgeSession } from "@/lib/native-widget";
+import {
+  LOGOUT_FAILURE_MESSAGE,
+  logoutForgeSession,
+} from "@/lib/native-widget";
 import { NAV, SECTIONS, initials } from "@/components/pulse/Sidebar";
 
 type Me = {
@@ -73,9 +76,13 @@ export default function MorePage() {
   }, []);
 
   async function logout() {
-    await logoutForgeSession();
-    router.push("/login");
-    router.refresh();
+    try {
+      await logoutForgeSession();
+      router.push("/login");
+      router.refresh();
+    } catch {
+      window.alert(LOGOUT_FAILURE_MESSAGE);
+    }
   }
 
   // Before /api/me resolves, show all (matches the sidebar's gating).

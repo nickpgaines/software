@@ -20,7 +20,10 @@ import {
 } from "lucide-react";
 import NewMenu from "@/components/NewMenu";
 import { Button } from "@/components/ui/button";
-import { logoutForgeSession } from "@/lib/native-widget";
+import {
+  LOGOUT_FAILURE_MESSAGE,
+  logoutForgeSession,
+} from "@/lib/native-widget";
 
 type NavLink = {
   href: string;
@@ -120,9 +123,13 @@ export default function NavBar() {
   }, [pathname]);
 
   async function logout() {
-    await logoutForgeSession();
-    router.push("/login");
-    router.refresh();
+    try {
+      await logoutForgeSession();
+      router.push("/login");
+      router.refresh();
+    } catch {
+      window.alert(LOGOUT_FAILURE_MESSAGE);
+    }
   }
 
   const displayName =

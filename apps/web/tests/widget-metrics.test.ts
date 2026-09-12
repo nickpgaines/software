@@ -100,7 +100,7 @@ test("current MRR includes only active subscriptions for the widget", () => {
 });
 
 test("widget ARR matches report defaults for tax and recent paid cancellations", async () => {
-  const rows = [
+  const rows: Parameters<typeof calculateCurrentMrrCents>[0] = [
     {
       status: "active",
       price_cents: 10000,
