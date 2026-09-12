@@ -9,9 +9,14 @@ function dispatchDb(options?: {
   config?: string;
   companyName?: string;
   failConfig?: boolean;
-  consentedEstimates?: Array<{ companyId: number; customerId: number }>;
+  estimates?: Array<{
+    companyId: number;
+    customerId: number;
+    smsTransactionalConsent: number;
+  }>;
 }) {
   const outcomes: unknown[][] = [];
+  const consentQueries: Array<{ sql: string; bindings: unknown[] }> = [];
   const db = {
     prepare(sql: string) {
       return {
@@ -30,10 +35,15 @@ function dispatchDb(options?: {
           }
           if (sql.includes("FROM estimates")) {
             const [companyId, customerId] = args;
-            return options?.consentedEstimates?.some(
-              (estimate) =>
-                estimate.companyId === companyId &&
-                estimate.customerId === customerId
+            consentQueries.push({ sql, bindings: args });
+            return (
+              sql.includes("sms_transactional_consent = 1") &&
+              options?.estimates?.some(
+                (estimate) =>
+                  estimate.companyId === companyId &&
+                  estimate.customerId === customerId &&
+                  estimate.smsTransactionalConsent === 1
+              )
             )
               ? { consented: 1 }
               : undefined;
@@ -62,7 +72,7 @@ function dispatchDb(options?: {
       return fn(this as Db);
     },
   } as Db;
-  return { db, outcomes };
+  return { db, outcomes, consentQueries };
 }
 
 const job = {
@@ -75,8 +85,10 @@ const job = {
 };
 
 test("lifecycle consent permits a configured first lifecycle transition", async () => {
-  const { db, outcomes } = dispatchDb({
-    consentedEstimates: [{ companyId: 3, customerId: 19 }],
+  const { db, outcomes, consentQueries } = dispatchDb({
+    estimates: [
+      { companyId: 3, customerId: 19, smsTransactionalConsent: 1 },
+    ],
   });
   const sent: { customerId: number; body: string }[] = [];
   const result = await dispatchJobLifecycleNotification({
@@ -104,11 +116,20 @@ test("lifecycle consent permits a configured first lifecycle transition", async 
   assert.equal(outcomes.length, 1);
   assert.equal(outcomes[0][0], "sent");
   assert.equal(outcomes[0][1], 88);
+  assert.equal(consentQueries.length, 1);
+  assert.match(consentQueries[0].sql, /WHERE company_id = \?/);
+  assert.match(consentQueries[0].sql, /AND customer_id = \?/);
+  assert.match(consentQueries[0].sql, /sms_transactional_consent = 1/);
+  assert.deepEqual(consentQueries[0].bindings, [3, 19]);
 });
 
-test("lifecycle consent skips every notification step when no consented estimate exists", async () => {
+test("lifecycle consent skips every notification step when matching estimate consent is 0", async () => {
   for (const step of ["en_route", "arrived", "started", "completed"] as const) {
-    const { db, outcomes } = dispatchDb();
+    const { db, outcomes, consentQueries } = dispatchDb({
+      estimates: [
+        { companyId: 3, customerId: 19, smsTransactionalConsent: 0 },
+      ],
+    });
     let sends = 0;
 
     const result = await dispatchJobLifecycleNotification({
@@ -136,15 +157,18 @@ test("lifecycle consent skips every notification step when no consented estimate
         step,
       ],
     ]);
+    assert.equal(consentQueries.length, 1);
+    assert.match(consentQueries[0].sql, /sms_transactional_consent = 1/);
+    assert.deepEqual(consentQueries[0].bindings, [3, 19]);
   }
 });
 
 test("lifecycle consent ignores estimates for another company or customer", async () => {
-  for (const consentedEstimates of [
-    [{ companyId: 4, customerId: 19 }],
-    [{ companyId: 3, customerId: 20 }],
+  for (const estimates of [
+    [{ companyId: 4, customerId: 19, smsTransactionalConsent: 1 }],
+    [{ companyId: 3, customerId: 20, smsTransactionalConsent: 1 }],
   ]) {
-    const { db, outcomes } = dispatchDb({ consentedEstimates });
+    const { db, outcomes } = dispatchDb({ estimates });
     let sends = 0;
 
     const result = await dispatchJobLifecycleNotification({
@@ -191,7 +215,9 @@ test("does not send on clear, repeat, duplicate claim, or disabled block", async
       clear: false,
       step: "started" as const,
       db: dispatchDb({
-        consentedEstimates: [{ companyId: 3, customerId: 19 }],
+        estimates: [
+          { companyId: 3, customerId: 19, smsTransactionalConsent: 1 },
+        ],
       }).db,
     },
   ]) {
@@ -211,7 +237,9 @@ test("does not send on clear, repeat, duplicate claim, or disabled block", async
 test("returns a warning result without rolling back when notification setup throws", async () => {
   const { db, outcomes } = dispatchDb({
     failConfig: true,
-    consentedEstimates: [{ companyId: 3, customerId: 19 }],
+    estimates: [
+      { companyId: 3, customerId: 19, smsTransactionalConsent: 1 },
+    ],
   });
   const result = await dispatchJobLifecycleNotification({
     db,
