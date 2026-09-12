@@ -1,7 +1,12 @@
 import type { Db } from "./db.ts";
-import type { JobLifecycleNotificationResult, JobLifecycleStep } from "./job-lifecycle-notifications.ts";
+import type {
+  JobLifecycleNotificationRecord,
+  JobLifecycleNotificationResult,
+  JobLifecycleStep,
+  LifecycleOutcome,
+} from "./job-lifecycle-notifications.ts";
 
-export type LifecycleOutcome = "pending" | "sending" | "sent" | "skipped" | "failed" | "unknown";
+export type { LifecycleOutcome } from "./job-lifecycle-notifications.ts";
 export type LifecycleSender = (input: { companyId: number; customerId: number; body: string }) => Promise<{
   ok: boolean; messageId: number; status: string; error: string | null;
 }>;
@@ -108,4 +113,67 @@ export async function runPendingJobLifecycleNotifications(input: { db: Db; send:
     if (result && (result.outcome === "sent" || result.outcome === "failed" || result.outcome === "unknown")) counts[result.outcome]++;
   }
   return counts;
+}
+
+export async function listJobLifecycleNotifications(input: {
+  db: Db;
+  companyId: number;
+  jobId: number;
+}): Promise<JobLifecycleNotificationRecord[] | null> {
+  const job = await input.db.prepare(
+    "SELECT id FROM jobs WHERE id = ? AND company_id = ? LIMIT 1"
+  ).get<{ id: number }>(input.jobId, input.companyId);
+  if (!job) return null;
+  return input.db.prepare(`SELECT
+      id, step, outcome, attempt_count, message_id, error, locked_at,
+      last_attempt_at, retry_requested_at, retry_requested_by, created_at, updated_at
+    FROM job_lifecycle_notifications
+    WHERE company_id = ? AND job_id = ?
+    ORDER BY created_at, id`
+  ).all<JobLifecycleNotificationRecord>(input.companyId, input.jobId);
+}
+
+export type LifecycleRetryRequestResult =
+  | { ok: true; step: JobLifecycleStep }
+  | { ok: false; reason: "not_found" }
+  | { ok: false; reason: "confirmation_required"; outcome: "unknown" }
+  | { ok: false; reason: "not_retryable"; outcome: LifecycleOutcome };
+
+export async function requestJobLifecycleNotificationRetry(input: {
+  db: Db;
+  companyId: number;
+  jobId: number;
+  notificationId: number;
+  actorStaffId: number | null;
+  confirmUnknown: boolean;
+}): Promise<LifecycleRetryRequestResult> {
+  return input.db.transaction(async tx => {
+    const row = await tx.prepare(`SELECT step, outcome
+      FROM job_lifecycle_notifications
+      WHERE id = ? AND company_id = ? AND job_id = ? LIMIT 1`
+    ).get<{ step: JobLifecycleStep; outcome: LifecycleOutcome }>(
+      input.notificationId, input.companyId, input.jobId
+    );
+    if (!row) return { ok: false, reason: "not_found" };
+    if (row.outcome === "unknown" && !input.confirmUnknown) {
+      return { ok: false, reason: "confirmation_required", outcome: "unknown" };
+    }
+    if (row.outcome !== "failed" && row.outcome !== "unknown") {
+      return { ok: false, reason: "not_retryable", outcome: row.outcome };
+    }
+    const updated = await tx.prepare(`UPDATE job_lifecycle_notifications
+      SET outcome = 'pending', message_id = NULL, error = NULL, locked_at = NULL,
+          retry_requested_at = datetime('now'), retry_requested_by = ?, updated_at = datetime('now')
+      WHERE id = ? AND company_id = ? AND job_id = ? AND outcome = ?`
+    ).run(input.actorStaffId, input.notificationId, input.companyId, input.jobId, row.outcome);
+    if (updated.changes !== 1) {
+      const current = await tx.prepare(`SELECT outcome FROM job_lifecycle_notifications
+        WHERE id = ? AND company_id = ? AND job_id = ? LIMIT 1`
+      ).get<{ outcome: LifecycleOutcome }>(input.notificationId, input.companyId, input.jobId);
+      return current
+        ? { ok: false, reason: "not_retryable", outcome: current.outcome }
+        : { ok: false, reason: "not_found" };
+    }
+    return { ok: true, step: row.step };
+  });
 }

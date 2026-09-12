@@ -133,3 +133,42 @@ test("lifecycle outbox interrupted result persistence becomes unknown and does n
   assert.equal(sends, 1);
   assert.equal((await db.prepare("SELECT outcome FROM job_lifecycle_notifications").get())?.outcome, "unknown");
 });
+
+test("notification retry atomically reopens only the tenant and job record with an audit", async t => {
+  const { db, close } = lifecycleDatabase(); t.after(close);
+  await setStatusStep(db, 12, "en_route", 1);
+  await db.prepare("UPDATE job_lifecycle_notifications SET outcome='failed', error='provider rejected' WHERE job_id=12").run();
+  const outbox = await import("../src/lib/job-lifecycle-outbox.ts");
+  assert.equal(typeof outbox.requestJobLifecycleNotificationRetry, "function");
+  const notification = await db.prepare("SELECT id FROM job_lifecycle_notifications WHERE job_id=12").get() as { id: number } | undefined;
+  const result = await outbox.requestJobLifecycleNotificationRetry({
+    db, companyId: 1, jobId: 12, notificationId: notification!.id,
+    actorStaffId: 7, confirmUnknown: false,
+  });
+  assert.deepEqual(result, { ok: true, step: "en_route" });
+  const row = await db.prepare("SELECT outcome, retry_requested_at, retry_requested_by FROM job_lifecycle_notifications WHERE id=?").get(notification!.id);
+  assert.equal(row?.outcome, "pending");
+  assert.match(String(row?.retry_requested_at), /^\d{4}-\d{2}-\d{2}/);
+  assert.equal(row?.retry_requested_by, 7);
+});
+
+test("payment warning and lifecycle UI contracts preserve successful warnings and guarded retry actions", async () => {
+  const lifecycle = await import("../src/lib/job-lifecycle-notifications.ts");
+  assert.equal(typeof lifecycle.paymentResponseWarning, "function");
+  assert.equal(
+    lifecycle.paymentResponseWarning({ warning: "Payment recorded, but the customer text was not delivered." }),
+    "Payment recorded, but the customer text was not delivered."
+  );
+  assert.equal(lifecycle.paymentResponseWarning({ error: "payment failed" }), null);
+
+  assert.deepEqual(lifecycle.lifecycleNotificationPresentation("pending"), {
+    label: "Pending", retryLabel: null, requiresConfirmation: false, duplicateRisk: null,
+  });
+  assert.deepEqual(lifecycle.lifecycleNotificationPresentation("failed"), {
+    label: "Failed", retryLabel: "Retry text", requiresConfirmation: false, duplicateRisk: null,
+  });
+  assert.deepEqual(lifecycle.lifecycleNotificationPresentation("unknown"), {
+    label: "Delivery unknown", retryLabel: "Retry text anyway", requiresConfirmation: true,
+    duplicateRisk: "Delivery may have succeeded. Retrying could send a duplicate text.",
+  });
+});

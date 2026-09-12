@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import CheckoutModal from "@/components/jobs/CheckoutModal";
 import PaymentsSection from "@/components/jobs/PaymentsSection";
 import RecordPaymentModal from "@/components/jobs/RecordPaymentModal";
+import LifecycleNotificationPanel from "@/components/jobs/LifecycleNotificationPanel";
 import {
   PickerInput,
   StaffMultiPicker,
@@ -334,6 +335,8 @@ export default function JobDetailClient({
   const [job, setJob] = useState<Detail>(initialJob);
   const [busy, setBusy] = useState<Step | null>(null);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [paymentWarning, setPaymentWarning] = useState<string | null>(null);
+  const [lifecycleRefreshKey, setLifecycleRefreshKey] = useState(0);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [creatingInvoice, setCreatingInvoice] = useState(false);
@@ -357,6 +360,7 @@ export default function JobDetailClient({
       const updated = (await res.json()) as Detail;
       setJob(updated);
     }
+    setLifecycleRefreshKey((key) => key + 1);
     router.refresh();
   }
 
@@ -369,6 +373,7 @@ export default function JobDetailClient({
     if (res.ok) {
       const updated = (await res.json()) as Detail;
       setJob(updated);
+      setLifecycleRefreshKey((key) => key + 1);
       router.refresh();
       return true;
     }
@@ -397,6 +402,7 @@ export default function JobDetailClient({
         status_notification?: JobLifecycleNotificationResult | null;
       };
       setJob(updated);
+      setLifecycleRefreshKey((key) => key + 1);
       router.refresh();
       const warning = notificationWarning(updated.status_notification ?? null);
       if (warning) alert(warning);
@@ -728,6 +734,24 @@ export default function JobDetailClient({
             onSave={patchJob}
           />
 
+          {paymentWarning && (
+            <div role="alert" className="rounded-2xl border border-amber-700/50 bg-amber-950/30 px-4 py-3 text-sm text-amber-200">
+              <div className="flex items-start justify-between gap-3">
+                <span>{paymentWarning}</span>
+                <button
+                  type="button"
+                  onClick={() => setPaymentWarning(null)}
+                  aria-label="Dismiss payment warning"
+                  className="font-bold text-amber-300 hover:text-amber-100"
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+          )}
+
+          <LifecycleNotificationPanel jobId={job.id} refreshKey={lifecycleRefreshKey} />
+
           <PaymentsSection
             jobId={job.id}
             customerId={job.customer_id}
@@ -777,8 +801,9 @@ export default function JobDetailClient({
           customerEmail={job.customer_email}
           customerPhone={job.customer_phone}
           onClose={() => setPaymentModalOpen(false)}
-          onRecorded={async () => {
+          onRecorded={async (warning) => {
             setPaymentModalOpen(false);
+            setPaymentWarning(warning);
             await refreshJob();
           }}
         />

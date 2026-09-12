@@ -6,6 +6,29 @@ export type JobLifecycleStep =
   | "started"
   | "completed";
 
+export type LifecycleOutcome =
+  | "pending"
+  | "sending"
+  | "sent"
+  | "skipped"
+  | "failed"
+  | "unknown";
+
+export type JobLifecycleNotificationRecord = {
+  id: number;
+  step: JobLifecycleStep;
+  outcome: LifecycleOutcome;
+  attempt_count: number;
+  message_id: number | null;
+  error: string | null;
+  locked_at: string | null;
+  last_attempt_at: string | null;
+  retry_requested_at: string | null;
+  retry_requested_by: number | null;
+  created_at: string;
+  updated_at: string;
+};
+
 export type JobLifecycleNotificationResult = {
   attempted: boolean;
   ok: boolean;
@@ -98,4 +121,35 @@ export function notificationWarning(
   return `Job status updated, but the customer text was not delivered: ${
     result.error || "Unknown delivery error"
   }`;
+}
+
+export function paymentResponseWarning(payload: unknown) {
+  if (!payload || typeof payload !== "object" || !("warning" in payload)) {
+    return null;
+  }
+  const warning = (payload as { warning?: unknown }).warning;
+  return typeof warning === "string" && warning.trim() ? warning.trim() : null;
+}
+
+const NOTIFICATION_PRESENTATION: Record<LifecycleOutcome, {
+  label: string;
+  retryLabel: string | null;
+  requiresConfirmation: boolean;
+  duplicateRisk: string | null;
+}> = {
+  pending: { label: "Pending", retryLabel: null, requiresConfirmation: false, duplicateRisk: null },
+  sending: { label: "Sending", retryLabel: null, requiresConfirmation: false, duplicateRisk: null },
+  sent: { label: "Sent", retryLabel: null, requiresConfirmation: false, duplicateRisk: null },
+  skipped: { label: "Skipped", retryLabel: null, requiresConfirmation: false, duplicateRisk: null },
+  failed: { label: "Failed", retryLabel: "Retry text", requiresConfirmation: false, duplicateRisk: null },
+  unknown: {
+    label: "Delivery unknown",
+    retryLabel: "Retry text anyway",
+    requiresConfirmation: true,
+    duplicateRisk: "Delivery may have succeeded. Retrying could send a duplicate text.",
+  },
+};
+
+export function lifecycleNotificationPresentation(outcome: LifecycleOutcome) {
+  return NOTIFICATION_PRESENTATION[outcome];
 }

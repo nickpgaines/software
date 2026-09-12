@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { paymentResponseWarning } from "@/lib/job-lifecycle-notifications";
 
 export type PaymentMethod =
   | "card"
@@ -84,7 +85,7 @@ export default function RecordPaymentModal({
   customerEmail: string | null;
   customerPhone: string | null;
   onClose: () => void;
-  onRecorded: () => void;
+  onRecorded: (warning: string | null) => void;
 }) {
   const remainingCents = Math.max(0, jobTotalCents - paidTotalCents);
 
@@ -130,9 +131,9 @@ export default function RecordPaymentModal({
     ]));
   }
 
-  function paymentRecorded() {
+  function paymentRecorded(warning: string | null = null) {
     attempt.current.reset();
-    onRecorded();
+    onRecorded(warning);
   }
 
   useEffect(() => {
@@ -193,12 +194,12 @@ export default function RecordPaymentModal({
       }),
     });
     setSaving(false);
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
       setError(data?.error || "Could not record payment");
       return;
     }
-    paymentRecorded();
+    paymentRecorded(paymentResponseWarning(data));
   }
 
   async function startCardPayment() {
@@ -251,26 +252,27 @@ export default function RecordPaymentModal({
       }
     );
     setSaving(false);
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const data = (await res.json().catch(() => ({}))) as {
+      const failure = data as {
         error?: string;
         requires_action?: boolean;
       };
-      if (data.requires_action) {
+      if (failure.requires_action) {
         // 3DS required — fall back to on-session PaymentElement so the
         // customer can re-authenticate the card.
         setError(
-          (data.error || "Card needs verification") +
+          (failure.error || "Card needs verification") +
             " — switching to manual entry."
         );
         setSelectedSavedCardId("new");
         await startCardPayment();
         return;
       }
-      setError(data.error || "Could not charge saved card");
+      setError(failure.error || "Could not charge saved card");
       return;
     }
-    paymentRecorded();
+    paymentRecorded(paymentResponseWarning(data));
   }
 
   async function submit(e: React.FormEvent) {
@@ -604,7 +606,7 @@ function CardStep({
   sendEmail: boolean;
   sendSms: boolean;
   onBack: () => void;
-  onSuccess: () => void;
+  onSuccess: (warning: string | null) => void;
 }) {
   const stripe = useStripe();
   const elements = useElements();
@@ -651,15 +653,15 @@ function CardStep({
         }),
       });
 
+      const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
         setError(
           data?.error ||
             "Card was charged, but recording the payment failed. Refresh and check Payments."
         );
         return;
       }
-      onSuccess();
+      onSuccess(paymentResponseWarning(data));
     } catch {
       setError("The payment response could not be received. Retry to check and record this same payment.");
     } finally {
