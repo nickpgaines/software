@@ -2465,7 +2465,11 @@ function MessagingPanel() {
     "brand_failed",
     "campaign_failed",
   ].includes(state);
-  const editable = !isPending; // allow edit + resubmit when not_started or failed
+  const isRetryableFailure = [
+    "customer_profile_failed",
+    "trust_product_failed",
+  ].includes(state);
+  const editable = state === "not_started" || isRetryableFailure;
   const submitted = !!data?.registration?.submitted_at;
 
   async function submit(e: React.FormEvent) {
@@ -2585,9 +2589,15 @@ function MessagingPanel() {
           />
         )}
 
-        {editable && (
+        {(editable || isApproved) && (
           <form onSubmit={submit} className="space-y-4">
-            <Field label="Legal Company Name">
+            {isApproved && (
+              <p className="text-sm text-emerald-300">
+                Approved registration details are read-only.
+              </p>
+            )}
+            <fieldset disabled={isApproved} className="space-y-4">
+              <Field label="Legal Company Name">
               <Input
                 value={form.legal_company_name}
                 onChange={(e) => set("legal_company_name", e.target.value)}
@@ -2619,10 +2629,6 @@ function MessagingPanel() {
                 <option value="Sole Proprietorship">
                   Sole proprietorship (with EIN)
                 </option>
-                <option value="Non-Profit Corporation">
-                  Non-profit corporation
-                </option>
-                <option value="Public Corporation">Public corporation</option>
               </select>
             </Field>
             <Field label="EIN (format XX-XXXXXXX)">
@@ -2708,8 +2714,8 @@ function MessagingPanel() {
                   className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
                 />
                 <p className="mt-1.5 text-xs text-zinc-500">
-                  Must be a working HTTPS site that visibly shows your legal
-                  company name or DBA.
+                  Must be your company&apos;s working public HTTPS site. Twilio
+                  reviews the business identity details.
                 </p>
               </div>
             </Field>
@@ -2812,26 +2818,31 @@ function MessagingPanel() {
 
             {error && <p className="text-sm text-rose-500">{error}</p>}
 
-            <div className="flex items-center gap-3 pt-2">
-              <Button
-                type="submit"
-                variant="ghost"
-                disabled={saving || loading}
-                className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-2 font-bold"
-              >
-                {saving
-                  ? "Submitting…"
-                  : isFailed
-                  ? "Resubmit Registration"
-                  : "Submit Registration"}
-              </Button>
-              {submitted && !isFailed && (
-                <span className="text-xs text-zinc-500">
-                  Last submitted{" "}
-                  {data?.registration?.submitted_at?.slice(0, 19).replace("T", " ")}
-                </span>
-              )}
-            </div>
+            {!isApproved && (
+              <div className="flex items-center gap-3 pt-2">
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  disabled={saving || loading}
+                  className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-2 font-bold"
+                >
+                  {saving
+                    ? "Submitting…"
+                    : isRetryableFailure
+                    ? "Resubmit Registration"
+                    : "Submit Registration"}
+                </Button>
+                {submitted && !isFailed && (
+                  <span className="text-xs text-zinc-500">
+                    Last submitted{" "}
+                    {data?.registration?.submitted_at
+                      ?.slice(0, 19)
+                      .replace("T", " ")}
+                  </span>
+                )}
+              </div>
+            )}
+            </fieldset>
           </form>
         )}
       </div>

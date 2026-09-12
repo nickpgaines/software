@@ -48,6 +48,7 @@ import {
   summarizeRegistrationErrors,
   findAvailableLocalNumber,
   listCustomerProfiles,
+  normalizeTwilioStatus,
   purchasePhoneNumber,
   submitCustomerProfile,
   submitTrustProduct,
@@ -251,28 +252,32 @@ async function persistState(
 }
 
 function isPending(status: string): boolean {
-  return (
-    status === "pending-review" ||
-    status === "in-review" ||
-    status === "pending"
+  return ["PENDING", "PENDING_REVIEW", "IN_REVIEW", "IN_PROGRESS"].includes(
+    normalizeTwilioStatus(status)
   );
 }
 
 function isApproved(status: string): boolean {
-  return (
-    status === "twilio-approved" ||
-    status === "approved" ||
-    status === "compliant"
+  return ["TWILIO_APPROVED", "APPROVED", "COMPLIANT", "VERIFIED"].includes(
+    normalizeTwilioStatus(status)
   );
 }
 
 function isFailed(status: string): boolean {
-  return (
-    status === "twilio-rejected" ||
-    status === "rejected" ||
-    status === "failed" ||
-    status === "noncompliant"
+  return ["TWILIO_REJECTED", "REJECTED", "FAILED", "NONCOMPLIANT"].includes(
+    normalizeTwilioStatus(status)
   );
+}
+
+function failedProviderResourceGuidance(
+  stage: "Brand Registration" | "campaign",
+  sid: string | null,
+  reason: string | null
+): string {
+  const existing = `existing ${stage}${sid ? ` (${sid})` : ""}`;
+  const guidance = `Contact support to correct the ${existing}; resubmitting this form will not create a replacement ${stage.toLowerCase()}.`;
+  if (reason?.includes(guidance)) return reason.trim();
+  return [reason?.trim(), guidance].filter(Boolean).join(" ");
 }
 
 // One step. Returns whether the caller should immediately recurse to try the
@@ -590,7 +595,17 @@ async function step(companyId: number, retryFailed: boolean): Promise<{
   }
 
   // 5. Trust Product approved → create Brand Registration.
-  if (state === "trust_product_approved" || state === "brand_failed") {
+  if (state === "brand_failed") {
+    const msg = failedProviderResourceGuidance(
+      "Brand Registration",
+      company.twilio_brand_sid,
+      company.a2p_registration_error
+    );
+    await persistState(companyId, "brand_failed", msg);
+    return { state: "brand_failed", error: msg, recurse: false };
+  }
+
+  if (state === "trust_product_approved") {
     try {
       let brandSid = company.twilio_brand_sid;
       if (!brandSid) {
@@ -632,9 +647,12 @@ async function step(companyId: number, retryFailed: boolean): Promise<{
         return { state: "brand_approved", error: null, recurse: true };
       }
       if (isFailed(brand.status)) {
-        const msg =
+        const msg = failedProviderResourceGuidance(
+          "Brand Registration",
+          company.twilio_brand_sid,
           brand.failure_reason ||
-          `Brand registration rejected (status=${brand.status})`;
+            `Brand registration rejected (status=${brand.status})`
+        );
         await persistState(companyId, "brand_failed", msg);
         return { state: "brand_failed", error: msg, recurse: false };
       }
@@ -649,7 +667,17 @@ async function step(companyId: number, retryFailed: boolean): Promise<{
   }
 
   // 7. Brand approved → create Messaging Service + Campaign.
-  if (state === "brand_approved" || state === "campaign_failed") {
+  if (state === "campaign_failed") {
+    const msg = failedProviderResourceGuidance(
+      "campaign",
+      company.twilio_campaign_sid,
+      company.a2p_registration_error
+    );
+    await persistState(companyId, "campaign_failed", msg);
+    return { state: "campaign_failed", error: msg, recurse: false };
+  }
+
+  if (state === "brand_approved") {
     try {
       let msSid = company.twilio_messaging_service_sid;
       if (!msSid) {
@@ -721,14 +749,17 @@ async function step(companyId: number, retryFailed: boolean): Promise<{
         messagingServiceSid: company.twilio_messaging_service_sid,
         campaignSid: company.twilio_campaign_sid,
       });
-      if (isApproved(campaign.status) || campaign.status === "VERIFIED") {
+      if (isApproved(campaign.campaign_status)) {
         await persistState(companyId, "campaign_approved", null);
         return { state: "campaign_approved", error: null, recurse: true };
       }
-      if (isFailed(campaign.status) || campaign.status === "FAILED") {
-        const msg =
+      if (isFailed(campaign.campaign_status)) {
+        const msg = failedProviderResourceGuidance(
+          "campaign",
+          company.twilio_campaign_sid,
           campaign.failure_reason ||
-          `Campaign rejected (status=${campaign.status})`;
+            `Campaign rejected (status=${campaign.campaign_status})`
+        );
         await persistState(companyId, "campaign_failed", msg);
         return { state: "campaign_failed", error: msg, recurse: false };
       }

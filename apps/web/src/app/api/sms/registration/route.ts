@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { requireCompanyId } from "@/lib/auth";
 import {
   getDb,
   type Company,
@@ -7,9 +6,14 @@ import {
 } from "@/lib/db";
 import { advanceRegistration } from "@/lib/sms-registration";
 import {
+  requireSmsRegistrationAccess,
+  SmsRegistrationAccessError,
+} from "@/lib/sms-registration-access";
+import {
   type SmsRegistrationFormPayload,
   validateSmsRegistrationForm,
 } from "@/lib/sms-registration-input";
+import { verifyPublicWebsite } from "@/lib/public-website";
 
 export const dynamic = "force-dynamic";
 
@@ -47,7 +51,15 @@ async function readStatus(companyId: number): Promise<RegistrationStatus> {
 }
 
 export async function GET(req: Request) {
-  const companyId = await requireCompanyId();
+  let companyId: number;
+  try {
+    ({ companyId } = await requireSmsRegistrationAccess());
+  } catch (error) {
+    if (error instanceof SmsRegistrationAccessError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    throw error;
+  }
   const url = new URL(req.url);
   let status = await readStatus(companyId);
   // Reconcile in-review records on panel open as well as explicit refresh.
@@ -69,13 +81,48 @@ function s(v: unknown): string {
   return typeof v === "string" ? v.trim() : "";
 }
 
-export async function POST(req: Request) {
-  const companyId = await requireCompanyId();
+type SmsRegistrationPostDependencies = {
+  verifyWebsite?: typeof verifyPublicWebsite;
+  advance?: typeof advanceRegistration;
+};
+
+async function handleSmsRegistrationPost(
+  req: Request,
+  dependencies: SmsRegistrationPostDependencies = {}
+) {
+  let companyId: number;
+  try {
+    ({ companyId } = await requireSmsRegistrationAccess());
+  } catch (error) {
+    if (error instanceof SmsRegistrationAccessError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    throw error;
+  }
+
+  const current = await readStatus(companyId);
+  if (
+    current.company.sms_tier === "paid_approved" ||
+    current.company.a2p_registration_state === "campaign_approved"
+  ) {
+    return NextResponse.json(
+      { error: "This registration is already approved and is read-only." },
+      { status: 409 }
+    );
+  }
   const body = (await req
     .json()
     .catch(() => ({}))) as SmsRegistrationFormPayload;
   const error = validateSmsRegistrationForm(body);
   if (error) return NextResponse.json({ error }, { status: 400 });
+
+  const website = new URL(s(body.business_website));
+  const websiteError = await (dependencies.verifyWebsite ?? verifyPublicWebsite)(
+    website
+  );
+  if (websiteError) {
+    return NextResponse.json({ error: websiteError }, { status: 400 });
+  }
 
   const db = await getDb();
   const existing = await db
@@ -116,9 +163,9 @@ export async function POST(req: Request) {
     auth_rep_title: s(body.auth_rep_title) || "Owner",
     auth_rep_email:
       s(body.auth_rep_email) || owner?.email?.trim() || s(body.business_email),
-    confirmed_authorized: body.confirmed_authorized ? 1 : 0,
-    confirmed_aup_tcpa: body.confirmed_aup_tcpa ? 1 : 0,
-    confirmed_consent: body.confirmed_consent ? 1 : 0,
+    confirmed_authorized: body.confirmed_authorized === true ? 1 : 0,
+    confirmed_aup_tcpa: body.confirmed_aup_tcpa === true ? 1 : 0,
+    confirmed_consent: body.confirmed_consent === true ? 1 : 0,
   };
 
   if (existing) {
@@ -134,7 +181,7 @@ export async function POST(req: Request) {
            business_description = ?,
            auth_rep_name = ?, auth_rep_title = ?, auth_rep_email = ?,
            confirmed_authorized = ?, confirmed_aup_tcpa = ?, confirmed_consent = ?,
-           submitted_at = COALESCE(submitted_at, datetime('now')),
+           submitted_at = datetime('now'),
            updated_at = datetime('now')
          WHERE id = ?`
       )
@@ -209,7 +256,9 @@ export async function POST(req: Request) {
   // Flip the state machine forward. The orchestrator catches all errors and
   // persists them as failure states; the user-facing response always succeeds
   // so the upstream isn't allowed to break the form submission UX.
-  await advanceRegistration(companyId, { retryFailed: true }).catch((e) => {
+  await (dependencies.advance ?? advanceRegistration)(companyId, {
+    retryFailed: true,
+  }).catch((e) => {
     console.error(
       `[sms/registration] advanceRegistration threw for company ${companyId}:`,
       e
@@ -220,4 +269,11 @@ export async function POST(req: Request) {
   return NextResponse.json(status, {
     headers: { "Cache-Control": "no-store" },
   });
+}
+
+export async function POST(
+  req: Request,
+  dependencies: SmsRegistrationPostDependencies = {}
+) {
+  return handleSmsRegistrationPost(req, dependencies);
 }

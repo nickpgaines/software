@@ -30,8 +30,6 @@ const ENTITY_TYPES = [
   "Corporation",
   "Partnership",
   "Sole Proprietorship",
-  "Non-Profit Corporation",
-  "Public Corporation",
 ] as const;
 const SOCIAL_HOSTS = [
   "facebook.com",
@@ -113,13 +111,13 @@ export function validateSmsRegistrationForm(
   if (social && !parsePublicHttpsUrl(social)) {
     return "Social media profile must be a valid HTTPS URL.";
   }
-  if (!body.confirmed_authorized) {
+  if (body.confirmed_authorized !== true) {
     return "You must confirm you're authorized to register this business.";
   }
-  if (!body.confirmed_aup_tcpa) {
+  if (body.confirmed_aup_tcpa !== true) {
     return "You must confirm agreement with the SMS AUP and TCPA.";
   }
-  if (!body.confirmed_consent) {
+  if (body.confirmed_consent !== true) {
     return "You must confirm recipients have provided consent.";
   }
   return null;

@@ -7,7 +7,13 @@ import {
   registrationDatabase,
 } from "./helpers/sms-registration-harness.mjs";
 
-const { advanceRegistration, entityTypeToA2p } = await loadRegistration();
+const {
+  advanceRegistration,
+  entityTypeToA2p,
+  isApproved,
+  isFailed,
+  isPending,
+} = await loadRegistration();
 const { GET } = await loadRegistrationRoute();
 const { validateSmsRegistrationForm: validate } = await loadRegistrationInput();
 const originalFetch = globalThis.fetch;
@@ -156,6 +162,100 @@ const validForm = {
 test("requires a supported business entity type", () => {
   assert.match(validate({ ...validForm, entity_type: "" }) || "", /entity type.*required/i);
   assert.match(validate({ ...validForm, entity_type: "Cooperative" }) || "", /valid business entity type/i);
+  assert.match(validate({ ...validForm, entity_type: "Non-Profit Corporation" }) || "", /valid business entity type/i);
+  assert.match(validate({ ...validForm, entity_type: "Public Corporation" }) || "", /valid business entity type/i);
+});
+
+test("requires literal true for every registration attestation", () => {
+  for (const [field, message] of [
+    ["confirmed_authorized", /authorized to register/i],
+    ["confirmed_aup_tcpa", /AUP and TCPA/i],
+    ["confirmed_consent", /provided consent/i],
+  ] as const) {
+    for (const value of ["true", 1, {}, []]) {
+      assert.match(validate({ ...validForm, [field]: value } as never) || "", message);
+    }
+  }
+});
+
+test("normalizes exact Twilio provider statuses", () => {
+  for (const status of ["PENDING", "PENDING_REVIEW", "IN_REVIEW", "IN_PROGRESS", " pending-review "]) {
+    assert.equal(isPending(status), true, status);
+  }
+  for (const status of ["TWILIO_APPROVED", "APPROVED", "COMPLIANT", "VERIFIED", " twilio-approved "]) {
+    assert.equal(isApproved(status), true, status);
+  }
+  for (const status of ["TWILIO_REJECTED", "REJECTED", "FAILED", "NONCOMPLIANT", " twilio-rejected "]) {
+    assert.equal(isFailed(status), true, status);
+  }
+});
+
+test("reads the exact campaign_status field returned by Twilio", async () => {
+  db = registrationDatabase("campaign_pending");
+  db.prepare(`UPDATE company SET
+    twilio_messaging_service_sid = 'MGservice',
+    twilio_campaign_sid = 'QEcampaign',
+    sms_dedicated_number = '+12025550199'
+    WHERE id = 1`).run();
+  globalThis.fetch = async (input, init) => {
+    requests.push({
+      url: String(input),
+      method: init?.method || "GET",
+      body: String(init?.body || ""),
+    });
+    return Response.json({
+      sid: "QEcampaign",
+      campaign_status: "VERIFIED",
+      failure_reason: null,
+    });
+  };
+
+  const result = await advanceRegistration(1);
+  assert.equal(result.state, "campaign_approved");
+  assert.equal(result.done, true);
+});
+
+test("explicit resubmission preserves a rejected brand and directs support correction", async () => {
+  db = registrationDatabase("brand_failed");
+  db.prepare("UPDATE company SET twilio_brand_sid = 'BNexisting' WHERE id = 1").run();
+
+  const result = await advanceRegistration(1, { retryFailed: true });
+
+  assert.equal(result.state, "brand_failed");
+  assert.match(result.error || "", /contact support/i);
+  assert.match(result.error || "", /existing brand/i);
+  const stored = db.prepare("SELECT a2p_registration_state, twilio_brand_sid FROM company WHERE id = 1").get();
+  assert.equal(stored.a2p_registration_state, "brand_failed");
+  assert.equal(stored.twilio_brand_sid, "BNexisting");
+  assert.equal(requests.length, 0);
+});
+
+test("explicit resubmission preserves a rejected campaign and directs support correction", async () => {
+  db = registrationDatabase("campaign_failed");
+  db.prepare(`UPDATE company SET
+    twilio_messaging_service_sid = 'MGexisting',
+    twilio_campaign_sid = 'QEexisting'
+    WHERE id = 1`).run();
+
+  const result = await advanceRegistration(1, { retryFailed: true });
+
+  assert.equal(result.state, "campaign_failed");
+  assert.match(result.error || "", /contact support/i);
+  assert.match(result.error || "", /existing campaign/i);
+  const stored = db.prepare("SELECT a2p_registration_state, twilio_campaign_sid FROM company WHERE id = 1").get();
+  assert.equal(stored.a2p_registration_state, "campaign_failed");
+  assert.equal(stored.twilio_campaign_sid, "QEexisting");
+  assert.equal(requests.length, 0);
+});
+
+test("repeated rejected-resource submissions keep support guidance stable", async () => {
+  db = registrationDatabase("brand_failed");
+  db.prepare("UPDATE company SET twilio_brand_sid = 'BNexisting' WHERE id = 1").run();
+
+  const first = await advanceRegistration(1, { retryFailed: true });
+  const second = await advanceRegistration(1, { retryFailed: true });
+
+  assert.equal(second.error, first.error);
 });
 
 test("uses Twilio's EIN-backed standard brand path for sole proprietors", () => {

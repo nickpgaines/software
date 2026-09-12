@@ -20,6 +20,10 @@ export type TwilioCreds = {
   authToken: string;
 };
 
+export function normalizeTwilioStatus(status: string): string {
+  return status.trim().toUpperCase().replaceAll("-", "_");
+}
+
 function authHeader(creds: TwilioCreds): string {
   return (
     "Basic " +
@@ -224,7 +228,7 @@ export function summarizeEvaluationFailures(
   evals: EvaluationResource[]
 ): string | null {
   for (const ev of evals) {
-    if (ev.status !== "noncompliant") continue;
+    if (normalizeTwilioStatus(ev.status) !== "NONCOMPLIANT") continue;
     const reasons: string[] = [];
     for (const r of ev.results ?? []) {
       if (r.valid) continue;
@@ -537,7 +541,7 @@ export async function createMessagingService(args: {
 
 export type CampaignResource = {
   sid: string;
-  status: string;
+  campaign_status: string;
   failure_reason: string | null;
 };
 
