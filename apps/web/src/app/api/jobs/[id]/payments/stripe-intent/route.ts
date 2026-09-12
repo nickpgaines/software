@@ -120,7 +120,7 @@ export async function POST(
           ? { application_fee_amount: applicationFee }
           : {}),
       },
-      { stripeAccount: company.stripe_account_id, idempotencyKey: `forge:${companyId}:${jobId}:intent:${key}` }
+      { stripeAccount: company.stripe_account_id, idempotencyKey: `forge:${companyId}:intent:${key}` }
     );
 
     return NextResponse.json({

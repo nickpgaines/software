@@ -125,7 +125,7 @@ async function createTerminalIntent(
         ? { application_fee_amount: applicationFee }
         : {}),
     },
-    { stripeAccount: company.stripe_account_id, idempotencyKey: `forge:${companyId}:${jobId}:terminal:${key}` }
+    { stripeAccount: company.stripe_account_id, idempotencyKey: `forge:${companyId}:terminal:${key}` }
   );
 
   return NextResponse.json({

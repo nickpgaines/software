@@ -5,7 +5,31 @@ export { autoCompleteSteps } from "../../src/lib/payment-job-completion.ts";
 let database;
 let companyId = 1;
 let beforeCreateReturn = async () => {};
+let createProviderIntent = null;
 export function setBeforeCreateReturn(value) { beforeCreateReturn = value; }
+
+// Models Stripe's per-account key cache: distinct keys can create distinct
+// charges, while changed parameters for one key fail before another charge.
+export function useIdempotentProvider() {
+  const cached = new Map();
+  const intents = [];
+  createProviderIntent = (body, options) => {
+    const key = `${options.stripeAccount}:${options.idempotencyKey}`;
+    const parameters = JSON.stringify(body);
+    const previous = cached.get(key);
+    if (previous) {
+      if (previous.parameters !== parameters) {
+        throw Object.assign(new Error("Parameters differ for the existing idempotency key"), { type: "StripeIdempotencyError" });
+      }
+      return previous.intent;
+    }
+    const intent = { id: `pi_provider_${intents.length + 1}`, status: "succeeded", amount: body.amount, amount_received: body.amount, metadata: body.metadata, client_secret: "secret" };
+    cached.set(key, { parameters, intent });
+    intents.push(intent);
+    return intent;
+  };
+  return { intents, expireKeys: () => cached.clear() };
+}
 /** @type {{ receipts: any[], completions: any[], activities: any[], creates: { body: any, options: any }[] }} */
 export const effects = { receipts: [], completions: [], activities: [], creates: [] };
 export let receiptError = false;
@@ -23,9 +47,12 @@ export function getStripe() {
     retrieve: async () => providerIntent,
     create: async (body, options) => {
       effects.creates.push({ body, options });
-      providerIntent = { ...providerIntent, metadata: body.metadata };
+      providerIntent = createProviderIntent
+        ? createProviderIntent(body, options)
+        : { ...providerIntent, metadata: body.metadata };
+      const created = { ...providerIntent, client_secret: "secret" };
       await beforeCreateReturn();
-      return { ...providerIntent, client_secret: "secret" };
+      return created;
     },
   } };
 }
@@ -80,20 +107,28 @@ export function paymentDatabase() {
     INSERT INTO stripe_payment_methods VALUES (5,1,90,'cus_test','pm_test',1,'2026-09-11');
   `);
   let pending = Promise.resolve();
+  let stalePaymentReads = false;
+  function prepare(sql, authoritative = false) {
+    const stmt = sqlite.prepare(sql);
+    return {
+      get: async (...args) => stalePaymentReads && !authoritative && /SELECT \* FROM payments WHERE company_id = \? AND idempotency_key = \?/.test(sql)
+        ? undefined : stmt.get(...args),
+      all: async (...args) => stmt.all(...args),
+      run: async (...args) => { const result = stmt.run(...args); return { lastInsertRowid: Number(result.lastInsertRowid), changes: Number(result.changes) }; },
+    };
+  }
   database = {
-    prepare(sql) {
-      const stmt = sqlite.prepare(sql);
-      return {
-        get: async (...args) => stmt.get(...args),
-        all: async (...args) => stmt.all(...args),
-        run: async (...args) => { const result = stmt.run(...args); return { lastInsertRowid: Number(result.lastInsertRowid), changes: Number(result.changes) }; },
-      };
-    },
+    prepare,
     exec: async (sql) => sqlite.exec(sql),
     transaction(fn) {
       const result = pending.then(async () => {
         sqlite.exec("BEGIN IMMEDIATE");
-        try { const result = await fn(database); sqlite.exec("COMMIT"); return result; }
+        try {
+          const tx = { ...database, prepare: sql => prepare(sql, true) };
+          const result = await fn(tx);
+          sqlite.exec("COMMIT");
+          return result;
+        }
         catch (error) { sqlite.exec("ROLLBACK"); throw error; }
       });
       pending = result.catch(() => {});
@@ -103,7 +138,8 @@ export function paymentDatabase() {
   companyId = 1;
   receiptError = false;
   beforeCreateReturn = async () => {};
+  createProviderIntent = null;
   providerIntent = { id: "pi_test", status: "succeeded", amount: 1100, amount_received: 1100, metadata: { job_id: "12", amount_cents: "1000", tip_cents: "100" } };
   for (const list of Object.values(effects)) list.length = 0;
-  return { sqlite, db: database, close: () => sqlite.close() };
+  return { sqlite, db: database, setStalePaymentReads: value => { stalePaymentReads = value; }, close: () => sqlite.close() };
 }

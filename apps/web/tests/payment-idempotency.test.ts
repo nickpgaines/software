@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { beforeEach, afterEach, test } from "node:test";
-import { loadPaymentRoutes, paymentDatabase, effects, setCompanyId, setProviderIntent, setReceiptError, setBeforeCreateReturn } from "./helpers/payment-harness.mjs";
+import { loadPaymentRoutes, paymentDatabase, effects, setCompanyId, setProviderIntent, setReceiptError, setBeforeCreateReturn, useIdempotentProvider } from "./helpers/payment-harness.mjs";
 
 const routes = await loadPaymentRoutes();
 let database: ReturnType<typeof paymentDatabase>;
@@ -103,7 +103,7 @@ test("Stripe payment idempotency keys are deterministic and connected-account sc
     assert.ok(creates.length >= 1);
     for (const create of creates) {
       assert.equal(create.options.stripeAccount, "acct_1");
-      assert.equal(create.options.idempotencyKey, `forge:1:12:${kind}:attempt-123`);
+      assert.equal(create.options.idempotencyKey, `forge:1:${kind}:attempt-123`);
     }
   }
   assert.equal(database.sqlite.prepare("SELECT COUNT(*) AS count FROM payments").get().count, 1);
@@ -129,6 +129,52 @@ test("concurrent saved-card payment idempotency records the provider charge and 
   assert.equal(database.sqlite.prepare("SELECT COUNT(*) AS count FROM payments").get().count, 1);
   assert.equal(effects.receipts.length, 1);
   assert.equal(effects.completions.length, 1);
+});
+
+test("concurrent cross-job payment idempotency cannot create a second saved-card charge", async () => {
+  const provider = useIdempotentProvider();
+  setBeforeCreateReturn(() => new Promise<void>(resolve => setImmediate(resolve)));
+  const responses = await Promise.all([
+    post("charge-saved-card", manualBody, "shared-attempt", 12),
+    post("charge-saved-card", manualBody, "shared-attempt", 13),
+  ]);
+  assert.deepEqual(responses.map(response => response.status).sort(), [201, 409]);
+  assert.equal(effects.creates.length, 2, "both initial requests must reach the provider before payment recording");
+  assert.equal(provider.intents.length, 1, "one caller key must authorize only one provider charge across jobs");
+  const rows = database.sqlite.prepare("SELECT stripe_payment_intent_id FROM payments").all() as Array<{ stripe_payment_intent_id: string }>;
+  assert.deepEqual(rows.map(row => row.stripe_payment_intent_id), [provider.intents[0].id]);
+  assert.equal(effects.receipts.length, 1);
+  assert.equal(effects.completions.length, 1);
+});
+
+test("concurrent cross-job payment idempotency protects online and terminal intent creation", async () => {
+  for (const route of ["stripe-intent", "terminal-intent"]) {
+    const provider = useIdempotentProvider();
+    setBeforeCreateReturn(() => new Promise<void>(resolve => setImmediate(resolve)));
+    const responses = await Promise.all([
+      post(route, manualBody, "shared-attempt", 12),
+      post(route, manualBody, "shared-attempt", 13),
+    ]);
+    assert.deepEqual(responses.map(response => response.status).sort(), [200,409], route);
+    assert.equal(provider.intents.length, 1, route);
+  }
+});
+
+test("payment idempotency checks the primary before charging when the replica misses a committed payment", async () => {
+  const provider = useIdempotentProvider();
+  const original = await (await post("charge-saved-card")).json();
+  provider.expireKeys();
+  database.setStalePaymentReads(true);
+  assert.equal(await database.db.prepare("SELECT * FROM payments WHERE company_id = ? AND idempotency_key = ? LIMIT 1").get(1, "saved-card:attempt-123"), undefined);
+  const response = await post("charge-saved-card");
+  assert.equal(response.status, 200);
+  const replay = await response.json();
+  assert.equal(replay.id, original.id);
+  assert.equal(replay.stripe_payment_intent_id, original.stripe_payment_intent_id);
+  assert.equal((await post("charge-saved-card", { ...manualBody, amount_cents: 2000 })).status, 409);
+  assert.equal(effects.creates.length, 1, "committed replay must never reach Stripe after its key cache expires");
+  assert.equal(provider.intents.length, 1);
+  assert.equal(effects.receipts.length, 1);
 });
 
 test("saved-card payment idempotency remains durable when confirmation records the charged intent first", async () => {

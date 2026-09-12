@@ -124,7 +124,9 @@ async function chargeSavedCard(
   };
   // A durable replay must not reach Stripe again, even after Stripe expires
   // its provider-side idempotency cache or the saved card has been removed.
-  const replay = await findPaymentReplay(db, paymentInput);
+  // Write transactions read the primary; a top-level replica read can miss
+  // the committed payment. Release the transaction before contacting Stripe.
+  const replay = await db.transaction(tx => findPaymentReplay(tx, paymentInput));
   if (replay) return NextResponse.json({ ...replay, idempotent_replay: true, lifecycle_notification: null, warning: null });
 
   // Pick the PM: explicit id wins, otherwise the customer's default.
@@ -189,7 +191,7 @@ async function chargeSavedCard(
           ? { application_fee_amount: applicationFee }
           : {}),
       },
-      { stripeAccount: company.stripe_account_id, idempotencyKey: `forge:${companyId}:${jobId}:saved:${key}` }
+      { stripeAccount: company.stripe_account_id, idempotencyKey: `forge:${companyId}:saved:${key}` }
     );
   } catch (e) {
     // Stripe throws on declines, including 3DS required. Surface the
