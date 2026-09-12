@@ -480,7 +480,7 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
 // Bump when init() gains migrations that must run on existing deploys.
 // First call after deploy runs the full init; subsequent cold starts hit
 // the fast-path below (one SELECT) and skip the ~150 DDL statements.
-const SCHEMA_VERSION = 20;
+const SCHEMA_VERSION = 21;
 
 async function init(): Promise<void> {
   // Fast path: if the schema is already at the current version, skip the
@@ -765,6 +765,8 @@ async function init(): Promise<void> {
       "INTEGER REFERENCES customer_subscriptions(id) ON DELETE SET NULL",
       paymentCols
     );
+    await alterAddColumn("payments", "idempotency_key", "TEXT", paymentCols);
+    await alterAddColumn("payments", "request_fingerprint", "TEXT", paymentCols);
   }
 
   const companyCols = await _db
@@ -1334,6 +1336,10 @@ async function init(): Promise<void> {
       send_email   INTEGER NOT NULL DEFAULT 0,
       send_sms     INTEGER NOT NULL DEFAULT 0,
       subscription_id INTEGER,
+      stripe_payment_intent_id TEXT,
+      source TEXT NOT NULL DEFAULT 'job',
+      idempotency_key TEXT,
+      request_fingerprint TEXT,
       created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_payments_job_id     ON payments(job_id);
@@ -2141,6 +2147,13 @@ async function init(): Promise<void> {
       `CREATE INDEX IF NOT EXISTS idx_${table}_company_id ON ${table}(company_id)`
     );
   }
+
+  // Create after the payments rebuild and tenant migration. Historical rows
+  // remain unconstrained, including any previously duplicated Stripe intents.
+  await _db.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_idempotency
+      ON payments(company_id, idempotency_key) WHERE idempotency_key IS NOT NULL;
+  `);
 
   // Existing jobs may already have lifecycle timestamps when this ledger is
   // introduced. Mark those transitions as skipped so clearing and reapplying
@@ -3403,6 +3416,8 @@ export type Payment = {
   send_email: number;
   send_sms: number;
   stripe_payment_intent_id: string | null;
+  idempotency_key: string | null;
+  request_fingerprint: string | null;
   source: PaymentSource;
   subscription_id: number | null;
   created_at: string;

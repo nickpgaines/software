@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
+import { requireIdempotencyKey, PaymentIdempotencyError } from "@/lib/payment-idempotency";
 import {
   getStripe,
   isStripeConfigured,
@@ -22,7 +23,25 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
+) {
+  try {
+    return await createTerminalIntent(req, context, requireIdempotencyKey(req));
+  } catch (error) {
+    if (error instanceof PaymentIdempotencyError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    if ((error as { type?: string; code?: string }).type === "StripeIdempotencyError" || (error as { code?: string }).code === "idempotency_key_in_use") {
+      return NextResponse.json({ error: "This payment key is already in use; retry the original payment details" }, { status: 409 });
+    }
+    throw error;
+  }
+}
+
+async function createTerminalIntent(
+  req: Request,
+  { params }: { params: { id: string } },
+  key: string
 ) {
   if (!isStripeConfigured()) {
     return NextResponse.json(
@@ -106,7 +125,7 @@ export async function POST(
         ? { application_fee_amount: applicationFee }
         : {}),
     },
-    { stripeAccount: company.stripe_account_id }
+    { stripeAccount: company.stripe_account_id, idempotencyKey: `forge:${companyId}:${jobId}:terminal:${key}` }
   );
 
   return NextResponse.json({

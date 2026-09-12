@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { createPaymentAttempt } from "@/lib/payment-attempt";
 import { loadStripe, type Stripe as StripeJs } from "@stripe/stripe-js";
 import {
   Elements,
@@ -100,6 +101,8 @@ export default function RecordPaymentModal({
   const [clientSecret, setClientSecret] = useState<string | null>(null);
   const [paymentIntentId, setPaymentIntentId] = useState<string | null>(null);
   const [stripeAccount, setStripeAccount] = useState<string | null>(null);
+  const attempt = useRef(createPaymentAttempt());
+  const [cardAttemptKey, setCardAttemptKey] = useState<string | null>(null);
   const [connectStatus, setConnectStatus] = useState<ConnectStatus | null>(
     null
   );
@@ -119,6 +122,18 @@ export default function RecordPaymentModal({
   const tipValid = Number.isFinite(tipNumber) && tipNumber >= 0;
 
   const stripeReady = Boolean(PUBLISHABLE_KEY);
+
+  function attemptKey(card: number | "new" = selectedSavedCardId) {
+    return attempt.current.keyFor(JSON.stringify([
+      jobId, Math.round(amountNumber * 100), Math.round(tipNumber * 100),
+      method, notes.trim() || null, sendEmail, sendSms, method === "card" ? card : null,
+    ]));
+  }
+
+  function paymentRecorded() {
+    attempt.current.reset();
+    onRecorded();
+  }
 
   useEffect(() => {
     if (method !== "card" || !stripeReady) return;
@@ -167,7 +182,7 @@ export default function RecordPaymentModal({
     setSaving(true);
     const res = await fetch(`/api/jobs/${jobId}/payments`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "Idempotency-Key": attemptKey() },
       body: JSON.stringify({
         amount_cents: Math.round(amountNumber * 100),
         tip_cents: Math.round(tipNumber * 100),
@@ -183,16 +198,17 @@ export default function RecordPaymentModal({
       setError(data?.error || "Could not record payment");
       return;
     }
-    onRecorded();
+    paymentRecorded();
   }
 
   async function startCardPayment() {
     setSaving(true);
+    const key = attemptKey("new");
     const res = await fetch(
       `/api/jobs/${jobId}/payments/stripe-intent`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": key },
         body: JSON.stringify({
           amount_cents: Math.round(amountNumber * 100),
           tip_cents: Math.round(tipNumber * 100),
@@ -211,6 +227,7 @@ export default function RecordPaymentModal({
       stripe_account: string;
     };
     setClientSecret(data.client_secret);
+    setCardAttemptKey(key);
     setPaymentIntentId(data.payment_intent_id);
     setStripeAccount(data.stripe_account || null);
     setStep("card");
@@ -222,7 +239,7 @@ export default function RecordPaymentModal({
       `/api/jobs/${jobId}/payments/charge-saved-card`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json", "Idempotency-Key": attemptKey(paymentMethodId) },
         body: JSON.stringify({
           amount_cents: Math.round(amountNumber * 100),
           tip_cents: Math.round(tipNumber * 100),
@@ -253,11 +270,22 @@ export default function RecordPaymentModal({
       setError(data.error || "Could not charge saved card");
       return;
     }
-    onRecorded();
+    paymentRecorded();
   }
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
+    if (saving) return;
+    try {
+      await submitPayment();
+    } catch {
+      setError("The payment response could not be received. Retry with the same details to check this payment safely.");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function submitPayment() {
     setError(null);
     if (!amountValid) {
       setError("Enter an amount greater than zero");
@@ -525,7 +553,7 @@ export default function RecordPaymentModal({
           </form>
         )}
 
-        {step === "card" && clientSecret && paymentIntentId && (
+        {step === "card" && clientSecret && paymentIntentId && cardAttemptKey && (
           <Elements
             stripe={stripePromise(stripeAccount)}
             options={{ clientSecret, appearance: { theme: "stripe" } }}
@@ -533,6 +561,8 @@ export default function RecordPaymentModal({
             <CardStep
               jobId={jobId}
               paymentIntentId={paymentIntentId}
+              clientSecret={clientSecret}
+              idempotencyKey={cardAttemptKey}
               totalCents={totalCents}
               notes={notes.trim() || null}
               sendEmail={sendEmail}
@@ -544,7 +574,7 @@ export default function RecordPaymentModal({
                 setStripeAccount(null);
                 setError(null);
               }}
-              onSuccess={onRecorded}
+              onSuccess={paymentRecorded}
             />
           </Elements>
         )}
@@ -556,6 +586,8 @@ export default function RecordPaymentModal({
 function CardStep({
   jobId,
   paymentIntentId,
+  clientSecret,
+  idempotencyKey,
   totalCents,
   notes,
   sendEmail,
@@ -565,6 +597,8 @@ function CardStep({
 }: {
   jobId: number;
   paymentIntentId: string;
+  clientSecret: string;
+  idempotencyKey: string;
   totalCents: number;
   notes: string | null;
   sendEmail: boolean;
@@ -584,43 +618,53 @@ function CardStep({
 
   async function charge(e: React.FormEvent) {
     e.preventDefault();
-    if (!stripe || !elements) return;
+    if (!stripe || !elements || submitting) return;
     setSubmitting(true);
     setError(null);
+    try {
+      // After an uncertain response the card may already be charged. Recover
+      // that intent and retry recording it without confirming a second charge.
+      const current = await stripe.retrievePaymentIntent(clientSecret);
+      if (current.error) {
+        setError(current.error.message || "Could not check the payment status");
+        return;
+      }
+      if (current.paymentIntent?.status !== "succeeded") {
+        const { error: confirmError } = await stripe.confirmPayment({
+          elements,
+          redirect: "if_required",
+        });
+        if (confirmError) {
+          setError(confirmError.message || "Card was declined");
+          return;
+        }
+      }
 
-    const { error: confirmError } = await stripe.confirmPayment({
-      elements,
-      redirect: "if_required",
-    });
+      const res = await fetch(`/api/jobs/${jobId}/payments/stripe-confirm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "Idempotency-Key": idempotencyKey },
+        body: JSON.stringify({
+          payment_intent_id: paymentIntentId,
+          notes,
+          send_email: sendEmail,
+          send_sms: sendSms,
+        }),
+      });
 
-    if (confirmError) {
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setError(
+          data?.error ||
+            "Card was charged, but recording the payment failed. Refresh and check Payments."
+        );
+        return;
+      }
+      onSuccess();
+    } catch {
+      setError("The payment response could not be received. Retry to check and record this same payment.");
+    } finally {
       setSubmitting(false);
-      setError(confirmError.message || "Card was declined");
-      return;
     }
-
-    const res = await fetch(`/api/jobs/${jobId}/payments/stripe-confirm`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        payment_intent_id: paymentIntentId,
-        notes,
-        send_email: sendEmail,
-        send_sms: sendSms,
-      }),
-    });
-
-    setSubmitting(false);
-
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      setError(
-        data?.error ||
-          "Card was charged, but recording the payment failed. Refresh and check Payments."
-      );
-      return;
-    }
-    onSuccess();
   }
 
   return (

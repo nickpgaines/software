@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getDb, type Payment, type StripePaymentMethod } from "@/lib/db";
+import { getDb, type StripePaymentMethod } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
 import {
   autoCompleteSteps,
@@ -11,6 +11,7 @@ import {
   getCompany,
 } from "@/lib/stripe";
 import { sendPaymentReceipt } from "@/lib/payment-receipts";
+import { requireIdempotencyKey, insertPaymentIdempotently, findPaymentReplay, paymentRequestFingerprint, PaymentIdempotencyError } from "@/lib/payment-idempotency";
 
 export const dynamic = "force-dynamic";
 
@@ -32,7 +33,22 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
+) {
+  try {
+    return await chargeSavedCard(req, context, requireIdempotencyKey(req));
+  } catch (error) {
+    if (error instanceof PaymentIdempotencyError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    throw error;
+  }
+}
+
+async function chargeSavedCard(
+  req: Request,
+  { params }: { params: { id: string } },
+  key: string
 ) {
   if (!isStripeConfigured()) {
     return NextResponse.json(
@@ -92,6 +108,25 @@ export async function POST(
   }
   const total = amount + tip;
 
+  const send_email = body.send_email ? 1 : 0;
+  const send_sms = body.send_sms ? 1 : 0;
+  const payment_date = new Date().toISOString().slice(0, 10);
+  const notes = body.notes ? String(body.notes) : null;
+  const subscriptionId =
+    body.subscription_id != null && Number(body.subscription_id) > 0
+      ? Number(body.subscription_id)
+      : null;
+  const paymentInput = {
+    company_id: companyId, job_id: jobId, amount_cents: amount, tip_cents: tip,
+    method: "card" as const, payment_date, notes, send_email, send_sms,
+    payment_method_id: body.payment_method_id ? Number(body.payment_method_id) : null,
+    subscription_id: subscriptionId, idempotency_key: `saved-card:${key}`,
+  };
+  // A durable replay must not reach Stripe again, even after Stripe expires
+  // its provider-side idempotency cache or the saved card has been removed.
+  const replay = await findPaymentReplay(db, paymentInput);
+  if (replay) return NextResponse.json({ ...replay, idempotent_replay: true, lifecycle_notification: null, warning: null });
+
   // Pick the PM: explicit id wins, otherwise the customer's default.
   let pm: StripePaymentMethod | undefined;
   if (body.payment_method_id) {
@@ -143,21 +178,27 @@ export async function POST(
           tip_cents: String(tip),
           application_fee_cents: String(applicationFee),
           subscription_id:
-            body.subscription_id ? String(body.subscription_id) : "",
+            subscriptionId ? String(subscriptionId) : "",
           source: "saved_card",
+          payment_idempotency_key: paymentInput.idempotency_key,
+          payment_method_row_id: paymentInput.payment_method_id ? String(paymentInput.payment_method_id) : "",
+          request_fingerprint: paymentRequestFingerprint(paymentInput),
         },
         receipt_email: job.email || undefined,
         ...(applicationFee > 0
           ? { application_fee_amount: applicationFee }
           : {}),
       },
-      { stripeAccount: company.stripe_account_id }
+      { stripeAccount: company.stripe_account_id, idempotencyKey: `forge:${companyId}:${jobId}:saved:${key}` }
     );
   } catch (e) {
     // Stripe throws on declines, including 3DS required. Surface the
     // `requires_action` case as a 402 so the UI can fall back to an
     // on-session collection flow.
-    const err = e as { code?: string; message?: string; payment_intent?: { id?: string; status?: string } };
+    const err = e as { type?: string; code?: string; message?: string; payment_intent?: { id?: string; status?: string } };
+    if (err.type === "StripeIdempotencyError" || err.code === "idempotency_key_in_use") {
+      throw new PaymentIdempotencyError("This payment key is already in use; retry the original payment details", 409);
+    }
     const requiresAction =
       err.code === "authentication_required" ||
       err.payment_intent?.status === "requires_action";
@@ -182,63 +223,40 @@ export async function POST(
     );
   }
 
-  const send_email = body.send_email ? 1 : 0;
-  const send_sms = body.send_sms ? 1 : 0;
-  const payment_date = new Date().toISOString().slice(0, 10);
-  const notes = body.notes ? String(body.notes) : null;
-  const subscriptionId =
-    body.subscription_id != null && Number(body.subscription_id) > 0
-      ? Number(body.subscription_id)
-      : null;
-
-  const { insertedId, completedChanged } = await db.transaction(async (tx) => {
-    const result = await tx
-      .prepare(
-        `INSERT INTO payments
-           (company_id, job_id, amount_cents, tip_cents, method, payment_date, notes,
-            send_email, send_sms, stripe_payment_intent_id, subscription_id)
-         VALUES (?, ?, ?, ?, 'card', ?, ?, ?, ?, ?, ?)`
-      )
-      .run(
-        companyId,
-        jobId,
-        amount,
-        tip,
-        payment_date,
-        notes,
-        send_email,
-        send_sms,
-        intent.id,
-        subscriptionId
-      );
-    const completedChanged = await autoCompleteSteps(tx, jobId, companyId);
-    return { insertedId: Number(result.lastInsertRowid), completedChanged };
+  const { payment: created, created: isNew, completedChanged } = await db.transaction(async (tx) => {
+    const result = await insertPaymentIdempotently(tx, { ...paymentInput, stripe_payment_intent_id: intent.id });
+    const completedChanged = result.created ? await autoCompleteSteps(tx, jobId, companyId) : false;
+    return { ...result, completedChanged };
   });
 
-  await dispatchPaymentCompletionNotification({
+  if (!isNew) return NextResponse.json({ ...created, idempotent_replay: true, lifecycle_notification: null, warning: null });
+
+  const lifecycle_notification = await dispatchPaymentCompletionNotification({
     db,
     companyId,
     jobId,
     changed: completedChanged,
   });
 
-  const created = (await db
-    .prepare("SELECT * FROM payments WHERE id = ? AND company_id = ?")
-    .get(insertedId, companyId)) as Payment;
+  let warning = lifecycle_notification?.error || null;
 
   if (send_email || send_sms) {
-    await sendPaymentReceipt({
-      jobId,
-      paymentId: created.id,
-      companyId,
-      amountCents: created.amount_cents,
-      tipCents: created.tip_cents ?? 0,
-      method: "card",
-      paymentDate: created.payment_date || payment_date,
-      sendEmail: !!send_email,
-      sendSms: !!send_sms,
-    });
+    try {
+      await sendPaymentReceipt({
+        jobId,
+        paymentId: created.id,
+        companyId,
+        amountCents: created.amount_cents,
+        tipCents: created.tip_cents ?? 0,
+        method: "card",
+        paymentDate: created.payment_date || payment_date,
+        sendEmail: !!send_email,
+        sendSms: !!send_sms,
+      });
+    } catch {
+      warning = [warning, "Payment recorded, but the receipt could not be delivered."].filter(Boolean).join(" ");
+    }
   }
 
-  return NextResponse.json(created, { status: 201 });
+  return NextResponse.json({ ...created, idempotent_replay: false, lifecycle_notification, warning }, { status: 201 });
 }
