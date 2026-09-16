@@ -3,6 +3,7 @@ import test from "node:test";
 
 import {
   NativeWidgetCredentialLifecycle,
+  scheduleNativeWidgetCredentialRetry,
   widgetCredentialNeedsRefresh,
   type ForgeWidgetPlugin,
   type WidgetCredential,
@@ -214,6 +215,121 @@ test(
   }
 );
 
+test(
+  "a stalled response body times out so a later activation can retry",
+  { timeout: 250 },
+  async () => {
+    const native = fakePlugin(null);
+    let principalRequests = 0;
+    const issued: WidgetCredential = {
+      token: "b".repeat(43),
+      company_id: 1,
+      staff_id: 2,
+      expires_at: "2027-01-01T00:00:00.000Z",
+    };
+    const stalledBody = new Response(
+      new ReadableStream({ start() {} }),
+      { headers: { "Content-Type": "application/json" } }
+    );
+    const lifecycle = new NativeWidgetCredentialLifecycle(
+      async () => native.plugin,
+      async (_input, init) => {
+        const method = init?.method || "GET";
+        if (method === "GET") {
+          principalRequests += 1;
+          if (principalRequests === 1) return stalledBody;
+          return Response.json({ company_id: 1, staff_id: 2 });
+        }
+        if (method === "POST") return Response.json(issued);
+        return Response.json({ revoked: true });
+      },
+      10
+    );
+
+    assert.equal(await lifecycle.ensure(), false);
+    assert.equal(await lifecycle.ensure(), true);
+
+    assert.equal(principalRequests, 2);
+    assert.deepEqual(native.stored, [issued]);
+  }
+);
+
+test(
+  "an invalidated issue request cannot pin later activation on stalled revocation",
+  { timeout: 300 },
+  async () => {
+    const native = fakePlugin(null);
+    let releaseFirstIssue!: (response: Response) => void;
+    const firstIssue = new Promise<Response>((resolve) => {
+      releaseFirstIssue = resolve;
+    });
+    let postRequests = 0;
+    const firstIssued: WidgetCredential = {
+      token: "i".repeat(43),
+      company_id: 1,
+      staff_id: 2,
+      expires_at: "2027-01-01T00:00:00.000Z",
+    };
+    const replacement: WidgetCredential = {
+      ...firstIssued,
+      token: "j".repeat(43),
+    };
+    const never = new Promise<Response>(() => undefined);
+    const lifecycle = new NativeWidgetCredentialLifecycle(
+      async () => native.plugin,
+      async (input, init) => {
+        if (String(input) === "/api/logout") {
+          return Response.json({ ok: true });
+        }
+        const method = init?.method || "GET";
+        if (method === "GET") {
+          return Response.json({ company_id: 1, staff_id: 2 });
+        }
+        if (method === "POST") {
+          postRequests += 1;
+          return postRequests === 1 ? firstIssue : Response.json(replacement);
+        }
+        if (method === "DELETE") return never;
+        throw new Error(`Unexpected request: ${method}`);
+      },
+      10
+    );
+
+    const invalidated = lifecycle.ensure();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await lifecycle.logout();
+    releaseFirstIssue(Response.json(firstIssued));
+
+    assert.equal(await invalidated, false);
+    assert.equal(await lifecycle.ensure(), true);
+    assert.deepEqual(native.stored, [replacement]);
+  }
+);
+
+test("a delayed retry waits for the original attempt before starting fresh", async () => {
+  let releaseFirst!: (connected: boolean) => void;
+  const firstAttempt = new Promise<boolean>((resolve) => {
+    releaseFirst = resolve;
+  });
+  let attempts = 1;
+
+  const cancel = scheduleNativeWidgetCredentialRetry(
+    firstAttempt,
+    async () => {
+      attempts += 1;
+      return true;
+    },
+    10
+  );
+
+  await new Promise((resolve) => setTimeout(resolve, 20));
+  assert.equal(attempts, 1);
+  releaseFirst(false);
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  assert.equal(attempts, 2);
+  cancel();
+});
+
 test("a stalled token revocation never delays local clearing or web logout", async () => {
   const native = fakePlugin(currentCredential);
   const never = new Promise<Response>(() => undefined);
@@ -227,7 +343,8 @@ test("a stalled token revocation never delays local clearing or web logout", asy
       }
       if (init?.method === "DELETE") return never;
       return Response.json({ company_id: 1, staff_id: 2 });
-    }
+    },
+    10
   );
 
   await Promise.race([

@@ -17,8 +17,6 @@
 		F10000000000000000000008 /* WidgetAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000018 /* WidgetAPIClient.swift */; };
 		F10000000000000000000009 /* WidgetFormattingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000019 /* WidgetFormattingTests.swift */; };
 		F30000000000000000000001 /* ForgeBridgeRegistrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F30000000000000000000011 /* ForgeBridgeRegistrationTests.swift */; };
-		F30000000000000000000002 /* ForgeWidgetPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000015 /* ForgeWidgetPlugin.swift */; };
-		F30000000000000000000003 /* ForgeBridgeViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000016 /* ForgeBridgeViewController.swift */; };
 		F30000000000000000000004 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = 4D22ABE82AF431CB00220026 /* CapApp-SPM */; };
 		F20000000000000000000001 /* ForgeWidgetStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000013 /* ForgeWidgetStore.swift */; };
 		F20000000000000000000002 /* WidgetAPIClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = F10000000000000000000018 /* WidgetAPIClient.swift */; };
@@ -362,8 +360,6 @@
 			files = (
 				F30000000000000000000001 /* ForgeBridgeRegistrationTests.swift in Sources */,
 				F10000000000000000000001 /* ForgeWidgetStoreTests.swift in Sources */,
-				F30000000000000000000002 /* ForgeWidgetPlugin.swift in Sources */,
-				F30000000000000000000003 /* ForgeBridgeViewController.swift in Sources */,
 				F10000000000000000000004 /* ForgeWidgetStore.swift in Sources */,
 				F10000000000000000000007 /* WidgetProviderTests.swift in Sources */,
 				F10000000000000000000008 /* WidgetAPIClient.swift in Sources */,

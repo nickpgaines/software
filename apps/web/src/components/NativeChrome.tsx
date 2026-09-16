@@ -5,7 +5,10 @@ import { usePathname } from "next/navigation";
 import type { PluginListenerHandle } from "@capacitor/core";
 import { isNativeApp } from "@/lib/native";
 import { NATIVE_APP_COOKIE } from "@/lib/native-auth";
-import { ensureNativeWidgetCredential } from "@/lib/native-widget";
+import {
+  ensureNativeWidgetCredential,
+  scheduleNativeWidgetCredentialRetry,
+} from "@/lib/native-widget";
 
 // One-time native UX chrome setup for the Capacitor shell (Phase 3/4). No-op in
 // any browser. Plugins are imported dynamically so they never load during SSR
@@ -17,17 +20,11 @@ export function NativeChrome() {
 
   useEffect(() => {
     if (!isNativeApp()) return;
-    let cancelled = false;
-    const retry = window.setTimeout(() => {
-      if (!cancelled) void ensureNativeWidgetCredential();
-    }, 5_500);
-    void ensureNativeWidgetCredential().then((connected) => {
-      if (connected) window.clearTimeout(retry);
-    });
-    return () => {
-      cancelled = true;
-      window.clearTimeout(retry);
-    };
+    const firstAttempt = ensureNativeWidgetCredential();
+    return scheduleNativeWidgetCredentialRetry(
+      firstAttempt,
+      ensureNativeWidgetCredential
+    );
   }, [pathname]);
 
   useEffect(() => {

@@ -27,6 +27,28 @@ type Fetcher = (
 export const LOGOUT_FAILURE_MESSAGE =
   "Could not log out. Please check your connection and try again.";
 
+export function scheduleNativeWidgetCredentialRetry(
+  firstAttempt: Promise<boolean>,
+  retry: () => Promise<boolean>,
+  delayMs = 5_500
+): () => void {
+  let cancelled = false;
+  const outcome = firstAttempt.catch(() => false);
+  const timer = setTimeout(() => {
+    void outcome.then((connected) => {
+      if (!cancelled && !connected) void retry();
+    });
+  }, delayMs);
+  void outcome.then((connected) => {
+    if (connected) clearTimeout(timer);
+  });
+
+  return () => {
+    cancelled = true;
+    clearTimeout(timer);
+  };
+}
+
 let pluginPromise: Promise<ForgeWidgetPlugin | null> | null = null;
 
 async function nativeWidgetPlugin(): Promise<ForgeWidgetPlugin | null> {
@@ -92,16 +114,24 @@ export class NativeWidgetCredentialLifecycle {
   }
 
   private async revoke(token: string) {
-    await this.request("/api/widget/token", {
-      method: "DELETE",
-      headers: { Authorization: `Bearer ${token}` },
-    }).catch(() => undefined);
+    await this.requestWithTimeout(
+      "/api/widget/token",
+      {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
+      },
+      () => undefined
+    ).catch(() => undefined);
   }
 
-  private async requestWithTimeout(input: RequestInfo | URL, init?: RequestInit) {
+  private async requestWithTimeout<T>(
+    input: RequestInfo | URL,
+    init: RequestInit | undefined,
+    consume: (response: Response) => Promise<T> | T
+  ): Promise<T> {
     const controller = new AbortController();
     let timeout: ReturnType<typeof setTimeout> | undefined;
-    const timedOut = new Promise<Response>((_, reject) => {
+    const timedOut = new Promise<never>((_, reject) => {
       timeout = setTimeout(() => {
         controller.abort();
         reject(new Error("Widget credential request timed out."));
@@ -109,7 +139,7 @@ export class NativeWidgetCredentialLifecycle {
     });
     try {
       return await Promise.race([
-        this.request(input, { ...init, signal: controller.signal }),
+        this.request(input, { ...init, signal: controller.signal }).then(consume),
         timedOut,
       ]);
     } finally {
@@ -117,15 +147,26 @@ export class NativeWidgetCredentialLifecycle {
     }
   }
 
+  private requestJsonWithTimeout(
+    input: RequestInfo | URL,
+    init?: RequestInit
+  ): Promise<{ ok: boolean; data: unknown }> {
+    return this.requestWithTimeout(input, init, async (response) => ({
+      ok: response.ok,
+      data: await response.json().catch(() => null),
+    }));
+  }
+
   private async bootstrap(generation: number): Promise<boolean> {
     const plugin = await this.loadPlugin();
     if (!plugin || this.loggingOut || generation !== this.generation) return false;
 
-    const principalResponse = await this.requestWithTimeout("/api/widget/token", {
-      method: "GET",
-    });
+    const principalResponse = await this.requestJsonWithTimeout(
+      "/api/widget/token",
+      { method: "GET" }
+    );
     if (!principalResponse.ok) return false;
-    const principal = (await principalResponse.json().catch(() => null)) as unknown;
+    const principal = principalResponse.data;
     if (!validPrincipal(principal)) return false;
 
     let { credential } = await plugin.credentialMetadata();
@@ -146,13 +187,16 @@ export class NativeWidgetCredentialLifecycle {
     }
 
     const { installation_id } = await plugin.getInstallation();
-    const response = await this.requestWithTimeout("/api/widget/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ installation_id }),
-    });
+    const response = await this.requestJsonWithTimeout(
+      "/api/widget/token",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ installation_id }),
+      }
+    );
     if (!response.ok) return false;
-    const issued = (await response.json().catch(() => null)) as unknown;
+    const issued = response.data;
     if (
       !validCredential(issued) ||
       issued.company_id !== principal.company_id ||

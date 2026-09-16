@@ -1,4 +1,5 @@
 import XCTest
+@testable import App
 
 @MainActor
 final class ForgeBridgeRegistrationTests: XCTestCase {
