@@ -16,7 +16,18 @@ export function NativeChrome() {
   const pathname = usePathname();
 
   useEffect(() => {
-    void ensureNativeWidgetCredential();
+    if (!isNativeApp()) return;
+    let cancelled = false;
+    const retry = window.setTimeout(() => {
+      if (!cancelled) void ensureNativeWidgetCredential();
+    }, 5_500);
+    void ensureNativeWidgetCredential().then((connected) => {
+      if (connected) window.clearTimeout(retry);
+    });
+    return () => {
+      cancelled = true;
+      window.clearTimeout(retry);
+    };
   }, [pathname]);
 
   useEffect(() => {

@@ -160,7 +160,8 @@ test("logout completes and clears local data while bootstrap is stalled", async 
         return Response.json({ ok: true });
       }
       return never;
-    }
+    },
+    10
   );
 
   void lifecycle.ensure();
@@ -175,6 +176,43 @@ test("logout completes and clears local data while bootstrap is stalled", async 
   assert.equal(loggedOut, true);
   assert.ok(native.cleared >= 1);
 });
+
+test(
+  "a stalled bootstrap times out so a later activation can retry",
+  { timeout: 250 },
+  async () => {
+    const native = fakePlugin(null);
+    const never = new Promise<Response>(() => undefined);
+    let principalRequests = 0;
+    const issued: WidgetCredential = {
+      token: "t".repeat(43),
+      company_id: 1,
+      staff_id: 2,
+      expires_at: "2027-01-01T00:00:00.000Z",
+    };
+    const lifecycle = new NativeWidgetCredentialLifecycle(
+      async () => native.plugin,
+      async (_input, init) => {
+        const method = init?.method || "GET";
+        if (method === "GET") {
+          principalRequests += 1;
+          if (principalRequests === 1) return never;
+          return Response.json({ company_id: 1, staff_id: 2 });
+        }
+        if (method === "POST") return Response.json(issued);
+        return Response.json({ revoked: true });
+      },
+      10
+    );
+
+    assert.equal(await lifecycle.ensure(), false);
+    assert.equal(await lifecycle.ensure(), true);
+
+    assert.equal(principalRequests, 2);
+    assert.deepEqual(native.stored, [issued]);
+    assert.equal(native.refreshed, 1);
+  }
+);
 
 test("a stalled token revocation never delays local clearing or web logout", async () => {
   const native = fakePlugin(currentCredential);

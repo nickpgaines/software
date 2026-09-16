@@ -74,15 +74,21 @@ function validCredential(value: unknown): value is WidgetCredential {
 }
 
 export class NativeWidgetCredentialLifecycle {
-  private bootstrapPromise: Promise<void> | null = null;
+  private bootstrapPromise: Promise<boolean> | null = null;
   private generation = 0;
   private loggingOut = false;
   private readonly loadPlugin: PluginLoader;
   private readonly request: Fetcher;
+  private readonly requestTimeoutMs: number;
 
-  constructor(loadPlugin: PluginLoader, request: Fetcher) {
+  constructor(
+    loadPlugin: PluginLoader,
+    request: Fetcher,
+    requestTimeoutMs = 5_000
+  ) {
     this.loadPlugin = loadPlugin;
     this.request = request;
+    this.requestTimeoutMs = requestTimeoutMs;
   }
 
   private async revoke(token: string) {
@@ -92,16 +98,35 @@ export class NativeWidgetCredentialLifecycle {
     }).catch(() => undefined);
   }
 
-  private async bootstrap(generation: number) {
-    const plugin = await this.loadPlugin();
-    if (!plugin || this.loggingOut || generation !== this.generation) return;
+  private async requestWithTimeout(input: RequestInfo | URL, init?: RequestInit) {
+    const controller = new AbortController();
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    const timedOut = new Promise<Response>((_, reject) => {
+      timeout = setTimeout(() => {
+        controller.abort();
+        reject(new Error("Widget credential request timed out."));
+      }, this.requestTimeoutMs);
+    });
+    try {
+      return await Promise.race([
+        this.request(input, { ...init, signal: controller.signal }),
+        timedOut,
+      ]);
+    } finally {
+      if (timeout) clearTimeout(timeout);
+    }
+  }
 
-    const principalResponse = await this.request("/api/widget/token", {
+  private async bootstrap(generation: number): Promise<boolean> {
+    const plugin = await this.loadPlugin();
+    if (!plugin || this.loggingOut || generation !== this.generation) return false;
+
+    const principalResponse = await this.requestWithTimeout("/api/widget/token", {
       method: "GET",
     });
-    if (!principalResponse.ok) return;
+    if (!principalResponse.ok) return false;
     const principal = (await principalResponse.json().catch(() => null)) as unknown;
-    if (!validPrincipal(principal)) return;
+    if (!validPrincipal(principal)) return false;
 
     let { credential } = await plugin.credentialMetadata();
     if (
@@ -117,52 +142,54 @@ export class NativeWidgetCredentialLifecycle {
 
     if (!widgetCredentialNeedsRefresh(credential)) {
       const refreshed = await plugin.refreshSnapshot();
-      if (!refreshed.reconnect) return;
+      if (!refreshed.reconnect) return refreshed.refreshed;
     }
 
     const { installation_id } = await plugin.getInstallation();
-    const response = await this.request("/api/widget/token", {
+    const response = await this.requestWithTimeout("/api/widget/token", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ installation_id }),
     });
-    if (!response.ok) return;
+    if (!response.ok) return false;
     const issued = (await response.json().catch(() => null)) as unknown;
     if (
       !validCredential(issued) ||
       issued.company_id !== principal.company_id ||
       issued.staff_id !== principal.staff_id
     ) {
-      return;
+      return false;
     }
 
     if (this.loggingOut || generation !== this.generation) {
       await this.revoke(issued.token);
-      return;
+      return false;
     }
     await plugin.storeCredential(issued);
     if (this.loggingOut || generation !== this.generation) {
       await plugin.clearCredential();
       await this.revoke(issued.token);
-      return;
+      return false;
     }
     await plugin.refreshSnapshot();
+    return true;
   }
 
-  async ensure(): Promise<void> {
-    if (this.loggingOut) return;
+  async ensure(): Promise<boolean> {
+    if (this.loggingOut) return false;
     if (!this.bootstrapPromise) {
       const generation = this.generation;
       const promise = this.bootstrap(generation)
         .catch(() => {
           // Widget setup is best-effort and must never block the hosted app.
+          return false;
         })
         .finally(() => {
           if (this.bootstrapPromise === promise) this.bootstrapPromise = null;
         });
       this.bootstrapPromise = promise;
     }
-    await this.bootstrapPromise;
+    return this.bootstrapPromise;
   }
 
   async clear(): Promise<void> {
@@ -194,8 +221,8 @@ const lifecycle = new NativeWidgetCredentialLifecycle(
   (input, init) => fetch(input, init)
 );
 
-export async function ensureNativeWidgetCredential(): Promise<void> {
-  await lifecycle.ensure();
+export async function ensureNativeWidgetCredential(): Promise<boolean> {
+  return lifecycle.ensure();
 }
 
 export async function clearNativeWidgetCredential(): Promise<void> {
