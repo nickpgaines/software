@@ -61,6 +61,32 @@ test("refreshes a missing or nearly expired widget credential", () => {
   );
 });
 
+for (const reconnect of [false, true]) {
+  test(`failed first snapshot remains retryable (reconnect=${reconnect})`, async () => {
+    const native = fakePlugin(null);
+    let refreshes = 0;
+    native.plugin.refreshSnapshot = async () => {
+      refreshes += 1;
+      if (refreshes === 1) {
+        if (reconnect) await native.plugin.clearCredential();
+        return { refreshed: false, reconnect };
+      }
+      return { refreshed: true };
+    };
+    const lifecycle = new NativeWidgetCredentialLifecycle(
+      async () => native.plugin,
+      async (_input, init) => init?.method === "POST"
+        ? Response.json({ ...currentCredential, expires_at: "2099-01-01T00:00:00.000Z" })
+        : Response.json({ company_id: 1, staff_id: 2 })
+    );
+
+    assert.equal(await lifecycle.ensure(), false);
+    assert.equal(await lifecycle.ensure(), true);
+    assert.equal(refreshes, 2);
+    assert.equal(native.stored.length, reconnect ? 2 : 1);
+  });
+}
+
 test("reuses a credential with more than thirty days remaining", () => {
   const now = new Date("2026-08-22T12:00:00.000Z");
   assert.equal(

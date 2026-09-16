@@ -59,7 +59,18 @@ async function nativeWidgetPlugin(): Promise<ForgeWidgetPlugin | null> {
         if (!Capacitor.isNativePlatform() || Capacitor.getPlatform() !== "ios") {
           return null;
         }
-        return registerPlugin<ForgeWidgetPlugin>("ForgeWidget");
+        const plugin = registerPlugin<ForgeWidgetPlugin>("ForgeWidget");
+        // Capacitor proxies expose a synthetic `then` method. Returning the proxy
+        // from a Promise makes it a thenable and hangs setup on ForgeWidget.then().
+        // Keep the proxy behind a plain facade so only real native methods run.
+        return {
+          getInstallation: () => plugin.getInstallation(),
+          storeCredential: (credential: WidgetCredential) =>
+            plugin.storeCredential(credential),
+          credentialMetadata: () => plugin.credentialMetadata(),
+          clearCredential: () => plugin.clearCredential(),
+          refreshSnapshot: () => plugin.refreshSnapshot(),
+        } satisfies ForgeWidgetPlugin;
       }
     );
   }
@@ -215,8 +226,8 @@ export class NativeWidgetCredentialLifecycle {
       await this.revoke(issued.token);
       return false;
     }
-    await plugin.refreshSnapshot();
-    return true;
+    const refreshed = await plugin.refreshSnapshot();
+    return refreshed.refreshed && !refreshed.reconnect;
   }
 
   async ensure(): Promise<boolean> {
