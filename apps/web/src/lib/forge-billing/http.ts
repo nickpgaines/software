@@ -22,7 +22,11 @@ export async function statusResponse(req: Request) {
   return {...status,canManage:await canManageBilling(session),native:isNativeBillingRequest(req)};
 }
 export async function billingResponse(work:()=>Promise<unknown>) {
-  try { return NextResponse.json(await work(),{headers:{'Cache-Control':'no-store'}}); }
+  try {
+    const result = await work();
+    if (result instanceof Response) return result;
+    return NextResponse.json(result,{headers:{'Cache-Control':'no-store'}});
+  }
   catch(error) {
     const status=error instanceof BillingError ? error.status : error instanceof SyntaxError ? 400 : 503;
     return NextResponse.json({error:status === 503 ? 'Billing is temporarily unavailable. Refresh or contact support.' : error instanceof Error ? error.message : 'Billing request failed'}, {status,headers:{'Cache-Control':'no-store'}});

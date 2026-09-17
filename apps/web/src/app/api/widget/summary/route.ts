@@ -8,6 +8,7 @@ import {
 } from "@/lib/widget-metrics";
 import { loadWidgetPermissions } from "@/lib/widget-permissions";
 import { buildAuthorizedWidgetSummary } from "@/lib/widget-response";
+import { requireCompanyBillingAccess } from "@/lib/forge-billing/access";
 
 export const dynamic = "force-dynamic";
 
@@ -16,6 +17,7 @@ export async function GET(req: Request) {
   return handleWidgetSummaryRequest(req, {
     authenticate: (token) => authenticateWidgetToken(db, token),
     buildSummary: async (principal) => {
+      await requireCompanyBillingAccess(principal.companyId);
       const now = new Date();
       const permissions = await loadWidgetPermissions(db, principal);
       return buildAuthorizedWidgetSummary({

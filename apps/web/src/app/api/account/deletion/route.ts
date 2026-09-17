@@ -14,6 +14,7 @@ import { verifyPassword } from "@/lib/password";
 import { getStripe, isStripeConfigured } from "@/lib/stripe";
 import { getMasterCreds } from "@/lib/twilio-platform";
 import { deleteTenantDataWithoutForeignKeyCascades } from "@/lib/tenant-deletion";
+import { cancelCompanyBilling } from "@/lib/forge-billing/service";
 
 export const dynamic = "force-dynamic";
 
@@ -168,6 +169,53 @@ type DeleteResult =
   | { kind: "deleted"; scope: "employee" | "organization"; company?: Company }
   | { kind: "error"; status: number; error: string };
 
+async function validateDeletion(
+  db: Db,
+  ctx: SessionContext,
+  body: DeleteBody,
+  password: string
+): Promise<
+  | { kind: "valid"; scope: "employee" | "organization" }
+  | Extract<DeleteResult, { kind: "error" }>
+> {
+  const state = await readDeletionState(db, ctx);
+  if (!state) {
+    return {
+      kind: "error",
+      status: 401,
+      error: "Your account is no longer available.",
+    };
+  }
+  if (!state.staff.password_hash || !verifyPassword(password, state.staff.password_hash)) {
+    return { kind: "error", status: 401, error: "Current password is incorrect." };
+  }
+
+  const decision = decisionFor(state);
+  if (decision.kind === "blocked") {
+    return {
+      kind: "error",
+      status: 409,
+      error: "Promote another employee to administrator before deleting your account.",
+    };
+  }
+  const scope = decision.kind;
+  if (body.expected_scope && body.expected_scope !== scope) {
+    return {
+      kind: "error",
+      status: 409,
+      error: "Your team changed. Review the updated deletion details and try again.",
+    };
+  }
+  if (scope === "organization" && body.confirmation !== "DELETE") {
+    return {
+      kind: "error",
+      status: 400,
+      error: "Type DELETE to confirm organization deletion.",
+    };
+  }
+  return { kind: "valid", scope };
+}
+
 export async function DELETE(req: Request) {
   const ctx = await getSessionContext();
   if (!ctx) {
@@ -187,37 +235,49 @@ export async function DELETE(req: Request) {
   }
 
   const db = await getDb();
+  const validated = await db.transaction((tx) =>
+    validateDeletion(tx, ctx, body, password)
+  );
+  if (validated.kind === "error") {
+    return NextResponse.json(
+      { error: validated.error },
+      { status: validated.status }
+    );
+  }
+
+  if (validated.scope === "organization") {
+    try {
+      await cancelCompanyBilling(ctx.companyId);
+    } catch (error) {
+      console.error("Forge billing cancellation before account deletion failed:", error);
+      return NextResponse.json(
+        {
+          error:
+            "Billing cancellation is temporarily unavailable. Your account was not deleted; please retry.",
+          retryable: true,
+        },
+        { status: 503 }
+      );
+    }
+  }
+
   const result = await db.transaction(async (tx): Promise<DeleteResult> => {
-    const state = await readDeletionState(tx, ctx);
-    if (!state) {
-      return { kind: "error", status: 401, error: "Your account is no longer available." };
-    }
-    if (!state.staff.password_hash || !verifyPassword(password, state.staff.password_hash)) {
-      return { kind: "error", status: 401, error: "Current password is incorrect." };
-    }
-
-    const decision = decisionFor(state);
-    if (decision.kind === "blocked") {
-      return {
-        kind: "error",
-        status: 409,
-        error: "Promote another employee to administrator before deleting your account.",
-      };
-    }
-
-    const scope = decision.kind;
-    if (body.expected_scope && body.expected_scope !== scope) {
+    const finalValidation = await validateDeletion(tx, ctx, body, password);
+    if (finalValidation.kind === "error") return finalValidation;
+    const scope = finalValidation.scope;
+    if (scope !== validated.scope) {
       return {
         kind: "error",
         status: 409,
         error: "Your team changed. Review the updated deletion details and try again.",
       };
     }
-    if (scope === "organization" && body.confirmation !== "DELETE") {
+    const state = await readDeletionState(tx, ctx);
+    if (!state) {
       return {
         kind: "error",
-        status: 400,
-        error: "Type DELETE to confirm organization deletion.",
+        status: 401,
+        error: "Your account is no longer available.",
       };
     }
 
