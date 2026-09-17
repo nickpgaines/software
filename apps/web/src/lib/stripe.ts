@@ -165,6 +165,8 @@ export async function savePaymentMethodForCustomer(args: {
   stripeAccountId: string;
   stripePaymentMethodId: string;
   makeDefault?: boolean;
+  requiresExplicitSelection?: boolean;
+  recurringOnly?: boolean;
 }): Promise<StripePaymentMethod> {
   const { companyId, customerId, stripeAccountId, stripePaymentMethodId } =
     args;
@@ -196,14 +198,17 @@ export async function savePaymentMethodForCustomer(args: {
   }
 
   const card = pm.card ?? null;
-  const wallet = card?.wallet?.type ?? null;
+  const wallet = card?.wallet?.type ?? card?.generated_from?.payment_method_details?.card_present?.wallet?.type ?? null;
 
   const existingCount = (await db
     .prepare(
       "SELECT COUNT(*) AS n FROM stripe_payment_methods WHERE company_id = ? AND customer_id = ?"
     )
     .get(companyId, customerId)) as { n: number };
-  const shouldDefault = args.makeDefault || existingCount.n === 0;
+  const existing = await db.prepare('SELECT requires_explicit_selection FROM stripe_payment_methods WHERE company_id=? AND stripe_payment_method_id=?').get<{ requires_explicit_selection: number }>(companyId,stripePaymentMethodId);
+  const explicitOnly = args.requiresExplicitSelection || !!existing?.requires_explicit_selection || !!card?.generated_from;
+  const shouldDefault = !explicitOnly && (args.makeDefault || existingCount.n === 0);
+  if (args.requiresExplicitSelection && (!card || pm.type !== 'card')) throw new Error('Terminal must save a reusable generated card');
 
   await db.transaction(async (tx) => {
     if (shouldDefault) {
@@ -218,14 +223,18 @@ export async function savePaymentMethodForCustomer(args: {
         `INSERT INTO stripe_payment_methods
             (company_id, customer_id, stripe_customer_id,
              stripe_payment_method_id, brand, last4,
-             exp_month, exp_year, wallet_type, is_default)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             exp_month, exp_year, wallet_type, is_default, requires_explicit_selection, allow_redisplay, recurring_only, stripe_account_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(company_id, stripe_payment_method_id) DO UPDATE SET
             brand = excluded.brand,
             last4 = excluded.last4,
             exp_month = excluded.exp_month,
             exp_year = excluded.exp_year,
             wallet_type = excluded.wallet_type,
+            requires_explicit_selection = MAX(stripe_payment_methods.requires_explicit_selection, excluded.requires_explicit_selection),
+            allow_redisplay = excluded.allow_redisplay,
+            recurring_only = MAX(stripe_payment_methods.recurring_only, excluded.recurring_only),
+            stripe_account_id = excluded.stripe_account_id,
             is_default = CASE WHEN ? = 1 THEN 1 ELSE stripe_payment_methods.is_default END`
       )
       .run(
@@ -239,6 +248,10 @@ export async function savePaymentMethodForCustomer(args: {
         card?.exp_year ?? null,
         wallet,
         shouldDefault ? 1 : 0,
+        explicitOnly ? 1 : 0,
+        pm.allow_redisplay || 'unspecified',
+        args.recurringOnly || (explicitOnly && wallet) ? 1 : 0,
+        stripeAccountId,
         shouldDefault ? 1 : 0
       );
   });

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { assertNoUnresolvedTerminalPayment } from '@/lib/terminal-job-guard';
 import { getDb, type StripePaymentMethod } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
 import {
@@ -139,6 +140,7 @@ async function chargeSavedCard(
   // Pick the PM: explicit id wins, otherwise the customer's default.
   let pm: StripePaymentMethod | undefined;
   if (!attempt) {
+    await assertNoUnresolvedTerminalPayment(db,companyId,jobId);
     if (body.payment_method_id) {
       pm = (await db
         .prepare(
@@ -151,7 +153,7 @@ async function chargeSavedCard(
       pm = (await db
         .prepare(
           `SELECT * FROM stripe_payment_methods
-           WHERE company_id = ? AND customer_id = ?
+           WHERE company_id = ? AND customer_id = ? AND requires_explicit_selection = 0
            ORDER BY is_default DESC, created_at DESC, id DESC LIMIT 1`
         )
         .get(companyId, job.customer_id)) as StripePaymentMethod | undefined;
@@ -162,6 +164,8 @@ async function chargeSavedCard(
         { status: 400 }
       );
     }
+    if (pm.recurring_only) return NextResponse.json({ error: 'This wallet-generated card can only be used for agreed recurring subscription payments.' }, { status: 409 });
+    if (pm.stripe_account_id && pm.stripe_account_id !== company.stripe_account_id) return NextResponse.json({ error: 'Saved card belongs to a different Stripe account' }, { status: 409 });
     const reservation = await db.transaction(async tx => {
       const replay = await findPaymentReplay(tx, paymentInput);
       if (replay) return { replay, attempt: undefined, created: false };
