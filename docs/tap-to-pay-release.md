@@ -20,14 +20,14 @@ Native host tests execute production coordinator/session/policy code without a p
 
 Local verification snapshot on 2026-09-16:
 
-- Node.js 24.19.0, npm 9.2.0 and Next.js 14.2.35: 308/308 web tests passed; `tsc --noEmit` passed. The preceding isolated-file SQLite production build compiled and generated 149/149 static pages; the final recovery-fix build and scoped re-review are pending.
+- Node.js 24.19.0, npm 9.2.0 and Next.js 14.2.35: 309/309 web tests passed after adding the decorative contactless icon; `tsc --noEmit` passed. The isolated-file SQLite production build compiled and generated 149/149 static pages. Whole-branch review, recovery-fix re-review, and the final icon review have no remaining blocking findings.
 - Xcode 27.0 (27A266a), Apple Swift 6.4: 13/13 native macOS behavioral tests passed.
 - Retained actual-SDK logs show `TEST BUILD SUCCEEDED` for the Debug simulator app/test bundle and `BUILD SUCCEEDED` for the enabled-capability Release simulator and unsigned generic-device branches. Existing third-party Capacitor and Splash asset warnings remain; no clean-warning claim is made.
 
 The following remain deliberately unverified:
 
-- XCTest execution on a booted simulator; no simulator was booted automatically.
-- Representative full UI layout/interaction on a simulator or physical device. Existing coverage is the React hook/component harness, so no visual acceptance claim is made.
+- XCTest execution on a booted simulator. The simulator was subsequently opened at the user's request for a separate local UI preview, not a test-suite run.
+- Full UI interaction and physical-device layout acceptance. The local simulator checkout was visually inspected with the $225 demo job, disabled Tap to Pay fallback, and decorative contactless icon. This preview uses an isolated database, no provider credentials, and a temporary auto-login/checkout entry point outside the repository; it does not validate a native reader or successful payment.
 - SDK simulated-reader runtime, because no isolated provider test environment is configured.
 - Restricted entitlement approval, signed provisioning profiles, Apple merchant education/Terms presentation, location/permission UI, NFC acceptance, physical cards/wallets, declines, settlement and production operations.
 

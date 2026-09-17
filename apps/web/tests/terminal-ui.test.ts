@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
+import { renderToStaticMarkup } from 'react-dom/server';
 // @ts-ignore existing UI harness executes the production hooks and JSX handlers.
 import {loadCustomerModule, hookRenderer, elements, text} from './helpers/customer-ui.mjs';
 
@@ -36,6 +37,15 @@ test('unsupported plugin disables tap with useful manual card fallback',async t=
   const h=await harness(t,{supported:false});
   assert.equal(h.button('Tap to Pay').props.disabled,true);
   assert.match(text(h.tree),/manual|Pay with card/i);
+});
+test('tap button keeps its text label with a decorative non-focusable icon',async t=>{
+  const h=await harness(t);
+  const button=h.button('Tap to Pay on iPhone');
+  const markup=renderToStaticMarkup(button);
+  assert.equal(text(button),'Tap to Pay on iPhone');
+  assert.match(markup,/<svg\b[^>]*aria-hidden="true"/);
+  assert.match(markup,/<svg\b[^>]*focusable="false"/);
+  assert.equal(button.props.disabled,false);
 });
 test('synchronous double tap creates once and payment save warning still reports verified success',async t=>{
   const h=await harness(t,{reconciled:{status:'succeeded',payment_recorded:true,card_saved:false,warning:'Card could not be saved'}});

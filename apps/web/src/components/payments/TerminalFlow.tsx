@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
+import { SmartphoneNfc } from 'lucide-react';
 import { nativeTerminal, type NativeTerminal } from '@/lib/native-terminal';
 import { TERMINAL_CONSENT_VERSION, terminalConsentText } from '@/lib/terminal-consent';
 import type { TerminalAttemptView } from '@/lib/terminal-attempts';
@@ -193,7 +194,10 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
         <label className="block">Customer-entered name<input className="block w-full rounded border border-line bg-card p-2" type="text" autoComplete="name" value={name} disabled={busy || uncertain} onChange={e=>setName(e.target.value)}/></label>
         <label className="flex gap-2"><input type="checkbox" checked={checked} disabled={busy || uncertain} onChange={e=>setChecked(e.target.checked)}/> I agree to save my card under these terms.</label>
       </div>}
-      <button type="button" className="w-full rounded-xl bg-primary p-3 text-primary-foreground font-bold disabled:opacity-50" disabled={busy || uncertain || !capability?.supported || (save && (!checked || !name.trim()))} onClick={()=>run('start')}>{operation === 'payment' ? 'Tap to Pay on iPhone' : 'Save card with a tap'}</button>
+      <button type="button" className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary p-3 text-primary-foreground font-bold disabled:opacity-50" disabled={busy || uncertain || !capability?.supported || (save && (!checked || !name.trim()))} onClick={()=>run('start')}>
+        {operation === 'payment' && <SmartphoneNfc size={18} className="shrink-0" aria-hidden="true" focusable="false" />}
+        {operation === 'payment' ? 'Tap to Pay on iPhone' : 'Save card with a tap'}
+      </button>
     </>}
     {(uncertain || unfinished) && <div className="flex flex-wrap gap-3">
       <button type="button" disabled={busy} onClick={()=>run('recover')}>Check status</button>
