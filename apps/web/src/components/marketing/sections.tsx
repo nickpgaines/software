@@ -122,7 +122,11 @@ export function SecondaryCta({
   );
 }
 
-export function FinalCta() {
+export function FinalCta({
+  accessCopy = "Free trial. No credit card. Cancel any time.",
+}: {
+  accessCopy?: string;
+}) {
   return (
     <section className="px-6 md:px-10 py-24 md:py-32">
       <div className="max-w-app mx-auto">
@@ -132,7 +136,7 @@ export function FinalCta() {
             Your business deserves a better CRM.
           </SectionHeading>
           <p className="mt-5 text-[16px] md:text-[18px] font-bold text-zinc-400 mx-auto max-w-xl">
-            Free trial. No credit card. Cancel any time.
+            {accessCopy}
           </p>
           <div className="mt-8 flex items-center justify-center">
             <GetStartedCta size="lg" />

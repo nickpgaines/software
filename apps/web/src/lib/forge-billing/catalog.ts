@@ -1,12 +1,9 @@
 import type Stripe from 'stripe';
 import { BillingError, requiredConfig } from './config';
-export const BILLING_PLANS = {
-  solo: { seats: 1, month: 7900, year: 79000 },
-  team: { seats: 8, month: 14900, year: 149000 },
-  business: { seats: 30, month: 22900, year: 229000 },
-} as const;
-export type BillingPlan = keyof typeof BILLING_PLANS;
-export type BillingInterval = 'month' | 'year';
+import { BILLING_PLANS } from './catalog-public';
+export { BILLING_PLANS } from './catalog-public';
+export type { BillingInterval, BillingPlan } from './catalog-public';
+import type { BillingInterval, BillingPlan } from './catalog-public';
 export function selection(plan: unknown, interval: unknown): { plan: BillingPlan; interval: BillingInterval } {
   if (typeof plan !== 'string' || !Object.hasOwn(BILLING_PLANS, plan) || (interval !== 'month' && interval !== 'year')) throw new BillingError('Choose a valid plan and interval', 400);
   return { plan: plan as BillingPlan, interval };

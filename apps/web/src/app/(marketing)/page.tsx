@@ -11,6 +11,11 @@ import {
 import { FeatureTabs } from "@/components/marketing/FeatureTabs";
 import { PricingSection } from "@/components/marketing/PricingSection";
 import { FaqSection } from "@/components/marketing/FaqSection";
+import {
+  billingCutoff,
+  isForgeBillingEnabled,
+} from "@/lib/forge-billing/config";
+import { forgePublicAccessCopy } from "@/lib/forge-billing/copy";
 
 export const metadata: Metadata = {
   title: "Forge — The CRM for service businesses that move fast.",
@@ -19,6 +24,11 @@ export const metadata: Metadata = {
 };
 
 export default function MarketingHome() {
+  const billingEnabled = isForgeBillingEnabled();
+  const accessCopy = forgePublicAccessCopy(
+    billingEnabled,
+    billingEnabled ? billingCutoff() : "",
+  );
   return (
     <div>
       {/* Hero */}
@@ -90,8 +100,8 @@ export default function MarketingHome() {
               Not public pricing.
             </SectionHeading>
             <SectionSubhead className="mt-6 mx-auto">
-              Not public pricing. Pay annually and get 2 months free. Free
-              trial, no credit card required, cancel any time.
+              Not public pricing. Pay annually and get 2 months free. {" "}
+              {accessCopy.marketing}
             </SectionSubhead>
           </div>
 
@@ -125,7 +135,7 @@ export default function MarketingHome() {
         </div>
       </section>
 
-      <FinalCta />
+      <FinalCta accessCopy={accessCopy.marketing} />
     </div>
   );
 }
