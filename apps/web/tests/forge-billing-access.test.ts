@@ -3,10 +3,12 @@ import { createHmac } from "node:crypto";
 import test from "node:test";
 import { NextRequest } from "next/server.js";
 import { hashPassword } from "../src/lib/password.ts";
+import type { Db } from "../src/lib/db.ts";
 import {
   fixture,
   loadTask2Modules,
   provider,
+  setAfterNextTransactionCommit,
   setMcpPrincipal,
   setSession,
   setWidgetPrincipal,
@@ -411,6 +413,104 @@ test("a terminal old subscription does not leave a stale seat cap", async (t) =>
   assert.equal(response.status, 201);
 });
 
+for (const terminalStatus of ["canceled", "incomplete_expired"]) {
+  test(`a persisted completed Checkout releases its exact ${terminalStatus} subscription seat cap`, async (t) => {
+    const { db } = await setup(t);
+    await db.prepare("DELETE FROM staff WHERE id = 8").run();
+    await db
+      .prepare(
+        `INSERT INTO forge_billing_accounts
+          (company_id,account_id,livemode,customer_id,customer_key)
+         VALUES(1,'acct_platform',0,'cus_company_1',?)`
+      )
+      .run(`terminal_${terminalStatus}`);
+    await db
+      .prepare(
+        `INSERT INTO forge_billing_checkout
+          (company_id,reservation_id,plan,interval,price_id,session_id,status)
+         VALUES(1,'reservation_terminal','solo','month','price_solo_month','cs_terminal','complete')`
+      )
+      .run();
+    provider.sessions.push({
+      id: "cs_terminal",
+      customer: "cus_company_1",
+      livemode: false,
+      status: "complete",
+      subscription: "sub_terminal",
+      metadata: { forge_reservation_id: "reservation_terminal" },
+    });
+    provider.subscriptions.push({
+      id: "sub_terminal",
+      customer: "cus_company_1",
+      livemode: false,
+      status: terminalStatus,
+      items: {
+        data: [{ quantity: 1, price: { id: "price_solo_month" } }],
+      },
+    });
+
+    const response = await modules.staffRoute.POST(
+      new Request("https://forge.test/api/staff", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: "Post-cancellation Seat", role: "technician" }),
+      })
+    );
+    assert.equal(response.status, 201);
+    assert.equal(
+      (await db.prepare("SELECT COUNT(*) AS n FROM forge_billing_checkout").get())
+        ?.n,
+      0
+    );
+  });
+}
+
+test("a persisted completed Checkout keeps its seat cap when the exact subscription is unresolved", async (t) => {
+  const { db } = await setup(t);
+  await db.prepare("DELETE FROM staff WHERE id = 8").run();
+  await db
+    .prepare(
+      `INSERT INTO forge_billing_accounts
+        (company_id,account_id,livemode,customer_id,customer_key,subscription_id,subscription_status)
+       VALUES(1,'acct_platform',0,'cus_company_1','unresolved_customer','sub_old','canceled')`
+    )
+    .run();
+  await db
+    .prepare(
+      `INSERT INTO forge_billing_checkout
+        (company_id,reservation_id,plan,interval,price_id,session_id,status)
+       VALUES(1,'reservation_unresolved','solo','month','price_solo_month','cs_unresolved','complete')`
+    )
+    .run();
+  provider.sessions.push({
+    id: "cs_unresolved",
+    customer: "cus_company_1",
+    livemode: false,
+    status: "complete",
+    subscription: "sub_new_unresolved",
+    metadata: { forge_reservation_id: "reservation_unresolved" },
+  });
+
+  const response = await modules.staffRoute.POST(
+    new Request("https://forge.test/api/staff", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ name: "Unsafe Seat", role: "technician" }),
+    })
+  );
+  assert.equal(response.status, 503);
+  assert.equal(
+    (await db.prepare("SELECT COUNT(*) AS n FROM forge_billing_checkout").get())
+      ?.n,
+    1
+  );
+  assert.equal(
+    (await db.prepare("SELECT COUNT(*) AS n FROM staff WHERE company_id=1").get())
+      ?.n,
+    1
+  );
+});
+
 test("administrator recovery is tenant scoped, minimal, and atomically promotes an existing employee", async (t) => {
   const { db } = await setup(t);
   await db
@@ -581,4 +681,62 @@ test("provider cancellation finishes before company deletion and failures retain
   assert.equal(deleted.status, 200);
   assert.deepEqual(provider.cancelCalls, ["sub_1"]);
   assert.equal((await db.prepare("SELECT COUNT(*) AS n FROM company WHERE id=1").get())?.n, 0);
+});
+
+test("organization deletion claims its guard in the validation transaction before staff can insert", async (t) => {
+  const { db } = await setup(t);
+  await db.prepare("DELETE FROM staff WHERE id=8").run();
+  await db
+    .prepare("UPDATE staff SET password_hash=? WHERE id=7")
+    .run(hashPassword("correct horse"));
+  await db
+    .prepare(
+      `INSERT INTO forge_billing_accounts
+        (company_id,account_id,livemode,customer_id,customer_key,subscription_id,subscription_status)
+       VALUES(1,'acct_platform',0,'cus_company_1','atomic_deletion','sub_atomic','active')`
+    )
+    .run();
+  provider.subscriptions.push({
+    id: "sub_atomic",
+    customer: "cus_company_1",
+    livemode: false,
+    status: "active",
+  });
+
+  let staffStatus = 0;
+  setAfterNextTransactionCommit(async (committedDb: Db) => {
+    try {
+      await modules.access.assertStaffInsertionAllowed(committedDb, 1);
+      await committedDb
+        .prepare(
+          "INSERT INTO staff(company_id,name,first_name,permission_level) VALUES(1,'Racing Staff','Racing','technician')"
+        )
+        .run();
+      staffStatus = 201;
+    } catch {
+      staffStatus = 409;
+    }
+  });
+
+  const deletion = await modules.deletionRoute.DELETE(
+    new Request("https://forge.test/api/account/deletion", {
+      method: "DELETE",
+      headers: {
+        origin: "https://forge.test",
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        password: "correct horse",
+        confirmation: "DELETE",
+        expected_scope: "organization",
+      }),
+    })
+  );
+  assert.equal(staffStatus, 409);
+  assert.equal(deletion.status, 200);
+  assert.deepEqual(provider.cancelCalls, ["sub_atomic"]);
+  assert.equal(
+    (await db.prepare("SELECT COUNT(*) AS n FROM company WHERE id=1").get())?.n,
+    0
+  );
 });

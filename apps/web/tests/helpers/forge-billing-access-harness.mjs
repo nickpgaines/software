@@ -3,6 +3,7 @@ import { registerHooks } from "node:module";
 
 let database;
 let sessionContext = null;
+let afterNextTransactionCommit = null;
 
 export const SESSION_COOKIE = "crm_session";
 export const toolCalls = [];
@@ -42,6 +43,10 @@ export function setMcpPrincipal(value) {
   mcpPrincipal = value;
 }
 
+export function setAfterNextTransactionCommit(callback) {
+  afterNextTransactionCommit = callback;
+}
+
 export async function authenticateWidgetToken() {
   return widgetPrincipal;
 }
@@ -79,10 +84,11 @@ export function getStripe() {
   throw new Error("Connected-account Stripe must not be used in these tests");
 }
 
-/** @type {{fail:boolean,cancelCalls:string[],subscriptions:Array<{id:string,customer:string,livemode:boolean,status:string}>}} */
+/** @type {{fail:boolean,cancelCalls:string[],sessions:any[],subscriptions:any[]}} */
 export const provider = {
   fail: false,
   cancelCalls: [],
+  sessions: [],
   subscriptions: [],
 };
 
@@ -121,8 +127,12 @@ export default class Stripe {
       },
       checkout: {
         sessions: {
-          retrieve: async () => null,
-          list: () => list([]),
+          retrieve: async (id) => {
+            check();
+            return provider.sessions.find((row) => row.id === id) ?? null;
+          },
+          list: ({ customer }) =>
+            list(provider.sessions.filter((row) => row.customer === customer)),
           expire: async () => ({}),
         },
       },
@@ -167,6 +177,9 @@ function makeDb(sqlite) {
         try {
           const value = await fn({ ...db, transaction: async (nested) => nested(db) });
           sqlite.exec("COMMIT");
+          const afterCommit = afterNextTransactionCommit;
+          afterNextTransactionCommit = null;
+          if (afterCommit) await afterCommit(db);
           return value;
         } catch (error) {
           sqlite.exec("ROLLBACK");
@@ -331,7 +344,9 @@ export function fixture() {
   toolCalls.length = 0;
   provider.fail = false;
   provider.cancelCalls.length = 0;
+  provider.sessions.length = 0;
   provider.subscriptions.length = 0;
+  afterNextTransactionCommit = null;
   Object.assign(process.env, {
     FORGE_BILLING_ENABLED: "true",
     FORGE_BILLING_CUTOFF_AT: "2020-09-26T05:00:00.000Z",

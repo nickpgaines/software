@@ -4,6 +4,7 @@ import { hashPassword } from "@/lib/password";
 import { requireCompanyId } from "@/lib/auth";
 import { assertStaffInsertionAllowed } from "@/lib/forge-billing/access";
 import { BillingError } from "@/lib/forge-billing/config";
+import { resolveTerminalCheckoutSeatRelease } from "@/lib/forge-billing/service";
 
 export const dynamic = "force-dynamic";
 
@@ -64,8 +65,10 @@ export async function POST(req: Request) {
     }
     let result: { lastInsertRowid: number };
     try {
+      const releasableCheckout =
+        await resolveTerminalCheckoutSeatRelease(companyId);
       result = await db.transaction(async (tx) => {
-        await assertStaffInsertionAllowed(tx, companyId);
+        await assertStaffInsertionAllowed(tx, companyId, releasableCheckout);
         return tx
           .prepare(
             "INSERT INTO staff (company_id, name, role, first_name) VALUES (?, ?, ?, ?)"
@@ -156,8 +159,10 @@ export async function POST(req: Request) {
 
   let result: { lastInsertRowid: number };
   try {
+    const releasableCheckout =
+      await resolveTerminalCheckoutSeatRelease(companyId);
     result = await db.transaction(async (tx) => {
-      await assertStaffInsertionAllowed(tx, companyId);
+      await assertStaffInsertionAllowed(tx, companyId, releasableCheckout);
       return tx
         .prepare(
           `INSERT INTO staff

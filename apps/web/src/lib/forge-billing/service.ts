@@ -37,6 +37,20 @@ export async function assertCompanyNotDeleting(db: Db, companyId: number): Promi
   const account = await db.prepare('SELECT deleting FROM forge_billing_accounts WHERE company_id=?').get<{deleting:number}>(companyId);
   if (account?.deleting) throw new BillingError('Company deletion is in progress');
 }
+/** Call inside the transaction that authorizes organization deletion. */
+export async function claimCompanyDeletion(
+  db: Db,
+  companyId: number
+): Promise<void> {
+  await db
+    .prepare(
+      "INSERT OR IGNORE INTO forge_billing_accounts(company_id,account_id,livemode,customer_key,deleting) VALUES(?,'',0,?,1)"
+    )
+    .run(companyId, randomUUID());
+  await db
+    .prepare('UPDATE forge_billing_accounts SET deleting=1 WHERE company_id=?')
+    .run(companyId);
+}
 type Reservation = { company_id:number; reservation_id:string; plan:BillingPlan; interval:BillingInterval; price_id:string; session_id:string|null; status:string };
 async function ensureCustomer(companyId: number): Promise<BillingAccount> {
   const db = await getDb();
@@ -70,6 +84,63 @@ async function findCheckout(account: BillingAccount, reservation: Reservation) {
   if (found.customer !== account.customer_id || found.livemode !== live || found.metadata?.forge_reservation_id !== reservation.reservation_id) throw new Error('Checkout ownership mismatch');
   await (await getDb()).prepare('UPDATE forge_billing_checkout SET session_id=?,status=? WHERE company_id=? AND reservation_id=?').run(found.id, found.status || 'unknown', account.company_id, reservation.reservation_id);
   return found;
+}
+async function canRetireCheckout(
+  account: BillingAccount,
+  reservation: Reservation,
+  checkout: Stripe.Checkout.Session,
+  stripe: Stripe,
+  live: boolean
+): Promise<boolean> {
+  if (checkout.status === 'expired') return true;
+  if (checkout.status !== 'complete') return false;
+  const subscriptionId = objectId(checkout.subscription);
+  if (!subscriptionId) {
+    throw new BillingError('Checkout subscription is unresolved', 503);
+  }
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const item = subscription.items.data[0];
+  if (
+    subscription.id !== subscriptionId ||
+    objectId(subscription.customer) !== account.customer_id ||
+    subscription.livemode !== live ||
+    subscription.items.data.length !== 1 ||
+    item.quantity !== 1 ||
+    item.price.id !== reservation.price_id
+  ) {
+    throw new Error('Checkout subscription binding mismatch');
+  }
+  return ['canceled', 'incomplete_expired'].includes(subscription.status);
+}
+/**
+ * Resolve only persisted terminal Checkout rows before a staff insertion.
+ * The caller must delete the returned reservation inside its insertion transaction.
+ */
+export async function resolveTerminalCheckoutSeatRelease(
+  companyId: number
+): Promise<string | null> {
+  if (!isForgeBillingEnabled()) return null;
+  const db = await getDb();
+  const reservation = await db
+    .prepare('SELECT * FROM forge_billing_checkout WHERE company_id=?')
+    .get<Reservation>(companyId);
+  if (!reservation) return null;
+  if (reservation.status === 'expired') return reservation.reservation_id;
+  if (reservation.status !== 'complete') return null;
+  const account = await readBillingAccount(companyId);
+  if (!account?.customer_id || account.deleting) {
+    throw new BillingError('Checkout subscription is unresolved', 503);
+  }
+  try {
+    const checkout = await findCheckout(account, reservation);
+    const { stripe, live } = await verifyProvider(account);
+    return await canRetireCheckout(account, reservation, checkout, stripe, live)
+      ? reservation.reservation_id
+      : null;
+  } catch (error) {
+    if (error instanceof BillingError) throw error;
+    throw new BillingError('Checkout subscription is unresolved', 503);
+  }
 }
 export async function createCompanyCheckout(companyId: number, rawPlan: unknown, rawInterval: unknown): Promise<{url:string}> {
   requireBillingEnabled();
@@ -106,15 +177,7 @@ export async function createCompanyCheckout(companyId: number, rawPlan: unknown,
     }
     // The Checkout may have completed after the earlier list/reconcile. Only its
     // own canonically terminal subscription can release this reservation.
-    let canRetire = found.status === 'expired';
-    if (found.status === 'complete') {
-      const subscriptionId = objectId(found.subscription);
-      if (!subscriptionId) throw new BillingError('Checkout subscription is unresolved',503);
-      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
-      const item = subscription.items.data[0];
-      if (subscription.id !== subscriptionId || objectId(subscription.customer) !== account.customer_id || subscription.livemode !== live || subscription.items.data.length !== 1 || item.quantity !== 1 || item.price.id !== reservation.price_id) throw new Error('Checkout subscription binding mismatch');
-      canRetire = ['canceled','incomplete_expired'].includes(subscription.status);
-    }
+    const canRetire = await canRetireCheckout(account,reservation,found,stripe,live);
     if (canRetire) {
       await db.prepare('DELETE FROM forge_billing_checkout WHERE company_id=? AND reservation_id=? AND status=?').run(companyId,reservation.reservation_id,found.status);
       return createCompanyCheckout(companyId,plan,interval);
@@ -141,10 +204,7 @@ export async function createCompanyPortal(companyId: number): Promise<{url:strin
 /** Guard is durable on failure: callers must abort deletion and retry cleanup. Never call inside a DB transaction. */
 export async function cancelCompanyBilling(companyId: number): Promise<void> {
   const db=await getDb();
-  await db.transaction(async tx => {
-    await tx.prepare("INSERT OR IGNORE INTO forge_billing_accounts(company_id,account_id,livemode,customer_key,deleting) VALUES(?,'',0,?,1)").run(companyId,randomUUID());
-    await tx.prepare('UPDATE forge_billing_accounts SET deleting=1 WHERE company_id=?').run(companyId);
-  });
+  await db.transaction((tx) => claimCompanyDeletion(tx, companyId));
   const account=(await readBillingAccount(companyId))!;
   if (!account.account_id) return;
   if (!account.customer_id) throw new BillingError('Customer creation is unresolved; retry deletion after billing reconciliation',503);

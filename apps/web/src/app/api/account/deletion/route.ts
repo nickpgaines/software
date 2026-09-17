@@ -14,7 +14,10 @@ import { verifyPassword } from "@/lib/password";
 import { getStripe, isStripeConfigured } from "@/lib/stripe";
 import { getMasterCreds } from "@/lib/twilio-platform";
 import { deleteTenantDataWithoutForeignKeyCascades } from "@/lib/tenant-deletion";
-import { cancelCompanyBilling } from "@/lib/forge-billing/service";
+import {
+  cancelCompanyBilling,
+  claimCompanyDeletion,
+} from "@/lib/forge-billing/service";
 
 export const dynamic = "force-dynamic";
 
@@ -235,9 +238,13 @@ export async function DELETE(req: Request) {
   }
 
   const db = await getDb();
-  const validated = await db.transaction((tx) =>
-    validateDeletion(tx, ctx, body, password)
-  );
+  const validated = await db.transaction(async (tx) => {
+    const result = await validateDeletion(tx, ctx, body, password);
+    if (result.kind === "valid" && result.scope === "organization") {
+      await claimCompanyDeletion(tx, ctx.companyId);
+    }
+    return result;
+  });
   if (validated.kind === "error") {
     return NextResponse.json(
       { error: validated.error },

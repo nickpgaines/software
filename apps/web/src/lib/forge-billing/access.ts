@@ -61,10 +61,22 @@ type SeatState = {
  */
 export async function assertStaffInsertionAllowed(
   db: Db,
-  companyId: number
+  companyId: number,
+  releasableCheckoutReservationId: string | null = null
 ): Promise<void> {
   await assertCompanyNotDeleting(db, companyId);
   if (!isForgeBillingEnabled()) return;
+
+  if (releasableCheckoutReservationId) {
+    await db
+      .prepare(
+        `DELETE FROM forge_billing_checkout
+          WHERE company_id = ?
+            AND reservation_id = ?
+            AND status IN ('complete','expired')`
+      )
+      .run(companyId, releasableCheckoutReservationId);
+  }
 
   const state = await db
     .prepare(
