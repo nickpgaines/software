@@ -1,5 +1,6 @@
 import { createClient, type Client, type InValue } from "@libsql/client";
 import { installTerminalSchema } from '@/lib/terminal-schema';
+import { installForgeBillingSchema } from '@/lib/forge-billing/schema';
 import {
   WORKFLOW_TEMPLATES,
   serializeGraph,
@@ -513,13 +514,19 @@ async function init(): Promise<void> {
   // Fast path: if the schema is already at the current version, skip the
   // entire CREATE/ALTER/INDEX block. Costs one SELECT instead of ~150
   // round-trips per cold start.
+  let currentVersion = 0;
   try {
     const row = await _db
       .prepare("SELECT version FROM _schema_version WHERE id = 1 LIMIT 1")
       .get<{ version: number }>();
-    if (row && row.version >= SCHEMA_VERSION) return;
+    currentVersion = row?.version ?? 0;
   } catch {
     // Table doesn't exist yet — fall through to full init.
+  }
+  if (currentVersion >= SCHEMA_VERSION) {
+    // Isolated additive tables do not require replaying the legacy data migrations.
+    await installForgeBillingSchema(_db);
+    return;
   }
 
   // Pragmas. Best-effort — Turso ignores some, local file accepts both.
@@ -2588,6 +2595,7 @@ async function init(): Promise<void> {
   // Stamp the schema version so subsequent cold starts hit the fast-path
   // at the top of init().
   await installTerminalSchema(_db);
+  await installForgeBillingSchema(_db);
   await _db.exec(
     `CREATE TABLE IF NOT EXISTS _schema_version (
        id INTEGER PRIMARY KEY,
