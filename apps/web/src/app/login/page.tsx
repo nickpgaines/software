@@ -5,6 +5,8 @@ import {
 } from "@/lib/forge-billing/config";
 import { forgePublicAccessCopy } from "@/lib/forge-billing/copy";
 
+export const dynamic = "force-dynamic";
+
 export default function LoginPage() {
   const billingEnabled = isForgeBillingEnabled();
   const accessCopy = forgePublicAccessCopy(

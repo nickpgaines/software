@@ -29,9 +29,15 @@ type AdministratorRecovery = {
   eligibleStaff: StaffChoice[];
 };
 
-export function accountDeletionScopeMessage(preview: AccountDeletionPreview) {
+export function accountDeletionScopeMessage(
+  preview: AccountDeletionPreview,
+  billingEnabled: boolean,
+) {
   if (preview.scope === "organization") {
-    return `You are the last employee at ${preview.companyName}. This permanently deletes the organization, its employees, customers, jobs, messages, invoices, settings, and other CRM data. If the organization has a Forge company subscription, deletion cancels it before data is removed. This action does not promise a refund or proration.`;
+    const dataWarning = `You are the last employee at ${preview.companyName}. This permanently deletes the organization, its employees, customers, jobs, messages, invoices, settings, and other CRM data.`;
+    return billingEnabled
+      ? `${dataWarning} If the organization has a Forge company subscription, deletion cancels it before data is removed. This action does not promise a refund or proration.`
+      : dataWarning;
   }
   return `Other employees will remain at ${preview.companyName}. This deletes only your login, profile, and personal connections; organization records remain available to your team.`;
 }
@@ -91,6 +97,7 @@ async function loadAdministratorRecovery(
 }
 
 export function AccountDeletionRecovery({
+  billingEnabled,
   companyName,
   eligibleStaff,
   pendingStaffId,
@@ -98,6 +105,7 @@ export function AccountDeletionRecovery({
   onPromote,
   onRetry,
 }: {
+  billingEnabled: boolean;
   companyName: string;
   eligibleStaff: StaffChoice[];
   pendingStaffId: number | null;
@@ -105,6 +113,23 @@ export function AccountDeletionRecovery({
   onPromote(staffId: number): void;
   onRetry(): void;
 }) {
+  if (!billingEnabled) {
+    return (
+      <div className="space-y-3 text-sm font-bold text-zinc-300">
+        <p>
+          You are the only administrator for {companyName}. Promote another
+          employee before deleting your account.
+        </p>
+        <a
+          href="/employees"
+          className="text-sm font-extrabold text-white hover:text-zinc-300"
+        >
+          Go to Employees →
+        </a>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3 text-sm font-bold text-zinc-300">
       <p>
@@ -152,7 +177,11 @@ export function AccountDeletionRecovery({
   );
 }
 
-export default function AccountDeletionSection() {
+export default function AccountDeletionSection({
+  billingEnabled,
+}: {
+  billingEnabled: boolean;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [preview, setPreview] = useState<AccountDeletionPreview | null>(null);
@@ -187,7 +216,7 @@ export default function AccountDeletionSection() {
     try {
       const nextPreview = await loadDeletionPreview(fetch);
       setPreview(nextPreview);
-      if (nextPreview.blockedReason === "last_admin") {
+      if (billingEnabled && nextPreview.blockedReason === "last_admin") {
         await loadRecovery();
       } else {
         setEligibleStaff([]);
@@ -328,6 +357,7 @@ export default function AccountDeletionSection() {
 
               {!loading && preview && blocked && (
                 <AccountDeletionRecovery
+                  billingEnabled={billingEnabled}
                   companyName={preview.companyName}
                   eligibleStaff={eligibleStaff}
                   pendingStaffId={pendingStaffId}
@@ -340,7 +370,7 @@ export default function AccountDeletionSection() {
               {!loading && preview && !blocked && (
                 <div className="space-y-4">
                   <p className="text-sm font-bold text-zinc-300">
-                    {accountDeletionScopeMessage(preview)}
+                    {accountDeletionScopeMessage(preview, billingEnabled)}
                   </p>
                   <div className="space-y-2">
                     <Label htmlFor="delete-account-password">

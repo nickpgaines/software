@@ -237,7 +237,13 @@ function ActionError({ message }: { message: string | null }) {
   );
 }
 
-function CurrentStatus({ status }: { status: EnabledBillingStatus }) {
+function CurrentStatus({
+  status,
+  showPurchaseExplanation,
+}: {
+  status: EnabledBillingStatus;
+  showPurchaseExplanation: boolean;
+}) {
   return (
     <Card>
       <CardHeader className="flex-row items-start justify-between gap-4">
@@ -288,8 +294,12 @@ function CurrentStatus({ status }: { status: EnabledBillingStatus }) {
         {status.reason === "pre_cutoff" && (
           <p className="sm:col-span-2">
             Shared access continues until {forgeCutoffLabel(status.cutoffAt)}.
-            Starting a subscription now begins paid billing now; it does not
-            schedule a deferred charge for the cutoff.
+            {showPurchaseExplanation && (
+              <>
+                {" "}Starting a subscription now begins paid billing now; it
+                does not schedule a deferred charge for the cutoff.
+              </>
+            )}
           </p>
         )}
       </CardContent>
@@ -426,7 +436,10 @@ export function ForgeBillingView({
         </div>
       )}
 
-      <CurrentStatus status={status} />
+      <CurrentStatus
+        status={status}
+        showPurchaseExplanation={!native && status.canManage}
+      />
 
       <ActionError message={actionError} />
 
@@ -516,6 +529,11 @@ export function ForgeBillingView({
       )}
 
       <div className="flex flex-wrap gap-3">
+        {standalone && status.allowed && (
+          <Button asChild>
+            <a href="/dashboard">Continue to Forge</a>
+          </Button>
+        )}
         <Button
           variant="outline"
           type="button"
@@ -667,7 +685,7 @@ export default function ForgeBilling({
               </Button>
             </CardContent>
           </Card>
-          <AccountDeletionSection />
+          <AccountDeletionSection billingEnabled />
         </div>
       )}
     </div>

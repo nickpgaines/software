@@ -3,7 +3,12 @@ import test from "node:test";
 import * as React from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 // @ts-ignore the shared UI harness loads production TSX through Node's strip-types test runtime.
-import { elements, loadCustomerModule, text } from "./helpers/customer-ui.mjs";
+import {
+  elements,
+  hookRenderer,
+  loadCustomerModule,
+  text,
+} from "./helpers/customer-ui.mjs";
 
 type BillingModule = typeof import("../src/components/billing/ForgeBilling");
 
@@ -142,6 +147,28 @@ test("ordinary employees and native users see status without prices or purchase 
   }
 });
 
+test("native pre-cutoff access offers Forge without web purchase instructions", async () => {
+  const module = (await loadCustomerModule(
+    "components/billing/ForgeBilling.tsx",
+  )) as BillingModule;
+  const markup = renderView(module, {
+    state: {
+      kind: "ready",
+      status: {
+        ...baseStatus,
+        allowed: true,
+        reason: "pre_cutoff",
+        native: true,
+      },
+    },
+    localNative: true,
+  });
+
+  assert.match(markup, /Continue to Forge/);
+  assert.match(markup, /Shared access continues until/);
+  assert.doesNotMatch(markup, /Starting a subscription now begins paid billing/i);
+});
+
 test("provider failure is retryable while an expired session gets a sign-in action", async () => {
   const module = (await loadCustomerModule(
     "components/billing/ForgeBilling.tsx",
@@ -192,7 +219,82 @@ test("an existing nonterminal subscription offers portal and refresh without a s
   assert.match(markup, /cancellation is scheduled/i);
   assert.match(markup, /Manage subscription/);
   assert.match(markup, /Refresh payment status/);
+  assert.match(markup, /Continue to Forge/);
+  assert.match(markup, /href="\/dashboard"/);
   assert.doesNotMatch(markup, /Subscribe|\$79|\$149|\$229/);
+});
+
+test("only canonical allowed status offers a route back to Forge", async () => {
+  const module = (await loadCustomerModule(
+    "components/billing/ForgeBilling.tsx",
+  )) as BillingModule;
+  assert.doesNotMatch(renderView(module), /Continue to Forge/);
+
+  const preCutoff = renderView(module, {
+    state: {
+      kind: "ready",
+      status: { ...baseStatus, allowed: true, reason: "pre_cutoff" },
+    },
+  });
+  assert.match(preCutoff, /Continue to Forge/);
+});
+
+test("refreshing denied billing to canonical allowed status reveals Continue to Forge", async (t) => {
+  const module = (await loadCustomerModule(
+    "components/billing/ForgeBilling.tsx",
+  )) as BillingModule;
+  const originalFetch = globalThis.fetch;
+  const calls: string[] = [];
+  globalThis.fetch = (async (input) => {
+    const url = String(input);
+    calls.push(url);
+    if (url === "/api/forge-billing/status") {
+      return Response.json(baseStatus);
+    }
+    if (url === "/api/forge-billing/refresh") {
+      return Response.json({
+        ...baseStatus,
+        allowed: true,
+        reason: "paid",
+        plan: "team",
+        interval: "month",
+        seatLimit: 8,
+        subscriptionStatus: "active",
+      });
+    }
+    throw new Error(`Unexpected request: ${url}`);
+  }) as typeof fetch;
+  t.after(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  const renderer = hookRenderer();
+  t.after(() => renderer.dispose());
+  renderer.render(module.default, { standalone: true });
+  renderer.flushEffects();
+  await new Promise((resolve) => setImmediate(resolve));
+
+  let root = renderer.render(module.default, { standalone: true });
+  let view = elements(
+    root,
+    (element: React.ReactElement) => element.type === module.ForgeBillingView,
+  )[0]!;
+  assert.equal(view.props.state.status.allowed, false);
+  assert.doesNotMatch(renderToStaticMarkup(view), /Continue to Forge/);
+
+  view.props.onRefresh();
+  await new Promise((resolve) => setImmediate(resolve));
+  root = renderer.render(module.default, { standalone: true });
+  view = elements(
+    root,
+    (element: React.ReactElement) => element.type === module.ForgeBillingView,
+  )[0]!;
+  assert.equal(view.props.state.status.allowed, true);
+  assert.match(renderToStaticMarkup(view), /Continue to Forge/);
+  assert.deepEqual(calls, [
+    "/api/forge-billing/status",
+    "/api/forge-billing/refresh",
+  ]);
 });
 
 test("pending actions disable competing controls and never claim access before refresh", async () => {
@@ -249,6 +351,7 @@ test("last-administrator deletion recovery promotes only the selected existing e
   );
   const markup = renderToStaticMarkup(
     React.createElement(module.AccountDeletionRecovery, {
+      billingEnabled: true,
       companyName: "Forge Test",
       eligibleStaff: [
         { id: 8, name: "Ada Lovelace" },
@@ -279,6 +382,27 @@ test("last-administrator deletion recovery promotes only the selected existing e
   assert.equal(calls[0].input, "/api/forge-billing/administrators");
   assert.equal(calls[0].init?.method, "POST");
   assert.deepEqual(JSON.parse(String(calls[0].init?.body)), { staffId: 9 });
+});
+
+test("disabled billing preserves last-administrator Employees recovery", async () => {
+  const module = await loadCustomerModule(
+    "components/account/AccountDeletionSection.tsx",
+  );
+  const markup = renderToStaticMarkup(
+    React.createElement(module.AccountDeletionRecovery, {
+      billingEnabled: false,
+      companyName: "Forge Test",
+      eligibleStaff: [{ id: 8, name: "Ada Lovelace" }],
+      pendingStaffId: null,
+      error: null,
+      onPromote() {},
+      onRetry() {},
+    }),
+  );
+
+  assert.match(markup, /Go to Employees/);
+  assert.match(markup, /href="\/employees"/);
+  assert.doesNotMatch(markup, /Promote and continue|Ada Lovelace|Retry/);
 });
 
 test("enabled public copy names shared cutoff access instead of promising an individual trial", async () => {
@@ -312,14 +436,19 @@ test("organization deletion warns that billing cancellation has no refund promis
   const module = await loadCustomerModule(
     "components/account/AccountDeletionSection.tsx",
   );
-  const message = module.accountDeletionScopeMessage({
-    scope: "organization",
+  const preview = {
+    scope: "organization" as const,
     companyName: "Forge Test",
     employeeCount: 1,
     adminCount: 1,
     blockedReason: null,
-  });
+  };
+  const message = module.accountDeletionScopeMessage(preview, true);
   assert.match(message, /permanently deletes the organization/i);
   assert.match(message, /subscription.*cancel/i);
   assert.match(message, /does not promise a refund or proration/i);
+
+  const disabledMessage = module.accountDeletionScopeMessage(preview, false);
+  assert.match(disabledMessage, /permanently deletes the organization/i);
+  assert.doesNotMatch(disabledMessage, /subscription|refund|proration/i);
 });

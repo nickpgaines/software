@@ -23,6 +23,8 @@ export const metadata: Metadata = {
     "Scheduling, territory mapping, invoicing, payroll, and recurring billing — one app to run your entire service business. Built for the field, designed to scale.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function MarketingHome() {
   const billingEnabled = isForgeBillingEnabled();
   const accessCopy = forgePublicAccessCopy(

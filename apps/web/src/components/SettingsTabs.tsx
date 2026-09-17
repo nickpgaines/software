@@ -151,7 +151,11 @@ function SettingsTabsInner({
 
       <div className="bg-card border border-line rounded-2xl p-5 sm:p-6 shadow-sm">
         {tab === "profile" && (
-          <ProfilePanel username={username} initialMe={initialMe} />
+          <ProfilePanel
+            username={username}
+            initialMe={initialMe}
+            billingEnabled={billingEnabled}
+          />
         )}
         {canSeeAllSettings && tab === "company" && <CompanyPanel />}
         {canSeeAllSettings && tab === "payments" && <PaymentsPanel />}
@@ -225,9 +229,11 @@ async function processProfileImage(file: File): Promise<string> {
 function ProfilePanel({
   username,
   initialMe,
+  billingEnabled,
 }: {
   username: string;
   initialMe: Me | null;
+  billingEnabled: boolean;
 }) {
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(initialMe);
@@ -434,7 +440,9 @@ function ProfilePanel({
           <div className="pt-6 border-t border-line">
             <AccentPicker />
           </div>
-          {!isAdminEnv && staff && <AccountDeletionSection />}
+          {!isAdminEnv && staff && (
+            <AccountDeletionSection billingEnabled={billingEnabled} />
+          )}
         </>
       )}
     </div>
