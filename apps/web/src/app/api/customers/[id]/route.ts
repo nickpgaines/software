@@ -190,9 +190,9 @@ export async function PATCH(
   }
   const first = (body.first_name ?? existing.first_name ?? "").trim();
   const last = (body.last_name ?? existing.last_name ?? "").trim();
-  if (!first || !last) {
+  if (!first) {
     return NextResponse.json(
-      { error: "First name and last name are required" },
+      { error: "First name is required" },
       { status: 400 }
     );
   }
