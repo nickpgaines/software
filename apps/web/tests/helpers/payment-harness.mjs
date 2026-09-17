@@ -97,6 +97,7 @@ export async function loadRealPaymentDb(suffix = "") {
 export async function loadPaymentRoutes() {
   const overrides = new Set(["db", "auth", "stripe", "payment-receipts", "activity", "payment-job-completion"]);
   const hooks = registerHooks({ resolve(specifier, context, nextResolve) {
+    if (specifier === 'server-only') return { url: 'data:text/javascript,export {}', shortCircuit: true };
     if (specifier.startsWith("@/lib/") && overrides.has(specifier.slice(6))) {
       return { url: import.meta.url, shortCircuit: true };
     }

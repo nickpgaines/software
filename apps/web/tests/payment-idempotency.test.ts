@@ -4,8 +4,9 @@ import { loadPaymentRoutes, paymentDatabase, effects, setCompanyId, setProviderI
 
 const routes = await loadPaymentRoutes();
 let database: ReturnType<typeof paymentDatabase>;
-beforeEach(() => { database = paymentDatabase(); });
-afterEach(() => database.close());
+const originalRollout = process.env.TAP_TO_PAY_ENABLED;
+beforeEach(() => { process.env.TAP_TO_PAY_ENABLED = 'true'; database = paymentDatabase(); });
+afterEach(() => { database.close(); if (originalRollout === undefined) delete process.env.TAP_TO_PAY_ENABLED; else process.env.TAP_TO_PAY_ENABLED = originalRollout; });
 const manualBody = { amount_cents: 1000, tip_cents: 100, method: "cash", notes: "deposit", send_email: true, send_sms: true };
 const confirmBody = { payment_intent_id: "pi_test", notes: "deposit", send_email: true, send_sms: true };
 function post(route = "manual", body: object = manualBody, key: string | null = "attempt-123", jobId = 12) {

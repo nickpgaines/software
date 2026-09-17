@@ -3,6 +3,7 @@ import type Stripe from 'stripe';
 import { getDb, type Db } from '@/lib/db';
 import { getStripe, getCompany, isStripeConfigured, getOrCreateStripeCustomer, savePaymentMethodForCustomer } from '@/lib/stripe';
 import { TerminalError, positiveId } from '@/lib/terminal-http';
+import { requireTapToPayEnabled } from '@/lib/terminal-rollout';
 import { recordJobPayment } from '@/lib/record-job-payment';
 import { terminalConsentText, TERMINAL_CONSENT_VERSION } from '@/lib/terminal-consent';
 
@@ -117,6 +118,7 @@ export async function startTerminalAttempt(auth: { companyId: number; staffId: n
     check(prior);
     return reconcileTerminalAttempt(auth.companyId, prior.attempt_id);
   }
+  requireTapToPayEnabled();
   // Charging eligibility gates new claims, never recovery of an existing intent.
   const company = await getCompany(auth.companyId);
   if (!company.stripe_charges_enabled) throw new TerminalError('Complete Stripe onboarding before using Tap to Pay', 409);

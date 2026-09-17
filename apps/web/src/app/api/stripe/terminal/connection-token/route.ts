@@ -1,4 +1,5 @@
 import { terminalResponse, terminalSession, TerminalError } from '@/lib/terminal-http';
+import { requireTapToPayEnabled } from '@/lib/terminal-rollout';
 import {
   getStripe,
   isStripeConfigured,
@@ -18,6 +19,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request) {
   return terminalResponse(async () => {
     const auth = await terminalSession(req);
+    requireTapToPayEnabled();
     const company = await getCompany(auth.companyId);
     if (!isStripeConfigured()) throw new TerminalError('Stripe is not configured',503);
     if (!company.stripe_account_id || !company.stripe_charges_enabled) throw new TerminalError('Complete Stripe onboarding before using Tap to Pay',409);

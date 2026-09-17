@@ -3,6 +3,8 @@ import { assertNoUnresolvedTerminalPayment } from '@/lib/terminal-job-guard';
 import { getDb } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
 import { requireIdempotencyKey, PaymentIdempotencyError } from "@/lib/payment-idempotency";
+import { TerminalError } from '@/lib/terminal-http';
+import { requireTapToPayEnabled } from '@/lib/terminal-rollout';
 import {
   getStripe,
   isStripeConfigured,
@@ -29,7 +31,7 @@ export async function POST(
   try {
     return await createTerminalIntent(req, context, requireIdempotencyKey(req));
   } catch (error) {
-    if (error instanceof PaymentIdempotencyError) {
+    if (error instanceof PaymentIdempotencyError || error instanceof TerminalError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
     if ((error as { type?: string; code?: string }).type === "StripeIdempotencyError" || (error as { code?: string }).code === "idempotency_key_in_use") {
@@ -52,6 +54,7 @@ async function createTerminalIntent(
   }
 
   const companyId = await requireCompanyId();
+  requireTapToPayEnabled();
   const company = await getCompany(companyId);
   if (!company.stripe_account_id || !company.stripe_charges_enabled) {
     return NextResponse.json(

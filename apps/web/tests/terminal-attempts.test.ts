@@ -4,14 +4,77 @@ import { fixture, invalidRequestError, loadTerminal, provider, setSession } from
 
 const modules = await loadTerminal();
 let database: ReturnType<typeof fixture>;
-beforeEach(async () => { database = fixture(); await modules.schema.installTerminalSchema(database.db); });
-afterEach(() => database.close());
+const originalRollout = process.env.TAP_TO_PAY_ENABLED;
+beforeEach(async () => { process.env.TAP_TO_PAY_ENABLED = 'true'; database = fixture(); await modules.schema.installTerminalSchema(database.db); });
+afterEach(() => { database.close(); if (originalRollout === undefined) delete process.env.TAP_TO_PAY_ENABLED; else process.env.TAP_TO_PAY_ENABLED = originalRollout; });
 const consent = { accepted: true, version: 'terminal-save-v1', customer_name: 'Ada Lovelace' };
 const request = (body: object, key = 'terminal-123') => new Request('https://www.forgecrm.app/api/stripe/terminal/attempts', { method: 'POST', headers: { Origin: 'https://www.forgecrm.app', 'Idempotency-Key': key, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 const subscriptionRequest = (body: object) => new Request('https://www.forgecrm.app/api/customer-subscriptions', { method: 'POST', headers: { Origin: 'https://www.forgecrm.app', 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
 const webhookRequest = () => new Request('https://www.forgecrm.app/api/stripe/webhook', { method: 'POST', headers: { 'stripe-signature': 'valid' }, body: '{}' });
 const start = (body: object = { operation: 'payment', job_id: 12, save_card: false }, key = 'terminal-123') => modules.route.POST(request(body, key));
 const update = (id: string, cancel = false) => modules[cancel ? 'cancel' : 'reconcile'].POST(request({}), { params: { id } });
+
+test('capabilities is authenticated, uncached, and reflects the runtime rollout value', async () => {
+  const req = new Request('https://www.forgecrm.app/api/stripe/terminal/capabilities');
+  for (const [flag, enabled] of [[undefined, false], ['false', false], ['true', true]] as const) {
+    if (flag === undefined) delete process.env.TAP_TO_PAY_ENABLED; else process.env.TAP_TO_PAY_ENABLED = flag;
+    const response = await modules.capabilities.GET(req);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), { enabled });
+    assert.match(response.headers.get('Cache-Control') || '', /no-store/);
+  }
+  setSession(null);
+  assert.equal((await modules.capabilities.GET(req)).status, 401);
+  assert.equal((await modules.token.POST(request({}))).status, 401);
+  assert.equal((await start()).status, 401);
+});
+
+for (const flag of [undefined, '', 'false', '1', 'TRUE']) {
+  test(`rollout ${String(flag)} blocks all new Terminal entry points without reserving jobs`, async () => {
+    if (flag === undefined) delete process.env.TAP_TO_PAY_ENABLED;
+    else process.env.TAP_TO_PAY_ENABLED = flag;
+    for (const body of [{ operation: 'payment', job_id: 12, save_card: false }, { operation: 'setup', customer_id: 90, consent }]) {
+      const response = await start(body);
+      assert.equal(response.status, 409);
+      assert.match((await response.json()).error, /coming soon/i);
+    }
+    const tokenRequest = request({}); tokenRequest.headers.set('X-Forge-Stripe-Account', 'acct_1');
+    assert.equal((await modules.token.POST(tokenRequest)).status, 409);
+    assert.equal((await modules.legacyTerminal.POST(request({ amount_cents: 22500 }), { params: { id: '12' } })).status, 409);
+    assert.equal(provider.creates.length, 0);
+    assert.equal(provider.tokens.length, 0);
+    assert.equal(database.sqlite.prepare('SELECT COUNT(*) n FROM terminal_attempts').get().n, 0);
+    // Ordinary card entry stays available with the Terminal rollout disabled.
+    assert.equal((await modules.cardIntent.POST(request({ amount_cents: 22500 }), { params: { id: '12' } })).status, 200);
+    assert.equal(provider.creates.length, 1);
+    assert.equal(provider.creates[0].body.amount, 22500);
+  });
+}
+for (const operation of ['payment', 'setup'] as const) {
+  for (const recovery of ['reconcile', 'replay', 'webhook', 'cancel'] as const) {
+    test(`rollout off preserves ${operation} ${recovery} and attempt listing`, async () => {
+      const body = operation === 'payment' ? { operation, job_id: 12, save_card: true, consent } : { operation, customer_id: 90, consent };
+      const created = await (await start(body)).json();
+      process.env.TAP_TO_PAY_ENABLED = 'false';
+      const query = operation === 'payment' ? 'job_id=12' : 'customer_id=90';
+      const listing = await modules.route.GET(new Request(`https://www.forgecrm.app/api/stripe/terminal/attempts?${query}`));
+      assert.equal((await listing.json()).attempts[0].attempt_id, created.attempt_id);
+      if (recovery !== 'cancel') {
+        provider.intents[0].status = 'succeeded';
+        provider.intents[0][operation === 'payment' ? 'latest_charge' : 'latest_attempt'] = { payment_method_details: { card_present: { generated_card: 'pm_generated' } } };
+      }
+      provider.event = { id: 'evt_rollout', type: `${operation}_intent.succeeded`, account: 'acct_1', data: { object: provider.intents[0] } };
+      const response = recovery === 'replay' ? await start(body) : recovery === 'webhook' ? await modules.webhook.POST(webhookRequest()) : await update(created.attempt_id, recovery === 'cancel');
+      assert.equal(response.status, 200);
+      const row = database.sqlite.prepare('SELECT * FROM terminal_attempts').get();
+      assert.equal(row.status, recovery === 'cancel' ? 'canceled' : 'succeeded');
+      assert.equal(row.card_saved, recovery === 'cancel' ? 0 : 1);
+      assert.equal(database.sqlite.prepare('SELECT COUNT(*) n FROM payments').get().n, operation === 'payment' && recovery !== 'cancel' ? 1 : 0);
+      assert.equal((await start(body, 'new-rollout-disabled')).status, 409);
+      assert.equal(provider.creates.length, 1);
+    });
+  }
+}
 
 for (const amount of [25, 49, 100_000_000]) {
   test(`unsupported USD balance ${amount} is rejected without reserving the job`, async () => {

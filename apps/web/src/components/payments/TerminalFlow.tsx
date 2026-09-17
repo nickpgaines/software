@@ -1,7 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import { SmartphoneNfc } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { nativeTerminal, type NativeTerminal } from '@/lib/native-terminal';
 import { TERMINAL_CONSENT_VERSION, terminalConsentText } from '@/lib/terminal-consent';
 import type { TerminalAttemptView } from '@/lib/terminal-attempts';
@@ -21,7 +25,10 @@ const closed = (a: TerminalAttemptView) => a.status === 'canceled' || (a.status 
 const uncertainCreations = new Set<string>();
 
 export default function TerminalFlow({ operation, jobId, customerId, onSuccess, onBlockedChange, native = nativeTerminal }: Props) {
+  const formId = useId();
   const [capability, setCapability] = useState<{supported: boolean; reason?: string} | null>(null);
+  const [rollout, setRollout] = useState<boolean | null>(null);
+  const [availabilityError, setAvailabilityError] = useState(false);
   const [merchant, setMerchant] = useState<Merchant | null>(null);
   const [attempt, setAttempt] = useState<TerminalAttemptView | null>(null);
   const [checked, setChecked] = useState(false);
@@ -120,8 +127,15 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
     identity.current = null;
     delivered.current = null;
     setAttempt(null); setBusy(true); setUncertain(true); setChecked(false); setName(''); setSave(operation === 'setup');
+    setCapability(null); setRollout(null); setAvailabilityError(false);
     callbacks.current.onBlockedChange?.(true);
-    void native.capabilities().then(value => { if (life.current === token && valid()) setCapability(value); });
+    void native.capabilities()
+      .then(value => { if (valid(token)) setCapability(value); })
+      .catch(() => { if (valid(token)) setCapability({supported:false}); });
+    // Availability must not prevent reconciliation or lock ordinary payments.
+    void json<{enabled: boolean}>('/api/stripe/terminal/capabilities')
+      .then(value => { if (valid(token)) setRollout(value?.enabled === true); })
+      .catch(() => { if (valid(token)) { setRollout(false); setAvailabilityError(true); } });
     void recover(token).catch(error => { if (life.current === token && valid()) setMessage(error.message); }).finally(() => {
       if (life.current === token && valid()) { lock.current = false; setBusy(false); }
     });
@@ -136,6 +150,7 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
 
   async function run(action: 'start' | 'recover' | 'resume' | 'cancel') {
     if ((lock.current && action !== 'cancel') || !valid()) return;
+    if ((action === 'start' || action === 'resume') && !canCollect) return;
     if (action === 'start' && (uncertain || !capability?.supported || (save && (!checked || !name.trim())))) return;
     lock.current = true; setBusy(true); block(true);
     const token = life.current;
@@ -183,27 +198,29 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
   }
   const unfinished = attempt && !closed(attempt);
   const done = attempt?.status === 'succeeded' && closed(attempt);
+  const canCollect = rollout === true && capability?.supported === true;
   return <section className="space-y-3" aria-label={operation === 'payment' ? 'Tap to Pay' : 'Save card with a tap'}>
-    {!capability?.supported && capability && <p className="text-sm text-amber-400">{capability.reason || 'Tap to Pay is unavailable in this app. Use manual card entry (Pay with card).'}</p>}
+    {rollout === false && <p className="text-sm text-fg-muted">{availabilityError ? 'Tap to Pay availability could not be checked. Reopen this window to try again.' : 'Tap to Pay and saving a card with a tap are coming soon.'} {operation === 'payment' ? 'Use Pay with card or another payment method.' : 'Use the customer’s subscription acceptance link for manual card entry.'}</p>}
+    {rollout === true && !capability?.supported && capability && <p className="text-sm text-amber-400">{capability.reason || 'Tap to Pay is unavailable in this app. Use manual card entry (Pay with card).'}</p>}
     {message && <p role="status" className="text-sm text-zinc-300">{message}</p>}
     {attempt?.warning && <p role="alert" className="text-sm text-amber-400">{attempt.warning}</p>}
     {!unfinished && !done && <>
-      {operation === 'payment' && <label className="flex gap-2 text-sm"><input type="checkbox" checked={save} disabled={busy || uncertain} onChange={e=>{setSave(e.target.checked);setChecked(false);}}/> Save card for separately agreed future payments (optional)</label>}
-      {save && <div className="space-y-2 text-sm">
+      {canCollect && operation === 'payment' && <div className="flex gap-2 text-sm"><Checkbox id={`${formId}-save`} checked={save} disabled={busy || uncertain} onCheckedChange={value=>{setSave(value === true);setChecked(false);}}/><Label htmlFor={`${formId}-save`}>Save card for separately agreed future payments (optional)</Label></div>}
+      {canCollect && save && <div className="space-y-2 text-sm">
         <p>{terminalConsentText(merchant?.name || 'this merchant')}</p>
-        <label className="block">Customer-entered name<input className="block w-full rounded border border-line bg-card p-2" type="text" autoComplete="name" value={name} disabled={busy || uncertain} onChange={e=>setName(e.target.value)}/></label>
-        <label className="flex gap-2"><input type="checkbox" checked={checked} disabled={busy || uncertain} onChange={e=>setChecked(e.target.checked)}/> I agree to save my card under these terms.</label>
+        <Label htmlFor={`${formId}-name`} className="block">Customer-entered name</Label><Input id={`${formId}-name`} type="text" autoComplete="name" value={name} disabled={busy || uncertain} onChange={e=>setName(e.target.value)}/>
+        <div className="flex gap-2"><Checkbox id={`${formId}-consent`} checked={checked} disabled={busy || uncertain} onCheckedChange={value=>setChecked(value === true)}/><Label htmlFor={`${formId}-consent`}>I agree to save my card under these terms.</Label></div>
       </div>}
-      <button type="button" className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-primary p-3 text-primary-foreground font-bold disabled:opacity-50" disabled={busy || uncertain || !capability?.supported || (save && (!checked || !name.trim()))} onClick={()=>run('start')}>
+      <Button type="button" className="h-auto min-h-11 w-full gap-2 whitespace-normal py-3" disabled={busy || uncertain || !canCollect || (save && (!checked || !name.trim()))} onClick={()=>run('start')}>
         {operation === 'payment' && <SmartphoneNfc size={18} className="shrink-0" aria-hidden="true" focusable="false" />}
-        {operation === 'payment' ? 'Tap to Pay on iPhone' : 'Save card with a tap'}
-      </button>
+        <span>{operation === 'payment' ? 'Tap to Pay on iPhone' : 'Save card with a tap'}{rollout === false && !availabilityError && ' — Coming soon'}</span>
+      </Button>
     </>}
     {(uncertain || unfinished) && <div className="flex flex-wrap gap-3">
-      <button type="button" disabled={busy} onClick={()=>run('recover')}>Check status</button>
-      {attempt?.status === 'ready' && <button type="button" disabled={busy || !capability?.supported} onClick={()=>run('resume')}>Continue original attempt</button>}
-      {unfinished && <button type="button" onClick={()=>run('cancel')}>Cancel attempt</button>}
+      <Button type="button" variant="link" disabled={busy} onClick={()=>run('recover')}>Check status</Button>
+      {attempt?.status === 'ready' && <Button type="button" variant="link" disabled={busy || !canCollect} onClick={()=>run('resume')}>Continue original attempt</Button>}
+      {unfinished && <Button type="button" variant="link" onClick={()=>run('cancel')}>Cancel attempt</Button>}
     </div>}
-    {capability?.supported && <button type="button" className="text-xs underline" disabled={busy} onClick={()=>native.education().catch(()=>setMessage('Merchant education is unavailable. Try again in the supported Forge iPhone app.'))}>How Tap to Pay works</button>}
+    {canCollect && <Button type="button" variant="link" className="text-xs" disabled={busy} onClick={()=>native.education().catch(()=>setMessage('Merchant education is unavailable. Try again in the supported Forge iPhone app.'))}>How Tap to Pay works</Button>}
   </section>;
 }
