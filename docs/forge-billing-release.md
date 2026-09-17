@@ -155,3 +155,37 @@ secrets, verify them without enabling, obtain a new explicit activation
 instruction, enable in a controlled release, and monitor status/refresh,
 webhook retries, duplicate-subscription guards, provider costs, and support
 volume. There is no scheduled or automatic activation step.
+
+## Implementation verification — September 17, 2026
+
+Application code through `0d63f84` was independently reviewed task by task and
+as a whole branch. All blocking findings were fixed and received scoped
+re-review with no remaining Critical/Important findings.
+
+- Full web suite: **411/411 passing** using isolated local SQLite.
+- Isolated default-off production build and post-build TypeScript: passed.
+- Browser inspection: desktop and 390px billing layout, interval selection,
+  and deletion confirmation using a fake local account; no purchase or deletion.
+- One built artifact served correct public copy with the runtime flag both
+  disabled and enabled.
+- Regression coverage includes stale-session recovery, provider outages,
+  checkout completion/expiry/cancellation, uncertain provider responses,
+  seat reservation races, and disabled/native recovery behavior.
+
+The suite includes an expected diagnostic from an existing Terminal
+provider-failure/retry test; that test passes. Real Stripe test-mode purchases,
+physical-device acceptance, owner policy approval, and activation are **not**
+completed by this verification. No live configuration, data, charges, push,
+merge, or deployment was performed.
+
+### Provisional implementation decisions
+
+1. The proposed cutoff uses midnight America/Chicago. If the intended hour is
+   different, update the configuration before activation.
+2. Enforcement covers subscriptions and employee seats, not marketing feature
+   bundles. A different tier policy requires additional feature restrictions.
+3. Work stays on the local feature branch with billing default-off. Production
+   testing and integration require a separate instruction.
+4. Locked administrators can promote an existing employee to retain the
+   last-administrator deletion recovery path. No owner role is introduced. If
+   this policy is rejected, remove the narrow recovery API/UI before activation.

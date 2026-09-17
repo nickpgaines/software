@@ -25,17 +25,17 @@
 
 **Interfaces:** Expose `isForgeBillingEnabled(): boolean`, `billingCutoff(): string`, `getCompanyBillingStatus(companyId:number, now?:Date): Promise<BillingStatus>`, `canManageBilling(session:SessionContext): Promise<boolean>`, and `cancelCompanyBilling(companyId:number): Promise<void>`. `BillingStatus` has `enabled:boolean`, `allowed:boolean`, `reason:'disabled'|'pre_cutoff'|'paid'|'subscription_required'`, `cutoffAt:string`, `plan:'solo'|'team'|'business'|null`, `interval:'month'|'year'|null`, `seatLimit:number|null`, `staffCount:number`, `paidThrough:string|null`, `subscriptionStatus:string|null`, `cancelAtPeriodEnd:boolean`. Status GET adds `canManage:boolean` and `native:boolean`. Off returns only `{enabled:false}` from HTTP (service can provide full type without querying provider). Public GET returns `{enabled:false}` off, or `{enabled:true,cutoffAt,trialAvailable:boolean}` on. Checkout POST `{plan,interval}` returns `{url}`; Portal POST returns `{url}`; Refresh POST reconciles canonical state then returns status. Requests tenant-bound and same-origin; native mutation denied. Dedicated signed webhook doesn't require user session.
 
-- [ ] Write failing real-SQLite tests for cutoff, dormant behavior, provider lifecycle, authentication, tenant ownership, idempotency and races. Example behavior:
+- [x] Write failing real-SQLite tests for cutoff, dormant behavior, provider lifecycle, authentication, tenant ownership, idempotency and races. Example behavior:
   ```ts
   process.env.FORGE_BILLING_ENABLED = 'false';
   assert.equal((await getCompanyBillingStatus(2, new Date('2026-10-01'))).allowed, true);
   process.env.FORGE_BILLING_ENABLED = 'true';
   assert.equal((await getCompanyBillingStatus(2, new Date('2026-09-26T05:00:00Z'))).allowed, false);
   ```
-- [ ] Run `node --no-warnings --experimental-strip-types --test tests/forge-billing.test.ts` using bundled Node; record missing-behavior RED.
-- [ ] Implement schema/config/catalog and service. Use exact flag comparison, integer cents `{solo:{month:7900,year:79000},team:{month:14900,year:149000},business:{month:22900,year:229000}}`, validate configured provider Prices. Dedicated secret key. Durable per-company Checkout reservation with fixed provider idempotency, known-customer binding and reconciliation before retry. Unknown provider outcome cannot rotate keys. No activation from browser success URL. Do not create paid recurring subscriptions before explicit checkout.
-- [ ] Implement routes and canonical webhook sync, with SDK types checked locally. Use explicit platform-only events, verified provider mode, known local customer, paid-through entitlement, stale-update prevention. Status/refresh allow recovery; off mutations fail without provider calls; existing webhook/cancellation cleanup works off.
-- [ ] Cover full task spec in tests; run focused tests then full suite once, commit only owned files, self-review, write report with RED/GREEN evidence and exact downstream interfaces.
+- [x] Run `node --no-warnings --experimental-strip-types --test tests/forge-billing.test.ts` using bundled Node; record missing-behavior RED.
+- [x] Implement schema/config/catalog and service. Use exact flag comparison, integer cents `{solo:{month:7900,year:79000},team:{month:14900,year:149000},business:{month:22900,year:229000}}`, validate configured provider Prices. Dedicated secret key. Durable per-company Checkout reservation with fixed provider idempotency, known-customer binding and reconciliation before retry. Unknown provider outcome cannot rotate keys. No activation from browser success URL. Do not create paid recurring subscriptions before explicit checkout.
+- [x] Implement routes and canonical webhook sync, with SDK types checked locally. Use explicit platform-only events, verified provider mode, known local customer, paid-through entitlement, stale-update prevention. Status/refresh allow recovery; off mutations fail without provider calls; existing webhook/cancellation cleanup works off.
+- [x] Cover full task spec in tests; run focused tests then full suite once, commit only owned files, self-review, write report with RED/GREEN evidence and exact downstream interfaces.
 
 ### Task 2: Authoritative paywall enforcement, escape routes and lifecycle cleanup
 
@@ -43,16 +43,16 @@
 
 **Interfaces:** Consume Task 1 service/config/status and cancelCompanyBilling. Produce authenticated uncached access endpoint `{allowed:boolean,reason:string}`. Standalone page destination `/billing`, native equivalent same destination with conservative status UI. Export GET returns downloadable company business records without secrets, limited to `settings.view_all`.
 
-- [ ] Write failing tests using real middleware/route functions with HTTP/provider boundaries doubled: off never checks DB/provider nor redirects; enabled unpaid blocks page/API; safe routes still work; forged headers cannot bypass; stale cookie/tenant data cannot authorize access. Example:
+- [x] Write failing tests using real middleware/route functions with HTTP/provider boundaries doubled: off never checks DB/provider nor redirects; enabled unpaid blocks page/API; safe routes still work; forged headers cannot bypass; stale cookie/tenant data cannot authorize access. Example:
   ```ts
   assert.equal((await middleware(unpaidRequest('/api/jobs'))).status, 402);
   assert.equal((await middleware(unpaidRequest('/dashboard'))).headers.get('location'), 'https://www.forgecrm.app/billing');
   ```
-- [ ] Record RED focused command before implementation.
-- [ ] Add enabled-only middleware delegation after normal authentication/CSRF handling. Preserve public financial callbacks and API exclusions. Explicit exact/prefix-with-boundary safe routes: billing APIs/page, me/profile essentials, logout/auth/deletion, support, export, existing Terminal reconciliation/list/cancel and already-created charge confirmation. Never exempt new payment/Terminal creation or arbitrary client headers. Access endpoint internally skips enforcement but still authenticates directly. Provider webhook/public billing config matcher exclusions must be exact/boundary-safe.
-- [ ] Add bearer entitlement checks to widget summary and MCP execution, preserving revocation. Add transaction-safe subscribed seat check to all staff creation paths, no data deletion for over-cap companies. Integrate company deletion cancellation before irreversible local deletion; provider failure retains account and returns retryable failure.
-- [ ] Audit alternate routes and existing background work. Document existing merchant service billing/public links preserved, and identify provider-cost automation decisions for activation checklist; no silent cancellation of homeowner service agreements. Export explicitly allowlisted business columns, never `SELECT *` on credentials/customer token tables.
-- [ ] Run focused access/lifecycle regression tests and full suite; commit owned files, report concrete coverage and any remaining activation gates.
+- [x] Record RED focused command before implementation.
+- [x] Add enabled-only middleware delegation after normal authentication/CSRF handling. Preserve public financial callbacks and API exclusions. Explicit exact/prefix-with-boundary safe routes: billing APIs/page, me/profile essentials, logout/auth/deletion, support, export, existing Terminal reconciliation/list/cancel and already-created charge confirmation. Never exempt new payment/Terminal creation or arbitrary client headers. Access endpoint internally skips enforcement but still authenticates directly. Provider webhook/public billing config matcher exclusions must be exact/boundary-safe.
+- [x] Add bearer entitlement checks to widget summary and MCP execution, preserving revocation. Add transaction-safe subscribed seat check to all staff creation paths, no data deletion for over-cap companies. Integrate company deletion cancellation before irreversible local deletion; provider failure retains account and returns retryable failure.
+- [x] Audit alternate routes and existing background work. Document existing merchant service billing/public links preserved, and identify provider-cost automation decisions for activation checklist; no silent cancellation of homeowner service agreements. Export explicitly allowlisted business columns, never `SELECT *` on credentials/customer token tables.
+- [x] Run focused access/lifecycle regression tests and full suite; commit owned files, report concrete coverage and any remaining activation gates.
 
 ### Task 3: Dormant web billing and conservative native status UI
 
@@ -60,18 +60,18 @@
 
 **Interfaces:** Consume Task 1 status/checkout/portal/refresh/public APIs; Task 2 export and account deletion safe paths. Off status keeps Settings placeholder; direct `/billing` routes back to normal app with no paywall flash. Native status uses existing native detection plus server native verdict and exposes no price/checkout/portal link.
 
-- [ ] Read DESIGN_SYSTEM.md fully, use existing UI primitives. Write failing UI behavior tests for hidden/off, web billing admin, ordinary employee, native, load failure, stale session and retry. Example:
+- [x] Read DESIGN_SYSTEM.md fully, use existing UI primitives. Write failing UI behavior tests for hidden/off, web billing admin, ordinary employee, native, load failure, stale session and retry. Example:
   ```ts
   assert.equal(renderedText({enabled:false}).includes('Subscribe'), false);
   assert.equal(renderedText({enabled:true,native:true}).includes('$79'), false);
   ```
-- [ ] Run focused tests to record RED; implement exact monthly/annual pricing and seat labels, explicit interval selection, disabled incompatible plan, pending controls, typed errors, no optimistic unlock after redirect, refresh status action. Provide existing subscriber portal management; no second subscription CTA for existing nonterminal provider subscription.
-- [ ] Preserve logout/support/account deletion (complete existing deletion UI, not merely a link to blocked Settings), and authorized export on locked screen. Don't initialize ordinary CRM providers under `/billing`. Existing settings/nav behavior remains visually identical when disabled.
-- [ ] Only when enabled, align website/signup trial copy with shared cutoff. Off preserves existing copy. Never change public production configuration or call Stripe during UI tests.
-- [ ] Run focused UI tests and full suite, TypeScript and isolated local production build. Document required env names with sensitivity, dedicated Stripe test setup and webhook/portal configuration, nonautomatic activation, owner checklist, limitations. Commit, self-review, report verification.
+- [x] Run focused tests to record RED; implement exact monthly/annual pricing and seat labels, explicit interval selection, disabled incompatible plan, pending controls, typed errors, no optimistic unlock after redirect, refresh status action. Provide existing subscriber portal management; no second subscription CTA for existing nonterminal provider subscription.
+- [x] Preserve logout/support/account deletion (complete existing deletion UI, not merely a link to blocked Settings), and authorized export on locked screen. Don't initialize ordinary CRM providers under `/billing`. Existing settings/nav behavior remains visually identical when disabled.
+- [x] Only when enabled, align website/signup trial copy with shared cutoff. Off preserves existing copy. Never change public production configuration or call Stripe during UI tests.
+- [x] Run focused UI tests and full suite, TypeScript and isolated local production build. Document required env names with sensitivity, dedicated Stripe test setup and webhook/portal configuration, nonautomatic activation, owner checklist, limitations. Commit, self-review, report verification.
 
 ## Final verification
 
-- [ ] Independent per-task reviews and final whole-branch review; fix blocking findings with covering regression tests.
-- [ ] Full suite, `npx tsc --noEmit`, isolated-file SQLite `npm run build` with placeholder Stripe key; no live DB/provider usage.
-- [ ] Feature branch only; report dormant implementation and any activation blockers. No merge/deployment without a new explicit instruction.
+- [x] Independent per-task reviews and final whole-branch review; fix blocking findings with covering regression tests.
+- [x] Full suite, `npx tsc --noEmit`, isolated-file SQLite `npm run build` with placeholder Stripe key; no live DB/provider usage.
+- [x] Feature branch only; report dormant implementation and any activation blockers. No merge/deployment without a new explicit instruction.
