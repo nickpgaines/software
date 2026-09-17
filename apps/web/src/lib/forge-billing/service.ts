@@ -104,8 +104,18 @@ export async function createCompanyCheckout(companyId: number, rawPlan: unknown,
       if (reservation.plan !== plan || reservation.interval !== interval) throw new BillingError('Resolve the existing Checkout before choosing another plan');
       return {url:found.url};
     }
-    // A terminal session can be retired only after canonical subscription reconciliation.
-    if (found.status === 'expired' || found.status === 'complete' && current?.subscription_id && ['canceled','incomplete_expired'].includes(current.subscription_status || '')) {
+    // The Checkout may have completed after the earlier list/reconcile. Only its
+    // own canonically terminal subscription can release this reservation.
+    let canRetire = found.status === 'expired';
+    if (found.status === 'complete') {
+      const subscriptionId = objectId(found.subscription);
+      if (!subscriptionId) throw new BillingError('Checkout subscription is unresolved',503);
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      const item = subscription.items.data[0];
+      if (subscription.id !== subscriptionId || objectId(subscription.customer) !== account.customer_id || subscription.livemode !== live || subscription.items.data.length !== 1 || item.quantity !== 1 || item.price.id !== reservation.price_id) throw new Error('Checkout subscription binding mismatch');
+      canRetire = ['canceled','incomplete_expired'].includes(subscription.status);
+    }
+    if (canRetire) {
       await db.prepare('DELETE FROM forge_billing_checkout WHERE company_id=? AND reservation_id=? AND status=?').run(companyId,reservation.reservation_id,found.status);
       return createCompanyCheckout(companyId,plan,interval);
     }

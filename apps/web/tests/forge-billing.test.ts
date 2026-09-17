@@ -100,8 +100,41 @@ test('expired Checkout can change plans',async()=>{
 });
 test('completed Checkout for a canceled subscription can be purchased again',async()=>{
   await setup(); await service.createCompanyCheckout(1,'solo','month'); const sub=paidSubscription(); await service.refreshCompanyBilling(1);
-  provider.sessions[0].status='complete'; sub.status='canceled';
+  provider.sessions[0].status='complete'; provider.sessions[0].subscription=sub.id; sub.status='canceled';
   await service.createCompanyCheckout(1,'team','month'); assert.equal(provider.sessions.length,2);
+});
+for (const omitReplacement of [false,true]) test(`completed replacement Checkout preserves its reservation when subscription listing omits replacement: ${omitReplacement}`,async()=>{
+  const db=await setup(); await service.createCompanyCheckout(1,'solo','month');
+  const original=paidSubscription(); await service.refreshCompanyBilling(1);
+  original.status='canceled'; provider.sessions[0].status='complete'; provider.sessions[0].subscription=original.id;
+  await service.createCompanyCheckout(1,'solo','month');
+  const reservation=await db.prepare('SELECT reservation_id FROM forge_billing_checkout WHERE company_id=1').get();
+  const retrieve=provider.api.checkout.sessions.retrieve;
+  const list=provider.api.subscriptions.list;
+  provider.api.checkout.sessions.retrieve=async(id:string)=>{
+    const session=await retrieve(id);
+    if(session.status==='open') {
+      const replacement=paidSubscription(); session.status='complete'; session.subscription=replacement.id;
+      if(omitReplacement) provider.api.subscriptions.list=(params:unknown)=>list(params).data.filter((s:{id:string})=>s.id===original.id);
+    }
+    return session;
+  };
+  await assert.rejects(()=>service.createCompanyCheckout(1,'solo','month'));
+  assert.equal(provider.sessions.length,2);
+  assert.equal((await db.prepare('SELECT reservation_id FROM forge_billing_checkout WHERE company_id=1').get())?.reservation_id,reservation.reservation_id);
+  provider.api.subscriptions.list=list;
+  await service.refreshCompanyBilling(1);
+  assert.equal((await service.getCompanyBillingStatus(1,new Date('2026-10-01'))).allowed,true);
+});
+test('completed Checkout cannot retire a reservation with missing or inaccessible exact subscription',async()=>{
+  const db=await setup(); await service.createCompanyCheckout(1,'solo','month'); const original=paidSubscription(); await service.refreshCompanyBilling(1);
+  original.status='canceled'; provider.sessions[0].status='complete';
+  for(const subscription of [undefined,'sub_unavailable']) {
+    provider.sessions[0].subscription=subscription;
+    await assert.rejects(()=>service.createCompanyCheckout(1,'solo','month'));
+    assert.equal((await db.prepare('SELECT COUNT(*) n FROM forge_billing_checkout WHERE company_id=1').get()).n,1);
+    assert.equal(provider.sessions.length,1);
+  }
 });
 test('custom billing permissions are tenant scoped and status remains available to staff',async()=>{
   const db=await setup(); await db.prepare('INSERT INTO custom_roles VALUES(1,1,?)').run('["settings.view_all"]');
