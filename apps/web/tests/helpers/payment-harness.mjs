@@ -126,8 +126,9 @@ export function paymentDatabase() {
       created_at TEXT NOT NULL DEFAULT (datetime('now')), updated_at TEXT NOT NULL DEFAULT (datetime('now')),
       PRIMARY KEY (company_id, idempotency_key)
     );
-    CREATE TABLE stripe_payment_methods (id INTEGER, company_id INTEGER, customer_id INTEGER, stripe_customer_id TEXT, stripe_payment_method_id TEXT, is_default INTEGER, created_at TEXT);
-    INSERT INTO stripe_payment_methods VALUES (5,1,90,'cus_test','pm_test',1,'2026-09-11');
+    CREATE TABLE terminal_attempts (attempt_id TEXT PRIMARY KEY,company_id INTEGER,job_id INTEGER,operation TEXT,status TEXT);
+    CREATE TABLE stripe_payment_methods (id INTEGER, company_id INTEGER, customer_id INTEGER, stripe_customer_id TEXT, stripe_payment_method_id TEXT, is_default INTEGER, created_at TEXT, requires_explicit_selection INTEGER DEFAULT 0, recurring_only INTEGER DEFAULT 0, stripe_account_id TEXT);
+    INSERT INTO stripe_payment_methods (id,company_id,customer_id,stripe_customer_id,stripe_payment_method_id,is_default,created_at) VALUES (5,1,90,'cus_test','pm_test',1,'2026-09-11');
   `);
   installLifecycleSchema(sqlite);
   sqlite.exec("INSERT INTO estimates VALUES (1,90,1)");

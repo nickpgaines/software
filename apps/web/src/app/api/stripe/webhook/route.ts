@@ -12,6 +12,7 @@ import {
   type CustomerSubscription,
 } from "@/lib/db";
 import { recordActivity } from "@/lib/activity";
+import { handleTerminalWebhook } from '@/lib/terminal-attempts';
 
 export const dynamic = "force-dynamic";
 
@@ -73,6 +74,16 @@ export async function POST(req: Request) {
       { error: `Webhook signature verification failed: ${message}` },
       { status: 400 }
     );
+  }
+
+  // Terminal effects are independently idempotent. Handle before the legacy
+  // event claim so a crash cannot leave an acknowledged but unfinished claim.
+  if (event.type.startsWith('payment_intent.') || event.type.startsWith('setup_intent.')) {
+    try {
+      if (await handleTerminalWebhook(event.data.object as Stripe.PaymentIntent | Stripe.SetupIntent, event.account)) return NextResponse.json({ received: true });
+    } catch {
+      return NextResponse.json({ error: 'Terminal reconciliation needs retry' }, { status: 500 });
+    }
   }
 
   // Idempotency: Stripe sometimes redelivers the same event (network retries,
@@ -459,16 +470,13 @@ async function handleSetupIntentSucceeded(event: Stripe.Event) {
 
   // The accept page already calls PUT /setup-intent which saves the PM
   // on the server. This is the safety net for cases where the network
-  // dropped between confirmSetup and our save call.
-  try {
-    await savePaymentMethodForCustomer({
-      companyId,
-      customerId,
-      stripeAccountId: connectedAccountId,
-      stripePaymentMethodId: pmId,
-      makeDefault: false,
-    });
-  } catch (e) {
-    console.warn("Webhook: could not save payment method:", e);
-  }
+  // dropped between confirmSetup and our save call. Let persistence errors
+  // reach POST's handler so the event claim is removed and Stripe can retry.
+  await savePaymentMethodForCustomer({
+    companyId,
+    customerId,
+    stripeAccountId: connectedAccountId,
+    stripePaymentMethodId: pmId,
+    makeDefault: false,
+  });
 }

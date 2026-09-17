@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { assertNoUnresolvedTerminalPayment } from '@/lib/terminal-job-guard';
 import { getDb } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
 import { requireIdempotencyKey, PaymentIdempotencyError } from "@/lib/payment-idempotency";
@@ -63,6 +64,7 @@ export async function POST(
     if (!job) {
       return NextResponse.json({ error: "Job not found" }, { status: 404 });
     }
+    await assertNoUnresolvedTerminalPayment(db,companyId,jobId);
 
     const body = (await req.json().catch(() => ({}))) as Partial<{
       amount_cents: number;

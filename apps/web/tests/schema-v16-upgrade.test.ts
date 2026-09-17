@@ -112,7 +112,7 @@ test("version 16 upgrades production-sized partially migrated legacy jobs", asyn
       .prepare("SELECT id, end_time FROM jobs WHERE id IN (1, 2, 3, 4) ORDER BY id")
       .all<{ id: number; end_time: string }>();
 
-    assert.equal(version?.version, 23);
+    assert.equal(version?.version, 24);
     assert.deepEqual(assignments, [
       { role: "sales", count: 1059 },
       { role: "tech", count: 529 },

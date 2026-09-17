@@ -1,18 +1,13 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
-import {
-  autoCompleteSteps,
-  preparePaymentCompletionNotification,
-  dispatchPaymentCompletionNotification,
-} from "@/lib/payment-job-completion";
+import { recordJobPayment } from '@/lib/record-job-payment';
 import {
   getStripe,
   isStripeConfigured,
   getCompany,
 } from "@/lib/stripe";
-import { sendPaymentReceipt } from "@/lib/payment-receipts";
-import { requireIdempotencyKey, insertPaymentIdempotently, paymentRequestFingerprint, PaymentIdempotencyError } from "@/lib/payment-idempotency";
+import { requireIdempotencyKey, paymentRequestFingerprint, PaymentIdempotencyError } from "@/lib/payment-idempotency";
 
 export const dynamic = "force-dynamic";
 
@@ -133,41 +128,6 @@ async function confirmPayment(
     throw new PaymentIdempotencyError("Payment intent was charged with different payment details", 409);
   }
 
-  const completionNotification = await preparePaymentCompletionNotification(db, jobId, companyId);
-  const { payment: created, created: isNew, completedChanged } = await db.transaction(async (tx) => {
-    const result = await insertPaymentIdempotently(tx, paymentInput);
-    const completedChanged = result.created ? await autoCompleteSteps(tx, jobId, companyId, undefined, completionNotification) : false;
-    return { ...result, completedChanged };
-  });
-
-  if (!isNew) return NextResponse.json({ ...created, idempotent_replay: true, lifecycle_notification: null, warning: null });
-
-  const lifecycle_notification = await dispatchPaymentCompletionNotification({
-    db,
-    companyId,
-    jobId,
-    changed: completedChanged,
-  });
-
-  let warning = lifecycle_notification?.error || null;
-
-  if (send_email || send_sms) {
-    try {
-      await sendPaymentReceipt({
-        jobId,
-        paymentId: created.id,
-        companyId,
-        amountCents: created.amount_cents,
-        tipCents: created.tip_cents ?? 0,
-        method: "card",
-        paymentDate: created.payment_date || payment_date,
-        sendEmail: !!send_email,
-        sendSms: !!send_sms,
-      });
-    } catch {
-      warning = [warning, "Payment recorded, but the receipt could not be delivered."].filter(Boolean).join(" ");
-    }
-  }
-
-  return NextResponse.json({ ...created, idempotent_replay: false, lifecycle_notification, warning }, { status: 201 });
+  const result = await recordJobPayment(paymentInput);
+  return NextResponse.json(result, { status: result.idempotent_replay ? 200 : 201 });
 }

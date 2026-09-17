@@ -783,6 +783,7 @@ export default function JobDetailClient({
           jobTotalCents={job.price_cents}
           paidTotalCents={job.paid_total_cents}
           onClose={() => setCheckoutOpen(false)}
+          onPaid={() => { void refreshJob(); }}
           onChoose={(choice) => {
             setCheckoutOpen(false);
             if (choice === "card" || choice === "other") {

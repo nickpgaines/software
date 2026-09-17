@@ -140,20 +140,24 @@ export async function chargeSubscription(
   if (sub.default_payment_method_id) {
     pm = await db
       .prepare(
-        "SELECT * FROM stripe_payment_methods WHERE company_id = ? AND stripe_payment_method_id = ? LIMIT 1"
+        "SELECT * FROM stripe_payment_methods WHERE company_id = ? AND stripe_payment_method_id = ? AND customer_id = ? LIMIT 1"
       )
-      .get<StripePaymentMethod>(companyId, sub.default_payment_method_id);
+      .get<StripePaymentMethod>(companyId, sub.default_payment_method_id, sub.customer_id);
   }
   if (!pm) {
     pm = await db
       .prepare(
         `SELECT * FROM stripe_payment_methods
-          WHERE company_id = ? AND customer_id = ?
+          WHERE company_id = ? AND customer_id = ? AND requires_explicit_selection = 0
           ORDER BY is_default DESC, created_at DESC, id DESC LIMIT 1`
       )
       .get<StripePaymentMethod>(companyId, sub.customer_id);
   }
   if (!pm) return { ok: false, status: "no_card" };
+  if (pm.stripe_account_id && pm.stripe_account_id !== company.stripe_account_id) return { ok:true,status:'skipped',reason:'card_account_changed' };
+  if (pm.recurring_only && (!sub.accepted_at || (sub.require_signature && !sub.signature_data) || opts.amountCentsOverride != null || opts.advanceSchedule === false)) {
+    return { ok:true,status:'skipped',reason:'recurring_card_requires_agreed_schedule' };
+  }
 
   const base = Math.round(
     opts.amountCentsOverride != null &&

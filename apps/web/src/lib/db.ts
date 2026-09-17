@@ -1,4 +1,5 @@
 import { createClient, type Client, type InValue } from "@libsql/client";
+import { installTerminalSchema } from '@/lib/terminal-schema';
 import {
   WORKFLOW_TEMPLATES,
   serializeGraph,
@@ -480,7 +481,7 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
 // Bump when init() gains migrations that must run on existing deploys.
 // First call after deploy runs the full init; subsequent cold starts hit
 // the fast-path below (one SELECT) and skip the ~150 DDL statements.
-const SCHEMA_VERSION = 23;
+const SCHEMA_VERSION = 24;
 
 export async function backfillLegacyJobData(
   db: Pick<Db, "exec">
@@ -2586,6 +2587,7 @@ async function init(): Promise<void> {
 
   // Stamp the schema version so subsequent cold starts hit the fast-path
   // at the top of init().
+  await installTerminalSchema(_db);
   await _db.exec(
     `CREATE TABLE IF NOT EXISTS _schema_version (
        id INTEGER PRIMARY KEY,
@@ -3148,6 +3150,10 @@ export type StripePaymentMethod = {
   exp_year: number | null;
   wallet_type: string | null;
   is_default: number;
+  requires_explicit_selection: number;
+  allow_redisplay: string | null;
+  recurring_only: number;
+  stripe_account_id: string | null;
   created_at: string;
 };
 

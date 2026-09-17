@@ -1,5 +1,7 @@
 "use client";
 
+import { savedCardLabel, useSavedCards } from "@/components/payments/SavedCards";
+
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -195,6 +197,9 @@ export default function NewSubscriptionForm() {
   // marked Active even when there's no card on file / no Stripe Sub wired up.
   // Default off — the strict flow requires a card before activating.
   const [skipCardRequirement, setSkipCardRequirement] = useState(false);
+  const [cardSelection, setCardSelection] = useState<{customerId: number; id: number} | null>(null);
+  const savedCards = useSavedCards(customerId);
+  const selectedCardId = cardSelection?.customerId === customerId ? cardSelection?.id : undefined;
   const [datePopoverOpen, setDatePopoverOpen] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
@@ -283,6 +288,7 @@ export default function NewSubscriptionForm() {
         action: acceptMode,
         start_date: startDate,
         sold_by_id: soldById || null,
+        ...(acceptMode === "accept" && !skipCardRequirement && !requireSignature && selectedCardId ? { payment_method_id: selectedCardId } : {}),
       }),
     });
     if (!res.ok) {
@@ -461,6 +467,19 @@ export default function NewSubscriptionForm() {
                 description="Enter payment information and accept this plan on behalf of your customer."
               />
               {acceptMode === "accept" && (
+                <div className="space-y-2 text-sm">
+                  <label>Saved card for this subscription
+                    <select aria-label="Saved card for this subscription" value={selectedCardId || ""} disabled={skipCardRequirement || requireSignature || !customerId} className="block w-full bg-card border border-line rounded p-2"
+                      onChange={e => setCardSelection(customerId && e.target.value ? {customerId,id:Number(e.target.value)} : null)}>
+                      <option value="">No explicit selection</option>
+                      {savedCards.cards.map(card => <option key={card.id} value={card.id}>{savedCardLabel(card)}</option>)}
+                    </select>
+                  </label>
+                  {savedCards.error && <p role="alert">{savedCards.error}</p>}
+                  <p className="text-xs text-zinc-400">Accepting this plan can start its agreed recurring billing. Saving a card alone never accepts a plan. If a signature is required, send the plan for customer acceptance first.</p>
+                </div>
+              )}
+              {acceptMode === "accept" && (
                 <label className="flex items-start gap-2 ml-7 mt-1 text-xs text-zinc-400 cursor-pointer">
                   {/* Native <input type="checkbox"> kept: matches the rest of the form. */}
                   <input
@@ -483,9 +502,9 @@ export default function NewSubscriptionForm() {
               )}
               {acceptMode === "accept" && requireSignature && (
                 <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                  This template requires a signature. After creating the
-                  subscription, capture the signature on the subscription
-                  detail page.
+                  This template requires a signature. Choose “Send to customer
+                  to accept” so the customer can sign before recurring billing
+                  is enabled.
                 </p>
               )}
             </div>

@@ -31,6 +31,7 @@ export async function PATCH(
   if (!pm) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+  if (pm.requires_explicit_selection) return NextResponse.json({ error: 'Select this Terminal card on an accepted subscription instead of setting a customer default.' }, { status: 409 });
   const body = (await req.json().catch(() => ({}))) as Partial<{
     is_default: boolean;
   }>;
@@ -135,7 +136,7 @@ export async function DELETE(
     const next = (await db
       .prepare(
         `SELECT id, stripe_payment_method_id FROM stripe_payment_methods
-         WHERE company_id = ? AND customer_id = ?
+         WHERE company_id = ? AND customer_id = ? AND requires_explicit_selection = 0
          ORDER BY created_at DESC, id DESC LIMIT 1`
       )
       .get(companyId, pm.customer_id)) as

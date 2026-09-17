@@ -93,7 +93,7 @@ export async function createStripeSubscriptionForRow(args: {
     const pm = await db
       .prepare(
         `SELECT stripe_payment_method_id FROM stripe_payment_methods
-          WHERE company_id = ? AND customer_id = ?
+          WHERE company_id = ? AND customer_id = ? AND requires_explicit_selection = 0
           ORDER BY is_default DESC, created_at DESC, id DESC LIMIT 1`
       )
       .get<{ stripe_payment_method_id: string }>(
@@ -307,6 +307,11 @@ export async function chargeStripeSubscriptionNow(args: {
     typeof sub.customer === "string" ? sub.customer : sub.customer?.id;
   if (!stripeCustomerId) {
     return { ok: false, error: "subscription has no customer" };
+  }
+  const defaultPm = typeof sub.default_payment_method === 'string' ? sub.default_payment_method : sub.default_payment_method?.id;
+  if (defaultPm) {
+    const saved = await (await getDb()).prepare('SELECT recurring_only FROM stripe_payment_methods WHERE company_id=? AND stripe_customer_id=? AND stripe_payment_method_id=?').get<{ recurring_only: number }>(args.companyId,stripeCustomerId,defaultPm);
+    if (saved?.recurring_only) return { ok:false,error:'This wallet-generated card is restricted to the agreed recurring billing schedule.' };
   }
 
   try {

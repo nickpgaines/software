@@ -66,6 +66,8 @@ type SavedCard = {
   exp_year: number | null;
   is_default: number;
   wallet_type: string | null;
+  recurring_only?: number;
+  requires_explicit_selection?: number;
 };
 
 export default function RecordPaymentModal({
@@ -168,7 +170,8 @@ export default function RecordPaymentModal({
         if (cancelled) return;
         const cards = data.payment_methods || [];
         setSavedCards(cards);
-        const def = cards.find((c) => c.is_default) || cards[0];
+        const automatic = cards.filter(c => !c.recurring_only && !c.requires_explicit_selection);
+        const def = automatic.find((c) => c.is_default) || automatic[0];
         if (def) setSelectedSavedCardId(def.id);
       })
       .catch(() => {
@@ -235,6 +238,10 @@ export default function RecordPaymentModal({
   }
 
   async function chargeSavedCard(paymentMethodId: number) {
+    if (savedCards.find(card => card.id === paymentMethodId)?.recurring_only) {
+      setError('This wallet card is for agreed recurring / off-session billing only. Use a new card for this payment.');
+      return;
+    }
     setSaving(true);
     const res = await fetch(
       `/api/jobs/${jobId}/payments/charge-saved-card`,
@@ -468,7 +475,8 @@ export default function RecordPaymentModal({
                         key={c.id}
                         variant="ghost"
                         type="button"
-                        onClick={() => setSelectedSavedCardId(c.id)}
+                        disabled={!!c.recurring_only}
+                        onClick={() => { if (!c.recurring_only) setSelectedSavedCardId(c.id); }}
                         className={
                           "h-auto rounded-full px-3 py-1.5 text-sm border " +
                           (active
@@ -477,6 +485,7 @@ export default function RecordPaymentModal({
                         }
                       >
                         {label}
+                        {c.recurring_only ? " · recurring / off-session only" : ""}
                         {c.is_default ? " · default" : ""}
                       </Button>
                     );
