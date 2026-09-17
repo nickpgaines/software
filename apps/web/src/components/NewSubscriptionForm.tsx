@@ -13,10 +13,8 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Textarea } from "@/components/ui/textarea";
-import AddressFields, {
-  EMPTY_ADDRESS,
-  type AddressValue,
-} from "@/components/customers/AddressFields";
+import AddressFields from "@/components/customers/AddressFields";
+import { useCustomerAddress } from "@/components/customers/useCustomerAddress";
 
 type Customer = {
   id: number;
@@ -932,14 +930,14 @@ function NewCustomerModal({
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [address, setAddress] = useState<AddressValue>({ ...EMPTY_ADDRESS });
+  const { address, setAddress, prefillMessage, locationBias } = useCustomerAddress();
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
-    if (!firstName.trim() || !lastName.trim()) {
-      setErr("First and last name are required");
+    if (!firstName.trim()) {
+      setErr("First name is required");
       return;
     }
     setSaving(true);
@@ -1001,7 +999,7 @@ function NewCustomerModal({
               autoFocus
             />
           </Field>
-          <Field label="Last name">
+          <Field label="Last name (optional)">
             <Input
               type="text"
               value={lastName}
@@ -1029,6 +1027,8 @@ function NewCustomerModal({
         <AddressFields
           value={address}
           onChange={setAddress}
+          prefillMessage={prefillMessage}
+          locationBias={locationBias}
           inputClassName="w-full border-line rounded-xl px-3 py-2 text-sm h-auto"
         />
         {err && <p className="text-sm text-rose-600">{err}</p>}

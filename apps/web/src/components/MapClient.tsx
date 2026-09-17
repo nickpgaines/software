@@ -24,7 +24,7 @@ import {
   normalizePinStatus,
   type PinStatus,
 } from "@/lib/map-pin-colors";
-import { getCurrentPosition } from "@/lib/native";
+import { getCurrentPosition, watchForegroundPosition, type Coords } from "@/lib/native";
 
 const TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
 
@@ -656,10 +656,23 @@ export default function MapClient() {
   // distinctly from the status/customer pins.
   function makeLocateMarkerElement() {
     const el = document.createElement("div");
+    el.title = "Your live location";
     el.style.cssText =
       "width:18px;height:18px;border-radius:9999px;background:#2563eb;" +
       "border:3px solid #fff;box-shadow:0 0 0 2px rgba(37,99,235,.35);";
     return el;
+  }
+
+  function updateLocateMarker(map: mapboxgl.Map, { lat, lng }: Coords) {
+    if (locateMarkerRef.current) {
+      locateMarkerRef.current.setLngLat([lng, lat]);
+      const el = locateMarkerRef.current.getElement();
+      el.style.opacity = "1";
+      el.title = "Your live location";
+    } else {
+      locateMarkerRef.current = new mapboxgl.Marker({ element: makeLocateMarkerElement() })
+        .setLngLat([lng, lat]).addTo(map);
+    }
   }
 
   // Locate-me control: resolve the device position (native plugin in the app,
@@ -681,7 +694,7 @@ export default function MapClient() {
       // the marker ref. Re-read the live ref and bail to avoid resurrecting a
       // marker on a dead map (orphaned/leaked node).
       const liveMap = mapRef.current;
-      if (!liveMap) return;
+      if (liveMap !== map || document.hidden) return;
       if (!coords) {
         // On the automatic load-time call we stay quiet: a user who has denied
         // location shouldn't get a permission nag + error banner on every map
@@ -695,15 +708,7 @@ export default function MapClient() {
         return;
       }
       const { lat, lng } = coords;
-      if (locateMarkerRef.current) {
-        locateMarkerRef.current.setLngLat([lng, lat]);
-      } else {
-        locateMarkerRef.current = new mapboxgl.Marker({
-          element: makeLocateMarkerElement(),
-        })
-          .setLngLat([lng, lat])
-          .addTo(liveMap);
-      }
+      updateLocateMarker(liveMap, coords);
       const targetZoom = Math.max(liveMap.getZoom(), 15);
       if (jump) {
         liveMap.jumpTo({ center: [lng, lat], zoom: targetZoom });
@@ -1152,7 +1157,7 @@ export default function MapClient() {
     const pill = STATUS_PILL[status];
 
     const node = document.createElement("div");
-    node.style.cssText = "min-width:240px;font-family:inherit;";
+    node.style.cssText = "width:240px;max-width:100%;min-width:0;font-family:inherit;overflow-wrap:anywhere;";
 
     const titleText = pin.address || pinCoordLabel(pin);
     const dateText = formatPinDate(pin.created_at);
@@ -1195,7 +1200,7 @@ export default function MapClient() {
          <button data-action="delete" style="flex:1;padding:6px 10px;font-size:12px;border:1px solid #fecaca;border-radius:6px;background:white;color:#dc2626;cursor:pointer;">Delete</button>
        </div>`;
 
-    const popup = new mapboxgl.Popup({ offset: 18, closeButton: true })
+    const popup = new mapboxgl.Popup({ offset: 18, closeButton: true, maxWidth: "min(280px, calc(100vw - 32px))" })
       .setLngLat([pin.lng, pin.lat])
       .setDOMContent(node)
       .addTo(map);
@@ -1249,7 +1254,7 @@ export default function MapClient() {
     const c = customerDataRef.current.get(id);
     if (!map || !c) return;
     const node = document.createElement("div");
-    node.style.cssText = "min-width:220px;font-family:inherit;";
+    node.style.cssText = "width:240px;max-width:100%;min-width:0;font-family:inherit;overflow-wrap:anywhere;";
     const addr = c.formatted_address || c.address || "";
     const addrHtml = addr
       ? `<div style="margin-top:4px;font-size:13px;color:#475569;">${escapeHtml(addr)}</div>`
@@ -1264,7 +1269,7 @@ export default function MapClient() {
       `<div style="margin-top:10px;">
          <a href="/customers/${c.id}" data-action="view" style="display:inline-block;padding:6px 10px;font-size:12px;border:1px solid #e2e8f0;border-radius:6px;background:white;color:#0f172a;cursor:pointer;text-decoration:none;">View Customer</a>
        </div>`;
-    const popup = new mapboxgl.Popup({ offset: 18, closeButton: true })
+    const popup = new mapboxgl.Popup({ offset: 18, closeButton: true, maxWidth: "min(280px, calc(100vw - 32px))" })
       .setLngLat([c.longitude, c.latitude])
       .setDOMContent(node)
       .addTo(map);
@@ -1274,12 +1279,6 @@ export default function MapClient() {
   useEffect(() => {
     if (!containerRef.current) return;
     mapboxgl.accessToken = TOKEN as string;
-    // Kick off geolocation before map init so coords are (often) ready by the
-    // time the map load event fires, letting us jumpTo the user's location
-    // without the "zoomed-out US → animate in" flash.
-    const earlyCoordsPromise = getCurrentPosition({ fast: true }).catch(
-      () => null
-    );
     const map = new mapboxgl.Map({
       container: containerRef.current,
       style: SATELLITE_STYLE,
@@ -1295,18 +1294,26 @@ export default function MapClient() {
       projection: { name: "mercator" },
     });
     mapRef.current = map;
-    // If coords resolve before the map's load event fires, snap the map to the
-    // user's location immediately (no animation, no US-center flash). Guarded:
-    // jumpTo can throw if the map instance has been torn down between our
-    // capture of `map` above and the promise resolving.
-    void earlyCoordsPromise.then((coords) => {
-      const liveMap = mapRef.current;
-      if (!liveMap || !coords) return;
-      try {
-        liveMap.jumpTo({ center: [coords.lng, coords.lat], zoom: 15 });
-      } catch {
-        // Map was destroyed mid-jump; the deferred locate call in load will
-        // recenter once a fresh instance is ready.
+    // Only the first fix centers automatically. Subsequent fixes move the dot,
+    // not the viewport; a user who already started browsing keeps their view.
+    let centerOnFirstFix = true;
+    const cancelInitialCenter = () => { centerOnFirstFix = false; };
+    map.on("dragstart", cancelInitialCenter);
+    map.on("zoomstart", cancelInitialCenter);
+    map.on("movestart", e => { if (e.originalEvent) cancelInitialCenter(); });
+    const stopLocation = watchForegroundPosition(coords => {
+      if (mapRef.current !== map) return;
+      updateLocateMarker(map, coords);
+      setLocateError(null);
+      if (centerOnFirstFix) {
+        centerOnFirstFix = false;
+        map.jumpTo({ center: [coords.lng, coords.lat], zoom: 15 });
+      }
+    }, () => {
+      const el = locateMarkerRef.current?.getElement();
+      if (el) {
+        el.style.opacity = "0.4";
+        el.title = "Location unavailable — last known position";
       }
     });
 
@@ -1382,14 +1389,6 @@ export default function MapClient() {
       } catch {
         // ignore
       }
-      // Show the user's current location by default — drop the blue dot and
-      // recenter on it. Silent: if permission is denied/unavailable we don't
-      // surface the error banner on load (it only appears on an explicit
-      // locate-button tap). Jump (no animation) so the map lands on the user's
-      // location without the zoomed-out → animate-in flash. On iOS the OS
-      // shows its permission prompt at most once, so this doesn't nag repeat
-      // visitors.
-      void handleLocate({ silent: true, jump: true });
     });
 
     map.on("click", "territories-fill", (e) => {
@@ -1435,7 +1434,7 @@ export default function MapClient() {
       if (
         target &&
         typeof target.closest === "function" &&
-        (target.closest(".mp-pin") || target.closest(".mp-customer-pin"))
+        (target.closest(".mp-pin") || target.closest(".mp-customer-pin") || target.closest(".mapboxgl-popup"))
       ) {
         return;
       }
@@ -1492,6 +1491,37 @@ export default function MapClient() {
     function onUp() {
       clearHold();
     }
+
+    // Mapbox Draw prevents synthetic clicks on touchend. Handle a genuine
+    // outside tap directly; never interpret a pan/pinch/long-press as a tap.
+    let popupTouch: { x: number; y: number; at: number; popup: mapboxgl.Popup } | null = null;
+    const cancelPopupTouch = () => { popupTouch = null; };
+    function onPopupTouchStart(e: mapboxgl.MapTouchEvent) {
+      cancelPopupTouch();
+      const target = e.originalEvent.target as HTMLElement | null;
+      if (e.originalEvent.touches.length !== 1 || drawingTerritoryRef.current || drawingLassoRef.current ||
+          target?.closest?.(".mp-pin, .mp-customer-pin, .mapboxgl-popup, .mapboxgl-ctrl") || !currentPopupRef.current) return;
+      popupTouch = { x: e.point.x, y: e.point.y, at: Date.now(), popup: currentPopupRef.current };
+    }
+    function onPopupTouchMove(e: mapboxgl.MapTouchEvent) {
+      if (popupTouch && Math.hypot(e.point.x - popupTouch.x, e.point.y - popupTouch.y) > MOVE_THRESHOLD_PX) cancelPopupTouch();
+    }
+    function onPopupTouchEnd(e: mapboxgl.MapTouchEvent) {
+      const start = popupTouch;
+      cancelPopupTouch();
+      if (!start || e.originalEvent.touches.length || Date.now() - start.at >= HOLD_MS ||
+          Math.hypot(e.point.x - start.x, e.point.y - start.y) > MOVE_THRESHOLD_PX ||
+          currentPopupRef.current !== start.popup) return;
+      start.popup.remove();
+    }
+    map.on("touchstart", onPopupTouchStart);
+    map.on("touchmove", onPopupTouchMove);
+    map.on("touchend", onPopupTouchEnd);
+    map.on("touchcancel", cancelPopupTouch);
+    map.on("dragstart", cancelPopupTouch);
+    map.on("zoomstart", cancelPopupTouch);
+    map.on("rotatestart", cancelPopupTouch);
+    map.on("pitchstart", cancelPopupTouch);
 
     // Click a cluster to zoom into its expansion zoom — standard Mapbox UX
     // so users can drill into clusters without manually pinch-zooming.
@@ -1573,6 +1603,7 @@ export default function MapClient() {
     map.on("wheel", clearHold);
 
     return () => {
+      stopLocation();
       clearHold();
       for (const [, m] of markersRef.current) m.remove();
       markersRef.current.clear();
@@ -1693,11 +1724,14 @@ export default function MapClient() {
   function pinActionUrl(
     action: PinAction,
     pinId: number | null,
-    address: string | null
+    address: string | null,
+    coordinates: Coords
   ): string {
     const q = new URLSearchParams();
     if (address) q.set("address", address);
     if (pinId != null) q.set("attach_pin", String(pinId));
+    q.set("latitude", String(coordinates.lat));
+    q.set("longitude", String(coordinates.lng));
     const qs = q.toString();
     switch (action) {
       case "estimate":
@@ -1782,7 +1816,7 @@ export default function MapClient() {
     const persisted = await persistPin(data, snap);
     const pinId = persisted?.id ?? snap.editingId ?? null;
     const address = persisted?.address ?? snap.address ?? null;
-    router.push(pinActionUrl(action, pinId, address));
+    router.push(pinActionUrl(action, pinId, address, snap));
   }
 
   async function handlePinDelete() {

@@ -8,6 +8,8 @@ import ImportModal from "@/components/customers/ImportModal";
 import SubscriptionCsvImportModal from "@/components/subscriptions/SubscriptionCsvImportModal";
 import JobsImportModal from "@/components/jobs/JobsImportModal";
 import CustomerForm from "@/components/customers/CustomerForm";
+import type { AddressValue } from "@/components/customers/AddressFields";
+import { addressFromSearchParams } from "@/lib/customer-address-prefill";
 import { usePhone } from "@/components/PhoneClient";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -66,6 +68,7 @@ function CustomersPage() {
   const [editing, setEditing] = useState<Customer | null>(null);
   const [creating, setCreating] = useState(false);
   const [attachPinId, setAttachPinId] = useState<number | null>(null);
+  const [initialAddress, setInitialAddress] = useState<AddressValue | undefined>();
   const [importing, setImporting] = useState(false);
   const [importingSubs, setImportingSubs] = useState(false);
   const [importingJobs, setImportingJobs] = useState(false);
@@ -119,6 +122,7 @@ function CustomersPage() {
       const pin = searchParams.get("attach_pin");
       const pinId = pin ? Number(pin) : NaN;
       setAttachPinId(Number.isFinite(pinId) ? pinId : null);
+      setInitialAddress(addressFromSearchParams(searchParams));
       setCreating(true);
       router.replace("/customers");
     }
@@ -356,16 +360,19 @@ function CustomersPage() {
       {(creating || editing) && (
         <CustomerForm
           customer={editing}
+          initialAddress={initialAddress}
           onClose={() => {
             setCreating(false);
             setEditing(null);
             setAttachPinId(null);
+            setInitialAddress(undefined);
           }}
           onSaved={async (saved) => {
             const pinId = attachPinId;
             setCreating(false);
             setEditing(null);
             setAttachPinId(null);
+            setInitialAddress(undefined);
             if (pinId != null && saved.id != null) {
               await fetch(`/api/map/pins/${pinId}`, {
                 method: "PUT",
