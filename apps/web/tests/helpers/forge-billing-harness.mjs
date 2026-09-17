@@ -44,14 +44,15 @@ export function paidSubscription(customer='cus_1', status='active') {
   provider.invoices.push({id:'in_1',status:'paid',paid:true,livemode:false,customer,amount_paid:7900,amount_remaining:0,parent:{subscription_details:{subscription:s.id}},lines:{has_more:false,data:[{amount:7900,period:{start:1790744400,end:1793422800},parent:{subscription_item_details:{subscription:s.id}},pricing:{price_details:{price:'price_solo_month'}}}]}});
   return s;
 }
-/** @returns {Promise<{service:typeof import('../../src/lib/forge-billing/service.ts'),schema:typeof import('../../src/lib/forge-billing/schema.ts'),routes:Record<string,any>}>} */
+/** @returns {Promise<{service:typeof import('../../src/lib/forge-billing/service.ts'),access:typeof import('../../src/lib/forge-billing/access.ts'),schema:typeof import('../../src/lib/forge-billing/schema.ts'),routes:Record<string,any>}>} */
 export async function loadBilling() {
   const hooks=registerHooks({resolve(specifier,context,next){
     if(specifier==='stripe' || specifier==='@/lib/db' || specifier==='@/lib/auth') return {url:import.meta.url,shortCircuit:true};
     if(specifier==='next/server') return next('next/server.js',context);
+    if(specifier==='next/navigation') return next('next/navigation.js',context);
     if(specifier.startsWith('@/')) return next(new URL(`../../src/${specifier.slice(2)}.ts`,import.meta.url).href,context);
     if(specifier.startsWith('./') && !specifier.endsWith('.ts') && context.parentURL?.includes('/src/lib/forge-billing/')) return next(`${specifier}.ts`,context);
     return next(specifier,context);
   }});
-  try { const service=await import('../../src/lib/forge-billing/service.ts'); const schema=await import('../../src/lib/forge-billing/schema.ts'); /** @type {Record<string,any>} */ const routes={}; for(const name of ['status','checkout','portal','refresh','webhook','public']) routes[name]=await import(`../../src/app/api/forge-billing/${name}/route.ts`); return {service,schema,routes}; } finally { hooks.deregister(); }
+  try { const service=await import('../../src/lib/forge-billing/service.ts'); const access=await import('../../src/lib/forge-billing/access.ts'); const schema=await import('../../src/lib/forge-billing/schema.ts'); /** @type {Record<string,any>} */ const routes={}; for(const name of ['status','checkout','portal','refresh','webhook','public']) routes[name]=await import(`../../src/app/api/forge-billing/${name}/route.ts`); return {service,access,schema,routes}; } finally { hooks.deregister(); }
 }

@@ -219,13 +219,23 @@ export async function middleware(req: NextRequest) {
   }
 
   if (accessResponse.status === 401) {
-    if (pathname.startsWith("/api/")) {
-      return NextResponse.json(
+    const response = pathname.startsWith("/api/")
+      ? NextResponse.json(
         { error: "unauthorized" },
         { status: 401, headers: { "Cache-Control": "no-store" } }
-      );
-    }
-    return NextResponse.redirect(`${origin}/login`);
+      )
+      : NextResponse.redirect(`${origin}/login`);
+    // Node checks current staff/company state, beyond the signature checked here.
+    // Expire its rejected session so login does not redirect back to the CRM.
+    response.cookies.set(COOKIE_NAME, "", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 0,
+    });
+    response.headers.set("Cache-Control", "no-store");
+    return response;
   }
   if (!accessResponse.ok) {
     return NextResponse.json(

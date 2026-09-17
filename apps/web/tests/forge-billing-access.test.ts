@@ -187,16 +187,50 @@ test("authentication and CSRF run before entitlement; stale tenant sessions cann
     middlewareRequest("/api/jobs")
   );
   assert.equal(staleApi.status, 401);
+  assert.equal(staleApi.cookies.get("crm_session")?.maxAge, 0);
+  assert.equal(staleApi.cookies.get("crm_session")?.path, "/");
   assert.equal(calls, 1);
 
   globalThis.fetch = async () =>
     Response.json({ error: "unavailable" }, { status: 503 });
-  const unavailablePage = await modules.middleware.middleware(
-    middlewareRequest("/dashboard")
-  );
-  assert.equal(unavailablePage.status, 503);
-  assert.equal(unavailablePage.headers.get("location"), null);
+  for (const path of ["/dashboard", "/api/jobs"]) {
+    const unavailable = await modules.middleware.middleware(middlewareRequest(path));
+    assert.equal(unavailable.status, 503);
+    assert.equal(unavailable.headers.get("location"), null);
+    assert.equal(unavailable.headers.get("set-cookie"), null);
+  }
 });
+
+for (const initialPath of ["/dashboard", "/login?next=%2Fbilling"]) {
+  test(`Node-rejected sessions reach login with browser cookie handling from ${initialPath}`, async (t) => {
+    await setup(t);
+    setSession(null);
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => modules.accessRoute.GET(new Request("https://forge.test/api/forge-billing/access"));
+    t.after(() => { globalThis.fetch = originalFetch; });
+    const cookies = new Map([["crm_session", sessionCookie()]]);
+    let url = `https://forge.test${initialPath}`;
+    for (let hop = 0; hop < 4; hop++) {
+      const response = await modules.middleware.middleware(new NextRequest(url, {
+        headers: { host: "forge.test", cookie: [...cookies].map(([k, v]) => `${k}=${v}`).join("; ") },
+      }));
+      for (const cookie of response.cookies.getAll()) {
+        if (cookie.maxAge === 0 || (cookie.expires && Number(cookie.expires) <= Date.now())) {
+          cookies.delete(cookie.name);
+        } else cookies.set(cookie.name, cookie.value);
+      }
+      const location = response.headers.get("location");
+      if (!location) {
+        assert.equal(new URL(url).pathname, "/login");
+        assert.equal(response.headers.get("x-middleware-next"), "1");
+        assert.equal(cookies.has("crm_session"), false);
+        return;
+      }
+      url = location;
+    }
+    assert.fail("stale signed cookie caused a login redirect loop");
+  });
+}
 
 test("access endpoint authenticates directly, ignores caller tenant data, and is uncached", async (t) => {
   await setup(t);
@@ -372,6 +406,11 @@ test("deletion tombstone blocks staff insertion even with rollout disabled", asy
 test("a live Checkout reservation prevents a concurrent insert from exceeding the selected plan", async (t) => {
   const { db } = await setup(t);
   await db.prepare("DELETE FROM staff WHERE id = 8").run();
+  await db.prepare(`INSERT INTO forge_billing_accounts
+    (company_id,account_id,livemode,customer_id,customer_key)
+    VALUES(1,'acct_platform',0,'cus_company_1','live_customer')`).run();
+  provider.sessions.push({ id: "cs_live", customer: "cus_company_1", livemode: false,
+    status: "open", metadata: { forge_reservation_id: "reservation_solo" } });
   await db
     .prepare(
       `INSERT INTO forge_billing_checkout
@@ -413,8 +452,9 @@ test("a terminal old subscription does not leave a stale seat cap", async (t) =>
   assert.equal(response.status, 201);
 });
 
-for (const terminalStatus of ["canceled", "incomplete_expired"]) {
-  test(`a persisted completed Checkout releases its exact ${terminalStatus} subscription seat cap`, async (t) => {
+for (const localStatus of ["complete", "open", "reserved"]) {
+for (const terminalStatus of ["canceled", "incomplete_expired", "expired"]) {
+  test(`a persisted ${localStatus} Checkout releases its exact ${terminalStatus} seat cap`, async (t) => {
     const { db } = await setup(t);
     await db.prepare("DELETE FROM staff WHERE id = 8").run();
     await db
@@ -428,14 +468,14 @@ for (const terminalStatus of ["canceled", "incomplete_expired"]) {
       .prepare(
         `INSERT INTO forge_billing_checkout
           (company_id,reservation_id,plan,interval,price_id,session_id,status)
-         VALUES(1,'reservation_terminal','solo','month','price_solo_month','cs_terminal','complete')`
+         VALUES(1,'reservation_terminal','solo','month','price_solo_month',?,?)`
       )
-      .run();
+      .run(localStatus === "reserved" ? null : "cs_terminal", localStatus);
     provider.sessions.push({
       id: "cs_terminal",
       customer: "cus_company_1",
       livemode: false,
-      status: "complete",
+      status: terminalStatus === "expired" ? "expired" : "complete",
       subscription: "sub_terminal",
       metadata: { forge_reservation_id: "reservation_terminal" },
     });
@@ -463,6 +503,7 @@ for (const terminalStatus of ["canceled", "incomplete_expired"]) {
       0
     );
   });
+}
 }
 
 test("a persisted completed Checkout keeps its seat cap when the exact subscription is unresolved", async (t) => {

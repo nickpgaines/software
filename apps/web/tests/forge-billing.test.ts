@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { createClient } from '@libsql/client';
 import { loadRealPaymentDb } from './helpers/payment-harness.mjs';
 import { fixture, loadBilling, provider, paidSubscription, setSession } from './helpers/forge-billing-harness.mjs';
-const {service,schema,routes}=await loadBilling();
+const {service,access,schema,routes}=await loadBilling();
 async function setup() { const db=fixture(); await schema.installForgeBillingSchema(db); return db; }
 const request=(name:string, body:unknown={}, headers:Record<string,string>={})=>new Request(`https://forge.test/api/forge-billing/${name}`,{method:'POST',headers:{Origin:'https://forge.test','content-type':'application/json',...headers},body:JSON.stringify(body)});
 test('dormant flag does not call provider and exact cutoff closes unpaid access', async()=>{
@@ -35,6 +35,86 @@ test('lost Checkout responses reconcile and never rotate unknown reservations ev
   provider.hidden=false; assert.ok((await service.createCompanyCheckout(1,'solo','month')).url);
   assert.equal(provider.sessions.length,1); assert.equal((await db.prepare('SELECT count(*) n FROM forge_billing_checkout').get()).n,1);
 });
+for (const lostResponse of [false, true]) {
+  for (const terminal of ['expired', 'canceled', 'incomplete_expired']) {
+    test(`staff can insert after actual Checkout creation with lost response ${lostResponse} becomes ${terminal}`, async () => {
+      const db = await setup();
+      process.env.FORGE_BILLING_CUTOFF_AT = '2099-09-26T05:00:00.000Z';
+      provider.lost = lostResponse;
+      if (lostResponse) await assert.rejects(() => service.createCompanyCheckout(1, 'solo', 'month'));
+      else await service.createCompanyCheckout(1, 'solo', 'month');
+      const reservation = await db.prepare('SELECT * FROM forge_billing_checkout WHERE company_id=1').get();
+      assert.equal(reservation.status, lostResponse ? 'reserved' : 'open');
+      if (terminal === 'expired') provider.sessions[0].status = 'expired';
+      else {
+        const sub = paidSubscription();
+        provider.sessions[0].status = 'complete';
+        provider.sessions[0].subscription = sub.id;
+        await service.refreshCompanyBilling(1);
+        sub.status = terminal;
+        provider.event = { id: 'evt_terminal', type: 'customer.subscription.deleted', livemode: false, data: { object: sub } };
+        assert.equal((await routes.webhook.POST(request('webhook', {}, { 'stripe-signature': 'test' }))).status, 200);
+      }
+      await service.refreshCompanyBilling(1);
+      assert.equal((await service.getCompanyBillingStatus(1)).reason, 'pre_cutoff');
+      // Refresh/webhook do not synchronize Checkout, so preflight must discover it.
+      assert.equal((await db.prepare('SELECT status FROM forge_billing_checkout WHERE company_id=1').get()).status, reservation.status);
+      const release = await service.resolveTerminalCheckoutSeatRelease(1);
+      assert.equal(release, reservation.reservation_id);
+      assert.equal((await db.prepare('SELECT COUNT(*) n FROM forge_billing_checkout').get()).n, 1);
+      await db.transaction(async (tx: Db) => {
+        await access.assertStaffInsertionAllowed(tx, 1, release);
+        await tx.prepare("INSERT INTO staff VALUES(9,1,'technician',NULL)").run();
+      });
+      assert.equal((await db.prepare('SELECT COUNT(*) n FROM staff WHERE company_id=1').get()).n, 2);
+      assert.equal((await db.prepare('SELECT COUNT(*) n FROM forge_billing_checkout').get()).n, 0);
+    });
+  }
+}
+
+for (const outcome of ['open', 'unknown', 'hidden', 'unrelated_canceled', 'wrong_customer', 'wrong_mode', 'wrong_price', 'wrong_quantity', 'wrong_reservation']) {
+  test(`Checkout seat preflight retains the reservation for ${outcome}`, async () => {
+    const db = await setup();
+    provider.lost = true;
+    await assert.rejects(() => service.createCompanyCheckout(1, 'solo', 'month'));
+    const reservation = await db.prepare('SELECT reservation_id FROM forge_billing_checkout').get();
+    const checkout = provider.sessions[0];
+    if (outcome === 'unknown') checkout.status = null;
+    if (outcome === 'hidden') provider.hidden = true;
+    if (outcome === 'wrong_reservation') checkout.metadata.forge_reservation_id = 'unrelated';
+    if (['unrelated_canceled', 'wrong_customer', 'wrong_mode', 'wrong_price', 'wrong_quantity'].includes(outcome)) {
+      paidSubscription('cus_1', 'canceled');
+      await db.prepare("UPDATE forge_billing_accounts SET subscription_id='sub_1',subscription_status='canceled' WHERE company_id=1").run();
+      const bound = paidSubscription('cus_1', outcome === 'unrelated_canceled' ? 'active' : 'canceled');
+      checkout.status = 'complete';
+      checkout.subscription = bound.id;
+      if (outcome === 'wrong_customer') bound.customer = 'cus_other';
+      if (outcome === 'wrong_mode') bound.livemode = true;
+      if (outcome === 'wrong_price') bound.items.data[0].price.id = 'price_team_month';
+      if (outcome === 'wrong_quantity') bound.items.data[0].quantity = 2;
+    }
+    if (['open', 'unknown', 'unrelated_canceled'].includes(outcome)) {
+      assert.equal(await service.resolveTerminalCheckoutSeatRelease(1), null);
+      await assert.rejects(() => db.transaction((tx: Db) => access.assertStaffInsertionAllowed(tx, 1)), /supports 1 employee/);
+    } else await assert.rejects(() => service.resolveTerminalCheckoutSeatRelease(1), { status: 503 });
+    assert.equal((await db.prepare('SELECT reservation_id FROM forge_billing_checkout').get()).reservation_id, reservation.reservation_id);
+    assert.equal((await db.prepare('SELECT COUNT(*) n FROM staff WHERE company_id=1').get()).n, 1);
+  });
+}
+
+for (const change of ['replacement', 'nonterminal']) {
+test(`terminal Checkout proof cannot delete a ${change} reservation inside staff insertion`, async () => {
+  const db = await setup();
+  await service.createCompanyCheckout(1, 'solo', 'month');
+  provider.sessions[0].status = 'expired';
+  const release = await service.resolveTerminalCheckoutSeatRelease(1);
+  assert.ok(release);
+  const currentId = change === 'replacement' ? 'replacement' : release;
+  await db.prepare("UPDATE forge_billing_checkout SET reservation_id=?,status='open',session_id='cs_replacement' WHERE company_id=1").run(currentId);
+  await assert.rejects(() => db.transaction((tx: Db) => access.assertStaffInsertionAllowed(tx, 1, release)), /supports 1 employee/);
+  assert.equal((await db.prepare('SELECT reservation_id FROM forge_billing_checkout').get()).reservation_id, currentId);
+});
+}
 test('canonical paid invoice grants through paid period; invalid states and browser return never grant',async()=>{
   await setup(); await service.createCompanyCheckout(1,'solo','month'); const sub=paidSubscription();
   assert.equal((await service.getCompanyBillingStatus(1,new Date('2026-10-01'))).allowed,false);

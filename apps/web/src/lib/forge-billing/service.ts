@@ -113,7 +113,8 @@ async function canRetireCheckout(
   return ['canceled', 'incomplete_expired'].includes(subscription.status);
 }
 /**
- * Resolve only persisted terminal Checkout rows before a staff insertion.
+ * Resolve canonical Checkout state before a staff insertion. The persisted row
+ * may still be open (or reserved after a lost response) after provider completion.
  * The caller must delete the returned reservation inside its insertion transaction.
  */
 export async function resolveTerminalCheckoutSeatRelease(
@@ -125,8 +126,6 @@ export async function resolveTerminalCheckoutSeatRelease(
     .prepare('SELECT * FROM forge_billing_checkout WHERE company_id=?')
     .get<Reservation>(companyId);
   if (!reservation) return null;
-  if (reservation.status === 'expired') return reservation.reservation_id;
-  if (reservation.status !== 'complete') return null;
   const account = await readBillingAccount(companyId);
   if (!account?.customer_id || account.deleting) {
     throw new BillingError('Checkout subscription is unresolved', 503);
