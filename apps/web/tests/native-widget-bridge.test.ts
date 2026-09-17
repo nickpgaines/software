@@ -6,10 +6,11 @@ import {
   logoutForgeSession,
   type WidgetCredential,
 } from "../src/lib/native-widget.ts";
+import { nativeTerminal } from "../src/lib/native-terminal.ts";
 
 // Exercise the real Capacitor proxy, not an ordinary object standing in for it.
 // Returning that proxy directly from the async loader hangs Promise resolution.
-test("real Capacitor plugin completes widget setup, reuse, and logout", { timeout: 2_000 }, async (t) => {
+test("real Capacitor plugin completes logout even when Terminal cleanup stalls", { timeout: 3_000 }, async (t) => {
   const globals = ["window", "webkit", "Capacitor"] as const;
   const original = globals.map((key) => Object.getOwnPropertyDescriptor(globalThis, key));
   t.after(() => {
@@ -33,8 +34,9 @@ test("real Capacitor plugin completes widget setup, reuse, and logout", { timeou
     window: globalThis,
     webkit: { messageHandlers: { bridge: {} } },
     Capacitor: {
-      PluginHeaders: [{ name: "ForgeWidget", methods: methods.map((name) => ({ name, rtype: "promise" })) }],
+      PluginHeaders: [{ name: "ForgeWidget", methods: methods.map((name) => ({ name, rtype: "promise" })) }, {name:"ForgeTerminal", methods:[{name:"reset",rtype:"promise"}]}],
       nativePromise: async (plugin: string, method: string, options?: WidgetCredential) => {
+        if (plugin === "ForgeTerminal") { assert.equal(method,"reset"); return new Promise(()=>{}); }
         assert.equal(plugin, "ForgeWidget");
         nativeCalls.push(method);
         switch (method) {
@@ -70,7 +72,12 @@ test("real Capacitor plugin completes widget setup, reuse, and logout", { timeou
 
   assert.equal(await ensureNativeWidgetCredential(), true);
   assert.deepEqual(nativeCalls.slice(4), ["credentialMetadata", "refreshSnapshot"]);
-  await logoutForgeSession();
+  const generation=nativeTerminal.generation;
+  const logout=logoutForgeSession();
+  assert.notEqual(nativeTerminal.generation,generation);
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.ok(requests.includes("POST /api/logout"),"server logout starts before native cleanup returns");
+  await logout;
   assert.equal(stored, null);
   assert.deepEqual(nativeCalls.slice(6), ["credentialMetadata", "clearCredential"]);
   assert.deepEqual(requests, [

@@ -1,20 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import TerminalFlow from "@/components/payments/TerminalFlow";
 
 type CheckoutChoice = "tap_to_pay" | "card" | "other";
-
-declare global {
-  interface Window {
-    ForgeNative?: {
-      startTapToPay?: (args: {
-        jobId: number;
-        amountCents: number;
-      }) => void;
-    };
-  }
-}
 
 function money(cents: number) {
   return `$${(cents / 100).toFixed(2)}`;
@@ -26,29 +16,19 @@ export default function CheckoutModal({
   paidTotalCents,
   onClose,
   onChoose,
+  onPaid,
 }: {
   jobId: number;
   jobTotalCents: number;
   paidTotalCents: number;
   onClose: () => void;
   onChoose: (choice: CheckoutChoice) => void;
+  onPaid: () => void;
 }) {
-  const [tapNotice, setTapNotice] = useState<string | null>(null);
+  const [blocked, setBlocked] = useState(true);
+  const blockedRef = useRef(true);
+  const [paid, setPaid] = useState(false);
   const dueCents = Math.max(0, jobTotalCents - paidTotalCents);
-
-  function handleTapToPay() {
-    setTapNotice(null);
-    const bridge =
-      typeof window !== "undefined" ? window.ForgeNative : undefined;
-    if (bridge?.startTapToPay) {
-      bridge.startTapToPay({ jobId, amountCents: dueCents });
-      onChoose("tap_to_pay");
-      return;
-    }
-    setTapNotice(
-      "Tap to Pay on iPhone runs through the Forge iOS app (coming soon). Use Pay with card to charge a card from this device."
-    );
-  }
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
@@ -91,28 +71,17 @@ export default function CheckoutModal({
           </div>
 
           <div className="space-y-3">
-            <Button
-              variant="ghost"
-              type="button"
-              onClick={handleTapToPay}
-              className="w-full h-auto bg-primary hover:opacity-90 text-primary-foreground rounded-2xl px-4 py-3 text-sm font-extrabold inline-flex items-center justify-center gap-2"
-            >
-              <TapIcon />
-              <span>Tap to Pay on iPhone</span>
-            </Button>
-
-            {tapNotice && (
-              <p className="text-xs text-amber-500 font-bold leading-snug">
-                {tapNotice}
-              </p>
-            )}
+            <TerminalFlow operation="payment" jobId={jobId}
+              onBlockedChange={value => { blockedRef.current = value; setBlocked(value); }}
+              onSuccess={() => { blockedRef.current = true; setPaid(true); onPaid(); }} />
 
             <Divider label="or" />
 
             <Button
               variant="ghost"
               type="button"
-              onClick={() => onChoose("card")}
+              disabled={blocked || paid}
+              onClick={() => { if (!blockedRef.current && !paid) onChoose("card"); }}
               className="w-full h-auto border border-line bg-card hover:bg-black text-white rounded-2xl px-4 py-3 text-sm font-extrabold inline-flex items-center justify-center gap-2"
             >
               <CardIcon />
@@ -124,7 +93,8 @@ export default function CheckoutModal({
             <Button
               variant="ghost"
               type="button"
-              onClick={() => onChoose("other")}
+              disabled={blocked || paid}
+              onClick={() => { if (!blockedRef.current && !paid) onChoose("other"); }}
               className="w-full h-auto border border-line bg-card hover:bg-black text-zinc-300 rounded-2xl px-4 py-3 text-sm font-extrabold inline-flex items-center justify-center"
             >
               Other

@@ -1,3 +1,5 @@
+import { nativeTerminal } from './native-terminal.ts';
+
 export type WidgetCredential = {
   token: string;
   company_id: number;
@@ -285,5 +287,7 @@ export async function clearNativeWidgetCredential(): Promise<void> {
 }
 
 export async function logoutForgeSession(): Promise<void> {
-  await lifecycle.logout();
+  // reset invalidates web operations synchronously; stalled native cleanup is
+  // bounded and best-effort, while the server logout always starts immediately.
+  await Promise.all([nativeTerminal.reset(), lifecycle.logout()]);
 }
