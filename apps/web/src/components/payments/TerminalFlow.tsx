@@ -61,7 +61,7 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
     identity.current = next;
     setMerchant(next);
   }
-  function receive(next: TerminalAttemptView, token: Lifecycle) {
+  function receive(next: TerminalAttemptView, token: Lifecycle, holdBlock = false) {
     if (!valid(token)) return;
     if (next.operation !== operation || (operation === 'payment' ? next.job_id !== jobId : next.customer_id !== customerId) || next.stripe_account !== identity.current?.stripe_account_id) throw new Error('Attempt does not match the current account and target.');
     current.current = next;
@@ -71,39 +71,45 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
       else sessionStorage.setItem(recoveryKey(), next.attempt_id);
     } catch { /* Server listing remains authoritative when storage is unavailable. */ }
     setAttempt(next);
-    block(!closed(next));
+    block(holdBlock || !closed(next));
     if (next.status === 'succeeded' && closed(next)) {
       setMessage(next.operation === 'payment' ? 'Payment confirmed.' : next.card_saved ? 'Card saved. No charge was made and no subscription was started.' : 'Card was not saved. No charge was made.');
       if (delivered.current !== next.attempt_id) { delivered.current = next.attempt_id; callbacks.current.onSuccess(next); }
     } else setMessage(next.status === 'canceled' ? 'Attempt canceled. You can choose another payment method.' : recoveryMessage);
   }
-  async function reconcile(id: string, token: Lifecycle, action = 'reconcile') {
+  async function reconcile(id: string, token: Lifecycle, action = 'reconcile', holdBlock = false) {
     await checkIdentity(token);
     const next = await json<TerminalAttemptView>(`/api/stripe/terminal/attempts/${encodeURIComponent(id)}/${action}`, { method: 'POST' });
-    receive(next, token);
+    receive(next, token, holdBlock);
     return next;
   }
-  async function recover(token: Lifecycle) {
+  async function recover(token: Lifecycle, checked?: TerminalAttemptView) {
     await checkIdentity(token);
-    if (current.current) return reconcile(current.current.attempt_id, token);
-    let remembered: string | null = null;
-    try { remembered = sessionStorage.getItem(recoveryKey()); } catch { /* Optional recovery hint only. */ }
-    if (remembered) return reconcile(remembered, token);
-    const { attempts } = await json<{attempts: TerminalAttemptView[]}>(`/api/stripe/terminal/attempts?${query}`);
-    if (!valid(token)) return;
-    const matching = attempts.filter(a => a.operation === operation);
-    if (!matching.length) {
-      const unknown = uncertainCreations.has(recoveryKey());
-      block(unknown);
-      setMessage(unknown ? `${recoveryMessage} If the attempt remains unavailable, have the merchant verify the payment before continuing.` : '');
-      return;
+    block(true);
+    let remembered: string | null = current.current?.attempt_id ?? null;
+    if (!remembered) {
+      try { remembered = sessionStorage.getItem(recoveryKey()); } catch { /* Optional recovery hint only. */ }
     }
-    // Setup can have multiple unfinished saves. Resolve each before offering a new one.
-    for (const a of matching) {
-      receive(a, token);
-      const next = await reconcile(a.attempt_id, token);
+    if (remembered) {
+      const next = checked?.attempt_id === remembered ? checked : await reconcile(remembered, token, 'reconcile', true);
       if (!closed(next)) return next;
     }
+    // Another device may have canceled the remembered attempt and started a new
+    // one. A terminal result for one ID cannot release the target's payment lock.
+    const { attempts } = await json<{attempts: TerminalAttemptView[]}>(`/api/stripe/terminal/attempts?${query}`);
+    if (!valid(token)) return;
+    const matching = attempts.filter(a => a.operation === operation && a.attempt_id !== remembered);
+    // Setup can have multiple unfinished saves. Resolve each before offering a new one.
+    for (const a of matching) {
+      receive(a, token, true);
+      const next = await reconcile(a.attempt_id, token, 'reconcile', true);
+      if (!closed(next)) return next;
+    }
+    if (!valid(token)) return;
+    const unknown = uncertainCreations.has(recoveryKey());
+    block(unknown);
+    if (unknown) setMessage(`${recoveryMessage} If the attempt remains unavailable, have the merchant verify the payment before continuing.`);
+    else if (!current.current) setMessage('');
   }
   useEffect(() => {
     const token = { active: true, generation: native.generation, lease: Symbol() };
@@ -137,7 +143,8 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
       if (action === 'cancel') {
         if (current.current) {
           await native.cancel(current.current.attempt_id, token.lease);
-          await reconcile(current.current.attempt_id, token, 'cancel');
+          const next = await reconcile(current.current.attempt_id, token, 'cancel', true);
+          if (closed(next)) await recover(token, next);
         } else await recover(token);
         return;
       }
@@ -154,7 +161,10 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
           throw error;
         }
         receive(next, token);
-      } else if (next) next = await reconcile(next.attempt_id, token);
+      } else if (next) {
+        next = await reconcile(next.attempt_id, token, 'reconcile', true);
+        if (closed(next)) { await recover(token, next); return; }
+      }
       if (!valid(token) || !next || next.status !== 'ready' || !next.client_secret) return;
       await checkIdentity(token);
       await native.collect(next.operation, {operationId:next.attempt_id,clientSecret:next.client_secret,stripeAccount:next.stripe_account,locationId:next.terminal_location_id,saveCard:next.save_card}, token.lease);

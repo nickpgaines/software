@@ -35,6 +35,7 @@ export class NativeTerminal {
   private owner: string | null = null;
   private lease: symbol | undefined;
   private resetting = false;
+  private pendingCleanups = 0;
   private unavailable = false;
   private collection = 0;
   private load: () => Promise<ForgeTerminalPlugin | null>;
@@ -78,21 +79,29 @@ export class NativeTerminal {
     } catch { this.unavailable = true; }
     finally { if (timer) clearTimeout(timer); }
   }
+  private async cleanup(method: 'cancel' | 'reset') {
+    this.pendingCleanups++;
+    this.resetting = true;
+    try { await this.boundedCleanup(method); }
+    finally {
+      // Logout may reset while cancellation is still in flight. No newer
+      // collection may start until every cleanup has settled (or failed closed).
+      this.pendingCleanups--;
+      if (this.pendingCleanups === 0) {
+        this.owner = null;
+        this.resetting = false;
+      }
+    }
+  }
   async cancel(operationId: string, lease?: symbol) {
     // A dismissed flow must never cancel a newer flow's global native operation.
     if (this.owner !== operationId || this.lease !== lease || this.resetting) return;
     this.collection++;
-    this.resetting = true;
-    await this.boundedCleanup('cancel');
-    this.owner = null;
-    this.resetting = false;
+    await this.cleanup('cancel');
   }
   async reset() {
     this.generation++;
-    this.resetting = true;
-    await this.boundedCleanup('reset');
-    this.owner = null;
-    this.resetting = false;
+    await this.cleanup('reset');
   }
 }
 

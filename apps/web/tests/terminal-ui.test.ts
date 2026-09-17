@@ -18,7 +18,7 @@ async function harness(t: any, options: any = {}) {
     if(url==='/api/settings/company') return Response.json(options.merchant?.() ?? {id:1,name:'Acme',stripe_account_id:'acct_1'});
     if(String(url).includes('?')) return Response.json({attempts:options.list ?? (created ? [current]:[])});
     if(url==='/api/stripe/terminal/attempts') {created=true; if(options.createError) throw Error('lost response'); return Response.json(current);}
-    if(String(url).endsWith('/reconcile')) {current={...current,...(options.reconciled ?? {status:'succeeded',payment_recorded:true})};return Response.json(current);}
+    if(String(url).endsWith('/reconcile')) {if(options.reconcile)return options.reconcile(String(url));current={...current,...(options.reconciled ?? {status:'succeeded',payment_recorded:true})};return Response.json(current);}
     if(String(url).endsWith('/cancel')) {current={...current,...(options.canceled ?? {status:'canceled'})};return Response.json(current);}
     throw Error(`Unexpected ${url}`);
   });
@@ -214,4 +214,17 @@ test('checkout blocks manual switches synchronously and refreshes only on verifi
   assert.equal(paid,1);
   tree=renderer.render(Checkout,props);
   assert.equal(elements(tree,(el:any)=>typeof el.props.onClick==='function'&&text(el)==='Pay with card')[0].props.disabled,true);
+});
+
+test('remembered canceled attempt never releases manual payments while a replacement attempt is processing',async t=>{
+  const original=Object.getOwnPropertyDescriptor(globalThis,'sessionStorage');
+  Object.defineProperty(globalThis,'sessionStorage',{configurable:true,value:{getItem:()=> 'attempt_A',setItem(){},removeItem(){}}});
+  t.after(()=>{if(original)Object.defineProperty(globalThis,'sessionStorage',original);else Reflect.deleteProperty(globalThis,'sessionStorage');});
+  const replacement={...ready,attempt_id:'attempt_B',status:'processing',client_secret:undefined};
+  const h=await harness(t,{list:[replacement],reconcile:async(url:string)=>Response.json(url.includes('attempt_A/') ? {...ready,attempt_id:'attempt_A',status:'canceled',client_secret:undefined} : replacement)});
+  assert.equal(h.blocked.includes(false),false,'no transient release between reconciling A and discovering B');
+  assert.ok(h.calls.some(c=>c.url.endsWith('attempt_A/reconcile')));
+  assert.ok(h.calls.some(c=>c.url.endsWith('attempt_B/reconcile')));
+  assert.equal(h.calls.filter(c=>c.url==='/api/stripe/terminal/attempts').length,0);
+  assert.equal(h.completed.length,0);
 });

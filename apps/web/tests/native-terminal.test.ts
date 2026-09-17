@@ -68,3 +68,34 @@ test('an old flow cannot cancel a new flow resuming the same attempt ID',async()
   assert.equal(cancelCalls,0);
   finish({intentId:'pi'});await operation;
 });
+
+test('reset cannot release collection ownership while an earlier cancellation is pending',async()=>{
+  let finishCancel!:()=>void;
+  const completions=new Map<string,(value:{intentId:string})=>void>();
+  const terminal=new NativeTerminal(async()=>({
+    getCapabilities:async()=>({supported:true}),showEducation:async()=>{},
+    collectPayment:args=>new Promise(resolve=>{completions.set(args.operationId,resolve);}),
+    collectSetup:async()=>({intentId:'seti'}),
+    cancel:()=>new Promise(resolve=>{finishCancel=resolve;}),reset:async()=>{},
+  }));
+  const args=(id:string)=>({operationId:id,clientSecret:'secret',stripeAccount:'acct',locationId:'tml',saveCard:false});
+  const first=terminal.collect('payment',args('A'));
+  const firstOutcome=assert.rejects(first,/session/);
+  await new Promise(resolve=>setImmediate(resolve));
+  const cancel=terminal.cancel('A');
+  await new Promise(resolve=>setImmediate(resolve));
+  await terminal.reset();
+  const blocked=terminal.collect('payment',args('blocked'));
+  // Attach the expectation immediately; the old implementation admits this
+  // collection, so settle its external boundary to expose the missing rejection.
+  const rejection=assert.rejects(blocked,/already/);
+  await new Promise(resolve=>setImmediate(resolve));
+  completions.get('blocked')?.({intentId:'pi_blocked'});
+  await rejection;
+  finishCancel();await cancel;
+  const second=terminal.collect('payment',args('B'));
+  await new Promise(resolve=>setImmediate(resolve));
+  completions.get('A')!({intentId:'pi_A'});await firstOutcome;
+  await assert.rejects(terminal.collect('payment',args('C')),/already/);
+  completions.get('B')!({intentId:'pi_B'});await second;
+});
