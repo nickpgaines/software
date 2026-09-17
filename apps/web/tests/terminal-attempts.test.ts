@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test, beforeEach, afterEach } from 'node:test';
-import { fixture, loadTerminal, provider, setSession } from './helpers/terminal-harness.mjs';
+import { fixture, invalidRequestError, loadTerminal, provider, setSession } from './helpers/terminal-harness.mjs';
 
 const modules = await loadTerminal();
 let database: ReturnType<typeof fixture>;
@@ -12,6 +12,153 @@ const subscriptionRequest = (body: object) => new Request('https://www.forgecrm.
 const webhookRequest = () => new Request('https://www.forgecrm.app/api/stripe/webhook', { method: 'POST', headers: { 'stripe-signature': 'valid' }, body: '{}' });
 const start = (body: object = { operation: 'payment', job_id: 12, save_card: false }, key = 'terminal-123') => modules.route.POST(request(body, key));
 const update = (id: string, cancel = false) => modules[cancel ? 'cancel' : 'reconcile'].POST(request({}), { params: { id } });
+
+for (const amount of [25, 49, 100_000_000]) {
+  test(`unsupported USD balance ${amount} is rejected without reserving the job`, async () => {
+    database.sqlite.prepare('UPDATE jobs SET price_cents=? WHERE id=12').run(amount);
+    assert.equal((await start()).status, 400);
+    assert.equal(database.sqlite.prepare('SELECT COUNT(*) n FROM terminal_attempts').get().n, 0);
+    assert.equal(provider.creates.length, 0);
+    database.sqlite.prepare('UPDATE jobs SET price_cents=22500 WHERE id=12').run();
+    assert.equal((await (await start()).json()).status, 'ready');
+  });
+}
+for (const amount of [50, 99_999_999]) {
+  test(`supported USD boundary ${amount} can create an attempt`, async () => {
+    database.sqlite.prepare('UPDATE jobs SET price_cents=? WHERE id=12').run(amount);
+    const result = await (await start()).json();
+    assert.equal(result.status, 'ready');
+    assert.equal(result.amount_cents, amount);
+  });
+}
+for (const code of ['amount_too_small', 'amount_too_large']) {
+  test(`definitive ${code} rejection releases only its own reservation and recovers without lookup`, async () => {
+    const setup = await (await start({ operation: 'setup', customer_id: 90, consent }, 'unrelated')).json();
+    provider.createError = invalidRequestError({ code });
+    const rejected = await (await start()).json();
+    assert.equal(rejected.status, 'canceled');
+    assert.ok(rejected.warning);
+    assert.equal(rejected.client_secret, undefined);
+    assert.equal(database.sqlite.prepare('SELECT provider_intent_id FROM terminal_attempts WHERE attempt_id=?').get(rejected.attempt_id).provider_intent_id, null);
+    assert.equal(database.sqlite.prepare('SELECT status FROM terminal_attempts WHERE attempt_id=?').get(setup.attempt_id).status, 'ready');
+    provider.failLookup = true;
+    assert.equal((await (await start()).json()).status, 'canceled');
+    assert.equal((await (await update(rejected.attempt_id)).json()).status, 'canceled');
+    assert.equal((await (await update(rejected.attempt_id, true)).json()).status, 'canceled');
+    provider.failLookup = false;
+    provider.createError = null;
+    assert.equal((await (await start(undefined, 'replacement')).json()).status, 'ready');
+    assert.equal(provider.intents.length, 2);
+  });
+}
+for (const [label, overrides] of [
+  ['unknown validation', { code: 'parameter_invalid_empty' }],
+  ['wrong parameter', { param: 'application_fee_amount' }],
+  ['server failure', { statusCode: 500 }],
+  ['existing payment intent', { payment_intent: { id: 'pi_existing' } }],
+  ['existing setup intent', { setup_intent: { id: 'seti_existing' } }],
+  ['existing charge', { charge: 'ch_existing' }],
+] as const) {
+  test(`${label} create error keeps the payment reservation unresolved`, async () => {
+    provider.createError = invalidRequestError(overrides);
+    const result = await (await start()).json();
+    assert.equal(result.status, 'needs_reconciliation');
+    assert.equal((await start(undefined, 'replacement')).status, 409);
+    assert.equal((await (await update(result.attempt_id, true)).json()).status, 'needs_reconciliation');
+    assert.equal(database.sqlite.prepare('SELECT status FROM terminal_attempts').get().status, 'needs_reconciliation');
+  });
+}
+for (const succeeded of [false, true]) {
+  test(`late validation rejection preserves concurrently recorded ${succeeded ? 'success' : 'provider identity'}`, async () => {
+    provider.createError = invalidRequestError({});
+    provider.beforeCreateError = () => database.sqlite.prepare(
+      'UPDATE terminal_attempts SET provider_intent_id=?,status=?,payment_recorded=? WHERE idempotency_key=?',
+    ).run('pi_concurrent', succeeded ? 'succeeded' : 'needs_reconciliation', succeeded ? 1 : 0, 'terminal-123');
+    const result = await (await start()).json();
+    assert.equal(result.status, succeeded ? 'succeeded' : 'needs_reconciliation');
+    assert.equal(result.payment_recorded, succeeded);
+    const row = database.sqlite.prepare('SELECT * FROM terminal_attempts').get();
+    assert.equal(row.provider_intent_id, 'pi_concurrent');
+    assert.equal(row.status, result.status);
+  });
+}
+
+for (const operation of ['payment', 'setup'] as const) {
+  for (const recovery of ['reconcile', 'replay', 'webhook'] as const) {
+    test(`disabled charging permits ${operation} ${recovery} recovery and card saving`, async () => {
+      const body = operation === 'payment'
+        ? { operation, job_id: 12, save_card: true, consent }
+        : { operation, customer_id: 90, consent };
+      const created = await (await start(body)).json();
+      provider.intents[0].status = 'succeeded';
+      provider.intents[0][operation === 'payment' ? 'latest_charge' : 'latest_attempt'] = {
+        payment_method_details: { card_present: { generated_card: 'pm_generated' } },
+      };
+      database.sqlite.prepare('UPDATE company SET stripe_charges_enabled=0 WHERE id=1').run();
+      provider.event = { id: `evt_disabled_${operation}`, type: `${operation}_intent.succeeded`, account: 'acct_1', data: { object: provider.intents[0] } };
+      const response = recovery === 'replay' ? await start(body)
+        : recovery === 'webhook' ? await modules.webhook.POST(webhookRequest())
+          : await update(created.attempt_id);
+      assert.equal(response.status, 200);
+      const row = database.sqlite.prepare('SELECT * FROM terminal_attempts').get();
+      assert.equal(row.status, 'succeeded');
+      assert.equal(row.card_saved, 1);
+      assert.equal(row.payment_recorded, operation === 'payment' ? 1 : 0);
+      assert.equal(database.sqlite.prepare('SELECT COUNT(*) n FROM payments').get().n, operation === 'payment' ? 1 : 0);
+      assert.equal(database.sqlite.prepare('SELECT stripe_payment_method_id FROM stripe_payment_methods').get().stripe_payment_method_id, 'pm_generated');
+      assert.equal(provider.creates.length, 1);
+      assert.equal((await start(body, 'new-disabled-attempt')).status, 409);
+      assert.equal(provider.creates.length, 1);
+      assert.equal((await start({ operation: 'setup', customer_id: 90, consent: { ...consent, customer_name: 'Different name' } })).status, 409);
+    });
+  }
+  test(`disabled charging permits canceling an existing ${operation}`, async () => {
+    const body = operation === 'payment'
+      ? { operation, job_id: 12, save_card: false }
+      : { operation, customer_id: 90, consent };
+    const created = await (await start(body)).json();
+    database.sqlite.prepare('UPDATE company SET stripe_charges_enabled=0 WHERE id=1').run();
+    const result = await update(created.attempt_id, true);
+    assert.equal(result.status, 200);
+    assert.equal((await result.json()).status, 'canceled');
+    assert.equal(provider.intents[0].status, 'canceled');
+    assert.equal((await start(body, 'new-disabled-attempt')).status, 409);
+    assert.equal(provider.creates.length, 1);
+  });
+}
+test('disabled charging allows retrying card persistence after payment success', async () => {
+  const body = { operation: 'payment', job_id: 12, save_card: true, consent };
+  const created = await (await start(body)).json();
+  provider.intents[0].status = 'succeeded';
+  provider.intents[0].latest_charge = { payment_method_details: { card_present: { generated_card: 'pm_generated' } } };
+  provider.failSave = true;
+  assert.equal((await (await update(created.attempt_id)).json()).payment_recorded, true);
+  assert.equal(database.sqlite.prepare('SELECT save_pending FROM terminal_attempts').get().save_pending, 1);
+  database.sqlite.prepare('UPDATE company SET stripe_charges_enabled=0 WHERE id=1').run();
+  provider.failSave = false;
+  const response = await start(body);
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).card_saved, true);
+  assert.equal(database.sqlite.prepare('SELECT COUNT(*) n FROM payments').get().n, 1);
+  assert.equal(database.sqlite.prepare('SELECT save_pending FROM terminal_attempts').get().save_pending, 0);
+});
+test('disabled charging never relaxes tenant or account matching for existing recovery', async () => {
+  const created = await (await start()).json();
+  provider.intents[0].status = 'succeeded';
+  database.sqlite.prepare('UPDATE company SET stripe_charges_enabled=0 WHERE id=1').run();
+  setSession({ companyId: 2, staffId: 8 });
+  assert.equal((await update(created.attempt_id)).status, 404);
+  assert.equal((await update(created.attempt_id, true)).status, 404);
+  setSession({ companyId: 1, staffId: 7 });
+  database.sqlite.prepare("UPDATE company SET stripe_account_id='acct_changed' WHERE id=1").run();
+  assert.equal((await update(created.attempt_id)).status, 409);
+  assert.equal((await update(created.attempt_id, true)).status, 409);
+  assert.equal((await start()).status, 409);
+  provider.event = { id: 'evt_remapped', type: 'payment_intent.succeeded', account: 'acct_1', data: { object: provider.intents[0] } };
+  assert.equal((await modules.webhook.POST(webhookRequest())).status, 500);
+  assert.equal(database.sqlite.prepare('SELECT COUNT(*) n FROM payments').get().n, 0);
+  assert.equal(provider.creates.length, 1);
+});
 
 test('schema upgrades existing cards and can be run twice', async () => {
   await modules.schema.installTerminalSchema(database.db);

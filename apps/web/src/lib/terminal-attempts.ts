@@ -17,6 +17,16 @@ type Attempt = Omit<TerminalAttemptView, 'stripe_account' | 'save_card' | 'payme
   request_fingerprint: string; consent_version: string | null; consent_name: string | null;
 };
 type Intent = Stripe.PaymentIntent | Stripe.SetupIntent;
+function isDefinitiveAmountRejection(error: unknown): boolean {
+  if (!error || typeof error !== 'object') return false;
+  const e = error as InstanceType<typeof Stripe.errors.StripeError>;
+  // Only these creation-time amount validations establish that no intent exists.
+  // InvalidRequestError alone also covers errors involving existing intents.
+  return e.type === 'StripeInvalidRequestError' && e.rawType === 'invalid_request_error' &&
+    e.statusCode === 400 && e.param === 'amount' &&
+    (e.code === 'amount_too_small' || e.code === 'amount_too_large') &&
+    !e.payment_intent && !e.setup_intent && !e.charge;
+}
 const idOf = (value: string | { id: string } | null) => typeof value === 'string' ? value : value?.id;
 function view(a: Attempt, secret?: string | null): TerminalAttemptView {
   return { attempt_id: a.attempt_id, operation: a.operation, status: a.status, stripe_account: a.stripe_account_id,
@@ -24,10 +34,10 @@ function view(a: Attempt, secret?: string | null): TerminalAttemptView {
     amount_cents: a.amount_cents, customer_id: a.customer_id, job_id: a.job_id,
     save_card: !!a.save_card, payment_recorded: !!a.payment_recorded, card_saved: !!a.card_saved, warning: a.warning };
 }
-async function account(companyId: number) {
+async function connectedAccount(companyId: number) {
   if (!isStripeConfigured()) throw new TerminalError('Stripe is not configured', 503);
   const company = await getCompany(companyId);
-  if (!company.stripe_account_id || !company.stripe_charges_enabled) throw new TerminalError('Complete Stripe onboarding before using Tap to Pay', 409);
+  if (!company.stripe_account_id) throw new TerminalError('Complete Stripe onboarding before using Tap to Pay', 409);
   return company.stripe_account_id;
 }
 async function location(db: Db, companyId: number, stripeAccount: string) {
@@ -50,7 +60,7 @@ async function load(companyId: number, id: string) {
   const db = await getDb();
   const a = await db.prepare('SELECT * FROM terminal_attempts WHERE company_id=? AND attempt_id=?').get<Attempt>(companyId, id);
   if (!a) throw new TerminalError('Attempt not found', 404);
-  if (await account(companyId) !== a.stripe_account_id) throw new TerminalError('Stripe account changed. Restore the original account to reconcile this attempt.', 409);
+  if (await connectedAccount(companyId) !== a.stripe_account_id) throw new TerminalError('Stripe account changed. Restore the original account to reconcile this attempt.', 409);
   return a;
 }
 function validate(a: Attempt, intent: Intent) {
@@ -97,29 +107,60 @@ export async function startTerminalAttempt(auth: { companyId: number; staffId: n
   if (save && (c?.accepted !== true || c.version !== TERMINAL_CONSENT_VERSION || typeof c.customer_name !== 'string' || !c.customer_name.trim() || c.customer_name.length > 200)) throw new TerminalError('Customer consent and name are required to save a card');
   const fingerprint = createHash('sha256').update(JSON.stringify({ operation, target, save, consent: save ? { version: c!.version, name: (c!.customer_name as string).trim() } : null })).digest('hex');
   const db = await getDb();
-  const stripeAccount = await account(auth.companyId);
-  const check = (a: Attempt) => { if (a.request_fingerprint !== fingerprint) throw new TerminalError('Idempotency key already used with different details', 409); if (a.stripe_account_id !== stripeAccount) throw new TerminalError('Stripe account changed', 409); };
+  const stripeAccount = await connectedAccount(auth.companyId);
+  const check = (a: Attempt) => {
+    if (a.request_fingerprint !== fingerprint) throw new TerminalError('Idempotency key already used with different details', 409);
+    if (a.stripe_account_id !== stripeAccount) throw new TerminalError('Stripe account changed', 409);
+  };
   const prior = await db.prepare('SELECT * FROM terminal_attempts WHERE company_id=? AND idempotency_key=?').get<Attempt>(auth.companyId, key);
-  if (prior) { check(prior); return reconcileTerminalAttempt(auth.companyId, prior.attempt_id); }
+  if (prior) {
+    check(prior);
+    return reconcileTerminalAttempt(auth.companyId, prior.attempt_id);
+  }
+  // Charging eligibility gates new claims, never recovery of an existing intent.
+  const company = await getCompany(auth.companyId);
+  if (!company.stripe_charges_enabled) throw new TerminalError('Complete Stripe onboarding before using Tap to Pay', 409);
   const job = operation === 'payment' ? await db.prepare('SELECT customer_id FROM jobs WHERE id=? AND company_id=?').get<{ customer_id: number }>(target, auth.companyId) : null;
   if (operation === 'payment' && !job) throw new TerminalError('Job not found', 404);
   const customerId = job?.customer_id ?? target;
   if (!await db.prepare('SELECT id FROM customers WHERE id=? AND company_id=?').get(customerId, auth.companyId)) throw new TerminalError('Customer not found', 404);
   const terminalLocation = await location(db, auth.companyId, stripeAccount);
   const customer = save ? await getOrCreateStripeCustomer(auth.companyId, customerId, stripeAccount) : null;
-  const merchant = (await getCompany(auth.companyId)).name?.trim() || 'this merchant';
+  const merchant = company.name?.trim() || 'this merchant';
   const claim = await db.transaction(async tx => {
     const existing = await tx.prepare('SELECT * FROM terminal_attempts WHERE company_id=? AND idempotency_key=?').get<Attempt>(auth.companyId, key);
-    if (existing) { check(existing); return { attempt: existing, owner: false }; }
+    if (existing) {
+      check(existing);
+      return { attempt: existing, owner: false };
+    }
     let amount = 0;
     if (operation === 'payment') {
       if (await tx.prepare("SELECT attempt_id FROM terminal_attempts WHERE company_id=? AND job_id=? AND status NOT IN ('succeeded','canceled')").get(auth.companyId, target)) throw new TerminalError('Reconcile the existing payment attempt for this job first', 409);
       const balance = await tx.prepare('SELECT j.price_cents - COALESCE((SELECT SUM(amount_cents) FROM payments WHERE company_id=j.company_id AND job_id=j.id),0) AS due FROM jobs j WHERE j.id=? AND j.company_id=?').get<{ due: number }>(target, auth.companyId);
       amount = positiveId(balance?.due);
+      if (amount < 50 || amount > 99_999_999) {
+        throw new TerminalError('Tap to Pay requires a USD balance between $0.50 and $999,999.99.');
+      }
     }
     const id = randomUUID();
-    await tx.prepare(`INSERT INTO terminal_attempts (attempt_id,company_id,customer_id,job_id,operation,idempotency_key,request_fingerprint,stripe_account_id,stripe_customer_id,terminal_location_id,amount_cents,save_card,consent_version,consent_name,consent_at,consent_staff_id,warning) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(id,auth.companyId,customerId,job?.customer_id ? target : null,operation,key,fingerprint,stripeAccount,customer,terminalLocation,amount,save ? 1 : 0,save ? c!.version as string : null,save ? (c!.customer_name as string).trim() : null,save ? new Date().toISOString() : null,save ? auth.staffId : null,'Outcome unknown. Reconcile this attempt before collecting again.');
-    if (save) await tx.prepare('UPDATE terminal_attempts SET consent_merchant=?,consent_text=? WHERE attempt_id=?').run(merchant,terminalConsentText(merchant),id);
+    await tx.prepare(`INSERT INTO terminal_attempts (
+      attempt_id,company_id,customer_id,job_id,operation,idempotency_key,request_fingerprint,
+      stripe_account_id,stripe_customer_id,terminal_location_id,amount_cents,save_card,
+      consent_version,consent_name,consent_at,consent_staff_id,warning
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+      id, auth.companyId, customerId, job?.customer_id ? target : null, operation, key, fingerprint,
+      stripeAccount, customer, terminalLocation, amount, save ? 1 : 0,
+      save ? c!.version as string : null,
+      save ? (c!.customer_name as string).trim() : null,
+      save ? new Date().toISOString() : null,
+      save ? auth.staffId : null,
+      'Outcome unknown. Reconcile this attempt before collecting again.',
+    );
+    if (save) {
+      await tx.prepare('UPDATE terminal_attempts SET consent_merchant=?,consent_text=? WHERE attempt_id=?').run(
+        merchant, terminalConsentText(merchant), id,
+      );
+    }
     return { attempt: (await tx.prepare('SELECT * FROM terminal_attempts WHERE attempt_id=?').get<Attempt>(id))!, owner: true };
   });
   if (!claim.owner) return reconcileTerminalAttempt(auth.companyId, claim.attempt.attempt_id);
@@ -133,12 +174,26 @@ export async function startTerminalAttempt(auth: { companyId: number; staffId: n
     intent = operation === 'payment'
       ? await getStripe().paymentIntents.create({ amount: a.amount_cents, currency: 'usd', payment_method_types: ['card_present'], metadata, ...(fee > 0 ? { application_fee_amount: fee } : {}), ...(customer ? { customer, setup_future_usage: 'off_session' } : {}) }, options)
       : await getStripe().setupIntents.create({ customer: customer!, payment_method_types: ['card_present'], usage: 'off_session', metadata }, options);
-  } catch { return view(a); }
+  } catch (error) {
+    if (operation === 'payment' && isDefinitiveAmountRejection(error)) {
+      // A concurrent reconciliation/webhook may already have established an intent
+      // or success. Release only this still-unknown, no-intent creation claim.
+      await db.prepare(`UPDATE terminal_attempts SET status='canceled',warning=?,updated_at=CURRENT_TIMESTAMP
+        WHERE attempt_id=? AND company_id=? AND provider_intent_id IS NULL
+          AND status='needs_reconciliation' AND payment_recorded=0 AND card_saved=0`).run(
+        'Stripe rejected the payment amount before creating a payment. Correct the balance before trying again.',
+        a.attempt_id, a.company_id,
+      );
+      return view((await db.prepare('SELECT * FROM terminal_attempts WHERE attempt_id=?').get<Attempt>(a.attempt_id))!);
+    }
+    return view(a);
+  }
   await db.prepare('UPDATE terminal_attempts SET provider_intent_id=?,updated_at=CURRENT_TIMESTAMP WHERE attempt_id=?').run(intent.id,a.attempt_id);
   return reconcileTerminalAttempt(auth.companyId,a.attempt_id);
 }
 export async function reconcileTerminalAttempt(companyId: number, id: string, cancel = false, strictSave = false): Promise<TerminalAttemptView> {
   const a = await load(companyId, id); const db = await getDb();
+  if (a.status === 'canceled' && !a.provider_intent_id) return view(a);
   let intent = await retrieve(a);
   if (!intent) return view(a);
   validate(a,intent);

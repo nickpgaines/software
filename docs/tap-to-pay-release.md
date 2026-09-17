@@ -14,13 +14,13 @@ Tap to Pay is locally implemented across the server, iOS bridge and web UI. Loca
 
 ## Evidence and limits
 
-The local suite uses real in-memory SQLite for route/service behavior and doubles only external provider, native bridge and HTTP boundaries. It exercises same-origin/session checks, account remapping, old-app fallback, duplicate taps, cancel/unknown recovery, partial payment/save success, logout/unmount races, generated-card isolation, signed subscription selection and ordinary-versus-Terminal webhook dispatch.
+The local suite uses real in-memory SQLite for route/service behavior and doubles only external provider, native bridge and HTTP boundaries. It exercises same-origin/session checks, account remapping, old-app fallback, duplicate taps, cancel/unknown recovery, partial payment/save success, logout/unmount races, generated-card isolation, signed subscription selection and ordinary-versus-Terminal webhook dispatch. Recovery regressions additionally cover USD amount bounds before reservation, narrow definitive no-intent rejection without stranding the job, preservation of ambiguous outcomes and concurrent success, and payment/setup recovery after charging eligibility is disabled while new creation remains blocked.
 
 Native host tests execute production coordinator/session/policy code without a provider account. The actual app and test bundle compiled against Stripe Terminal iOS SDK **5.8.0**. The enabled-capability Release simulator branch and unsigned physical-device Release branch compiled. See `/private/tmp/forge-terminal-review1-test-build.log` and `/private/tmp/forge-terminal-device-compile.log`; compilation does not prove signing, runtime or reader behavior.
 
 Local verification snapshot on 2026-09-16:
 
-- Node.js 24.19.0, npm 9.2.0 and Next.js 14.2.35: 283/283 web tests passed; `tsc --noEmit` passed; the isolated-file SQLite production build compiled and generated 149/149 static pages.
+- Node.js 24.19.0, npm 9.2.0 and Next.js 14.2.35: 308/308 web tests passed; `tsc --noEmit` passed. The preceding isolated-file SQLite production build compiled and generated 149/149 static pages; the final recovery-fix build and scoped re-review are pending.
 - Xcode 27.0 (27A266a), Apple Swift 6.4: 13/13 native macOS behavioral tests passed.
 - Retained actual-SDK logs show `TEST BUILD SUCCEEDED` for the Debug simulator app/test bundle and `BUILD SUCCEEDED` for the enabled-capability Release simulator and unsigned generic-device branches. Existing third-party Capacitor and Splash asset warnings remain; no clean-warning claim is made.
 

@@ -1,25 +1,34 @@
 import { registerHooks } from 'node:module';
+import RealStripe from 'stripe';
 import { paymentDatabase } from './payment-harness.mjs';
+export const invalidRequestError = overrides => new RealStripe.errors.StripeInvalidRequestError({
+  type: 'invalid_request_error', statusCode: 400, code: 'amount_too_small', param: 'amount',
+  message: 'Amount is below the supported minimum.', ...overrides,
+});
 export { getDb, sendPaymentReceipt, recordActivity, autoCompleteSteps, preparePaymentCompletionNotification, dispatchPaymentCompletionNotification } from './payment-harness.mjs';
 export let session = { companyId: 1, staffId: 7, identity: 'staff:7' };
 export const setSession = value => { session = value; };
 export const getSessionContext = async () => session;
 export const requireCompanyId = async () => session.companyId;
-/** @type {{ intents: any[], creates: any[], subscriptionCreates: any[], updates: any[], tokens: any[], cancelCalls: any[], failCreate: boolean, failSave: boolean, visible: boolean, event: any, wallet: any, locationInvalid: boolean }} */
-export const provider = { intents: [], creates: [], subscriptionCreates: [], updates: [], tokens: [], cancelCalls: [], failCreate: false, failSave: false, visible: true, event: null, wallet: null, locationInvalid: false };
+/** @type {{ intents: any[], creates: any[], subscriptionCreates: any[], updates: any[], tokens: any[], cancelCalls: any[], failCreate: boolean, createError: any, beforeCreateError: any, failLookup: boolean, failSave: boolean, visible: boolean, event: any, wallet: any, locationInvalid: boolean }} */
+export const provider = { intents: [], creates: [], subscriptionCreates: [], updates: [], tokens: [], cancelCalls: [], failCreate: false, createError: null, beforeCreateError: null, failLookup: false, failSave: false, visible: true, event: null, wallet: null, locationInvalid: false };
 export default class Stripe {
   constructor() {
     const resource = operation => ({
       create: async (body, options) => {
         provider.creates.push({ operation, body, options });
+        if (provider.createError) {
+          await provider.beforeCreateError?.(body);
+          throw provider.createError;
+        }
         const intent = { id: `${operation === 'payment' ? 'pi' : 'seti'}_${provider.intents.length + 1}`, ...body, amount_received: body.amount, client_secret: 'secret', status: 'requires_payment_method' };
         provider.intents.push(intent);
         if (provider.failCreate) throw new Error('connection lost');
         return intent;
       },
-      retrieve: async id => { const intent = provider.intents.find(i => i.id === id); if (!intent) throw new Error('missing intent'); return intent; },
-      search: async () => ({ data: provider.visible ? provider.intents : [], has_more: false }),
-      list: async () => ({ data: provider.visible ? provider.intents : [], has_more: false }),
+      retrieve: async id => { if (provider.failLookup) throw new Error('provider unavailable'); const intent = provider.intents.find(i => i.id === id); if (!intent) throw new Error('missing intent'); return intent; },
+      search: async () => { if (provider.failLookup) throw new Error('provider unavailable'); return { data: provider.visible ? provider.intents : [], has_more: false }; },
+      list: async () => { if (provider.failLookup) throw new Error('provider unavailable'); return { data: provider.visible ? provider.intents : [], has_more: false }; },
       cancel: async id => { provider.cancelCalls.push(id); const intent = provider.intents.find(i => i.id === id); intent.status = 'canceled'; return intent; },
     });
     return {
@@ -89,7 +98,7 @@ export function fixture() {
     ALTER TABLE jobs ADD COLUMN subscription_visit_index INTEGER;
   `);
   for (const key of ['intents','creates','subscriptionCreates','updates','tokens','cancelCalls']) provider[key] = [];
-  Object.assign(provider, { failCreate: false, failSave: false, visible: true, event: null, wallet: null, locationInvalid: false });
+  Object.assign(provider, { failCreate: false, createError: null, beforeCreateError: null, failLookup: false, failSave: false, visible: true, event: null, wallet: null, locationInvalid: false });
   session = { companyId: 1, staffId: 7, identity: 'staff:7' };
   process.env.STRIPE_SECRET_KEY = 'sk_test_fake';
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = 'pk_test_fake';
