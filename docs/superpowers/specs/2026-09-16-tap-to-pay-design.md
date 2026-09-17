@@ -70,6 +70,7 @@ Add a requires_explicit_selection flag to saved methods, default 0 for existing 
 ```ts
 interface ForgeTerminalPlugin {
   getCapabilities(): Promise<{ supported: boolean; reason?: string }>;
+  showEducation(): Promise<void>;
   collectPayment(args: { operationId: string; clientSecret: string; stripeAccount: string; locationId: string; saveCard: boolean }): Promise<{ intentId: string }>;
   collectSetup(args: { operationId: string; clientSecret: string; stripeAccount: string; locationId: string }): Promise<{ intentId: string }>;
   cancel(): Promise<void>;
