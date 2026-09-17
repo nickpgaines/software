@@ -3,7 +3,7 @@ import StripeTerminal
 import UIKit
 import ProximityReader
 
-final class ForgeTerminalReader: NSObject, TerminalReaderProviding, ConnectionTokenProvider, TapToPayReaderDelegate {
+final class ForgeTerminalReader: NSObject, TerminalReaderProviding, ConnectionTokenProvider {
     private let session: ForgeTerminalSession
     private let presenter: () -> UIViewController?
     private var initialized = false
@@ -13,6 +13,8 @@ final class ForgeTerminalReader: NSObject, TerminalReaderProviding, ConnectionTo
     private var payment: PaymentIntent?
     private var setup: SetupIntent?
     private var educationTask: Task<Void, Never>?
+    // The SDK requires retaining this delegate until its reader disconnects.
+    private var readerDelegate: ForgeTapToPayReaderDelegate?
     var onDisconnect: (() -> Void)?
 
     init(session: ForgeTerminalSession, presenter: @escaping () -> UIViewController?) {
@@ -39,7 +41,10 @@ final class ForgeTerminalReader: NSObject, TerminalReaderProviding, ConnectionTo
         }
         do {
             let discovery = try TapToPayDiscoveryConfigurationBuilder().setSimulated(Self.simulated).build()
-            let connection = try TapToPayConnectionConfigurationBuilder(delegate: self, locationId: location)
+            readerDelegate?.events.invalidate()
+            let delegate = ForgeTapToPayReaderDelegate(events: TerminalReaderEventLease { [weak self] in self?.onDisconnect?() })
+            readerDelegate = delegate
+            let connection = try TapToPayConnectionConfigurationBuilder(delegate: delegate, locationId: location)
                 .setAutoReconnectOnUnexpectedDisconnect(false).build()
             pending = true
             cancelable = Terminal.shared.easyConnect(TapToPayEasyConnectConfiguration(discoveryConfiguration: discovery, connectionConfiguration: connection)) { [self] reader, error in
@@ -127,6 +132,9 @@ final class ForgeTerminalReader: NSObject, TerminalReaderProviding, ConnectionTo
 
     func cleanUp(completion: @escaping (Result<Void, TerminalFailure>) -> Void) {
         precondition(cleanup == nil)
+        // Invalidate before requesting cancellation: disconnect notifications
+        // have no ordering guarantee relative to SDK cleanup callbacks.
+        readerDelegate?.events.invalidate()
         cleanup = completion
         if pending {
             educationTask?.cancel()
@@ -161,6 +169,7 @@ final class ForgeTerminalReader: NSObject, TerminalReaderProviding, ConnectionTo
     }
 
     private func finishCleanup(_ result: Result<Void, TerminalFailure>) {
+        if case .success = result { readerDelegate = nil }
         let callback = cleanup
         cleanup = nil
         callback?(result)
@@ -189,12 +198,21 @@ final class ForgeTerminalReader: NSObject, TerminalReaderProviding, ConnectionTo
         return .terminalError
     }
 
+}
+
+/// Never reuse a delegate across easyConnect calls. Its lease ties every event
+/// to the originating connection, including callbacks retained by the SDK.
+private final class ForgeTapToPayReaderDelegate: NSObject, TapToPayReaderDelegate {
+    let events: TerminalReaderEventLease
+
+    init(events: TerminalReaderEventLease) { self.events = events }
+
     func tapToPayReader(_ reader: Reader, didStartInstallingUpdate update: ReaderSoftwareUpdate, cancelable: Cancelable?) {}
     func tapToPayReader(_ reader: Reader, didReportReaderSoftwareUpdateProgress progress: Float) {}
     func tapToPayReader(_ reader: Reader, didFinishInstallingUpdate update: ReaderSoftwareUpdate?, error: Error?) {}
     func tapToPayReader(_ reader: Reader, didRequestReaderInput inputOptions: ReaderInputOptions) {}
     func tapToPayReader(_ reader: Reader, didRequestReaderDisplayMessage displayMessage: ReaderDisplayMessage) {}
     func reader(_ reader: Reader, didDisconnect reason: DisconnectReason) {
-        if cleanup == nil { onDisconnect?() }
+        events.didDisconnect(intentional: reason == .disconnectRequested)
     }
 }

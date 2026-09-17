@@ -179,6 +179,40 @@ final class ForgeTerminalTests: XCTestCase {
         XCTAssertEqual(mayContinue, true, "An obsolete observation must not cancel a new session")
     }
 
+    func testDelayedReaderDisconnectCannotCancelReplacementConnection() {
+        let sdk = ReaderDouble()
+        let coordinator = ForgeTerminalCoordinator(provider: sdk, session: SessionDouble())
+        let oldConnection = TerminalReaderEventLease { coordinator.cancel(reason: .terminalError) }
+        coordinator.collect(request) { _ in }
+        oldConnection.invalidate()
+        coordinator.cancel(reason: .canceled)
+
+        var replacementResult: Result<String, TerminalFailure>?
+        let currentConnection = TerminalReaderEventLease { coordinator.cancel(reason: .terminalError) }
+        coordinator.collect(request) { replacementResult = $0 }
+        let cleanupCount = sdk.calls.filter { $0 == "cleanup" }.count
+        // The SDK can deliver an old delegate notification after its disconnect
+        // completion and after the new easyConnect has installed another delegate.
+        oldConnection.didDisconnect(intentional: false)
+        oldConnection.didDisconnect(intentional: true)
+        XCTAssertNil(replacementResult)
+        XCTAssertEqual(sdk.calls.filter { $0 == "cleanup" }.count, cleanupCount)
+
+        currentConnection.didDisconnect(intentional: false)
+        XCTAssertEqual(replacementResult?.failure?.code, "terminal_error")
+        XCTAssertEqual(sdk.calls.filter { $0 == "cleanup" }.count, cleanupCount + 1)
+    }
+
+    func testRequestedDisconnectDoesNotCancelActiveOperation() {
+        var cancellations = 0
+        let connection = TerminalReaderEventLease { cancellations += 1 }
+        connection.didDisconnect(intentional: true)
+        XCTAssertEqual(cancellations, 0)
+        connection.didDisconnect(intentional: false)
+        connection.didDisconnect(intentional: false)
+        XCTAssertEqual(cancellations, 1, "A lease delivers unexpected disconnect only once")
+    }
+
     private var request: TerminalRequest {
         TerminalRequest(operationID: "attempt_1", clientSecret: "pi_123_secret_test", account: "acct_1", locationID: "tml_1", kind: .payment(saveCard: false))
     }

@@ -11,6 +11,7 @@ xcrun swiftc -DTERMINAL_STANDALONE \
   "$test_dir/../App/ForgeTerminalCoordinator.swift" \
   "$test_dir/../App/ForgeTerminalSessionPolicy.swift" \
   "$test_dir/../App/ForgeTerminalSession.swift" \
+  "$test_dir/../App/ForgeTerminalReaderEvents.swift" \
   "$test_dir/ForgeTerminalTests.swift" "$test_dir/TerminalTestMain.swift" \
   -o "$test_output/ForgeTerminalTests"
 "$test_output/ForgeTerminalTests"
