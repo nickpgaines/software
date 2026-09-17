@@ -16,6 +16,10 @@ async function harness(t: any, options: any = {}) {
   const native = {generation:0, capabilities: async()=>({supported:options.supported ?? true}), education:async()=>{}, cancel:async(_id?:string)=>{}, collect:async(_operation?:string)=>{if(options.collect) return options.collect();}};
   t.mock.method(globalThis,'fetch',async (url:any,init:any)=> {
     calls.push({url:String(url),body:init?.body ? JSON.parse(init.body):null});
+    if(url==='/api/stripe/terminal/capabilities') {
+      if(options.rolloutError) throw Error('unavailable');
+      return Response.json(options.rolloutResponse ?? {enabled:options.enabled ?? true});
+    }
     if(url==='/api/settings/company') return Response.json(options.merchant?.() ?? {id:1,name:'Acme',stripe_account_id:'acct_1'});
     if(String(url).includes('?')) return Response.json({attempts:options.list ?? (created ? [current]:[])});
     if(url==='/api/stripe/terminal/attempts') {created=true; if(options.createError) throw Error('lost response'); return Response.json(current);}
@@ -27,7 +31,7 @@ async function harness(t: any, options: any = {}) {
   const props={operation:'payment',jobId:1,native,onSuccess:(a:any)=>completed.push(a),onBlockedChange:(b:boolean)=>blocked.push(b),...options.props};
   let tree:any;
   const render=()=>{tree=renderer.render(Flow,props);renderer.flushEffects();return tree;};
-  const button=(label:string)=>elements(tree,(el:any)=>el.type==='button'&&text(el).includes(label))[0];
+  const button=(label:string)=>elements(tree,(el:any)=>(el.type==='button'||el.type?.displayName==='Button')&&text(el).includes(label))[0];
   render(); await settle();render();
   t.after(()=>renderer.dispose());
   return {render,button,calls,completed,blocked,renderer,native,props,get tree(){return tree;}};
@@ -37,6 +41,36 @@ test('unsupported plugin disables tap with useful manual card fallback',async t=
   const h=await harness(t,{supported:false});
   assert.equal(h.button('Tap to Pay').props.disabled,true);
   assert.match(text(h.tree),/manual|Pay with card/i);
+});
+for (const operation of ['payment','setup']) {
+  test(`rollout off disables ${operation} even on a supported phone without blocking fallback`,async t=>{
+    const h=await harness(t,{enabled:false,props:operation==='setup'?{operation,customerId:2,jobId:undefined}:{operation}});
+    const button=h.button(operation==='payment'?'Tap to Pay':'Save card with a tap');
+    assert.equal(button.props.disabled,true);
+    assert.match(text(h.tree),/coming soon/i);
+    assert.equal(h.blocked.at(-1),false);
+    assert.equal(elements(h.tree,(el:any)=>el.type==='input'||['Input','Checkbox'].includes(el.type?.displayName)).length,0);
+    await button.props.onClick();
+    assert.equal(h.calls.some(c=>c.url==='/api/stripe/terminal/attempts'),false);
+  });
+}
+for(const options of [{rolloutError:true},{rolloutResponse:{}},{rolloutResponse:{enabled:'true'}}]) {
+  test(`availability fails closed without blocking manual payments: ${JSON.stringify(options)}`,async t=>{
+    const h=await harness(t,options);
+    assert.equal(h.button('Tap to Pay').props.disabled,true);
+    assert.equal(h.blocked.at(-1),false);
+  });
+}
+test('rollout off preserves recovery and cancel but prevents resuming collection',async t=>{
+  const h=await harness(t,{enabled:false,list:[ready],reconciled:{status:'ready'}});
+  assert.equal(h.button('Check status').props.disabled,false);
+  assert.equal(h.button('Continue original attempt').props.disabled,true);
+  let collections=0;h.native.collect=async()=>{collections++;};
+  await h.button('Continue original attempt').props.onClick();
+  assert.equal(collections,0);
+  await h.button('Cancel attempt').props.onClick();h.render();
+  assert.equal(h.calls.some(c=>c.url.endsWith('/cancel')),true);
+  assert.equal(h.blocked.at(-1),false);
 });
 test('tap button keeps its text label with a decorative non-focusable icon',async t=>{
   const h=await harness(t);
@@ -83,8 +117,8 @@ test('save-only captures customer consent and calls setup without charge or subs
   const h=await harness(t,{attempt:{operation:'setup',job_id:null,save_card:true},reconciled:{status:'succeeded',payment_recorded:false,card_saved:true},props:{operation:'setup',customerId:2,jobId:undefined}});
   h.native.collect=async(operation?:string)=>{operations.push(operation!);};
   assert.equal(h.button('Save card with a tap').props.disabled,true);
-  elements(h.tree,(el:any)=>el.type==='input'&&el.props.type==='text')[0].props.onChange({target:{value:'Jane Customer'}});
-  elements(h.tree,(el:any)=>el.type==='input'&&el.props.type==='checkbox')[0].props.onChange({target:{checked:true}});
+  elements(h.tree,(el:any)=>el.type?.displayName==='Input'&&el.props.type==='text')[0].props.onChange({target:{value:'Jane Customer'}});
+  elements(h.tree,(el:any)=>el.type?.displayName==='Checkbox')[0].props.onCheckedChange(true);
   h.render();await h.button('Save card with a tap').props.onClick();h.render();
   assert.deepEqual(operations,['setup']);
   assert.deepEqual(h.calls.find(c=>c.url==='/api/stripe/terminal/attempts')!.body,{operation:'setup',customer_id:2,consent:{accepted:true,version:'terminal-save-v1',customer_name:'Jane Customer'}});

@@ -122,6 +122,7 @@ export async function loadTerminal() {
       reconcile: await import('../../src/app/api/stripe/terminal/attempts/[id]/reconcile/route.ts'),
       cancel: await import('../../src/app/api/stripe/terminal/attempts/[id]/cancel/route.ts'),
       token: await import('../../src/app/api/stripe/terminal/connection-token/route.ts'),
+      capabilities: await import('../../src/app/api/stripe/terminal/capabilities/route.ts'),
       webhook: await import('../../src/app/api/stripe/webhook/route.ts'),
       selection: await import('../../src/app/api/customer-subscriptions/[id]/payment-method/route.ts'),
       subscriptions: await import('../../src/app/api/customer-subscriptions/route.ts'),

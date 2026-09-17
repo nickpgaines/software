@@ -73,6 +73,18 @@ Use a supported iPhone with NFC, passcode, an Apple Account and a current releas
 
 ## Rollout gate
 
+### Server switch (off by default)
+
+Rollout-switch verification: 329/329 web tests, `tsc --noEmit`, and the isolated-SQLite production build (149/149 static pages) passed. Independent scoped review found no blockers. Tests cover disabled/missing/malformed flags, both operations, all creation entry points, continued normal card entry, recovery/cancel/replay/webhooks, and fail-closed UI behavior. These are local checks, not physical-reader acceptance.
+
+`TAP_TO_PAY_ENABLED` is a **server environment variable, not sensitive**. Only the exact value `true` enables new Terminal operations. Leave it unset (or set it to `false`) until provisioning and acceptance testing are complete. On Vercel, environment changes require a new deployment before taking effect; do not use a `NEXT_PUBLIC_` variable.
+
+- While off, job checkout and tap-to-save show disabled “Coming soon” collection controls. Ordinary Pay with card, other payment methods and existing saved-card/subscription management remain available.
+- The server rejects new payment/setup attempts, legacy Terminal intent creation, and connection-token issuance with HTTP 409 before provider creation. The authenticated, uncached capabilities endpoint informs the UI; a failed availability check leaves collection disabled without locking other payment methods.
+- Listing, reconciliation, cancellation, identical-key replay of existing durable attempts and webhook processing remain available. An unresolved attempt still blocks replacement payments until its outcome is resolved. Reader collection/resume is disabled; recovery here means checking/recording an outcome or canceling, not taking a new tap.
+- This is an admission switch, not a cancellation of an already-running payment. Issued tokens or in-flight provider operations may still complete; keep webhook and reconciliation handling running.
+- To enable later, set `TAP_TO_PAY_ENABLED=true` in the intended environment and redeploy **only after separate rollout approval**. The native `FORGE_TAP_TO_PAY_ENABLED` Swift flag, restricted entitlement and valid signing profile are still independently required. This server-only change needs no iOS rebuild.
+
 Archive/signing, TestFlight/App Store upload, production deployment, live-mode testing and merchant rollout require explicit authorization after the matrix above is documented. During rollout, monitor retryable webhook failures, unresolved attempts, payment-recorded/card-save warnings and account/location setup errors. A successful native callback is never proof of payment; the canonical server reconciliation result remains authoritative.
 
 The iOS-specific entitlement and build instructions are in [tap-to-pay-ios-release.md](tap-to-pay-ios-release.md).
