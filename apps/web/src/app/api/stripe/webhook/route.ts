@@ -470,16 +470,13 @@ async function handleSetupIntentSucceeded(event: Stripe.Event) {
 
   // The accept page already calls PUT /setup-intent which saves the PM
   // on the server. This is the safety net for cases where the network
-  // dropped between confirmSetup and our save call.
-  try {
-    await savePaymentMethodForCustomer({
-      companyId,
-      customerId,
-      stripeAccountId: connectedAccountId,
-      stripePaymentMethodId: pmId,
-      makeDefault: false,
-    });
-  } catch (e) {
-    console.warn("Webhook: could not save payment method:", e);
-  }
+  // dropped between confirmSetup and our save call. Let persistence errors
+  // reach POST's handler so the event claim is removed and Stripe can retry.
+  await savePaymentMethodForCustomer({
+    companyId,
+    customerId,
+    stripeAccountId: connectedAccountId,
+    stripePaymentMethodId: pmId,
+    makeDefault: false,
+  });
 }

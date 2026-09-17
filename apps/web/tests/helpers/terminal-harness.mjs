@@ -1,12 +1,12 @@
 import { registerHooks } from 'node:module';
 import { paymentDatabase } from './payment-harness.mjs';
 export { getDb, sendPaymentReceipt, recordActivity, autoCompleteSteps, preparePaymentCompletionNotification, dispatchPaymentCompletionNotification } from './payment-harness.mjs';
-export let session = { companyId: 1, staffId: 7 };
+export let session = { companyId: 1, staffId: 7, identity: 'staff:7' };
 export const setSession = value => { session = value; };
 export const getSessionContext = async () => session;
 export const requireCompanyId = async () => session.companyId;
-/** @type {{ intents: any[], creates: any[], updates: any[], tokens: any[], cancelCalls: any[], failCreate: boolean, failSave: boolean, visible: boolean, event: any, wallet: any, locationInvalid: boolean }} */
-export const provider = { intents: [], creates: [], updates: [], tokens: [], cancelCalls: [], failCreate: false, failSave: false, visible: true, event: null, wallet: null, locationInvalid: false };
+/** @type {{ intents: any[], creates: any[], subscriptionCreates: any[], updates: any[], tokens: any[], cancelCalls: any[], failCreate: boolean, failSave: boolean, visible: boolean, event: any, wallet: any, locationInvalid: boolean }} */
+export const provider = { intents: [], creates: [], subscriptionCreates: [], updates: [], tokens: [], cancelCalls: [], failCreate: false, failSave: false, visible: true, event: null, wallet: null, locationInvalid: false };
 export default class Stripe {
   constructor() {
     const resource = operation => ({
@@ -29,7 +29,16 @@ export default class Stripe {
         if (provider.failSave) throw new Error('provider unavailable');
         return { id, type: 'card', customer: 'cus_test', allow_redisplay: 'limited', card: { brand: 'visa', last4: '4242', exp_month: 12, exp_year: 2099, wallet: provider.wallet, generated_from: id === 'pm_wallet' ? { charge:'ch_terminal',payment_method_details:{card_present:{wallet:provider.wallet}} } : null } };
       } },
-      subscriptions: { update: async (...args) => { provider.updates.push(args); return {}; }, retrieve: async () => ({ customer: 'cus_test' }) },
+      products: { create: async () => ({ id: 'prod_test' }) },
+      prices: { create: async () => ({ id: 'price_test' }) },
+      subscriptions: {
+        create: async (body, options) => {
+          provider.subscriptionCreates.push({ body, options });
+          return { id: 'sub_created', status: 'active', latest_invoice: 'in_test', items: { data: [{ current_period_end: 4_102_444_800 }] } };
+        },
+        update: async (...args) => { provider.updates.push(args); return {}; },
+        retrieve: async () => ({ customer: 'cus_test' }),
+      },
       terminal: { connectionTokens: { create: async (body, opts) => { provider.tokens.push(opts); return { secret: 'token' }; } }, locations: {
         retrieve: async id => ({ id, address: { country: 'US', line1: '123 Main', city: 'Chicago', state: 'IL', postal_code: provider.locationInvalid ? '00000' : '60601' } }),
         list: async () => ({ data: [], has_more: false }),
@@ -53,12 +62,35 @@ export function fixture() {
     CREATE TABLE stripe_terminal_locations (company_id INTEGER UNIQUE, stripe_terminal_location_id TEXT, display_name TEXT);
     INSERT INTO stripe_terminal_locations VALUES (1,'tml_test','Merchant');
     CREATE TABLE stripe_webhook_events (event_id TEXT PRIMARY KEY, type TEXT);
-    CREATE TABLE customer_subscriptions (id INTEGER PRIMARY KEY, company_id INTEGER, customer_id INTEGER, status TEXT, accepted_at TEXT, require_signature INTEGER DEFAULT 0, signature_data TEXT, default_payment_method_id TEXT, stripe_subscription_id TEXT);
-    INSERT INTO customer_subscriptions VALUES (1,1,90,'active','2026-09-01',0,NULL,NULL,'sub_test');
+    CREATE TABLE customer_subscriptions (
+      id INTEGER PRIMARY KEY, company_id INTEGER, customer_id INTEGER,
+      template_id INTEGER, name TEXT, description TEXT, price_cents INTEGER,
+      interval TEXT, service_interval TEXT, status TEXT, sent_at TEXT,
+      accepted_at TEXT, created_by TEXT, terms_snapshot TEXT,
+      require_signature INTEGER DEFAULT 0, signature_data TEXT,
+      signature_name TEXT, signed_at TEXT, start_date TEXT, sold_by_id INTEGER,
+      tax_rate_bps INTEGER DEFAULT 0, accept_token TEXT,
+      default_payment_method_id TEXT, stripe_subscription_id TEXT,
+      stripe_subscription_status TEXT, created_at TEXT DEFAULT CURRENT_TIMESTAMP
+    );
+    INSERT INTO customer_subscriptions
+      (id,company_id,customer_id,name,price_cents,interval,service_interval,status,accepted_at,require_signature,signature_data,default_payment_method_id,stripe_subscription_id)
+      VALUES (1,1,90,'Existing',1000,'monthly','monthly','active','2026-09-01',0,NULL,NULL,'sub_test');
+    CREATE TABLE subscription_templates (
+      id INTEGER PRIMARY KEY, company_id INTEGER, name TEXT, description TEXT,
+      price_cents INTEGER, interval TEXT, service_interval TEXT,
+      require_signature INTEGER DEFAULT 0, tax_rate_bps INTEGER DEFAULT 0,
+      terms_id INTEGER
+    );
+    INSERT INTO subscription_templates
+      (id,company_id,name,description,price_cents,interval,service_interval,require_signature,tax_rate_bps,terms_id)
+      VALUES (41,1,'Signed Plan','Recurring service',1000,'monthly','monthly',1,0,NULL);
+    ALTER TABLE jobs ADD COLUMN subscription_id INTEGER;
+    ALTER TABLE jobs ADD COLUMN subscription_visit_index INTEGER;
   `);
-  for (const key of ['intents','creates','updates','tokens','cancelCalls']) provider[key] = [];
+  for (const key of ['intents','creates','subscriptionCreates','updates','tokens','cancelCalls']) provider[key] = [];
   Object.assign(provider, { failCreate: false, failSave: false, visible: true, event: null, wallet: null, locationInvalid: false });
-  session = { companyId: 1, staffId: 7 };
+  session = { companyId: 1, staffId: 7, identity: 'staff:7' };
   process.env.STRIPE_SECRET_KEY = 'sk_test_fake';
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = 'pk_test_fake';
   process.env.STRIPE_WEBHOOK_SECRET = 'whsec_fake';
@@ -83,6 +115,7 @@ export async function loadTerminal() {
       token: await import('../../src/app/api/stripe/terminal/connection-token/route.ts'),
       webhook: await import('../../src/app/api/stripe/webhook/route.ts'),
       selection: await import('../../src/app/api/customer-subscriptions/[id]/payment-method/route.ts'),
+      subscriptions: await import('../../src/app/api/customer-subscriptions/route.ts'),
       stripe: await import('../../src/lib/stripe.ts'),
       stripeSubscriptions: await import('../../src/lib/stripe-subscriptions.ts'),
       billing: await import('../../src/lib/subscription-billing.ts'),

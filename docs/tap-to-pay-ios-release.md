@@ -40,7 +40,18 @@ xcodebuild -project apps/mobile/ios/App/App.xcodeproj -scheme App -configuration
 
 After the user boots a simulator, run the App scheme's ForgeWidgetTests on that device. The behavioral tests inject the SDK and HTTP boundary and do not make provider requests. They exercise operation serialization, cleanup, confirmation uncertainty, stale callbacks, origin/cookie restrictions, redirects and account/session changes. A separate Release build verifies the production compilation path.
 
-For an explicitly authorized **test-account-only** SDK harness, set `FORGE_TERMINAL_SIMULATED=1` in the Debug Xcode launch environment. It enables the SDK's simulated Tap to Pay reader; it is not a JavaScript option and is compiled out of Release. It still uses real authenticated test-mode server attempts and real Stripe test tokens. Never point that harness at a live-mode company. Forge does not enable simulation by default and automated behavioral tests do not use this harness. Apple's education UI is still required in the interactive harness.
+## Provider-test environment is not configured
+
+There is currently **no safe provider test environment** in the checked-in or deployed configuration. Native trusts only the production `https://www.forgecrm.app` top-level origin and requests tokens only from its fixed production connection-token URL. Stripe key mode is deployment-wide. `FORGE_TERMINAL_SIMULATED=1` changes only the Stripe SDK reader simulation setting; it does not select Stripe test mode. Changing `CAP_SERVER_URL` alone also does not change native origin trust or token routing.
+
+Before using SDK simulation or a physical reader in Stripe test mode, separately authorize and provision all of the following together:
+
+1. An isolated Forge test deployment with Stripe test publishable/secret/webhook keys.
+2. An isolated test database containing non-production company, customer, job, connected-account and Terminal-location fixtures.
+3. A native Debug configuration whose trusted top-level origin and fixed connection-token endpoint match that test deployment, with the same fail-closed cookie, redirect and account checks.
+4. A test-mode connected account and Terminal location that match the fixtures and token response.
+
+Only after those controls are verified may an authorized Debug run set `FORGE_TERMINAL_SIMULATED=1`. The flag is not a JavaScript option and is compiled out of Release. Never enable it against the current production-trusted origin or assume it prevents live-mode provider calls. Automated behavioral tests do not use this flag or contact Stripe. Apple's education UI remains required in an interactive harness.
 
 ## Physical iPhone acceptance checklist
 
@@ -48,7 +59,7 @@ For an explicitly authorized **test-account-only** SDK harness, set `FORGE_TERMI
 - Verify development and distribution entitlements independently; also verify that the standard unapproved build gives the manual-entry fallback.
 - Test location permission first-use, denial, subsequent Settings approval, connectivity loss and reader preparation/update UI. Capability checks on launch must not prompt for permission or mint tokens.
 - Complete merchant Terms of Service during reader connection. Confirm Apple's merchant education appears before collection and How to Tap can be reopened from the web action.
-- In Stripe test mode, test job payment with save unchecked, payment with recorded save consent, and SetupIntent-only tap-to-save. Verify canonical server records, generated-card restrictions, no default changes and no subscription activation.
+- In the separately authorized and isolated Stripe test environment described above, test job payment with save unchecked, payment with recorded save consent, and SetupIntent-only tap-to-save. Verify canonical server records, generated-card restrictions, no default changes and no subscription activation.
 - Test customer cancellation, merchant cancellation, backgrounding, logout, navigation away, session expiry, connected-account change, duplicate taps and a delayed provider callback. Recover the same attempt after an uncertain confirmation; never create a second charge automatically.
 - Confirm the app can recover after reader disconnect and that a failed cleanup prevents another operation. Check all SDK/backend errors remain safe and actionable without exposing tokens or client secrets.
 - Obtain separate authorization before any live payment, account/provisioning mutation, upload or rollout. This implementation has not performed those actions.

@@ -8,6 +8,8 @@ beforeEach(async () => { database = fixture(); await modules.schema.installTermi
 afterEach(() => database.close());
 const consent = { accepted: true, version: 'terminal-save-v1', customer_name: 'Ada Lovelace' };
 const request = (body: object, key = 'terminal-123') => new Request('https://www.forgecrm.app/api/stripe/terminal/attempts', { method: 'POST', headers: { Origin: 'https://www.forgecrm.app', 'Idempotency-Key': key, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+const subscriptionRequest = (body: object) => new Request('https://www.forgecrm.app/api/customer-subscriptions', { method: 'POST', headers: { Origin: 'https://www.forgecrm.app', 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+const webhookRequest = () => new Request('https://www.forgecrm.app/api/stripe/webhook', { method: 'POST', headers: { 'stripe-signature': 'valid' }, body: '{}' });
 const start = (body: object = { operation: 'payment', job_id: 12, save_card: false }, key = 'terminal-123') => modules.route.POST(request(body, key));
 const update = (id: string, cancel = false) => modules[cancel ? 'cancel' : 'reconcile'].POST(request({}), { params: { id } });
 
@@ -196,4 +198,100 @@ test('ordinary saving cannot promote a provider-identified generated card before
   const saved=database.sqlite.prepare('SELECT * FROM stripe_payment_methods').get();
   assert.equal(saved.is_default,0); assert.equal(saved.requires_explicit_selection,1); assert.equal(saved.recurring_only,1);
   assert.equal(provider.updates.length,0);
+});
+
+test('accepted subscription creation rejects a missing required signature before persistence', async () => {
+  const response = await modules.subscriptions.POST(subscriptionRequest({
+    customer_id: 90,
+    template_id: 41,
+    action: 'accept',
+    price_cents: 1000,
+    interval: 'monthly',
+    payment_method_id: 7,
+  }));
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(await response.json(), { error: 'signature is required for this subscription' });
+  assert.equal(database.sqlite.prepare('SELECT COUNT(*) n FROM customer_subscriptions').get().n, 1);
+  assert.equal(provider.subscriptionCreates.length, 0);
+});
+
+test('signed subscription creation forwards the selected card without changing customer defaults', async () => {
+  database.sqlite.prepare("INSERT INTO stripe_payment_methods (id,company_id,customer_id,stripe_customer_id,stripe_payment_method_id,exp_month,exp_year,is_default,requires_explicit_selection,stripe_account_id) VALUES (6,1,90,'cus_test','pm_default',12,2099,1,0,'acct_1'),(7,1,90,'cus_test','pm_selected',12,2099,0,1,'acct_1')").run();
+
+  const response = await modules.subscriptions.POST(subscriptionRequest({
+    customer_id: 90,
+    template_id: 41,
+    action: 'accept',
+    price_cents: 1000,
+    interval: 'monthly',
+    signature_data: 'data:image/png;base64,signed',
+    signature_name: 'Ada Lovelace',
+    start_date: '2099-01-01',
+    payment_method_id: 7,
+  }));
+
+  assert.equal(response.status, 201);
+  assert.equal(provider.subscriptionCreates.length, 1);
+  assert.equal(provider.subscriptionCreates[0].body.default_payment_method, 'pm_selected');
+  assert.equal(provider.subscriptionCreates[0].options.stripeAccount, 'acct_1');
+  assert.deepEqual(database.sqlite.prepare('SELECT stripe_payment_method_id,is_default FROM stripe_payment_methods ORDER BY id').all().map((row: Record<string, unknown>) => ({ ...row })), [
+    { stripe_payment_method_id: 'pm_default', is_default: 1 },
+    { stripe_payment_method_id: 'pm_selected', is_default: 0 },
+  ]);
+  const created = database.sqlite.prepare('SELECT * FROM customer_subscriptions WHERE id<>1').get();
+  assert.equal(created.default_payment_method_id, 'pm_selected');
+  assert.equal(created.status, 'active');
+  assert.equal(created.signature_name, 'Ada Lovelace');
+  assert.equal(provider.updates.length, 0);
+});
+
+test('ordinary SetupIntent webhook saves its payment method through the ordinary path', async () => {
+  database.sqlite.prepare("INSERT INTO stripe_payment_methods (id,company_id,customer_id,stripe_customer_id,stripe_payment_method_id,exp_month,exp_year,is_default,requires_explicit_selection,stripe_account_id) VALUES (6,1,90,'cus_test','pm_default',12,2099,1,0,'acct_1')").run();
+  provider.event = { id: 'evt_setup_ordinary', type: 'setup_intent.succeeded', account: 'acct_1', data: { object: {
+    id: 'seti_ordinary', status: 'succeeded', payment_method: 'pm_ordinary', metadata: { company_id: '1', customer_id: '90' },
+  } } };
+
+  assert.equal((await modules.webhook.POST(webhookRequest())).status, 200);
+  const saved = database.sqlite.prepare("SELECT * FROM stripe_payment_methods WHERE stripe_payment_method_id='pm_ordinary'").get();
+  assert.equal(saved.requires_explicit_selection, 0);
+  assert.equal(saved.is_default, 0);
+  assert.equal(database.sqlite.prepare('SELECT COUNT(*) n FROM terminal_attempts').get().n, 0);
+});
+
+test('ordinary SetupIntent webhook retries payment-method persistence failures', async () => {
+  database.sqlite.prepare("INSERT INTO stripe_payment_methods (id,company_id,customer_id,stripe_customer_id,stripe_payment_method_id,exp_month,exp_year,is_default,requires_explicit_selection,stripe_account_id) VALUES (6,1,90,'cus_test','pm_default',12,2099,1,0,'acct_1')").run();
+  provider.event = { id: 'evt_setup_retry', type: 'setup_intent.succeeded', account: 'acct_1', data: { object: {
+    id: 'seti_retry', status: 'succeeded', payment_method: 'pm_ordinary', metadata: { company_id: '1', customer_id: '90' },
+  } } };
+  provider.failSave = true;
+
+  assert.equal((await modules.webhook.POST(webhookRequest())).status, 500);
+  assert.equal(database.sqlite.prepare("SELECT COUNT(*) n FROM stripe_payment_methods WHERE stripe_payment_method_id='pm_ordinary'").get().n, 0);
+  assert.equal(database.sqlite.prepare("SELECT COUNT(*) n FROM stripe_webhook_events WHERE event_id='evt_setup_retry'").get().n, 0);
+  provider.failSave = false;
+  assert.equal((await modules.webhook.POST(webhookRequest())).status, 200);
+  assert.equal(database.sqlite.prepare("SELECT COUNT(*) n FROM stripe_payment_methods WHERE stripe_payment_method_id='pm_ordinary'").get().n, 1);
+  assert.equal(database.sqlite.prepare("SELECT COUNT(*) n FROM stripe_webhook_events WHERE event_id='evt_setup_retry'").get().n, 1);
+  assert.equal(database.sqlite.prepare("SELECT is_default FROM stripe_payment_methods WHERE stripe_payment_method_id='pm_default'").get().is_default, 1);
+  assert.equal(database.sqlite.prepare("SELECT is_default FROM stripe_payment_methods WHERE stripe_payment_method_id='pm_ordinary'").get().is_default, 0);
+});
+
+test('Terminal SetupIntent webhook saves only the generated card and retries failure', async () => {
+  await start({ operation: 'setup', customer_id: 90, consent });
+  provider.intents[0].status = 'succeeded';
+  provider.intents[0].payment_method = 'pm_card_present';
+  provider.intents[0].latest_attempt = { payment_method_details: { card_present: { generated_card: 'pm_generated' } } };
+  provider.event = { id: 'evt_setup_terminal', type: 'setup_intent.succeeded', account: 'acct_1', data: { object: provider.intents[0] } };
+  provider.failSave = true;
+
+  assert.equal((await modules.webhook.POST(webhookRequest())).status, 500);
+  assert.equal(database.sqlite.prepare('SELECT COUNT(*) n FROM stripe_payment_methods').get().n, 0);
+  provider.failSave = false;
+  assert.equal((await modules.webhook.POST(webhookRequest())).status, 200);
+  const saved = database.sqlite.prepare('SELECT * FROM stripe_payment_methods').get();
+  assert.equal(saved.stripe_payment_method_id, 'pm_generated');
+  assert.equal(saved.requires_explicit_selection, 1);
+  assert.equal(saved.is_default, 0);
+  assert.equal(database.sqlite.prepare("SELECT COUNT(*) n FROM stripe_payment_methods WHERE stripe_payment_method_id='pm_card_present'").get().n, 0);
 });
