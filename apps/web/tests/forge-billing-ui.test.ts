@@ -16,7 +16,7 @@ const baseStatus = {
   enabled: true as const,
   allowed: false,
   reason: "subscription_required" as const,
-  cutoffAt: "2026-09-26T05:00:00.000Z",
+  trialEndsAt: "2026-10-05T18:30:00.000Z",
   plan: null,
   interval: null,
   seatLimit: null,
@@ -147,7 +147,7 @@ test("ordinary employees and native users see status without prices or purchase 
   }
 });
 
-test("native pre-cutoff access offers Forge without web purchase instructions", async () => {
+test("native trial access shows its company expiration and offers Forge without purchase instructions", async () => {
   const module = (await loadCustomerModule(
     "components/billing/ForgeBilling.tsx",
   )) as BillingModule;
@@ -157,7 +157,7 @@ test("native pre-cutoff access offers Forge without web purchase instructions", 
       status: {
         ...baseStatus,
         allowed: true,
-        reason: "pre_cutoff",
+        reason: "trial",
         native: true,
       },
     },
@@ -165,7 +165,8 @@ test("native pre-cutoff access offers Forge without web purchase instructions", 
   });
 
   assert.match(markup, /Continue to Forge/);
-  assert.match(markup, /Shared access continues until/);
+  assert.match(markup, /14-day trial ends/);
+  assert.match(markup, /October 5, 2026/);
   assert.doesNotMatch(markup, /Starting a subscription now begins paid billing/i);
 });
 
@@ -233,7 +234,7 @@ test("only canonical allowed status offers a route back to Forge", async () => {
   const preCutoff = renderView(module, {
     state: {
       kind: "ready",
-      status: { ...baseStatus, allowed: true, reason: "pre_cutoff" },
+      status: { ...baseStatus, allowed: true, reason: "trial" },
     },
   });
   assert.match(preCutoff, /Continue to Forge/);
@@ -405,21 +406,15 @@ test("disabled billing preserves last-administrator Employees recovery", async (
   assert.doesNotMatch(markup, /Promote and continue|Ada Lovelace|Retry/);
 });
 
-test("enabled public copy names shared cutoff access instead of promising an individual trial", async () => {
+test("enabled public copy offers a 14-day company trial without a shared deadline", async () => {
   const module = await loadCustomerModule("lib/forge-billing/copy.ts");
-  const dormant = module.forgePublicAccessCopy(
-    false,
-    "2026-09-26T05:00:00.000Z",
-  );
+  const dormant = module.forgePublicAccessCopy(false);
   assert.equal(dormant.signup, "Start your free trial. No credit card required.");
 
-  const enabled = module.forgePublicAccessCopy(
-    true,
-    "2026-09-26T05:00:00.000Z",
-  );
-  assert.match(enabled.signup, /September 26, 2026/);
-  assert.match(enabled.marketing, /shared access/i);
-  assert.doesNotMatch(`${enabled.signup} ${enabled.marketing}`, /free trial/i);
+  const enabled = module.forgePublicAccessCopy(true);
+  for (const copy of Object.values(enabled)) assert.match(String(copy), /14-day/);
+  assert.match(enabled.signup, /company/i);
+  assert.doesNotMatch(`${enabled.signup} ${enabled.marketing}`, /September 26|shared access|cutoff/i);
 });
 
 test("disabled Settings billing preserves the existing placeholder", async () => {

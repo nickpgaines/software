@@ -232,7 +232,7 @@ export function fixture() {
       photo_url TEXT,
       sales_commission_rate REAL DEFAULT 0.30,
       tech_commission_rate REAL DEFAULT 0.20,
-      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      created_at TEXT DEFAULT '2020-09-01 12:00:00',
       updated_at TEXT
     );
     INSERT INTO staff(id,company_id,name,first_name,last_name,email,permission_level)

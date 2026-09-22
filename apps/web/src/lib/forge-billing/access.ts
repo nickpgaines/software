@@ -13,7 +13,7 @@ export type ForgeBillingAccess = {
   reason:
     | "disabled"
     | "platform_admin"
-    | "pre_cutoff"
+    | "trial"
     | "paid"
     | "subscription_required";
 };

@@ -4,26 +4,31 @@ import { getDb, type Db } from '@/lib/db';
 import type { SessionContext } from '@/lib/auth';
 import { resolvePermissions, type Permission } from '@/lib/permissions';
 import { BILLING_PLANS, selection, validatePrices, type BillingPlan, type BillingInterval } from './catalog';
-import { billingCutoff, billingOrigin, BillingError, DEFAULT_BILLING_CUTOFF, isForgeBillingEnabled, requireBillingEnabled, requiredConfig } from './config';
+import { billingOrigin, BillingError, isForgeBillingEnabled, requireBillingEnabled, requiredConfig } from './config';
+import { companyTrialEndsAt } from './trial';
 import { type BillingAccount, objectId, verifyProvider } from './provider';
 import { readBillingAccount, reconcileCompany } from './reconcile';
-export { isForgeBillingEnabled, billingCutoff } from './config';
+export { isForgeBillingEnabled } from './config';
 export type BillingStatus = {
-  enabled: boolean; allowed: boolean; reason: 'disabled' | 'pre_cutoff' | 'paid' | 'subscription_required'; cutoffAt: string;
+  enabled: boolean; allowed: boolean; reason: 'disabled' | 'trial' | 'paid' | 'subscription_required'; trialEndsAt: string | null;
   plan: BillingPlan | null; interval: BillingInterval | null; seatLimit: number | null; staffCount: number;
   paidThrough: string | null; subscriptionStatus: string | null; cancelAtPeriodEnd: boolean;
 };
 export async function getCompanyBillingStatus(companyId: number, now = new Date()): Promise<BillingStatus> {
   const enabled = isForgeBillingEnabled();
-  const cutoffAt = enabled ? billingCutoff() : DEFAULT_BILLING_CUTOFF;
-  const result: BillingStatus = { enabled, allowed: true, reason: 'disabled', cutoffAt, plan: null, interval: null, seatLimit: null, staffCount: 0, paidThrough: null, subscriptionStatus: null, cancelAtPeriodEnd: false };
+  const result: BillingStatus = { enabled, allowed: true, reason: 'disabled', trialEndsAt: null, plan: null, interval: null, seatLimit: null, staffCount: 0, paidThrough: null, subscriptionStatus: null, cancelAtPeriodEnd: false };
   if (!enabled) return result;
   const db = await getDb();
   const row = await readBillingAccount(companyId);
   const staff = await db.prepare('SELECT COUNT(*) n FROM staff WHERE company_id=?').get<{n:number}>(companyId);
   const paid = !!row?.paid_through && ['active', 'past_due'].includes(row.subscription_status || '') && Date.parse(row.paid_through) > now.getTime();
-  const before = now.getTime() < Date.parse(cutoffAt);
-  return { ...result, allowed: before || paid, reason: before ? 'pre_cutoff' : paid ? 'paid' : 'subscription_required', plan: row?.plan ?? null, interval: row?.interval ?? null, seatLimit: row?.seat_limit ?? null, staffCount: staff?.n ?? 0, paidThrough: row?.paid_through ?? null, subscriptionStatus: row?.subscription_status ?? null, cancelAtPeriodEnd: !!row?.cancel_at_period_end };
+  const trial = await db.prepare('SELECT started_at FROM forge_billing_trials WHERE company_id=?').get<{started_at:string|null}>(companyId);
+  const trialEndsAt = companyTrialEndsAt(trial?.started_at ?? null, now);
+  // Never manufacture a new trial when historical data is missing or invalid.
+  // Existing verified paid access remains independent of historical signup data.
+  if (!trialEndsAt && !paid) throw new BillingError('Company signup date needs verification. Contact support.', 503);
+  const inTrial = !!trialEndsAt && now.getTime() < Date.parse(trialEndsAt);
+  return { ...result, trialEndsAt, allowed: inTrial || paid, reason: paid ? 'paid' : inTrial ? 'trial' : 'subscription_required', plan: row?.plan ?? null, interval: row?.interval ?? null, seatLimit: row?.seat_limit ?? null, staffCount: staff?.n ?? 0, paidThrough: row?.paid_through ?? null, subscriptionStatus: row?.subscription_status ?? null, cancelAtPeriodEnd: !!row?.cancel_at_period_end };
 }
 export async function canManageBilling(session: SessionContext): Promise<boolean> {
   if (session.isPlatformAdmin) return true;

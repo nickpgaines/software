@@ -12,7 +12,6 @@ import { FeatureTabs } from "@/components/marketing/FeatureTabs";
 import { PricingSection } from "@/components/marketing/PricingSection";
 import { FaqSection } from "@/components/marketing/FaqSection";
 import {
-  billingCutoff,
   isForgeBillingEnabled,
 } from "@/lib/forge-billing/config";
 import { forgePublicAccessCopy } from "@/lib/forge-billing/copy";
@@ -29,7 +28,6 @@ export default function MarketingHome() {
   const billingEnabled = isForgeBillingEnabled();
   const accessCopy = forgePublicAccessCopy(
     billingEnabled,
-    billingEnabled ? billingCutoff() : "",
   );
   return (
     <div>

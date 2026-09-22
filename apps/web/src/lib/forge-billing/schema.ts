@@ -19,4 +19,25 @@ export async function installForgeBillingSchema(db: Db): Promise<void> {
     event_id TEXT PRIMARY KEY, company_id INTEGER NOT NULL REFERENCES company(id) ON DELETE CASCADE,
     processed_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );`);
+  // Snapshot legacy signup estimates once; future company inserts record the
+  // exact timestamp in their own transaction, even while billing is disabled.
+  await db.transaction(async tx => {
+    await tx.exec(`CREATE TABLE IF NOT EXISTS forge_billing_trials (
+      company_id INTEGER PRIMARY KEY REFERENCES company(id) ON DELETE CASCADE,
+      started_at TEXT,
+      source TEXT NOT NULL CHECK(source IN ('legacy_staff','signup'))
+    );
+    INSERT OR IGNORE INTO forge_billing_trials(company_id,started_at,source)
+      SELECT c.id,
+        (SELECT MIN(s.created_at) FROM staff s WHERE s.company_id=c.id),
+        'legacy_staff'
+      FROM company c;`);
+    // exec() splits at semicolons; a trigger body must remain one statement.
+    await tx.prepare(`CREATE TRIGGER IF NOT EXISTS forge_billing_trial_on_company_signup
+      AFTER INSERT ON company
+      BEGIN
+        INSERT INTO forge_billing_trials(company_id,started_at,source)
+          VALUES(NEW.id,strftime('%Y-%m-%dT%H:%M:%fZ','now'),'signup');
+      END`).run();
+  });
 }

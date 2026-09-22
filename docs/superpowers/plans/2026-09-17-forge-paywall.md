@@ -1,5 +1,10 @@
 # Forge Company Paywall Implementation Plan
 
+> Historical completed plan. Its shared-cutoff policy and `cutoffAt`/`pre_cutoff`
+> interfaces were superseded by the user-approved September 21 amendment in
+> the linked design and `docs/forge-billing-release.md`: frozen company signup
+> plus 14 days, `trialEndsAt`/`trial`, and no automatic activation.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox syntax for tracking.
 
 **Goal:** Implement dormant company subscription billing and paywall with a shared provisional cutoff.

@@ -13,8 +13,8 @@ export default class Stripe {
 export function fixture() {
   const sqlite = new DatabaseSync(':memory:');
   sqlite.exec(`CREATE TABLE company(id INTEGER PRIMARY KEY); INSERT INTO company VALUES(1),(2);
-    CREATE TABLE staff(id INTEGER PRIMARY KEY,company_id INTEGER,permission_level TEXT,custom_role_id INTEGER);
-    INSERT INTO staff VALUES(7,1,'admin',NULL),(8,2,'technician',NULL);
+    CREATE TABLE staff(id INTEGER PRIMARY KEY,company_id INTEGER,permission_level TEXT,custom_role_id INTEGER,created_at TEXT DEFAULT '2026-09-01 12:00:00');
+    INSERT INTO staff(id,company_id,permission_level,custom_role_id) VALUES(7,1,'admin',NULL),(8,2,'technician',NULL);
     CREATE TABLE custom_roles(id INTEGER PRIMARY KEY,company_id INTEGER,permissions TEXT);`);
   let chain = Promise.resolve();
   const db = { sqlite, prepare: sql => { const s = sqlite.prepare(sql); return { get: async (...a) => s.get(...a), all: async (...a) => s.all(...a), run: async (...a) => s.run(...a) }; }, exec: async sql => sqlite.exec(sql), transaction: fn => { const run = chain.then(async () => { sqlite.exec('BEGIN IMMEDIATE'); try { const result = await fn(db); sqlite.exec('COMMIT'); return result; } catch(e) { sqlite.exec('ROLLBACK'); throw e; } }); chain = run.catch(() => {}); return run; } };

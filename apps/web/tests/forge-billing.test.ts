@@ -10,15 +10,15 @@ import { fixture, loadBilling, provider, paidSubscription, setSession } from './
 const {service,access,schema,routes}=await loadBilling();
 async function setup() { const db=fixture(); await schema.installForgeBillingSchema(db); return db; }
 const request=(name:string, body:unknown={}, headers:Record<string,string>={})=>new Request(`https://forge.test/api/forge-billing/${name}`,{method:'POST',headers:{Origin:'https://forge.test','content-type':'application/json',...headers},body:JSON.stringify(body)});
-test('dormant flag does not call provider and exact cutoff closes unpaid access', async()=>{
+test('dormant flag does not call provider and exact trial expiration closes unpaid access', async()=>{
   await setup(); process.env.FORGE_BILLING_ENABLED='TRUE';
   assert.equal((await service.getCompanyBillingStatus(1,new Date('2026-10-01'))).allowed,true);
   assert.deepEqual(await (await routes.status.GET(new Request('https://forge.test/api/forge-billing/status'))).json(),{enabled:false});
   assert.equal((await routes.checkout.POST(request('checkout',{plan:'solo',interval:'month'}))).status,404);
   assert.equal(provider.calls.length,0);
   process.env.FORGE_BILLING_ENABLED='true';
-  assert.equal((await service.getCompanyBillingStatus(1,new Date('2026-09-26T04:59:59.999Z'))).reason,'pre_cutoff');
-  assert.equal((await service.getCompanyBillingStatus(1,new Date('2026-09-26T05:00:00Z'))).allowed,false);
+  assert.equal((await service.getCompanyBillingStatus(1,new Date('2026-09-15T11:59:59.999Z'))).reason,'trial');
+  assert.equal((await service.getCompanyBillingStatus(1,new Date('2026-09-15T12:00:00Z'))).allowed,false);
 });
 test('checkout races reserve one session and bind company, price, return origin',async()=>{
   await setup(); const results=await Promise.allSettled(Array.from({length:5},()=>service.createCompanyCheckout(1,'solo','month')));
@@ -39,7 +39,7 @@ for (const lostResponse of [false, true]) {
   for (const terminal of ['expired', 'canceled', 'incomplete_expired']) {
     test(`staff can insert after actual Checkout creation with lost response ${lostResponse} becomes ${terminal}`, async () => {
       const db = await setup();
-      process.env.FORGE_BILLING_CUTOFF_AT = '2099-09-26T05:00:00.000Z';
+      await db.prepare('UPDATE forge_billing_trials SET started_at=? WHERE company_id=1').run(new Date().toISOString());
       provider.lost = lostResponse;
       if (lostResponse) await assert.rejects(() => service.createCompanyCheckout(1, 'solo', 'month'));
       else await service.createCompanyCheckout(1, 'solo', 'month');
@@ -56,7 +56,7 @@ for (const lostResponse of [false, true]) {
         assert.equal((await routes.webhook.POST(request('webhook', {}, { 'stripe-signature': 'test' }))).status, 200);
       }
       await service.refreshCompanyBilling(1);
-      assert.equal((await service.getCompanyBillingStatus(1)).reason, 'pre_cutoff');
+      assert.equal((await service.getCompanyBillingStatus(1)).reason, 'trial');
       // Refresh/webhook do not synchronize Checkout, so preflight must discover it.
       assert.equal((await db.prepare('SELECT status FROM forge_billing_checkout WHERE company_id=1').get()).status, reservation.status);
       const release = await service.resolveTerminalCheckoutSeatRelease(1);
@@ -64,7 +64,7 @@ for (const lostResponse of [false, true]) {
       assert.equal((await db.prepare('SELECT COUNT(*) n FROM forge_billing_checkout').get()).n, 1);
       await db.transaction(async (tx: Db) => {
         await access.assertStaffInsertionAllowed(tx, 1, release);
-        await tx.prepare("INSERT INTO staff VALUES(9,1,'technician',NULL)").run();
+        await tx.prepare("INSERT INTO staff(id,company_id,permission_level,custom_role_id) VALUES(9,1,'technician',NULL)").run();
       });
       assert.equal((await db.prepare('SELECT COUNT(*) n FROM staff WHERE company_id=1').get()).n, 2);
       assert.equal((await db.prepare('SELECT COUNT(*) n FROM forge_billing_checkout').get()).n, 0);
@@ -126,7 +126,7 @@ test('canonical paid invoice grants through paid period; invalid states and brow
 test('checkout validates configured price, provider mode, seat count, and existing subscription',async()=>{
   const db=await setup(); provider.invalidPrice=true; await assert.rejects(()=>service.createCompanyCheckout(1,'solo','month')); assert.equal(provider.sessions.length,0);
   provider.invalidPrice=false; provider.mode=true; await assert.rejects(()=>service.createCompanyCheckout(1,'solo','month')); provider.mode=false;
-  await db.prepare("INSERT INTO staff VALUES(9,1,'technician',NULL)").run(); await assert.rejects(()=>service.createCompanyCheckout(1,'solo','month'));
+  await db.prepare("INSERT INTO staff(id,company_id,permission_level,custom_role_id) VALUES(9,1,'technician',NULL)").run(); await assert.rejects(()=>service.createCompanyCheckout(1,'solo','month'));
   await service.createCompanyCheckout(1,'team','month'); paidSubscription(); await assert.rejects(()=>service.createCompanyCheckout(1,'team','month'));
 });
 test('routes authenticate, enforce admin permission, native and same origin, and ignore supplied tenant',async()=>{
@@ -261,11 +261,12 @@ test('real getDb installs isolated billing schema on existing v24 fast path with
   const previous=[process.env.TURSO_DATABASE_URL,process.env.TURSO_AUTH_TOKEN,process.env.TURSO_LOCAL_REPLICA_PATH];
   process.env.TURSO_DATABASE_URL=url; process.env.TURSO_AUTH_TOKEN='local-test'; delete process.env.TURSO_LOCAL_REPLICA_PATH;
   try {
-    await client.executeMultiple("CREATE TABLE _schema_version(id INTEGER PRIMARY KEY,version INTEGER); INSERT INTO _schema_version VALUES(1,24); CREATE TABLE company(id INTEGER PRIMARY KEY); INSERT INTO company VALUES(1);");
+    await client.executeMultiple("CREATE TABLE _schema_version(id INTEGER PRIMARY KEY,version INTEGER); INSERT INTO _schema_version VALUES(1,24); CREATE TABLE company(id INTEGER PRIMARY KEY); INSERT INTO company VALUES(1); CREATE TABLE staff(company_id INTEGER,created_at TEXT); INSERT INTO staff VALUES(1,'2026-09-01 12:00:00');");
     const db=await loadRealPaymentDb('?forge-billing-v24');
     assert.equal((await db.prepare('SELECT COUNT(*) n FROM forge_billing_accounts').get<{n:number}>())?.n,0);
     await schema.installForgeBillingSchema(db);
     assert.equal((await db.prepare('SELECT COUNT(*) n FROM company').get<{n:number}>())?.n,1);
+    assert.equal((await db.prepare('SELECT started_at FROM forge_billing_trials WHERE company_id=1').get<{started_at:string}>())?.started_at,'2026-09-01 12:00:00');
   } finally {
     for(const [i,name] of ['TURSO_DATABASE_URL','TURSO_AUTH_TOKEN','TURSO_LOCAL_REPLICA_PATH'].entries()) {if(previous[i]===undefined)delete process.env[name];else process.env[name]=previous[i];}
     client.close(); rmSync(dir,{recursive:true,force:true});

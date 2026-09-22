@@ -5,15 +5,26 @@
 This implementation does not activate itself. `FORGE_BILLING_ENABLED` must be
 the exact string `true`; a missing value, `false`, or any other value preserves
 the existing CRM, Settings billing placeholder, public copy, and access rules.
-The cutoff is never an activation trigger. Do not enable billing, merge or
+Trial expiration is never an activation trigger. Do not enable billing, merge or
 deploy an enabling configuration, provision live Stripe objects, notify
 customers, or change production data without a separate owner approval.
 
-The proposed policy remains provisional:
+The trial policy was confirmed September 21, 2026; commercial activation still
+requires approval:
 
-- Shared access ends September 26, 2026 at 00:00 America/Chicago
-  (`2026-09-26T05:00:00.000Z`). New companies do not receive individual trial
-  extensions.
+- Every company receives one 14-day (336-hour) trial from signup. Existing
+  companies count retroactively from signup; companies older than 14 days
+  require a paid subscription once rollout is enabled. September 26 may be a
+  rollout target, but is no longer a shared trial deadline or scheduled action.
+- Legacy company rows have no creation timestamp. Freeze their earliest
+  remaining employee's `created_at` once in `forge_billing_trials`, matching
+  the admin dashboard's existing signup estimate. This approved estimate may
+  be later than original signup if the original employee was already deleted.
+- A transactional database trigger records exact creation time for future
+  companies, including while billing is disabled. Staff changes, reinstalls,
+  or rollout toggles cannot reset the snapshot. Unknown/invalid/future legacy
+  dates require operator verification (503 for unpaid access), not a fresh
+  trial; verified paid access remains available.
 - Founder prices are Solo $79/month or $790/year for 1 employee, Team
   $149/month or $1,490/year for 8 employees, and Business $229/month or
   $2,290/year for 30 employees. Annual Checkout charges the displayed annual
@@ -28,7 +39,7 @@ The proposed policy remains provisional:
   over-cap treatment, notices, and staff-counting policy still require owner
   confirmation.
 
-Choosing Checkout before the cutoff starts paid billing immediately. There is
+Choosing Checkout during the trial starts paid billing immediately. There is
 no additional Stripe trial and no automatically deferred first charge.
 
 ## Configuration inventory
@@ -39,7 +50,6 @@ Stripe Connect credentials used for homeowner payments.
 | Variable | Sensitivity | Requirement |
 | --- | --- | --- |
 | `FORGE_BILLING_ENABLED` | Non-secret rollout control | Exact `true` only after all gates pass. Keep false/missing while dormant. |
-| `FORGE_BILLING_CUTOFF_AT` | Non-secret policy | ISO timestamp with timezone. Defaults to `2026-09-26T05:00:00.000Z`. |
 | `FORGE_BILLING_STRIPE_SECRET_KEY` | Secret | Dedicated `sk_test_…` or `sk_live_…`; mode must match. |
 | `FORGE_BILLING_STRIPE_ACCOUNT_ID` | Sensitive identifier | Stripe platform account owned by the dedicated key. |
 | `FORGE_BILLING_STRIPE_MODE` | Non-secret | Exactly `test` or `live`. |
@@ -56,6 +66,17 @@ Stripe Connect credentials used for homeowner payments.
 Price IDs must be six distinct objects. The application retrieves and verifies
 every Price's amount, USD currency, enabled state, licensed recurring usage,
 interval, mode, and platform account before creating Checkout.
+
+`FORGE_BILLING_CUTOFF_AT` is obsolete and ignored. There is no global trial
+deadline. Status exposes `trialEndsAt` and reason `trial`; public configuration
+advertises `trialDays: 14` for new companies. The billing screen displays the
+company-specific expiration time with an explicit Central time-zone label.
+
+Before enablement, inspect `forge_billing_trials` and verify historical
+estimates, especially companies whose founding employee has left. Do not
+backfill unknown dates with deployment time or recompute snapshots from staff.
+The migration is additive and transactional; it does not rebuild company or
+staff tables. New signup and its trial timestamp commit or roll back together.
 
 ## Dedicated Stripe test setup
 
@@ -130,13 +151,13 @@ timing approval.
 
 Before any customer-visible enablement, the owner must sign off on:
 
-- browser acceptance for administrators, ordinary employees, pre-cutoff,
+- browser acceptance for administrators, ordinary employees, active trial,
   unpaid, paid, past-due, scheduled cancellation, expired entitlement,
   provider outage, stale session, export, logout, support, and both account
   deletion scopes;
 - real Stripe test-mode evidence for all six Prices, Portal, webhook retries,
   lost-response recovery, and canonical invoice entitlement;
-- the cutoff/timezone, prices and founder duration, permissions, feature-tier
+- the rollout date, legacy signup estimates, prices and founder duration, permissions, feature-tier
   policy, cancellation/refund/tax policy, over-cap handling, automation policy,
   and notice plan;
 - physical-device native acceptance showing account status, export where
@@ -180,8 +201,8 @@ merge, or deployment was performed.
 
 ### Provisional implementation decisions
 
-1. The proposed cutoff uses midnight America/Chicago. If the intended hour is
-   different, update the configuration before activation.
+1. The original shared-cutoff proposal was superseded September 21 by one
+   14-day trial per company, with the approved frozen legacy signup estimate.
 2. Enforcement covers subscriptions and employee seats, not marketing feature
    bundles. A different tier policy requires additional feature restrictions.
 3. Work stays on the local feature branch with billing default-off. Production

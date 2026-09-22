@@ -1,5 +1,6 @@
 import { billingResponse } from '@/lib/forge-billing/http';
-import { billingCutoff, isForgeBillingEnabled } from '@/lib/forge-billing/config';
+import { isForgeBillingEnabled } from '@/lib/forge-billing/config';
+import { COMPANY_TRIAL_DAYS } from '@/lib/forge-billing/trial';
 export const runtime='nodejs';
 export const dynamic='force-dynamic';
-export async function GET() { return billingResponse(async()=>{if(!isForgeBillingEnabled()) return {enabled:false};const cutoffAt=billingCutoff();return {enabled:true,cutoffAt,trialAvailable:Date.now()<Date.parse(cutoffAt)};}); }
+export async function GET() { return billingResponse(async()=>isForgeBillingEnabled() ? {enabled:true,trialDays:COMPANY_TRIAL_DAYS,trialAvailable:true} : {enabled:false}); }

@@ -11,7 +11,7 @@ import {
   type BillingInterval,
   type BillingPlan,
 } from "@/lib/forge-billing/catalog-public";
-import { forgeCutoffLabel } from "@/lib/forge-billing/copy";
+import { forgeTrialEndLabel } from "@/lib/forge-billing/copy";
 import { isNativeApp } from "@/lib/native";
 import {
   LOGOUT_FAILURE_MESSAGE,
@@ -21,8 +21,8 @@ import {
 type EnabledBillingStatus = {
   enabled: true;
   allowed: boolean;
-  reason: "pre_cutoff" | "paid" | "subscription_required";
-  cutoffAt: string;
+  reason: "trial" | "paid" | "subscription_required";
+  trialEndsAt: string | null;
   plan: BillingPlan | null;
   interval: BillingInterval | null;
   seatLimit: number | null;
@@ -81,7 +81,7 @@ function isBillingStatus(value: unknown): value is ForgeBillingStatus {
   return (
     typeof enabled.allowed === "boolean" &&
     typeof enabled.reason === "string" &&
-    typeof enabled.cutoffAt === "string" &&
+    (typeof enabled.trialEndsAt === "string" || enabled.trialEndsAt === null) &&
     typeof enabled.staffCount === "number" &&
     typeof enabled.canManage === "boolean" &&
     typeof enabled.native === "boolean"
@@ -183,7 +183,7 @@ function nonterminalSubscription(status: EnabledBillingStatus) {
 
 function statusLabel(status: EnabledBillingStatus) {
   if (status.reason === "paid") return "Paid";
-  if (status.reason === "pre_cutoff") return "Shared Access";
+  if (status.reason === "trial") return "Free Trial";
   return "Subscription Required";
 }
 
@@ -291,13 +291,13 @@ function CurrentStatus({
             period shown above.
           </p>
         )}
-        {status.reason === "pre_cutoff" && (
+        {status.reason === "trial" && status.trialEndsAt && (
           <p className="sm:col-span-2">
-            Shared access continues until {forgeCutoffLabel(status.cutoffAt)}.
+            Your company’s 14-day trial ends {forgeTrialEndLabel(status.trialEndsAt)}.
             {showPurchaseExplanation && (
               <>
                 {" "}Starting a subscription now begins paid billing now; it
-                does not schedule a deferred charge for the cutoff.
+                does not defer the first charge until your trial ends.
               </>
             )}
           </p>

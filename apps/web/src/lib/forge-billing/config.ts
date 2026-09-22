@@ -1,10 +1,4 @@
 export function isForgeBillingEnabled(): boolean { return process.env.FORGE_BILLING_ENABLED === 'true'; }
-export const DEFAULT_BILLING_CUTOFF = '2026-09-26T05:00:00.000Z';
-export function billingCutoff(): string {
-  const value = process.env.FORGE_BILLING_CUTOFF_AT || DEFAULT_BILLING_CUTOFF;
-  if (!/T.*(?:Z|[+-]\d\d:\d\d)$/.test(value) || !Number.isFinite(Date.parse(value))) throw new Error('Invalid Forge billing cutoff');
-  return new Date(value).toISOString();
-}
 export class BillingError extends Error {
   status: number;
   constructor(message: string, status = 409) { super(message); this.status = status; }
