@@ -184,12 +184,23 @@ export async function fetchCustomerProfile(args: {
 export async function listCustomerProfiles(args: {
   creds: TwilioCreds;
 }): Promise<CustomerProfileResource[]> {
-  const data = await twilioRequest<{ results?: CustomerProfileResource[] }>(
-    args.creds,
-    "GET",
-    `${TRUST_HUB_BASE}/v1/CustomerProfiles?PageSize=50`
-  );
-  return data.results ?? [];
+  const profiles: CustomerProfileResource[] = [];
+  let next: string | null = `${TRUST_HUB_BASE}/v1/CustomerProfiles?PageSize=50`;
+  const visited = new Set<string>();
+  while (next) {
+    const url = new URL(next, TRUST_HUB_BASE);
+    if (url.origin !== TRUST_HUB_BASE || url.pathname !== "/v1/CustomerProfiles" ||
+        url.username || url.password || visited.has(url.href) || visited.size >= 20) {
+      throw new Error("Could not safely load all customer profiles. Please refresh the registration status again.");
+    }
+    visited.add(url.href);
+    const data: { results: CustomerProfileResource[]; meta?: { next_page_url?: string | null } } =
+      await twilioRequest(args.creds, "GET", url.href);
+    if (!Array.isArray(data.results)) throw new Error("Could not load customer profiles. Please refresh the registration status again.");
+    profiles.push(...data.results);
+    next = data.meta?.next_page_url || null;
+  }
+  return profiles;
 }
 
 // Pull the most recent evaluation result for a Customer Profile so we can

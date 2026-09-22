@@ -478,16 +478,25 @@ async function step(companyId: number, retryFailed: boolean, lease: SmsRegistrat
       // CP we actually submitted. There can be several orphan drafts;
       // we pick any approved one first, otherwise the most recent
       // in-review / pending-review one.
-      if (cp.status === "draft") {
-        const all = await listCustomerProfiles({ creds }).catch(() => []);
+      if (normalizeTwilioStatus(cp.status) === "DRAFT") {
+        // Discovery must succeed before offering a retry: an unknown status
+        // could otherwise produce a duplicate application already in review.
+        const all = await listCustomerProfiles({ creds });
         const approved = all.find((c) => isApproved(c.status));
         const inReview = all.find((c) => isPending(c.status));
         const target = approved ?? inReview;
-        if (target && target.sid !== company.twilio_customer_profile_sid) {
-          await persistState(companyId, "customer_profile_pending", null, {
-            twilio_customer_profile_sid: target.sid,
-          });
+        if (target) {
+          if (target.sid !== company.twilio_customer_profile_sid) {
+            await persistState(companyId, "customer_profile_pending", null, {
+              twilio_customer_profile_sid: target.sid,
+            });
+          }
           cp = target;
+        }
+        if (normalizeTwilioStatus(cp.status) === "DRAFT") {
+          const msg = "Your registration was saved, but setup was interrupted and it was not submitted to Twilio for review. Review your details and resubmit the registration.";
+          await persistState(companyId, "customer_profile_failed", msg);
+          return { state: "customer_profile_failed", error: msg, recurse: false };
         }
       }
 
@@ -580,6 +589,11 @@ async function step(companyId: number, retryFailed: boolean, lease: SmsRegistrat
     }
     try {
       const tp = await fetchTrustProduct({ creds, sid: company.twilio_trust_product_sid });
+      if (normalizeTwilioStatus(tp.status) === "DRAFT") {
+        const msg = "Your registration was saved, but messaging-profile setup was interrupted and it was not submitted to Twilio for review. Review your details and resubmit the registration.";
+        await persistState(companyId, "trust_product_failed", msg);
+        return { state: "trust_product_failed", error: msg, recurse: false };
+      }
       if (isApproved(tp.status)) {
         await persistState(companyId, "trust_product_approved", null);
         return { state: "trust_product_approved", error: null, recurse: true };

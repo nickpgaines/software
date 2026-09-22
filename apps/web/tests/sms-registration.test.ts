@@ -630,3 +630,105 @@ test("concurrent registration advancement creates one Twilio resource", async ()
     "BUcreated"
   );
 });
+
+test("opening a stranded draft restores a recoverable error without resubmitting", async () => {
+  db = registrationDatabase("customer_profile_pending");
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    requests.push({ url, method: init?.method || "GET", body: String(init?.body || "") });
+    if (url.endsWith("/CustomerProfiles/BUprofile")) return Response.json({ sid: "BUprofile", status: "draft" });
+    if (url.includes("/CustomerProfiles?")) return Response.json({ results: [
+      { sid: "BUprofile", status: "draft" },
+      { sid: "BUold", status: "twilio-rejected" },
+    ] });
+    throw new Error(`Unexpected request: ${url}`);
+  };
+  const response = await GET(new Request("https://www.forgecrm.app/api/sms/registration"));
+  const data = await response.json();
+  assert.equal(data.company.a2p_registration_state, "customer_profile_failed");
+  assert.match(data.company.a2p_registration_error, /not submitted.*review.*resubmit/i);
+  await advanceRegistration(1);
+  assert.equal(requests.filter(r => r.method === "POST").length, 0);
+  assert.equal(db.prepare("SELECT twilio_customer_profile_sid FROM company").get().twilio_customer_profile_sid, "BUprofile");
+
+  twilioResponses({ sid: "BUprofile", status: "draft" });
+  const retry = await advanceRegistration(1, { retryFailed: true });
+  assert.equal(retry.state, "customer_profile_pending");
+  assert.equal(requests.filter(r => r.method === "POST" && r.url.endsWith("/CustomerProfiles")).length, 1);
+});
+
+test("draft recovery finds an existing in-review profile on later pages instead of enabling a duplicate", async () => {
+  db = registrationDatabase("customer_profile_pending");
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    requests.push({ url, method: init?.method || "GET", body: "" });
+    if (url.endsWith("/BUprofile")) return Response.json({ sid: "BUprofile", status: "draft" });
+    if (url.includes("PageToken=next")) return Response.json({ results: [{ sid: "BUreview", status: "pending-review" }], meta: { next_page_url: null } });
+    if (url.includes("/CustomerProfiles?")) return Response.json({ results: [{ sid: "BUprofile", status: "draft" }], meta: { next_page_url: "https://trusthub.twilio.com/v1/CustomerProfiles?PageToken=next" } });
+    throw new Error(`Unexpected request: ${url}`);
+  };
+  const result = await advanceRegistration(1);
+  assert.equal(result.state, "customer_profile_pending");
+  assert.equal(db.prepare("SELECT twilio_customer_profile_sid FROM company").get().twilio_customer_profile_sid, "BUreview");
+  assert.ok(requests.every(r => r.method === "GET"));
+});
+
+test("failed profile discovery does not misclassify a draft as safe to retry", async () => {
+  db = registrationDatabase("customer_profile_pending");
+  globalThis.fetch = async (input) => String(input).endsWith("/BUprofile")
+    ? Response.json({ sid: "BUprofile", status: "draft" })
+    : Response.json({ message: "Temporarily unavailable" }, { status: 503 });
+  const result = await advanceRegistration(1);
+  assert.equal(result.state, "customer_profile_pending");
+  assert.match(result.error || "", /Temporarily unavailable/);
+  const response = await GET(new Request("https://www.forgecrm.app/api/sms/registration"));
+  const data = await response.json();
+  assert.match(data.company.a2p_registration_error || "", /Temporarily unavailable/,
+    "The settings page must see status-check errors instead of silently showing in review");
+});
+
+test("draft recovery honors a profile submitted between the individual fetch and discovery", async () => {
+  db = registrationDatabase("customer_profile_pending");
+  globalThis.fetch = async input => String(input).endsWith("/BUprofile")
+    ? Response.json({ sid: "BUprofile", status: "draft" })
+    : Response.json({ results: [{ sid: "BUprofile", status: "pending-review" }] });
+  const result = await advanceRegistration(1);
+  assert.equal(result.state, "customer_profile_pending");
+  assert.equal(result.error, null);
+});
+
+test("profile discovery never sends credentials to another origin or treats incomplete results as safe", async () => {
+  for (const response of [
+    { results: [], meta: { next_page_url: "https://untrusted.example/profiles" } },
+    { message: "Malformed response" },
+    { results: [], meta: { next_page_url: "https://trusthub.twilio.com/v1/CustomerProfiles?PageSize=50" } },
+  ]) {
+    db = registrationDatabase("customer_profile_pending");
+    let calls = 0;
+    globalThis.fetch = async input => {
+      const url = String(input);
+      assert.ok(url.startsWith("https://trusthub.twilio.com/"));
+      calls++;
+      return Response.json(url.endsWith("/BUprofile") ? { sid: "BUprofile", status: "draft" } : response);
+    };
+    const result = await advanceRegistration(1);
+    assert.equal(result.state, "customer_profile_pending");
+    assert.match(result.error || "", /Could not.*load/);
+    assert.equal(calls, 2);
+    db.close();
+    db = undefined!;
+  }
+});
+
+test("an interrupted trust-product draft also becomes recoverable without provider writes", async () => {
+  db = registrationDatabase("trust_product_pending");
+  db.prepare("UPDATE company SET twilio_trust_product_sid = ?").run("BUtrust");
+  globalThis.fetch = async (input, init) => {
+    requests.push({ url: String(input), method: init?.method || "GET", body: "" });
+    return Response.json({ sid: "BUtrust", status: "draft" });
+  };
+  const result = await advanceRegistration(1);
+  assert.equal(result.state, "trust_product_failed");
+  assert.match(result.error || "", /not submitted.*review.*resubmit/i);
+  assert.ok(requests.every(r => r.method === "GET"));
+});

@@ -69,8 +69,19 @@ export async function GET(req: Request) {
     status.company.a2p_registration_state.endsWith("_pending") ||
     url.searchParams.get("refresh") === "1"
   ) {
-    await advanceRegistration(companyId).catch(() => {});
+    const progress = await advanceRegistration(companyId).catch((error) => {
+      console.error(`[sms/registration] status refresh failed for company ${companyId}:`, error);
+      return {
+        state: status.company.a2p_registration_state,
+        error: "Unable to refresh registration status. Please try again shortly. Your saved details have not been changed.",
+      };
+    });
     status = await readStatus(companyId);
+    // Provider/network failures are transient, not a new rejection. Show them
+    // without persisting over a newer state written by another request.
+    if (progress.error && progress.state === status.company.a2p_registration_state) {
+      status.company.a2p_registration_error = progress.error;
+    }
   }
   return NextResponse.json(status, {
     headers: { "Cache-Control": "no-store" },
