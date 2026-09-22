@@ -4,6 +4,32 @@ import XCTest
 
 final class WidgetTrendTests: XCTestCase {
     @MainActor
+    func testSteadyRevenueRendersThinLineWithSubtleAreaInsteadOfSolidBars() throws {
+        for width in [128, 306] {
+            let points = (1...12).map { ForgeWidgetTrendPoint(date: "month-\($0)", cents: 100_000) }
+            let image = try render(MiniTrend(points: points, color: .orange)
+                .frame(width: CGFloat(width), height: 52).background(.black))
+            let cgImage = try XCTUnwrap(image.cgImage)
+            let bright = try brightPixels(image)
+            XCTAssertGreaterThan(bright, width, "The revenue line must remain visible")
+            XCTAssertLessThan(bright, cgImage.width * cgImage.height / 5,
+                "Revenue should be a thin stroke, not filled bars")
+            let pixels = try rgbaPixels(image)
+            let center = ((cgImage.height / 2) * cgImage.width + cgImage.width / 2) * 4
+            XCTAssertGreaterThan(pixels[center], 2, "A subtle gradient should sit beneath the line")
+            XCTAssertLessThan(pixels[center], 80, "The area fill must not compete with the line")
+        }
+    }
+
+    @MainActor
+    func testSingleRevenuePointIsVisibleWithoutInventingAFullPeriod() throws {
+        let image = try render(MiniTrend(points: [.init(date: "2026-09-01", cents: 100_000)], color: .orange)
+            .frame(width: 128, height: 38).background(.black))
+        XCTAssertGreaterThan(try brightPixels(image), 5)
+        XCTAssertLessThan(try brightPixels(image), 120, "A single observation should be a dot, not a full-width bar")
+    }
+
+    @MainActor
     func testEarlyMonthRevenueIsVisibleAtBothWidgetWidths() throws {
         for days in [28, 29, 30, 31] {
             for width in [128, 306] {
