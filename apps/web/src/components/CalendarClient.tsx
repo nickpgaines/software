@@ -235,6 +235,22 @@ type TaskModalOpener = (opts: { startIso: string; endIso: string }) => void;
 const TaskModalContext = createContext<TaskModalOpener>(() => {});
 
 export default function CalendarClient() {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+
+  // Calendar dates, locale labels, and "today" belong to the user's timezone.
+  // Keep SSR and the first hydration render identical before reading that clock.
+  if (!mounted) {
+    return (
+      <div role="status" className="flex h-[calc(100dvh-3.75rem-env(safe-area-inset-bottom))] items-center justify-center text-sm text-zinc-400 md:h-[100dvh]">
+        Loading schedule…
+      </div>
+    );
+  }
+  return <LocalCalendar />;
+}
+
+function LocalCalendar() {
   const isMobile = useIsMobile();
   const [view, setView] = useState<View>("week");
   const [cursor, setCursor] = useState<Date>(startOfDay(new Date()));
