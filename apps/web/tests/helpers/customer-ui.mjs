@@ -16,6 +16,7 @@ export async function loadCustomerModule(path) {
       if (specifier === "@vis.gl/react-google-maps") return { url: places, shortCircuit: true };
       if (specifier === "@/components/PhoneClient") return { url: "data:text/javascript,export function usePhone(){return null}", shortCircuit: true };
       if (specifier === "next/server") return nextResolve("next/server.js", context);
+      if (specifier === "next/dynamic") return nextResolve("next/dynamic.js", context);
       if (specifier === "@/lib/db") return { url: "data:text/javascript,export async function getDb(){return globalThis.__customerDb}export async function syncReplica(){}", shortCircuit: true };
       if (specifier === "@/lib/auth") return { url: "data:text/javascript,export async function requireCompanyId(){return 1}", shortCircuit: true };
       if (specifier === "@/lib/email") return { url: "data:text/javascript,export function buildOriginFromRequest(){return 'https://example.com'}export async function sendWelcomeToCustomer(){}", shortCircuit: true };
