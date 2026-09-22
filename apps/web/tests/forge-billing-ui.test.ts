@@ -213,7 +213,9 @@ test("approved native website handoff opens a new browser context without exposi
   const status = { ...baseStatus, native: true, websiteBillingUrl: "https://forge.test/billing" };
   const markup = renderView(module, { state: { kind: "ready", status } });
   assert.match(markup, /href="https:\/\/forge.test\/billing" target="_blank" rel="noopener noreferrer"/);
-  assert.match(markup, /Continue on website/);
+  assert.match(markup, />Choose your plan<\/a>/);
+  assert.match(markup, /Keep your business moving with Forge/);
+  assert.ok(markup.indexOf("Choose your plan") < markup.indexOf("Current plan"));
   assert.match(markup, /sign in again/i);
   assert.doesNotMatch(markup, /Native Account Status|\$79|Subscribe to/);
   for (const variant of [
@@ -221,8 +223,23 @@ test("approved native website handoff opens a new browser context without exposi
     { ...status, websiteBillingUrl: null },
     { ...status, native: false },
   ]) {
-    assert.doesNotMatch(renderView(module, {state:{kind:"ready",status:variant}}), /Continue on website/);
+    assert.doesNotMatch(renderView(module, {state:{kind:"ready",status:variant}}), />Choose your plan<\/a>/);
   }
+});
+
+test("native website CTA distinguishes expired trials, current trials, and existing subscriptions", async () => {
+  const module = (await loadCustomerModule("components/billing/ForgeBilling.tsx")) as BillingModule;
+  const nativeStatus = { ...baseStatus, native: true, websiteBillingUrl: "https://forge.test/billing" };
+  const expired = renderView(module, { state: { kind: "ready", status: nativeStatus } });
+  assert.match(expired, /Your free trial has ended\. Choose a plan on the Forge website/);
+  const trial = renderView(module, { state: { kind: "ready", status: { ...nativeStatus, allowed: true, reason: "trial" } } });
+  assert.doesNotMatch(trial, /Your free trial has ended/);
+  assert.match(trial, />Choose your plan<\/a>/);
+  const paid = renderView(module, { state: { kind: "ready", status: {
+    ...nativeStatus, allowed: true, reason: "paid", plan: "team", interval: "month", subscriptionStatus: "active",
+  } } });
+  assert.match(paid, />Manage subscription<\/a>/);
+  assert.doesNotMatch(paid, /Choose your plan|Your free trial has ended/);
 });
 
 test("native trial access shows its company expiration and offers Forge without purchase instructions", async () => {

@@ -432,32 +432,45 @@ export function ForgeBillingView({
         </div>
       )}
 
+      {native && (
+        <Card>
+          <CardHeader>
+            <CardTitle className={websiteBillingUrl ? "text-xl leading-tight" : undefined}>
+              {websiteBillingUrl
+                ? hasSubscription ? "Manage your Forge subscription" : "Keep your business moving with Forge"
+                : status.canManage ? "Account status" : "Contact an administrator"}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4 text-sm font-bold text-zinc-400">
+            <p>{websiteBillingUrl
+              ? hasSubscription
+                ? "Manage your company’s plan and payment details on the Forge website."
+                : trialExpired
+                  ? "Your free trial has ended. Choose a plan on the Forge website to continue managing your jobs, customers, and team."
+                  : "Choose a plan on the Forge website to keep managing your jobs, customers, and team."
+              : status.canManage
+                ? "Contact support for help with your company subscription."
+                : "Contact an administrator for help with your company subscription."}</p>
+            {websiteBillingUrl && (
+              <div className="space-y-3">
+                <Button asChild className="w-full sm:w-auto">
+                  <a href={websiteBillingUrl} target="_blank" rel="noopener noreferrer">
+                    {hasSubscription ? "Manage subscription" : "Choose your plan"}
+                  </a>
+                </Button>
+                <p className="text-xs">Opens in your browser. You may need to sign in again.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <CurrentStatus
         status={status}
         showPurchaseExplanation={!native && status.canManage}
       />
 
       <ActionError message={actionError} />
-
-      {native && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Account status</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4 text-sm font-bold text-zinc-400">
-            <p>{websiteBillingUrl
-              ? "Continue in your browser to choose a plan or manage billing. You may need to sign in again."
-              : status.canManage
-                ? "Contact support for help with your company subscription."
-                : "Contact an administrator for help with your company subscription."}</p>
-            {websiteBillingUrl && (
-              <Button asChild className="w-full sm:w-auto">
-                <a href={websiteBillingUrl} target="_blank" rel="noopener noreferrer">Continue on website</a>
-              </Button>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       {!native && !status.canManage && (
         <Card>

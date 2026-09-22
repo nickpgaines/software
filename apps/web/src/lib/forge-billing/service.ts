@@ -22,6 +22,15 @@ export async function getCompanyBillingStatus(companyId: number, now = new Date(
   const row = await readBillingAccount(companyId);
   const staff = await db.prepare('SELECT COUNT(*) n FROM staff WHERE company_id=?').get<{n:number}>(companyId);
   const paid = !!row?.paid_through && ['active', 'past_due'].includes(row.subscription_status || '') && Date.parse(row.paid_through) > now.getTime();
+  if (paid) {
+    // Cached invoice credit is valid only for the Stripe identity that issued it.
+    // Check local configuration without turning every CRM request into a provider call.
+    const configuredMode = process.env.FORGE_BILLING_STRIPE_MODE?.trim();
+    const configuredAccount = process.env.FORGE_BILLING_STRIPE_ACCOUNT_ID?.trim();
+    if (!['test', 'live'].includes(configuredMode || '') || row!.account_id !== configuredAccount || row!.livemode !== (configuredMode === 'live' ? 1 : 0)) {
+      throw new BillingError('Company billing configuration needs verification. Contact support.', 503);
+    }
+  }
   const trial = await db.prepare('SELECT started_at FROM forge_billing_trials WHERE company_id=?').get<{started_at:string|null}>(companyId);
   const trialEndsAt = companyTrialEndsAt(trial?.started_at ?? null, now);
   // Never manufacture a new trial when historical data is missing or invalid.

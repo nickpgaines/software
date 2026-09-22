@@ -71,7 +71,9 @@ interval, mode, and platform account before creating Checkout.
 ### Optional native website handoff
 
 When both billing and `FORGE_BILLING_NATIVE_WEBSITE_ENABLED` are exactly `true`,
-authenticated native billing administrators may tap **Continue on website**.
+authenticated native billing administrators may tap **Choose your plan**
+(or **Manage subscription** for an existing subscription). The next-step card
+appears before the account-status details and explains how to continue.
 The app opens the configured HTTPS `FORGE_BILLING_SITE_ORIGIN` plus `/billing`
 in the external browser. It never redirects automatically or includes session
 tokens, credentials, or tenant identifiers in the URL. Browser sign-in may be

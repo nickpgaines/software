@@ -49,6 +49,23 @@ test('dormant flag does not call provider and exact trial expiration closes unpa
   assert.equal((await service.getCompanyBillingStatus(1,new Date('2026-09-15T11:59:59.999Z'))).reason,'trial');
   assert.equal((await service.getCompanyBillingStatus(1,new Date('2026-09-15T12:00:00Z'))).allowed,false);
 });
+test('cached paid access is bound to the configured Stripe account and mode without provider calls', async () => {
+  await setup();
+  await service.createCompanyCheckout(1, 'solo', 'month');
+  paidSubscription();
+  await service.refreshCompanyBilling(1);
+  const afterTrial = new Date('2026-10-01T00:00:00Z');
+  const calls = provider.calls.length;
+  provider.fail = true;
+  assert.equal((await service.getCompanyBillingStatus(1, afterTrial)).reason, 'paid');
+  for (const [account, mode] of [['acct_other', 'test'], ['acct_platform', 'live'], ['acct_platform', 'invalid']]) {
+    process.env.FORGE_BILLING_STRIPE_ACCOUNT_ID = account;
+    process.env.FORGE_BILLING_STRIPE_MODE = mode;
+    await assert.rejects(() => service.getCompanyBillingStatus(1, afterTrial), /billing configuration needs verification/i);
+  }
+  assert.equal(provider.calls.length, calls);
+});
+
 test('checkout races reserve one session and bind company, price, return origin',async()=>{
   await setup(); const results=await Promise.allSettled(Array.from({length:5},()=>service.createCompanyCheckout(1,'solo','month')));
   assert.ok(results.some(r=>r.status==='fulfilled')); assert.equal(provider.sessions.length,1);
