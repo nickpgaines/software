@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { getDb, syncReplica, type Staff, type PermissionLevel } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
 import { requireCompanyId } from "@/lib/auth";
+import { assertStaffInsertionAllowed } from "@/lib/forge-billing/access";
+import { BillingError } from "@/lib/forge-billing/config";
+import { resolveTerminalCheckoutSeatRelease } from "@/lib/forge-billing/service";
 
 export const dynamic = "force-dynamic";
 
@@ -60,11 +63,27 @@ export async function POST(req: Request) {
     if (!name) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
-    const result = await db
-      .prepare(
-        "INSERT INTO staff (company_id, name, role, first_name) VALUES (?, ?, ?, ?)"
-      )
-      .run(companyId, name, body.role || null, name.split(/\s+/)[0] || name);
+    let result: { lastInsertRowid: number };
+    try {
+      const releasableCheckout =
+        await resolveTerminalCheckoutSeatRelease(companyId);
+      result = await db.transaction(async (tx) => {
+        await assertStaffInsertionAllowed(tx, companyId, releasableCheckout);
+        return tx
+          .prepare(
+            "INSERT INTO staff (company_id, name, role, first_name) VALUES (?, ?, ?, ?)"
+          )
+          .run(companyId, name, body.role || null, name.split(/\s+/)[0] || name);
+      });
+    } catch (error) {
+      if (error instanceof BillingError) {
+        return NextResponse.json(
+          { error: error.message },
+          { status: error.status }
+        );
+      }
+      throw error;
+    }
     const created = (await db
       .prepare("SELECT * FROM staff WHERE id = ? AND company_id = ?")
       .get(result.lastInsertRowid, companyId)) as Staff;
@@ -140,27 +159,35 @@ export async function POST(req: Request) {
 
   let result: { lastInsertRowid: number };
   try {
-    result = await db
-      .prepare(
-        `INSERT INTO staff
-         (company_id, name, first_name, last_name, phone, email, password_hash,
-          color, permission_level, custom_role_id, photo_url, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-      )
-      .run(
-        companyId,
-        fullName,
-        first_name,
-        last_name,
-        phone,
-        email,
-        password_hash,
-        color,
-        permission_level,
-        custom_role_id,
-        photo_url
-      );
+    const releasableCheckout =
+      await resolveTerminalCheckoutSeatRelease(companyId);
+    result = await db.transaction(async (tx) => {
+      await assertStaffInsertionAllowed(tx, companyId, releasableCheckout);
+      return tx
+        .prepare(
+          `INSERT INTO staff
+           (company_id, name, first_name, last_name, phone, email, password_hash,
+            color, permission_level, custom_role_id, photo_url, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+        )
+        .run(
+          companyId,
+          fullName,
+          first_name,
+          last_name,
+          phone,
+          email,
+          password_hash,
+          color,
+          permission_level,
+          custom_role_id,
+          photo_url
+        );
+    });
   } catch (err) {
+    if (err instanceof BillingError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     console.error("[/api/staff POST] insert failed:", err);
     const message = err instanceof Error ? err.message : "Database error";
     return NextResponse.json(

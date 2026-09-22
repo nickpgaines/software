@@ -43,10 +43,26 @@ export async function handleWidgetSummaryRequest(
   if (!token) return unauthorized();
   const principal = await deps.authenticate(token);
   if (!principal) return unauthorized();
-  const summary = await deps.buildSummary(principal);
-  return Response.json(summary, {
-    headers: { "Cache-Control": "private, no-store" },
-  });
+  try {
+    const summary = await deps.buildSummary(principal);
+    return Response.json(summary, {
+      headers: { "Cache-Control": "private, no-store" },
+    });
+  } catch (error) {
+    const status =
+      typeof error === "object" &&
+      error !== null &&
+      "status" in error &&
+      error.status === 402
+        ? 402
+        : 503;
+    return Response.json(
+      status === 402
+        ? { error: "subscription_required", reason: "subscription_required" }
+        : { error: "billing_access_unavailable" },
+      { status, headers: { "Cache-Control": "private, no-store" } }
+    );
+  }
 }
 
 export async function handleWidgetRevocationRequest(

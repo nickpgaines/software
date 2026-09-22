@@ -1,5 +1,9 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { isWidgetBearerRoute } from "./lib/widget-http";
+import {
+  billingOrigin,
+  isForgeBillingEnabled,
+} from "./lib/forge-billing/config";
 
 const COOKIE_NAME = "crm_session";
 const encoder = new TextEncoder();
@@ -57,6 +61,51 @@ async function isValid(token: string | undefined) {
 // Webhooks and other cross-origin POSTs are excluded via the matcher below.
 const UNSAFE_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
 
+const INTERNAL_CONTEXT_HEADERS = [
+  "x-company-id",
+  "x-forge-internal",
+  "x-forge-billing-internal",
+];
+
+function nextWithoutInternalContext(req: NextRequest) {
+  const headers = new Headers(req.headers);
+  for (const name of INTERNAL_CONTEXT_HEADERS) headers.delete(name);
+  return NextResponse.next({ request: { headers } });
+}
+
+function exactOrChild(pathname: string, root: string) {
+  return pathname === root || pathname.startsWith(`${root}/`);
+}
+
+export function isPublicForgeBillingPath(pathname: string, method: string) {
+  return (
+    (method === "GET" && pathname === "/api/forge-billing/public") ||
+    (method === "POST" && pathname === "/api/forge-billing/webhook")
+  );
+}
+
+export function isForgeBillingSafePath(pathname: string, method: string) {
+  if (pathname === "/billing" || exactOrChild(pathname, "/billing")) return true;
+  if (exactOrChild(pathname, "/api/forge-billing")) return true;
+  if (pathname === "/api/me" || pathname === "/api/logout") return true;
+  if (pathname === "/api/account/deletion") return true;
+  if (pathname === "/api/widget/token" && method === "DELETE") return true;
+  if (pathname === "/support" || exactOrChild(pathname, "/support")) return true;
+  if (method === "GET" && pathname === "/api/stripe/terminal/attempts") return true;
+  if (
+    method === "POST" &&
+    /^\/api\/stripe\/terminal\/attempts\/[^/]+\/(?:reconcile|cancel)$/.test(
+      pathname
+    )
+  ) {
+    return true;
+  }
+  return (
+    method === "POST" &&
+    /^\/api\/jobs\/[^/]+\/payments\/stripe-confirm$/.test(pathname)
+  );
+}
+
 function sameOrigin(req: NextRequest): boolean {
   const origin = req.headers.get("origin");
   const referer = req.headers.get("referer");
@@ -82,22 +131,26 @@ function sameOrigin(req: NextRequest): boolean {
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  if (isPublicForgeBillingPath(pathname, req.method)) {
+    return nextWithoutInternalContext(req);
+  }
+
   // Scheduled lifecycle delivery authenticates with CRON_SECRET in its handler.
   if (pathname === "/api/cron/job-lifecycle-notifications" && (req.method === "GET" || req.method === "POST")) {
-    return NextResponse.next();
+    return nextWithoutInternalContext(req);
   }
 
   // MCP connector endpoint authenticates via OAuth bearer token, not the
   // cookie session. Skip the cookie check so Claude (which has no cookie)
   // can reach it; the route handler enforces auth itself.
   if (pathname === "/api/mcp") {
-    return NextResponse.next();
+    return nextWithoutInternalContext(req);
   }
 
   // WidgetKit refreshes in the background without the web session cookie.
   // These two operations authenticate their scoped bearer token in the route.
   if (isWidgetBearerRoute(req)) {
-    return NextResponse.next();
+    return nextWithoutInternalContext(req);
   }
 
   const token = req.cookies.get(COOKIE_NAME)?.value;
@@ -106,7 +159,7 @@ export async function middleware(req: NextRequest) {
   // Public marketing pages — visible to everyone, no auth needed.
   // Logged-in users see them too (e.g. to compare pricing).
   if (pathname === "/") {
-    return NextResponse.next();
+    return nextWithoutInternalContext(req);
   }
 
   if (
@@ -116,7 +169,7 @@ export async function middleware(req: NextRequest) {
     pathname === "/reset-password"
   ) {
     if (authed) return NextResponse.redirect(new URL("/dashboard", req.url));
-    return NextResponse.next();
+    return nextWithoutInternalContext(req);
   }
 
   if (!authed) {
@@ -134,7 +187,89 @@ export async function middleware(req: NextRequest) {
     );
   }
 
-  return NextResponse.next();
+  if (!isForgeBillingEnabled() || isForgeBillingSafePath(pathname, req.method)) {
+    return nextWithoutInternalContext(req);
+  }
+
+  let origin: string;
+  try {
+    origin = billingOrigin();
+  } catch {
+    return NextResponse.json(
+      { error: "billing_access_unavailable" },
+      { status: 503, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
+  let accessResponse: Response;
+  try {
+    accessResponse = await fetch(`${origin}/api/forge-billing/access`, {
+      method: "GET",
+      headers: {
+        cookie: req.headers.get("cookie") || "",
+        accept: "application/json",
+      },
+      cache: "no-store",
+    });
+  } catch {
+    return NextResponse.json(
+      { error: "billing_access_unavailable" },
+      { status: 503, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
+  if (accessResponse.status === 401) {
+    const response = pathname.startsWith("/api/")
+      ? NextResponse.json(
+        { error: "unauthorized" },
+        { status: 401, headers: { "Cache-Control": "no-store" } }
+      )
+      : NextResponse.redirect(`${origin}/login`);
+    // Node checks current staff/company state, beyond the signature checked here.
+    // Expire its rejected session so login does not redirect back to the CRM.
+    response.cookies.set(COOKIE_NAME, "", {
+      httpOnly: true,
+      sameSite: "lax",
+      secure: process.env.NODE_ENV === "production",
+      path: "/",
+      maxAge: 0,
+    });
+    response.headers.set("Cache-Control", "no-store");
+    return response;
+  }
+  if (!accessResponse.ok) {
+    return NextResponse.json(
+      { error: "billing_access_unavailable" },
+      { status: 503, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+
+  let access: { allowed?: unknown; reason?: unknown };
+  try {
+    access = (await accessResponse.json()) as {
+      allowed?: unknown;
+      reason?: unknown;
+    };
+  } catch {
+    return NextResponse.json(
+      { error: "billing_access_unavailable" },
+      { status: 503, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+  if (access.allowed === true) return nextWithoutInternalContext(req);
+  if (access.allowed !== false || typeof access.reason !== "string") {
+    return NextResponse.json(
+      { error: "billing_access_unavailable" },
+      { status: 503, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.json(
+      { error: access.reason, reason: access.reason },
+      { status: 402, headers: { "Cache-Control": "no-store" } }
+    );
+  }
+  return NextResponse.redirect(`${origin}/billing`);
 }
 
 export const config = {

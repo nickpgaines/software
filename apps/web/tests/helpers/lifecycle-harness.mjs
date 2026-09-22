@@ -19,6 +19,7 @@ export async function loadLifecycleRoute(path) {
     if (["@/lib/db", "@/lib/auth", "@/lib/sms"].includes(specifier)) return { url: import.meta.url, shortCircuit: true };
     if (specifier === "next/server") return nextResolve("next/server.js", context);
     if (specifier === "./lib/widget-http") return nextResolve(new URL("../../src/lib/widget-http.ts", import.meta.url).href, context);
+    if (specifier === "./lib/forge-billing/config") return nextResolve(new URL("../../src/lib/forge-billing/config.ts", import.meta.url).href, context);
     if (specifier.startsWith("@/")) return nextResolve(new URL(`../../src/${specifier.slice(2)}.ts`, import.meta.url).href, context);
     return nextResolve(specifier, context);
   } });
