@@ -23,7 +23,7 @@ class Element extends EventTarget {
  * boundaries. Touch tests deliberately omit browser-synthesized clicks, as
  * Mapbox Draw cancels those on touchend in the real app.
  */
-export async function mountMap() {
+export async function mountMap(options: { pins?: Record<string, unknown>[]; customers?: Record<string, unknown>[]; trackSources?: boolean } = {}) {
   const effects: Array<() => void | (() => void)> = [];
   const cleanups: Array<() => void> = [];
   const markers: Marker[] = [];
@@ -34,8 +34,10 @@ export async function mountMap() {
   let stopped = 0;
   let componentTree: any;
   const canvas = new Element("CANVAS");
+  const sourceUpdates = new Map<string, any[]>();
   class MapStub {
     listeners = new Map<string, Listener[]>();
+    sources = new Map<string, { data: any; setData: (data: any) => void }>();
     centers: unknown[] = [];
     constructor() { map = this; }
     on(name: string, layerOrListener: string | Listener, listener?: Listener) {
@@ -43,10 +45,22 @@ export async function mountMap() {
       return this;
     }
     off(name: string, listener: Listener) { this.listeners.set(name, (this.listeners.get(name) ?? []).filter(l => l !== listener)); }
+    once(name: string, listener: Listener) {
+      const wrapped = (event: any) => { this.off(name, wrapped); return listener(event); };
+      return this.on(name, wrapped);
+    }
     async emit(name: string, event: any = {}) { for (const listener of this.listeners.get(name) ?? []) await listener(event); }
     addControl() {}
-    getSource() { return null; }
-    addSource() {}
+    getSource(id: string) { return options.trackSources ? this.sources.get(id) : null; }
+    addSource(id: string, definition: { data: any }) {
+      const source = { data: definition.data, setData: (data: any) => {
+        source.data = data;
+        sourceUpdates.set(id, [...sourceUpdates.get(id) ?? [], data]);
+      } };
+      this.sources.set(id, source);
+    }
+    querySourceFeatures(id: string) { return this.sources.get(id)?.data.features ?? []; }
+    setStyle() { this.sources.clear(); }
     getLayer() { return null; }
     addLayer() {}
     getCanvas() { return canvas; }
@@ -85,9 +99,9 @@ export async function mountMap() {
     window: { matchMedia: () => ({ matches: true, addEventListener() {}, removeEventListener() {} }) },
     document: { createElement: () => new Element(), documentElement: new Element(), hidden: false },
     getComputedStyle: () => ({ getPropertyValue: () => "#ffffff" }),
-    fetch: async (url: string) => Response.json(url === "/api/map/pins" ? [{
+    fetch: async (url: string) => Response.json(url === "/api/map/pins" ? options.pins ?? [{
       id: 1, lat: 33, lng: -81, address: "123 Example Street", status: "sold", notes: "Sample note", created_at: "2026-09-16",
-    }] : []),
+    }] : url === "/api/map/customer-pins" ? options.customers ?? [] : []),
   });
   const cache = new Map<string, any>();
   const load = (filename: string): any => {
@@ -125,7 +139,7 @@ export async function mountMap() {
     for (const effect of effects) { const cleanup = effect(); if (cleanup) cleanups.push(cleanup); }
     await map.emit("load");
     return {
-      map, markers, popups, navigation, componentTree,
+      map, markers, popups, navigation, componentTree, sourceUpdates,
       livePosition: (lat: number, lng: number) => livePosition?.({ lat, lng }),
       get stopped() { return stopped; },
       openPin() { markers[0].getElement().dispatchEvent(new Event("click")); return popups.at(-1)!; },

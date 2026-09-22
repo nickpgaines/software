@@ -720,7 +720,7 @@ export default function MapClient() {
     }
   }
 
-  function addMarker(pin: ApiPin) {
+  function addMarker(pin: ApiPin, syncSource = true) {
     const map = mapRef.current;
     if (!map) return;
     const status = statusOf(pin);
@@ -732,10 +732,10 @@ export default function MapClient() {
     bindMarkerTap(el, () => openPinPopup(pin.id));
     markersRef.current.set(pin.id, marker);
     pinsDataRef.current.set(pin.id, pin);
-    setPinSourceData();
+    if (syncSource) setPinSourceData();
   }
 
-  function addCustomerMarker(c: CustomerPin) {
+  function addCustomerMarker(c: CustomerPin, syncSource = true) {
     const map = mapRef.current;
     if (!map) return;
     const el = makeCustomerMarkerElement(c);
@@ -746,7 +746,7 @@ export default function MapClient() {
     bindMarkerTap(el, () => openCustomerPopup(c.id));
     customerMarkersRef.current.set(c.id, marker);
     customerDataRef.current.set(c.id, c);
-    setCustomerSourceData();
+    if (syncSource) setCustomerSourceData();
   }
 
   // Push the current pin set into the GeoJSON cluster source. Mapbox computes
@@ -1367,11 +1367,15 @@ export default function MapClient() {
           ]);
         if (pinsRes.ok) {
           const list = (await pinsRes.json()) as ApiPin[];
-          for (const p of list) addMarker(p);
+          // Publish the full cluster dataset once. Rebuilding after each pin
+          // serializes 1 + 2 + ... + N features during initial loading.
+          try { for (const p of list) addMarker(p, false); }
+          finally { setPinSourceData(); }
         }
         if (customersRes.ok) {
           const list = (await customersRes.json()) as CustomerPin[];
-          for (const c of list) addCustomerMarker(c);
+          try { for (const c of list) addCustomerMarker(c, false); }
+          finally { setCustomerSourceData(); }
         }
         if (territoriesRes.ok) {
           const list = (await territoriesRes.json()) as ApiTerritory[];
