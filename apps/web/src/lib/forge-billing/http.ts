@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSessionContext } from '@/lib/auth';
 import { isNativeAppUserAgent } from '@/lib/native-auth';
-import { billingOrigin, BillingError, requireBillingEnabled } from './config';
+import { billingOrigin, BillingError, requireBillingEnabled, nativeBillingWebsiteUrl } from './config';
 import { canManageBilling, getCompanyBillingStatus } from './service';
 export function isNativeBillingRequest(req: Request): boolean { return /(?:^|;\s*)forge_native_app=1(?:;|$)/.test(req.headers.get('cookie') || '') || isNativeAppUserAgent(req.headers.get('user-agent')); }
 export async function billingSession(req: Request, manage = false) {
@@ -19,7 +19,9 @@ export async function statusResponse(req: Request) {
   const session=await billingSession(req);
   const status=await getCompanyBillingStatus(session.companyId);
   if (!status.enabled) return {enabled:false};
-  return {...status,canManage:await canManageBilling(session),native:isNativeBillingRequest(req)};
+  const canManage = await canManageBilling(session);
+  const native = isNativeBillingRequest(req);
+  return {...status,canManage,native,websiteBillingUrl:canManage && native ? nativeBillingWebsiteUrl() : null};
 }
 export async function billingResponse(work:()=>Promise<unknown>) {
   try {

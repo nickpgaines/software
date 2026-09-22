@@ -50,6 +50,7 @@ Stripe Connect credentials used for homeowner payments.
 | Variable | Sensitivity | Requirement |
 | --- | --- | --- |
 | `FORGE_BILLING_ENABLED` | Non-secret rollout control | Exact `true` only after all gates pass. Keep false/missing while dormant. |
+| `FORGE_BILLING_NATIVE_WEBSITE_ENABLED` | Non-secret rollout control | Separate default-off native website handoff. Do not enable until App Store storefront availability and the applicable external-purchase rules are verified. This flag does not detect storefronts. |
 | `FORGE_BILLING_STRIPE_SECRET_KEY` | Secret | Dedicated `sk_test_…` or `sk_live_…`; mode must match. |
 | `FORGE_BILLING_STRIPE_ACCOUNT_ID` | Sensitive identifier | Stripe platform account owned by the dedicated key. |
 | `FORGE_BILLING_STRIPE_MODE` | Non-secret | Exactly `test` or `live`. |
@@ -66,6 +67,27 @@ Stripe Connect credentials used for homeowner payments.
 Price IDs must be six distinct objects. The application retrieves and verifies
 every Price's amount, USD currency, enabled state, licensed recurring usage,
 interval, mode, and platform account before creating Checkout.
+
+### Optional native website handoff
+
+When both billing and `FORGE_BILLING_NATIVE_WEBSITE_ENABLED` are exactly `true`,
+authenticated native billing administrators may tap **Continue on website**.
+The app opens the configured HTTPS `FORGE_BILLING_SITE_ORIGIN` plus `/billing`
+in the external browser. It never redirects automatically or includes session
+tokens, credentials, or tenant identifiers in the URL. Browser sign-in may be
+required. Native Checkout and Portal API requests remain blocked; the browser
+performs its own authentication and administrator checks.
+
+Missing, false, or malformed configuration hides the link without breaking
+account status or recovery. Ordinary employees do not see it. Keep the flag off
+while storefront availability is unknown. It is not a regional compliance
+mechanism: distribution outside an approved scope needs storefront-specific
+handling or another approved purchase flow before enabling this globally.
+
+The default-off native acceptance criteria below remain applicable. If this
+handoff is separately approved, also verify external browser opening, fresh
+browser sign-in, and return-to-app payment-status refresh on a physical device,
+and describe the flow in App Review notes.
 
 `FORGE_BILLING_CUTOFF_AT` is obsolete and ignored. There is no global trial
 deadline. Status exposes `trialEndsAt` and reason `trial`; public configuration

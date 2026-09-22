@@ -10,6 +10,35 @@ import { fixture, loadBilling, provider, paidSubscription, setSession } from './
 const {service,access,schema,routes}=await loadBilling();
 async function setup() { const db=fixture(); await schema.installForgeBillingSchema(db); return db; }
 const request=(name:string, body:unknown={}, headers:Record<string,string>={})=>new Request(`https://forge.test/api/forge-billing/${name}`,{method:'POST',headers:{Origin:'https://forge.test','content-type':'application/json',...headers},body:JSON.stringify(body)});
+test('native website handoff requires explicit rollout and an authenticated administrator', async () => {
+  await setup();
+  const status = async (headers: Record<string,string> = {'User-Agent':'ForgeNative/1'}) =>
+    (await routes.status.GET(new Request('https://forge.test/api/forge-billing/status',{headers}))).json();
+  try {
+    for (const flag of ['', 'false', 'TRUE']) {
+      process.env.FORGE_BILLING_NATIVE_WEBSITE_ENABLED = flag;
+      assert.equal((await status()).websiteBillingUrl, null);
+    }
+    process.env.FORGE_BILLING_NATIVE_WEBSITE_ENABLED = 'true';
+    assert.equal((await status()).websiteBillingUrl, 'https://forge.test/billing');
+    assert.equal((await status({'User-Agent':'Mozilla','Host':'evil.test'})).websiteBillingUrl, null);
+    assert.equal((await status({'Cookie':'forge_native_app=1','Host':'evil.test'})).websiteBillingUrl, 'https://forge.test/billing');
+    // The handoff does not authorize in-app Checkout or Portal API calls.
+    assert.equal((await routes.checkout.POST(request('checkout',{plan:'solo',interval:'month'},{'User-Agent':'ForgeNative/1'}))).status,403);
+    assert.equal((await routes.portal.POST(request('portal',{}, {'User-Agent':'ForgeNative/1'}))).status,403);
+    for (const origin of ['http://forge.test', 'https://user:secret@forge.test', 'https://forge.test/path', 'invalid']) {
+      process.env.FORGE_BILLING_SITE_ORIGIN = origin;
+      assert.equal((await status()).websiteBillingUrl, null);
+    }
+    process.env.FORGE_BILLING_SITE_ORIGIN = 'https://forge.test';
+    setSession({companyId:2,staffId:8,isPlatformAdmin:false});
+    assert.equal((await status()).websiteBillingUrl, null);
+    process.env.FORGE_BILLING_ENABLED = 'false';
+    assert.deepEqual(await status(), {enabled:false});
+  } finally {
+    delete process.env.FORGE_BILLING_NATIVE_WEBSITE_ENABLED;
+  }
+});
 test('dormant flag does not call provider and exact trial expiration closes unpaid access', async()=>{
   await setup(); process.env.FORGE_BILLING_ENABLED='TRUE';
   assert.equal((await service.getCompanyBillingStatus(1,new Date('2026-10-01'))).allowed,true);

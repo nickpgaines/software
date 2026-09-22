@@ -33,6 +33,7 @@ type EnabledBillingStatus = {
   cancelAtPeriodEnd: boolean;
   canManage: boolean;
   native: boolean;
+  websiteBillingUrl?: string | null;
 };
 
 export type ForgeBillingStatus =
@@ -247,18 +248,16 @@ function CurrentStatus({
 }) {
   return (
     <Card>
-      <CardHeader className="flex-row items-start justify-between gap-4">
-        <div>
-          <div className="text-[14px] font-semibold text-zinc-500">
-            Company Account Status
-          </div>
-          <CardTitle className="mt-2.5 text-[28px] tabular-nums">
-            {planLabel(status.plan)}
-          </CardTitle>
+      <CardHeader className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="text-sm font-bold text-zinc-500">Current plan</div>
+          <Badge variant={status.allowed ? "default" : "destructive"}>
+            {statusLabel(status)}
+          </Badge>
         </div>
-        <Badge variant={status.allowed ? "default" : "destructive"}>
-          {statusLabel(status)}
-        </Badge>
+        <CardTitle className="text-2xl leading-tight tabular-nums sm:text-[28px]">
+          {planLabel(status.plan)}
+        </CardTitle>
       </CardHeader>
       <CardContent className="grid gap-4 text-sm font-bold text-zinc-400 sm:grid-cols-2">
         <div>
@@ -418,6 +417,7 @@ export function ForgeBillingView({
   const hasSubscription = nonterminalSubscription(status);
   const showPlans = status.canManage && !native && !hasSubscription;
   const trialExpired = status.reason === "subscription_required" && !hasSubscription && status.plan === null && status.trialEndsAt !== null;
+  const websiteBillingUrl = native && status.canManage ? status.websiteBillingUrl : null;
 
   return (
     <div className="space-y-6">
@@ -442,12 +442,19 @@ export function ForgeBillingView({
       {native && (
         <Card>
           <CardHeader>
-            <CardTitle>Native Account Status</CardTitle>
+            <CardTitle>Account status</CardTitle>
           </CardHeader>
-          <CardContent className="text-sm font-bold text-zinc-400">
-            {status.canManage
-              ? "Subscription purchasing and management are not available in the native app."
-              : "Contact an administrator for help with your company subscription."}
+          <CardContent className="space-y-4 text-sm font-bold text-zinc-400">
+            <p>{websiteBillingUrl
+              ? "Continue in your browser to choose a plan or manage billing. You may need to sign in again."
+              : status.canManage
+                ? "Contact support for help with your company subscription."
+                : "Contact an administrator for help with your company subscription."}</p>
+            {websiteBillingUrl && (
+              <Button asChild className="w-full sm:w-auto">
+                <a href={websiteBillingUrl} target="_blank" rel="noopener noreferrer">Continue on website</a>
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}

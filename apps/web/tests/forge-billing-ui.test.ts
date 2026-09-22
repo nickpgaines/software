@@ -208,6 +208,23 @@ test("ordinary employees and native users see status without prices or purchase 
   }
 });
 
+test("approved native website handoff opens a new browser context without exposing pricing", async () => {
+  const module = (await loadCustomerModule("components/billing/ForgeBilling.tsx")) as BillingModule;
+  const status = { ...baseStatus, native: true, websiteBillingUrl: "https://forge.test/billing" };
+  const markup = renderView(module, { state: { kind: "ready", status } });
+  assert.match(markup, /href="https:\/\/forge.test\/billing" target="_blank" rel="noopener noreferrer"/);
+  assert.match(markup, /Continue on website/);
+  assert.match(markup, /sign in again/i);
+  assert.doesNotMatch(markup, /Native Account Status|\$79|Subscribe to/);
+  for (const variant of [
+    { ...status, canManage: false },
+    { ...status, websiteBillingUrl: null },
+    { ...status, native: false },
+  ]) {
+    assert.doesNotMatch(renderView(module, {state:{kind:"ready",status:variant}}), /Continue on website/);
+  }
+});
+
 test("native trial access shows its company expiration and offers Forge without purchase instructions", async () => {
   const module = (await loadCustomerModule(
     "components/billing/ForgeBilling.tsx",

@@ -15,3 +15,15 @@ export function billingOrigin(): string {
   if (url.origin !== value || url.protocol !== 'https:') throw new Error('Forge billing requires an HTTPS site origin');
   return value;
 }
+
+// Operator-controlled rollout, NOT storefront detection. Keep off until the
+// app's distribution and external-purchase policy have been verified.
+export function nativeBillingWebsiteUrl(): string | null {
+  if (!isForgeBillingEnabled() || process.env.FORGE_BILLING_NATIVE_WEBSITE_ENABLED !== 'true') return null;
+  try {
+    return `${billingOrigin()}/billing`;
+  } catch {
+    // A missing/invalid link destination must not break account recovery.
+    return null;
+  }
+}
