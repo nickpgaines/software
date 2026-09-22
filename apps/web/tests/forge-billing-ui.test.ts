@@ -49,6 +49,30 @@ function renderView(
   );
 }
 
+test("expired trial has an explicit heading without mislabeling paid or failed renewals", async () => {
+  const module = (await loadCustomerModule("components/billing/ForgeBilling.tsx")) as BillingModule;
+  assert.match(renderView(module), /Your free trial has ended/);
+  for (const status of [
+    { ...baseStatus, allowed: true, reason: "trial" as const },
+    { ...baseStatus, allowed: true, reason: "paid" as const },
+    { ...baseStatus, subscriptionStatus: "past_due" },
+  ]) {
+    assert.doesNotMatch(renderView(module, { state: { kind: "ready", status } }), /Your free trial has ended/);
+  }
+});
+
+test("annual plan choice shows exact upfront totals and a highlighted Team option", async () => {
+  const module = (await loadCustomerModule("components/billing/ForgeBilling.tsx")) as BillingModule;
+  const markup = renderView(module, { interval: "year" });
+  assert.match(markup, /Most popular/);
+  assert.match(markup, /Annual — 2 months free/);
+  assert.match(markup, /\$790[^<]*<\/span><span[^>]*>\/ year/);
+  assert.match(markup, /\$1,490[^<]*<\/span><span[^>]*>\/ year/);
+  assert.match(markup, /\$2,290[^<]*<\/span><span[^>]*>\/ year/);
+  assert.match(markup, /Billed annually/);
+  assert.doesNotMatch(markup, /API access|Payroll tracking|Everything in Solo/);
+});
+
 test("off and unresolved billing never render a subscription pitch", async () => {
   const module = (await loadCustomerModule(
     "components/billing/ForgeBilling.tsx",
@@ -82,7 +106,7 @@ test("web billing administrator explicitly chooses an interval and cannot choose
   });
   const markup = renderToStaticMarkup(tree);
 
-  assert.match(markup, /\$79[^<]*\/ month/);
+  assert.match(markup.replace(/<[^>]*>/g, ""), /\$79\s*\/ month/);
   assert.match(markup, /\$790[^<]*\/ year/);
   assert.match(markup, /1 employee/);
   assert.match(markup, /\$1,490[^<]*\/ year/);
@@ -92,11 +116,16 @@ test("web billing administrator explicitly chooses an interval and cannot choose
   assert.match(markup, /Choose monthly or annual billing/);
   assert.doesNotMatch(markup, /per month when billed annually/i);
 
-  const buttons = elements(tree, (element: React.ReactElement) =>
+  const toggle = elements(tree, (element: React.ReactElement) =>
+    (element.type as { name?: string }).name === "BillingIntervalToggle",
+  )[0];
+  const toggleTree = (toggle.type as Function)(toggle.props);
+  const buttons = elements(toggleTree, (element: React.ReactElement) =>
     element.type === "button" ||
     (element.type as { displayName?: string }).displayName === "Button",
   );
-  const annual = buttons.find((button: React.ReactElement) => text(button) === "Annual")!;
+  const annual = buttons.find((button: React.ReactElement) => text(button) === "Annual — 2 months free")!;
+  assert.equal(annual.props["aria-pressed"], false);
   annual.props.onClick();
   assert.deepEqual(choices, ["year"]);
 
@@ -115,6 +144,38 @@ test("web billing administrator explicitly chooses an interval and cannot choose
   )!;
   assert.equal(solo.props.disabled, true);
   assert.match(text(solo), /Requires 1 employee/);
+});
+
+test("marketing pricing switches interval and discloses the exact annual bill", async () => {
+  const { PricingSection } = await loadCustomerModule("components/marketing/PricingSection.tsx");
+  const renderer = hookRenderer();
+  const annual = renderer.render(PricingSection);
+  const annualMarkup = renderToStaticMarkup(annual);
+  assert.match(annualMarkup, /\$790 billed yearly/);
+  assert.match(annualMarkup, /\$1,490 billed yearly/);
+  assert.match(annualMarkup, /\$2,290 billed yearly/);
+  assert.match(annualMarkup, /Most popular/);
+  assert.match(annualMarkup, /Unlimited customers/);
+  const toggle = elements(annual, (element: React.ReactElement) =>
+    (element.type as { name?: string }).name === "BillingIntervalToggle",
+  )[0];
+  const buttons = elements((toggle.type as Function)(toggle.props), (element: React.ReactElement) =>
+    (element.type as { displayName?: string }).displayName === "Button",
+  );
+  buttons.find((button: React.ReactElement) => text(button) === "Monthly")!.props.onClick();
+  const monthly = renderToStaticMarkup(renderer.render(PricingSection));
+  assert.match(monthly, /\$79<\/span>/);
+  assert.match(monthly, /\$149<\/span>/);
+  assert.match(monthly, /\$229<\/span>/);
+  assert.doesNotMatch(monthly, /billed yearly/);
+  renderer.dispose();
+});
+
+test("pending billing actions disable the shared interval toggle", async () => {
+  const module = (await loadCustomerModule("components/billing/ForgeBilling.tsx")) as BillingModule;
+  const markup = renderView(module, { pending: "checkout", interval: "month" });
+  assert.match(markup, /disabled="" aria-pressed="true"[^>]*>Monthly/);
+  assert.match(markup, /disabled="" aria-pressed="false"[^>]*>Annual/);
 });
 
 test("ordinary employees and native users see status without prices or purchase management", async () => {

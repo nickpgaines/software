@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import AccountDeletionSection from "@/components/account/AccountDeletionSection";
+import { BillingIntervalToggle, PricingCard, pricingActionClass } from "@/components/billing/PricingCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -324,36 +325,28 @@ export function PlanCards({
         const details = BILLING_PLANS[plan];
         const incompatible = status.staffCount > details.seats;
         return (
-          <Card key={plan}>
-            <CardHeader>
-              <CardTitle>{details.name}</CardTitle>
-              <p className="text-sm font-bold text-zinc-400">
-                {details.seats} {details.seats === 1 ? "employee" : "employees"}
-              </p>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2 text-sm font-bold text-zinc-400">
-                <div className="tabular-nums text-white">
-                  {formatDollars(details.month)} / month
-                </div>
-                <div className="tabular-nums text-white">
-                  {formatDollars(details.year)} / year
-                </div>
-              </div>
-              <Button
-                type="button"
-                className="w-full"
-                disabled={interval === null || incompatible || pending !== null}
-                onClick={() => onCheckout(plan)}
-              >
-                {incompatible
-                  ? `${details.name}: Requires ${details.seats} ${details.seats === 1 ? "employee" : "employees"}`
-                  : pending === "checkout"
-                    ? "Opening secure checkout…"
-                    : `Subscribe to ${details.name}`}
-              </Button>
-            </CardContent>
-          </Card>
+          <PricingCard
+            key={plan}
+            name={details.name}
+            description={`${details.seats} ${details.seats === 1 ? "employee" : "employees"}`}
+            highlight={plan === "team"}
+            price={formatDollars(interval === "year" ? details.year : details.month)}
+            period={interval === "year" ? "/ year" : "/ month"}
+            note={interval === "year" ? "Billed annually · 2 months free" : `${formatDollars(details.year)} / year with annual billing`}
+          >
+            <Button
+              type="button"
+              className={pricingActionClass(plan === "team")}
+              disabled={interval === null || incompatible || pending !== null}
+              onClick={() => onCheckout(plan)}
+            >
+              {incompatible
+                ? `${details.name}: Requires ${details.seats} ${details.seats === 1 ? "employee" : "employees"}`
+                : pending === "checkout"
+                  ? "Opening secure checkout…"
+                  : `Subscribe to ${details.name}`}
+            </Button>
+          </PricingCard>
         );
       })}
     </div>
@@ -424,14 +417,17 @@ export function ForgeBillingView({
   const native = localNative || status.native;
   const hasSubscription = nonterminalSubscription(status);
   const showPlans = status.canManage && !native && !hasSubscription;
+  const trialExpired = status.reason === "subscription_required" && !hasSubscription && status.plan === null && status.trialEndsAt !== null;
 
   return (
     <div className="space-y-6">
       {standalone && (
         <div>
-          <h1 className="text-page-title text-white">Company Billing</h1>
+          <h1 className="text-page-title text-white">{trialExpired ? "Your free trial has ended" : "Company Billing"}</h1>
           <p className="mt-3 text-sm font-bold text-zinc-400">
-            View account access and company subscription status.
+            {trialExpired
+              ? "Your company’s 14-day trial is over. Account support and recovery options remain available below."
+              : "View account access and company subscription status."}
           </p>
         </div>
       )}
@@ -500,25 +496,7 @@ export function ForgeBillingView({
               payment is verified.
             </p>
           </div>
-          <div className="inline-flex rounded-xl bg-elevated p-1">
-            {(["month", "year"] as const).map((choice) => (
-              <Button
-                key={choice}
-                variant="ghost"
-                type="button"
-                disabled={pending !== null}
-                aria-pressed={interval === choice}
-                onClick={() => onSelectInterval(choice)}
-                className={
-                  interval === choice
-                    ? "bg-canvas text-white hover:bg-canvas"
-                    : "text-zinc-400"
-                }
-              >
-                {choice === "month" ? "Monthly" : "Annual"}
-              </Button>
-            ))}
-          </div>
+          <BillingIntervalToggle value={interval} onChange={onSelectInterval} disabled={pending !== null} />
           <PlanCards
             status={status}
             interval={interval}
