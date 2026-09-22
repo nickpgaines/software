@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import type { Db } from '../src/lib/db.ts';
 import { fixture, loadBilling, provider, paidSubscription } from './helpers/forge-billing-harness.mjs';
 
 const { service, access, schema, routes } = await loadBilling();
@@ -56,7 +57,7 @@ test('future companies record signup even while disabled before any employee exi
 test('signup timestamp and trial roll back together with a failed signup transaction', async () => {
   const db = fixture();
   await schema.installForgeBillingSchema(db);
-  await assert.rejects(db.transaction(async tx => {
+  await assert.rejects(db.transaction(async (tx: Db) => {
     await tx.prepare('INSERT INTO company VALUES(3)').run();
     throw new Error('signup failed');
   }), /signup failed/);
