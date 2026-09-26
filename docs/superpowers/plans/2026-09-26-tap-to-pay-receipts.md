@@ -31,11 +31,11 @@
 
 **Interfaces:** Consumes existing Terminal auth, environment and bound-attempt retrieval. Produces `listTerminalReceipts(companyId:number,jobId:number)`, `getTerminalReceipt(companyId:number,id:string)` and `requestTerminalReceipt(companyId:number,id:string,email:unknown)`. Receipt view: `{attempt_id,amount_cents,refunded_cents,created,receipt_url,test_mode}`; POST returns `{status:'requested'|'test_only'}`. List `{receipts:[{attempt_id,amount_cents,created_at}]}`. Attempt view gains optional `payment_declined:boolean` populated from fresh provider state only.
 
-- [ ] Write failing route/service tests: successful GET contains only approved fields; POST updates only receipt_email with connected-account/idempotency options; unauthorized/cross-tenant/same-origin/invalid email reject without update; unknown/setup/pending/failed/mismatched/uncaptured/mode-mismatched charges reject; URL allowlist; history tenant-scoped and DB-only; refund preserved; repeated email key stable; rollout-off supported; provider errors do not change payments; decline hint not cancellation/success/unknown.
-- [ ] Run `node --no-warnings --experimental-strip-types --test tests/terminal-receipts.test.ts` from apps/web. Expected: missing receipt methods/routes or assertions fail before implementation.
-- [ ] Implement service/routes and verified decline hint per spec. Keep receipt error copy distinct from financial-reconciliation errors.
-- [ ] Run full `npm test`. Expected: all pass. Compare exact provider arguments and payment counts in tests, not only HTTP status.
-- [ ] Commit Task 1 with its tests. Run task-done with full web suite.
+- [x] Write failing route/service tests: successful GET contains only approved fields; POST updates only receipt_email with connected-account/idempotency options; unauthorized/cross-tenant/same-origin/invalid email reject without update; unknown/setup/pending/failed/mismatched/uncaptured/mode-mismatched charges reject; URL allowlist; history tenant-scoped and DB-only; refund preserved; repeated email key stable; rollout-off supported; provider errors do not change payments; decline hint not cancellation/success/unknown.
+- [x] Run `node --no-warnings --experimental-strip-types --test tests/terminal-receipts.test.ts` from apps/web. Expected: missing receipt methods/routes or assertions fail before implementation.
+- [x] Implement service/routes and verified decline hint per spec. Keep receipt error copy distinct from financial-reconciliation errors.
+- [x] Run full `npm test`. Expected: all pass. Compare exact provider arguments and payment counts in tests, not only HTTP status.
+- [x] Commit Task 1 with its tests. Run task-done with full web suite.
 
 ### Task 2: Checkout receipt UI, reopening, and visual verification
 
@@ -43,13 +43,17 @@
 
 **Interfaces:** Consumes Task 1 receipt APIs. `TerminalReceipts({jobId:number, latestAttemptId?:string, native?:Pick<NativeTerminal,'generation'>})` lists/selects a receipt and explicitly requests email. Checkout passes the latest successful payment ID; TerminalFlow renders decline hint but retains existing unfinished-attempt controls.
 
-- [ ] Write failing real-handler tests for initial empty/disabled history, latest success selection, history reopen selection, email validation/send/test copy, repeated-click locking, error preserves email/no collection, stale job/unmount/generation and merchant identity responses ignored, URL links safe, and decline text/control behavior.
-- [ ] Run receipt UI and Terminal UI tests. Expected: missing component or asserted behavior fails.
-- [ ] Implement panel with Button/Input/Label and existing tokens; hook into checkout success without modifying financial callbacks/locks. Keep no-charge setup flow receipt-free.
-- [ ] Run full `npm test`. Expected: all pass. Run disposable-DB `npm run build`. Expected: exit 0.
-- [ ] Render phone-width success/test/error/history fixtures and inspect screenshots. Preview remains fake; it is not delivery/NFC proof.
-- [ ] Commit Task 2; task-done full suite; final branch review and one tested fix pass. Push/open PR stacked on `feature/tap-to-pay-test-safety`, attach, do not merge.
+- [x] Write failing real-handler tests for initial empty/disabled history, latest success selection, history reopen selection, email validation/send/test copy, repeated-click locking, error preserves email/no collection, stale job/unmount/generation and merchant identity responses ignored, URL links safe, and decline text/control behavior.
+- [x] Run receipt UI and Terminal UI tests. Expected: missing component or asserted behavior fails.
+- [x] Implement panel with Button/Input/Label and existing tokens; hook into checkout success without modifying financial callbacks/locks. Keep no-charge setup flow receipt-free.
+- [x] Run full `npm test`. Expected: all pass. Run disposable-DB `npm run build`. Expected: exit 0.
+- [x] Render phone-width success/test/error/history fixtures and inspect screenshots. Preview remains fake; it is not delivery/NFC proof.
+- [x] Commit Task 2; task-done full suite; final branch review and one tested fix pass. Push/open PR stacked on `feature/tap-to-pay-test-safety`, attach, do not merge.
 
 ## Self-review
 
 Service field names, route paths, UI props, lifecycle guards and test obligations agree with the spec. Existing delegated self-review permits inline execution; no external approval gate is bypassed.
+
+## Execution evidence
+
+Completed on September 26, 2026. Task 1 commit `8e2d5f8`; Task 2 `2987f25`; review fix `d766563`. Full suite 622 passing; disposable-DB production build passed. Independent review found one Important error-copy issue, reproduced and fixed with two regression tests; no second independent review of the fix. Pending-send lifecycle test expansion remains a deferred Minor. [PR 375](https://github.com/nickpgaines/software/pull/375) is open, stacked on PR 374; not merged or enabled. Physical/provider/Apple gates remain open as described in the spec.
