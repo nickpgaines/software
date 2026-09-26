@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -783,6 +784,7 @@ function PaymentsPanel() {
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
+      setStatus(null);
     } finally {
       setLoading(false);
     }
@@ -842,16 +844,24 @@ function PaymentsPanel() {
       {loading ? (
         <p className="text-sm text-zinc-500">Loading…</p>
       ) : !status?.configured ? (
-        <div className="border border-amber-200 bg-amber-50 rounded-2xl px-4 py-3">
-          <p className="text-sm text-amber-800 font-bold">
-            Stripe platform keys aren&apos;t configured.
-          </p>
-          <p className="text-xs text-amber-700 mt-1">
-            Add <code>STRIPE_SECRET_KEY</code> and{" "}
-            <code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> to the deployment
-            environment, then redeploy.
-          </p>
-        </div>
+        <Card role="alert">
+          <CardHeader>
+            <CardTitle>Payments are temporarily unavailable</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm font-bold text-muted-foreground">
+              Please try again. If the problem continues, contact Forge support.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" onClick={load}>
+                Try again
+              </Button>
+              <Button variant="outline" asChild>
+                <a href="mailto:support@forgecrm.app">Contact support</a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       ) : !status.connected ? (
         <div className="border border-line rounded-2xl px-4 py-4 space-y-4">
           {status.recovered_from && (
@@ -991,7 +1001,7 @@ function PaymentsPanel() {
         </div>
       )}
 
-      {error && <p className="text-sm text-rose-600">{error}</p>}
+      {!loading && status?.configured && error && <p className="text-sm text-rose-600">{error}</p>}
     </div>
   );
 }
