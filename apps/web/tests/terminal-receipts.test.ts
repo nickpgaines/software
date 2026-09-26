@@ -41,6 +41,21 @@ test('receipt requests reject live mode against test credentials',async()=>{
   assert.equal((await post(a.attempt_id,'guest@example.com')).status,503);
   assert.equal(provider.updates.length,0);
 });
+test('configuration errors after a confirmed payment never advise using another payment method',async()=>{
+  const {a}=await payment();process.env.TAP_TO_PAY_MODE='live';
+  for(const response of [await get(a.attempt_id),await post(a.attempt_id,'guest@example.com')]) {
+    assert.equal(response.status,503);const {error}=await response.json();
+    assert.match(error,/receipt/i);assert.match(error,/do not collect payment again/i);
+    assert.doesNotMatch(error,/use another payment method/i);
+  }
+  assert.equal(provider.updates.length,0);assert.equal(provider.creates.length,1);
+  assert.equal(db.sqlite.prepare('SELECT COUNT(*) n FROM payments').get().n,1);
+});
+test('disconnected merchant after payment receives receipt-only recovery guidance',async()=>{
+  const {a}=await payment();db.sqlite.prepare('UPDATE company SET stripe_account_id=NULL WHERE id=1').run();
+  const response=await get(a.attempt_id);assert.equal(response.status,409);
+  const {error}=await response.json();assert.match(error,/receipt/i);assert.match(error,/do not collect payment again/i);
+});
 test('prior receipts survive rollout and charge disablement; history remains database-only',async()=>{
   const {a}=await payment();process.env.TAP_TO_PAY_ENABLED='false';
   db.sqlite.prepare('UPDATE company SET stripe_charges_enabled=0 WHERE id=1').run();

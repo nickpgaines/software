@@ -64,7 +64,16 @@ export async function terminalReceiptResponse(work:()=>Promise<unknown>) {
   const headers={'Cache-Control':'no-store'};
   try { return NextResponse.json(await work(),{headers}); }
   catch(error) {
-    if(error instanceof TerminalError)return NextResponse.json({error:error.message},{status:error.status,headers});
+    if(error instanceof TerminalError) {
+      // Shared Terminal guards also serve pre-payment collection. Their fallback
+      // wording must never instruct a second collection from this receipt surface.
+      const message=error.status>=500
+        ? 'Receipt configuration is unavailable. Contact support or retry the receipt; do not collect payment again.'
+        : error.status===409
+          ? 'This receipt could not be verified for the current payment account. Reopen the receipt or contact support; do not collect payment again.'
+          : error.message;
+      return NextResponse.json({error:message},{status:error.status,headers});
+    }
     if(error instanceof SyntaxError)return NextResponse.json({error:'Invalid receipt request.'},{status:400,headers});
     return NextResponse.json({error:'Unable to complete the receipt request. You can retry the receipt; do not collect payment again.'},{status:503,headers});
   }
