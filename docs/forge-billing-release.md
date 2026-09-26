@@ -50,6 +50,7 @@ Stripe Connect credentials used for homeowner payments.
 | Variable | Sensitivity | Requirement |
 | --- | --- | --- |
 | `FORGE_BILLING_ENABLED` | Non-secret rollout control | Exact `true` only after all gates pass. Keep false/missing while dormant. |
+| `FORGE_BILLING_TAX_ENABLED` | Non-secret rollout control | Independent exact `true` opt-in for automatic tax on NEW company Checkouts. Keep false/missing until tax readiness, test-mode acceptance, and owner activation approval. Does not enable billing or change existing subscriptions. |
 | `FORGE_BILLING_NATIVE_WEBSITE_ENABLED` | Non-secret rollout control | Separate default-off native website handoff. Do not enable until App Store storefront availability and the applicable external-purchase rules are verified. This flag does not detect storefronts. |
 | `FORGE_BILLING_STRIPE_SECRET_KEY` | Secret | Dedicated restricted `rk_test_…` or `rk_live_…` recommended; standard `sk_…` keys also supported. Mode must match. |
 | `FORGE_BILLING_STRIPE_ACCOUNT_ID` | Sensitive identifier | Stripe platform account owned by the dedicated key. |
@@ -67,6 +68,123 @@ Stripe Connect credentials used for homeowner payments.
 Price IDs must be six distinct objects. The application retrieves and verifies
 every Price's amount, USD currency, enabled state, licensed recurring usage,
 interval, mode, and platform account before creating Checkout.
+
+## Tax preparation and activation
+
+Scope is Forge's own company subscriptions only. Do not change connected
+merchants' homeowner payments, Terminal, service subscriptions, or tax settings.
+Deploying this code does not register the business, enable Stripe Tax, enable
+the paywall, or consent to a paid Stripe Tax plan.
+
+### Confirm with the owner / tax adviser
+
+- Confirm the legal entity, actual head office, other business-presence states,
+  existing registrations, relevant sales history (including off-Stripe sales),
+  and the jurisdictions/type of tax that apply. Stripe's monitoring is not a
+  legal determination and does not cover the home jurisdiction.
+- Verify an existing SC Retail License before applying for a duplicate. Enter
+  EIN/SSN/ownership and banking details directly in the official application,
+  not in code, commits, chat, or logs. Application submitted is not approval.
+- Record approved registrations and their effective dates. Adding a Stripe
+  registration object does NOT register the business with a tax authority.
+- Approve the exact product tax code for this hosted CRM subscription; do not
+  silently use the account-wide generic "Electronically Supplied Services"
+  fallback or alter shared account defaults that could affect other products.
+- Confirm whether founder prices include tax or tax is additional. Set each
+  Forge Product's explicit tax code and each of the six Prices' explicit
+  `tax_behavior` after approval. Stripe may require replacement Prices if an
+  already-fixed behavior must change; do not replace IDs blindly.
+- Confirm Stripe Tax fees/plan and who files returns and remits taxes. Automatic
+  calculation/collection alone does not complete filing/remittance setup.
+
+Prepared customer copy (not yet published; use existing pricing typography):
+- Exclusive: "Plus applicable tax. Final total shown at checkout."
+- Inclusive: "Applicable tax included. Final total shown at checkout."
+Apply approved wording consistently to web plan selection and marketing
+pricing before activation. Do not add purchase/pricing content to native views
+while the separate native rollout remains disabled.
+
+### Read-only readiness command
+
+From `apps/web`, with Node 24+ and the dedicated billing environment loaded
+securely, run:
+
+```sh
+node --no-warnings --experimental-strip-types scripts/forge-billing-tax-check.mjs \
+  --head-office-state SC --tax-code APPROVED_STRIPE_TAX_CODE \
+  --tax-behavior exclusive --states APPROVED_COMMA_SEPARATED_STATES
+```
+
+The state/code placeholders must come from the approved registration scope.
+`exclusive` above is an example, not an approved pricing decision. No secrets
+belong in command arguments. Credentials are sensitive; the three rollout
+flags and jurisdiction/code/behavior options are non-secret configuration.
+The key needs read access to its account, Products, Prices, Tax Settings, and
+Tax Registrations. Obtain approval before expanding access. This script makes
+only read calls; it uses no application DB or customer data. It fails closed
+on missing permissions, incorrect account/mode, incomplete Tax settings,
+not-yet-effective registrations, unexpected active jurisdictions, incorrect
+prices, or missing explicit product classifications/price tax behavior.
+
+The check currently covers US state sales-tax registrations only. Additional
+local or international registrations require a reviewed extension; do not
+remove valid registrations just to make this check pass. It verifies supplied
+configuration, not whether the supplied list satisfies all legal obligations.
+Head-office matching checks country/state only; manually confirm the full
+street/postal address. Effective-date checks establish that Stripe's entries
+are active now; manually match those dates against actual registration approval
+documents. Neither check verifies a tax-authority license.
+`launchAuthorized` is always false: a passing result is never owner approval.
+
+### Test-mode acceptance before live activation
+
+Use fake accounts and separate test-mode tax settings/registrations. Never
+create live registrations to make tests pass. For all six plans:
+
+1. Complete a tax-enabled Checkout with a valid test billing address; verify
+   the expected subtotal, tax breakdown, total and currency in Stripe.
+2. Verify the address was saved on the Customer and the created subscription
+   has automatic tax enabled. Test missing/invalid address and an appropriate
+   zero-tax case, inspecting the reason rather than assuming exemption.
+3. Verify canonical paid-invoice reconciliation, duplicate/retried webhook
+   delivery, a taxed renewal, and a failed renewal followed by recovery.
+   Failed/draft invoices must not extend paid access. Preserve correct plan,
+   interval, seats, and paid-through date despite a tax-inclusive grand total.
+4. Verify customer address changes and an unavailable tax calculation do not
+   produce unintended untaxed collection or access from a success redirect.
+5. Recheck default-off behavior and isolation from homeowner/Connect flows.
+
+The regression fixtures use synthetic tax amounts to test reconciliation,
+not to assert a particular address's legally applicable tax rate. Unit tests
+are not evidence of real Stripe Tax calculation or successful registration.
+
+### Controlled activation / rollback
+
+- Keep `FORGE_BILLING_ENABLED`, `FORGE_BILLING_TAX_ENABLED`, and the native
+  website flag off until the respective approvals and acceptance checks pass.
+- Before flipping tax, inventory open Checkouts. Expire incompatible sessions
+  in Stripe after confirming ownership and outcome; let the app's existing
+  expired-session recovery retire reservations. Do not delete DB reservations
+  to work around unknown outcomes. The app refuses to return an open session
+  whose automatic-tax setting differs from the current flag, including after
+  a lost response. Previously shared Stripe URLs must also be expired; the
+  application guard alone cannot invalidate a URL a customer already holds.
+- Enabling the flag affects new Checkout Sessions and their subscriptions,
+  not already-created subscriptions. If any exist, inventory their addresses,
+  tax settings, and next invoices and migrate separately with approval.
+- Verify dedicated webhook URL, signing secret, subscribed invoice events,
+  enabled state and successful delivery before enabling customer purchases.
+- Once registrations are effective, apply approved catalog/copy, rerun the
+  read-only check, confirm filing responsibilities, and obtain explicit live
+  activation approval. Tax readiness does not replace other launch gates.
+- Rollback is not merely flipping the tax flag off: existing subscriptions
+  keep their tax configuration. To stop NEW sales, disable company billing;
+  inventory open sessions and existing renewals before any provider changes.
+  Never disable legally required collection merely to resolve a technical error.
+
+References: [Stripe Checkout tax](https://docs.stripe.com/tax/checkout/page),
+[Stripe Tax setup](https://docs.stripe.com/tax/set-up),
+[Stripe Tax testing](https://docs.stripe.com/tax/testing).
 
 ### Optional native website handoff
 

@@ -1,4 +1,6 @@
 export function isForgeBillingEnabled(): boolean { return process.env.FORGE_BILLING_ENABLED === 'true'; }
+// Independent opt-in: deploy preparation without starting tax collection.
+export function isForgeBillingTaxEnabled(): boolean { return process.env.FORGE_BILLING_TAX_ENABLED === 'true'; }
 export class BillingError extends Error {
   status: number;
   constructor(message: string, status = 409) { super(message); this.status = status; }

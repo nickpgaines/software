@@ -4,7 +4,7 @@ import { getDb, type Db } from '@/lib/db';
 import type { SessionContext } from '@/lib/auth';
 import { resolvePermissions, type Permission } from '@/lib/permissions';
 import { BILLING_PLANS, selection, validatePrices, type BillingPlan, type BillingInterval } from './catalog';
-import { billingOrigin, BillingError, isForgeBillingEnabled, requireBillingEnabled, requiredConfig } from './config';
+import { billingOrigin, BillingError, isForgeBillingEnabled, isForgeBillingTaxEnabled, requireBillingEnabled, requiredConfig } from './config';
 import { companyTrialEndsAt } from './trial';
 import { type BillingAccount, objectId, verifyProvider } from './provider';
 import { readBillingAccount, reconcileCompany } from './reconcile';
@@ -157,6 +157,7 @@ export async function resolveTerminalCheckoutSeatRelease(
 }
 export async function createCompanyCheckout(companyId: number, rawPlan: unknown, rawInterval: unknown): Promise<{url:string}> {
   requireBillingEnabled();
+  const automaticTax = isForgeBillingTaxEnabled();
   const {plan,interval} = selection(rawPlan,rawInterval);
   const origin = billingOrigin();
   const db = await getDb();
@@ -186,6 +187,9 @@ export async function createCompanyCheckout(companyId: number, rawPlan: unknown,
     const found = await findCheckout(account,reservation);
     if (found.status === 'open' && found.url) {
       if (reservation.plan !== plan || reservation.interval !== interval) throw new BillingError('Resolve the existing Checkout before choosing another plan');
+      // Never reuse an untaxed session after activation (or a taxed one after
+      // rollback). An operator must expire it in Stripe before a replacement.
+      if ((found.automatic_tax?.enabled ?? false) !== automaticTax) throw new BillingError('Checkout tax settings changed. Contact billing support.',503);
       return {url:found.url};
     }
     // The Checkout may have completed after the earlier list/reconcile. Only its
@@ -197,7 +201,16 @@ export async function createCompanyCheckout(companyId: number, rawPlan: unknown,
     }
     throw new BillingError('Checkout completed. Refresh payment status.');
   }
-  const created = await stripe.checkout.sessions.create({ mode:'subscription',customer:account.customer_id!,line_items:[{price:priceId,quantity:1}],success_url:`${origin}/billing?checkout=complete`,cancel_url:`${origin}/billing`,metadata:{forge_company_id:String(companyId),forge_reservation_id:reservation.reservation_id},subscription_data:{metadata:{forge_company_id:String(companyId)}} },{idempotencyKey:`forge-checkout-${reservation.reservation_id}`});
+  const created = await stripe.checkout.sessions.create({
+    mode:'subscription', customer:account.customer_id!,
+    line_items:[{price:priceId,quantity:1}],
+    // Existing Customers are created above without an address. Persist Checkout's
+    // billing address so Stripe can locate the customer on recurring invoices.
+    ...(automaticTax ? {automatic_tax:{enabled:true},billing_address_collection:'required' as const,customer_update:{address:'auto' as const}} : {}),
+    success_url:`${origin}/billing?checkout=complete`, cancel_url:`${origin}/billing`,
+    metadata:{forge_company_id:String(companyId),forge_reservation_id:reservation.reservation_id},
+    subscription_data:{metadata:{forge_company_id:String(companyId)}}
+  },{idempotencyKey:`forge-checkout-${reservation.reservation_id}`});
   if (created.livemode !== live || created.customer !== account.customer_id) throw new Error('Checkout ownership mismatch');
   await db.prepare('UPDATE forge_billing_checkout SET session_id=?,status=? WHERE company_id=? AND reservation_id=?').run(created.id,created.status || 'unknown',companyId,reservation.reservation_id);
   if (!created.url) throw new BillingError('Checkout needs reconciliation',503);
