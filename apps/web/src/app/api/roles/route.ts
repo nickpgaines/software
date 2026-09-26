@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getDb, syncReplica, type CustomRole } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
 import { ALL_PERMISSIONS, type Permission } from "@/lib/permissions";
+import { canGrant, requireTeamManagement, runTeamMutation, teamForbidden } from '@/lib/team-authorization';
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +59,9 @@ type CreateBody = {
 };
 
 export async function POST(req: Request) {
-  const companyId = await requireCompanyId();
+  const access = await requireTeamManagement();
+  if (access instanceof Response) return access;
+  const companyId = access.session.companyId;
   const db = await getDb();
   const body = (await req.json().catch(() => ({}))) as CreateBody;
 
@@ -80,13 +83,15 @@ export async function POST(req: Request) {
       { status: 400 }
     );
   }
+  if (!canGrant(access.permissions, new Set(perms))) return teamForbidden();
 
-  const result = await db
+  const result = await runTeamMutation(db, {session:access.session, companyId, permissions:new Set(perms)}, tx => tx
     .prepare(
       `INSERT INTO custom_roles (company_id, name, color, permissions)
        VALUES (?, ?, ?, ?)`
     )
-    .run(companyId, name, color, JSON.stringify(perms));
+    .run(companyId, name, color, JSON.stringify(perms)));
+  if (result instanceof Response) return result;
 
   const row = (await db
     .prepare("SELECT * FROM custom_roles WHERE id = ? AND company_id = ?")
