@@ -287,11 +287,70 @@ test('deletion blocks new Checkout, expires sessions and cancels subscription ev
   await service.cancelCompanyBilling(1); assert.equal(sub.status,'canceled'); assert.equal(provider.sessions[0].status,'expired');
   process.env.FORGE_BILLING_ENABLED='true'; await assert.rejects(()=>service.createCompanyCheckout(1,'solo','month'));
 });
+for (const taxStatus of ['requires_location_inputs','failed']) test(`tax finalization ${taxStatus} is reconciled, logged without PII, and deduplicated`,async(t)=>{
+  const db=await setup(); await service.createCompanyCheckout(1,'solo','month'); paidSubscription();
+  const invoice=provider.invoices[0]; invoice.status='draft'; invoice.amount_paid=0; invoice.amount_remaining=7900;
+  invoice.automatic_tax={enabled:true,status:taxStatus,disabled_reason:null};
+  invoice.customer_email='private@example.com'; invoice.last_finalization_error={message:'Private customer billing address'};
+  const warnings=t.mock.method(console,'warn',()=>{});
+  provider.event={id:'evt_tax_failure',type:'invoice.finalization_failed',livemode:false,data:{object:invoice}};
+  const send=()=>routes.webhook.POST(request('webhook',{}, {'stripe-signature':'test'}));
+  assert.equal((await send()).status,200);
+  assert.equal((await db.prepare('SELECT COUNT(*) n FROM forge_billing_events').get()).n,1);
+  assert.equal((await service.getCompanyBillingStatus(1,new Date('2026-10-01'))).allowed,false);
+  assert.equal(warnings.mock.calls.length,1);
+  const diagnostic=warnings.mock.calls[0].arguments[1];
+  assert.equal(diagnostic.issue,taxStatus); assert.equal(diagnostic.companyId,1); assert.equal(diagnostic.objectId,invoice.id);
+  assert.doesNotMatch(JSON.stringify(warnings.mock.calls),/private@example.com|Private customer billing address/);
+  assert.equal((await send()).status,200); assert.equal(warnings.mock.calls.length,1);
+});
+for(const objectType of ['invoice','subscription']) test(`Stripe-disabled automatic tax on ${objectType} is logged even with rollout off`,async(t)=>{
+  await setup(); await service.createCompanyCheckout(1,'solo','month'); const sub=paidSubscription();
+  const object=objectType==='invoice'?provider.invoices[0]:sub;
+  object.automatic_tax={enabled:false,disabled_reason:objectType==='invoice'?'finalization_requires_location_inputs':'requires_location_inputs'};
+  const warnings=t.mock.method(console,'warn',()=>{});
+  process.env.FORGE_BILLING_ENABLED='false';process.env.FORGE_BILLING_TAX_ENABLED='false';
+  provider.event={id:'evt_tax_disabled',type:objectType==='invoice'?'invoice.updated':'customer.subscription.updated',livemode:false,data:{object}};
+  assert.equal((await routes.webhook.POST(request('webhook',{}, {'stripe-signature':'test'}))).status,200);
+  assert.equal(warnings.mock.calls.length,1);assert.equal(warnings.mock.calls[0].arguments[1].issue,'automatic_tax_disabled');
+  // Detecting a tax issue must not cancel a paid subscription or revoke paid service.
+  assert.equal(sub.status,'active');process.env.FORGE_BILLING_ENABLED='true';
+  assert.equal((await service.getCompanyBillingStatus(1,new Date('2026-10-01'))).allowed,true);
+});
+test('tax diagnostics use canonical state, ignore unrelated invoices, and retry unavailable provider reads',async(t)=>{
+  const db=await setup(); await service.createCompanyCheckout(1,'solo','month'); paidSubscription();
+  const invoice=provider.invoices[0]; invoice.automatic_tax={enabled:true,status:'complete',disabled_reason:null};
+  const warnings=t.mock.method(console,'warn',()=>{});
+  provider.event={id:'evt_stale_tax_failure',type:'invoice.finalization_failed',livemode:false,data:{object:{...invoice,automatic_tax:{enabled:true,status:'failed'}}}};
+  const send=()=>routes.webhook.POST(request('webhook',{}, {'stripe-signature':'test'}));
+  assert.equal((await send()).status,200);assert.equal(warnings.mock.calls.length,0);
+  provider.invoices.push({...invoice,id:'in_unrelated',parent:{subscription_details:{subscription:'sub_other'}},automatic_tax:{enabled:false,disabled_reason:'finalization_requires_location_inputs'}});
+  provider.event={id:'evt_unrelated_tax',type:'invoice.updated',livemode:false,data:{object:provider.invoices[1]}};
+  assert.equal((await send()).status,200);assert.equal(warnings.mock.calls.length,0);
+  provider.event={id:'evt_tax_retry',type:'invoice.finalization_failed',livemode:false,data:{object:invoice}};
+  const retrieve=provider.api.invoices.retrieve;provider.api.invoices.retrieve=async()=>{throw Error('unavailable');};
+  assert.equal((await send()).status,503);assert.equal(await db.prepare('SELECT event_id FROM forge_billing_events WHERE event_id=?').get('evt_tax_retry'),undefined);
+  provider.api.invoices.retrieve=retrieve;assert.equal((await send()).status,200);
+});
 test('paid status without a paid invoice does not grant entitlement; portal is company bound',async()=>{
   await setup(); await service.createCompanyCheckout(1,'solo','month'); paidSubscription(); provider.invoices=[];
   await service.refreshCompanyBilling(1); assert.equal((await service.getCompanyBillingStatus(1,new Date('2026-10-01'))).allowed,false);
   await service.createCompanyPortal(1); assert.equal(provider.calls.find(c=>c.portal).portal.customer,'cus_1');
   await assert.rejects(()=>service.createCompanyPortal(2));
+});
+test('portal address-recovery drift is reported without blocking cancellation or payment-method recovery',async(t)=>{
+  await setup();await service.createCompanyCheckout(1,'solo','month');
+  const warnings=t.mock.method(console,'warn',()=>{});
+  const retrieve=provider.api.billingPortal.configurations.retrieve;
+  provider.api.billingPortal.configurations.retrieve=async()=>({...await retrieve(),features:{...(await retrieve()).features,customer_update:{enabled:false,allowed_updates:[]}}});
+  await service.createCompanyPortal(1);assert.equal(warnings.mock.calls.length,1);
+  process.env.FORGE_BILLING_TAX_ENABLED='true';
+  assert.ok((await service.createCompanyPortal(1)).url);
+  assert.equal(provider.calls.filter(c=>c.portal).length,2);
+  assert.equal(provider.calls.filter(c=>c.portal)[1].portal.customer,'cus_1');
+  assert.equal(warnings.mock.calls.length,2);assert.equal(warnings.mock.calls[0].arguments[1].issue,'portal_address_recovery_unavailable');
+  provider.api.billingPortal.configurations.retrieve=retrieve;
+  await service.createCompanyPortal(1);assert.equal(warnings.mock.calls.length,2);
 });
 test('an older canonical fetch cannot restore entitlement after a newer cancellation',async()=>{
   await setup(); await service.createCompanyCheckout(1,'solo','month'); const sub=paidSubscription();

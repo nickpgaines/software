@@ -8,6 +8,7 @@ import { billingOrigin, BillingError, isForgeBillingEnabled, isForgeBillingTaxEn
 import { companyTrialEndsAt } from './trial';
 import { type BillingAccount, objectId, verifyProvider } from './provider';
 import { readBillingAccount, reconcileCompany } from './reconcile';
+import { hasBillingAddressRecovery, isSafeBillingPortal } from './portal-config';
 export { isForgeBillingEnabled } from './config';
 export type BillingStatus = {
   enabled: boolean; allowed: boolean; reason: 'disabled' | 'trial' | 'paid' | 'subscription_required'; trialEndsAt: string | null;
@@ -224,7 +225,10 @@ export async function createCompanyPortal(companyId: number): Promise<{url:strin
   const {stripe,live}=await verifyProvider(account);
   const configuration=requiredConfig('FORGE_BILLING_PORTAL_CONFIGURATION_ID');
   const portal=await stripe.billingPortal.configurations.retrieve(configuration);
-  if (!portal.active || portal.livemode !== live || portal.features.subscription_update.enabled || !portal.features.subscription_cancel.enabled || !portal.features.payment_method_update.enabled) throw new Error('Unsafe Forge portal configuration');
+  if (!isSafeBillingPortal(portal,live)) throw new Error('Unsafe Forge portal configuration');
+  // A rollout flag only affects NEW subscriptions. Diagnose missing recovery
+  // even during rollback, but never hide cancellation/payment-method recovery.
+  if (!hasBillingAddressRecovery(portal)) console.warn('[forge-billing-tax]', {companyId,issue:'portal_address_recovery_unavailable'});
   return {url:(await stripe.billingPortal.sessions.create({customer:account.customer_id,configuration,return_url:`${billingOrigin()}/billing`})).url};
 }
 /** Guard is durable on failure: callers must abort deletion and retry cleanup. Never call inside a DB transaction. */
