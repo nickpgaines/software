@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import TerminalFlow from "@/components/payments/TerminalFlow";
+import TerminalReceipts from "@/components/payments/TerminalReceipts";
 
 type CheckoutChoice = "tap_to_pay" | "card" | "other";
 
@@ -28,6 +29,7 @@ export default function CheckoutModal({
   const [blocked, setBlocked] = useState(true);
   const blockedRef = useRef(true);
   const [paid, setPaid] = useState(false);
+  const [receiptAttemptId, setReceiptAttemptId] = useState<string>();
   const dueCents = Math.max(0, jobTotalCents - paidTotalCents);
 
   return (
@@ -73,7 +75,9 @@ export default function CheckoutModal({
           <div className="space-y-3">
             <TerminalFlow operation="payment" jobId={jobId}
               onBlockedChange={value => { blockedRef.current = value; setBlocked(value); }}
-              onSuccess={() => { blockedRef.current = true; setPaid(true); onPaid(); }} />
+              onSuccess={attempt => { blockedRef.current = true; setPaid(true); setReceiptAttemptId(attempt.attempt_id); onPaid(); }} />
+
+            <TerminalReceipts jobId={jobId} latestAttemptId={receiptAttemptId} />
 
             <Divider label="or" />
 

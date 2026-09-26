@@ -86,7 +86,8 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
     if (next.status === 'succeeded' && closed(next)) {
       setMessage(next.operation === 'payment' ? 'Payment confirmed.' : next.card_saved ? 'Card saved. No charge was made and no subscription was started.' : 'Card was not saved. No charge was made.');
       if (delivered.current !== next.attempt_id) { delivered.current = next.attempt_id; callbacks.current.onSuccess(next); }
-    } else setMessage(next.status === 'canceled' ? 'Attempt canceled. You can choose another payment method.' : recoveryMessage);
+    } else setMessage(next.status === 'canceled' ? 'Attempt canceled. You can choose another payment method.'
+      : next.status === 'ready' && next.payment_declined ? 'This tap was declined. Continue the original attempt to try another card, or cancel it before choosing a different payment method.' : recoveryMessage);
   }
   async function reconcile(id: string, token: Lifecycle, action = 'reconcile', holdBlock = false) {
     await checkIdentity(token);

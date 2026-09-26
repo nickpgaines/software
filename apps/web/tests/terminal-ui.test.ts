@@ -43,6 +43,11 @@ test('unsupported plugin disables tap with useful manual card fallback',async t=
   assert.equal(h.button('Tap to Pay').props.disabled,true);
   assert.match(text(h.tree),/manual|Pay with card/i);
 });
+test('verified decline explains retry or cancellation while retaining original attempt controls',async t=>{
+  const h=await harness(t,{list:[{...ready,payment_declined:true}],reconciled:{status:'ready',payment_declined:true}});
+  assert.match(text(h.tree),/declined/i);assert.ok(h.button('Continue original attempt'));assert.ok(h.button('Cancel attempt'));
+  assert.equal(h.blocked.at(-1),true);assert.equal(h.completed.length,0);
+});
 test('test app checkout carries test mode before intent creation and reconciliation',async t=>{
   const h=await harness(t,{providerMode:'test'});
   await h.button('Tap to Pay').props.onClick();h.render();
