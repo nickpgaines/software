@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { getDb, syncReplica, type Staff, type PermissionLevel } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
-import { getSessionContext, requireCompanyId } from "@/lib/auth";
-import { buildMe } from "@/lib/me";
+import { requireCompanyId } from "@/lib/auth";
 import { removeStaffWithSafeguards } from "@/lib/administrative-staff-removal";
+import { assignedPermissions, canGrant, publicStaff, requireTeamManagement, runTeamMutation, teamForbidden } from '@/lib/team-authorization';
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +38,7 @@ export async function GET(
   if (!row) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
-  return NextResponse.json(row);
+  return NextResponse.json(publicStaff(row));
 }
 
 type PatchBody = {
@@ -59,7 +59,9 @@ export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const companyId = await requireCompanyId();
+  const access = await requireTeamManagement();
+  if (access instanceof Response) return access;
+  const companyId = access.session.companyId;
   const db = await getDb();
   const id = Number(params.id);
   const body = (await req.json().catch(() => ({}))) as PatchBody;
@@ -69,6 +71,7 @@ export async function PATCH(
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+  if (!canGrant(access.permissions, await assignedPermissions(db, companyId, existing))) return teamForbidden();
 
   // Legacy path: only name/role provided.
   if (
@@ -85,16 +88,17 @@ export async function PATCH(
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
     const role = body.role === undefined ? existing.role : body.role;
-    await db
+    const result = await runTeamMutation(db, {session:access.session, companyId, staffId:id}, tx => tx
       .prepare(
         "UPDATE staff SET name = ?, role = ? WHERE id = ? AND company_id = ?"
       )
-      .run(name, role, id, companyId);
+      .run(name, role, id, companyId));
+    if (result instanceof Response) return result;
     const updated = (await db
       .prepare("SELECT * FROM staff WHERE id = ? AND company_id = ?")
       .get(id, companyId)) as Staff;
     await syncReplica();
-    return NextResponse.json(updated);
+    return NextResponse.json(publicStaff(updated));
   }
 
   const first_name =
@@ -153,9 +157,11 @@ export async function PATCH(
           "SELECT id FROM custom_roles WHERE id = ? AND company_id = ? LIMIT 1"
         )
         .get(body.custom_role_id, companyId)) as { id: number } | undefined;
-      custom_role_id = exists ? body.custom_role_id : null;
+      if (!exists) return NextResponse.json({ error: 'Role not found' }, { status: 400 });
+      custom_role_id = body.custom_role_id;
     }
   }
+  if (!canGrant(access.permissions, await assignedPermissions(db, companyId, { permission_level, custom_role_id }))) return teamForbidden();
 
   const photo_url =
     body.photo_url !== undefined ? body.photo_url : existing.photo_url;
@@ -176,7 +182,7 @@ export async function PATCH(
 
   const fullName = `${first_name} ${last_name}`.trim();
 
-  await db.prepare(
+  const result = await runTeamMutation(db, {session:access.session, companyId, staffId:id, assignment:{permission_level,custom_role_id}}, tx => tx.prepare(
     `UPDATE staff
      SET name = ?, first_name = ?, last_name = ?, phone = ?, email = ?,
          password_hash = ?, color = ?, permission_level = ?,
@@ -196,39 +202,35 @@ export async function PATCH(
     photo_url,
     id,
     companyId
-  );
+  ));
+  if (result instanceof Response) return result;
   const updated = (await db
     .prepare("SELECT * FROM staff WHERE id = ? AND company_id = ?")
     .get(id, companyId)) as Staff;
   await syncReplica();
-  return NextResponse.json(updated);
+  return NextResponse.json(publicStaff(updated));
 }
 
 export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  const ctx = await getSessionContext();
-  if (!ctx) {
-    return NextResponse.json({ error: "Not signed in" }, { status: 401 });
-  }
-  const me = await buildMe(ctx);
-  if (!me.permissions.includes("team.manage")) {
-    return NextResponse.json(
-      { error: "You do not have permission to remove employees." },
-      { status: 403 }
-    );
-  }
-
+  const access = await requireTeamManagement();
+  if (access instanceof Response) return access;
+  const ctx = access.session;
   const companyId = ctx.companyId;
   const db = await getDb();
   const id = Number(params.id);
-  const result = await removeStaffWithSafeguards({
-    db,
+  const target = await db.prepare('SELECT permission_level,custom_role_id FROM staff WHERE id=? AND company_id=?')
+    .get<Staff>(id, companyId);
+  if (target && !canGrant(access.permissions, await assignedPermissions(db, companyId, target))) return teamForbidden();
+  const result = await runTeamMutation(db, {session:access.session, companyId, staffId:id}, tx => removeStaffWithSafeguards({
+    db: tx,
     companyId,
     actorStaffId: ctx.staffId,
     targetStaffId: id,
-  });
+  }));
+  if (result instanceof Response) return result;
   if (result.kind === "not_found") {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }

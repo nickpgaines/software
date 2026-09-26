@@ -554,10 +554,6 @@ test("a persisted completed Checkout keeps its seat cap when the exact subscript
 
 test("administrator recovery is tenant scoped, minimal, and atomically promotes an existing employee", async (t) => {
   const { db } = await setup(t);
-  await db
-    .prepare("INSERT INTO custom_roles(id,company_id,permissions) VALUES(1,1,'[]')")
-    .run();
-  await db.prepare("UPDATE staff SET custom_role_id=1 WHERE id=7").run();
 
   const listing = await modules.administratorsRoute.GET(
     new Request("https://forge.test/api/forge-billing/administrators")
@@ -608,6 +604,17 @@ test("administrator recovery is tenant scoped, minimal, and atomically promotes 
     })
   );
   assert.equal(crossTenant.status, 404);
+});
+
+test("restricted custom roles cannot use billing administrator recovery to grant full admin", async (t) => {
+  const { db } = await setup(t);
+  await db.prepare("INSERT INTO custom_roles(id,company_id,permissions) VALUES(1,1,'[\"team.manage\"]')").run();
+  await db.prepare('UPDATE staff SET custom_role_id=1 WHERE id=7').run();
+  const response = await modules.administratorsRoute.POST(new Request('https://forge.test/api/forge-billing/administrators', {
+    method:'POST', headers:{origin:'https://forge.test','content-type':'application/json'}, body:JSON.stringify({staffId:8}),
+  }));
+  assert.equal(response.status, 403);
+  assert.equal((await db.prepare('SELECT permission_level FROM staff WHERE id=8').get())?.permission_level, 'technician');
 });
 
 test("export requires settings access and excludes credential/provider/token columns", async (t) => {

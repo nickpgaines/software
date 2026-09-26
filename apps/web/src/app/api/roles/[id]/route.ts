@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb, syncReplica, type CustomRole } from "@/lib/db";
-import { requireCompanyId } from "@/lib/auth";
 import { ALL_PERMISSIONS, type Permission } from "@/lib/permissions";
+import { assignedPermissions, canGrant, requireTeamManagement, runTeamMutation, teamForbidden } from '@/lib/team-authorization';
 
 export const dynamic = "force-dynamic";
 
@@ -43,7 +43,9 @@ export async function PATCH(
   req: Request,
   { params }: { params: { id: string } }
 ) {
-  const companyId = await requireCompanyId();
+  const access = await requireTeamManagement();
+  if (access instanceof Response) return access;
+  const companyId = access.session.companyId;
   const db = await getDb();
   const id = Number(params.id);
   const existing = (await db
@@ -52,6 +54,7 @@ export async function PATCH(
   if (!existing) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
+  if (!canGrant(access.permissions, await assignedPermissions(db, companyId, { permission_level:null, custom_role_id:id }))) return teamForbidden();
   const body = (await req.json().catch(() => ({}))) as PatchBody;
 
   const name = body.name !== undefined ? body.name.trim() : existing.name;
@@ -76,15 +79,17 @@ export async function PATCH(
       );
     }
     permsJson = JSON.stringify(perms);
+    if (!canGrant(access.permissions, new Set(perms))) return teamForbidden();
   }
 
-  await db
+  const result = await runTeamMutation(db, {session:access.session, companyId, roleId:id, permissions:new Set(JSON.parse(permsJson) as Permission[])}, tx => tx
     .prepare(
       `UPDATE custom_roles
        SET name = ?, color = ?, permissions = ?, updated_at = datetime('now')
        WHERE id = ? AND company_id = ?`
     )
-    .run(name, color, permsJson, id, companyId);
+    .run(name, color, permsJson, id, companyId));
+  if (result instanceof Response) return result;
 
   const row = (await db
     .prepare("SELECT * FROM custom_roles WHERE id = ? AND company_id = ?")
@@ -97,18 +102,21 @@ export async function DELETE(
   _req: Request,
   { params }: { params: { id: string } }
 ) {
-  const companyId = await requireCompanyId();
+  const access = await requireTeamManagement();
+  if (access instanceof Response) return access;
+  const companyId = access.session.companyId;
   const db = await getDb();
   const id = Number(params.id);
-  // Detach any staff currently using this role so we don't orphan FKs.
-  await db
-    .prepare(
-      "UPDATE staff SET custom_role_id = NULL WHERE custom_role_id = ? AND company_id = ?"
-    )
-    .run(id, companyId);
-  await db
-    .prepare("DELETE FROM custom_roles WHERE id = ? AND company_id = ?")
-    .run(id, companyId);
+  if (!await db.prepare('SELECT id FROM custom_roles WHERE id=? AND company_id=?').get(id, companyId)) {
+    return NextResponse.json({error:'Not found'}, {status:404});
+  }
+  if (!canGrant(access.permissions, await assignedPermissions(db, companyId, { permission_level:null, custom_role_id:id }))) return teamForbidden();
+  // Do not detach members: their underlying role may be admin. A single
+  // guarded delete also prevents an assignment race from elevating a member.
+  const removed = await runTeamMutation(db, {session:access.session, companyId, roleId:id}, tx => tx.prepare(`DELETE FROM custom_roles WHERE id=? AND company_id=?
+    AND NOT EXISTS (SELECT 1 FROM staff WHERE custom_role_id=? AND company_id=?)`).run(id, companyId, id, companyId));
+  if (removed instanceof Response) return removed;
+  if (!removed.changes) return NextResponse.json({ error:'Reassign employees before deleting this role.' }, { status:409 });
   await syncReplica();
   return NextResponse.json({ ok: true });
 }
