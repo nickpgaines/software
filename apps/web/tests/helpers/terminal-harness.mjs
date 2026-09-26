@@ -12,6 +12,7 @@ export const getSessionContext = async () => session;
 export const requireCompanyId = async () => session.companyId;
 /** @type {{ intents: any[], creates: any[], subscriptionCreates: any[], updates: any[], tokens: any[], cancelCalls: any[], failCreate: boolean, createError: any, beforeCreateError: any, failLookup: boolean, failSave: boolean, visible: boolean, event: any, wallet: any, locationInvalid: boolean }} */
 export const provider = { intents: [], creates: [], subscriptionCreates: [], updates: [], tokens: [], cancelCalls: [], failCreate: false, createError: null, beforeCreateError: null, failLookup: false, failSave: false, visible: true, event: null, wallet: null, locationInvalid: false };
+export const locations = { data: null, calls: [], creates: [], hasMore: false, fail: false, afterRetrieve: null };
 export default class Stripe {
   constructor() {
     const resource = operation => ({
@@ -49,8 +50,24 @@ export default class Stripe {
         retrieve: async () => ({ customer: 'cus_test' }),
       },
       terminal: { connectionTokens: { create: async (body, opts) => { provider.tokens.push(opts); return { secret: 'token' }; } }, locations: {
-        retrieve: async id => ({ id, address: { country: 'US', line1: '123 Main', city: 'Chicago', state: 'IL', postal_code: provider.locationInvalid ? '00000' : '60601' } }),
-        list: async () => ({ data: [], has_more: false }),
+        retrieve: async (id, _params, options) => {
+          locations.calls.push({method:'retrieve', id, options});
+          if (locations.fail) throw new Error('provider unavailable');
+          const result = locations.data === null ? { id, display_name:'Merchant', address: { country: 'US', line1:'123 Main', city:'Chicago', state:'IL', postal_code:provider.locationInvalid ? '00000' : '60601' } }
+            : locations.data.find(row => row.id === id && row.account === options?.stripeAccount);
+          await locations.afterRetrieve?.();
+          if (!result) throw Object.assign(new Error('No such location'), {code:'resource_missing'});
+          return result;
+        },
+        list: async (_params, options) => {
+          locations.calls.push({method:'list',options});
+          if (locations.fail) throw new Error('provider unavailable');
+          return { data:(locations.data ?? []).filter(row => row.account === options?.stripeAccount), has_more:locations.hasMore };
+        },
+        create: async (body, options) => {
+          locations.creates.push({body,options});
+          return {id:'tml_created',...body};
+        },
       } },
       webhooks: { constructEvent: () => provider.event },
     };
@@ -99,6 +116,7 @@ export function fixture() {
   `);
   for (const key of ['intents','creates','subscriptionCreates','updates','tokens','cancelCalls']) provider[key] = [];
   Object.assign(provider, { failCreate: false, createError: null, beforeCreateError: null, failLookup: false, failSave: false, visible: true, event: null, wallet: null, locationInvalid: false });
+  Object.assign(locations, {data:null,calls:[],creates:[],hasMore:false,fail:false,afterRetrieve:null});
   session = { companyId: 1, staffId: 7, identity: 'staff:7' };
   process.env.STRIPE_SECRET_KEY = 'sk_test_fake';
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = 'pk_test_fake';
@@ -123,6 +141,7 @@ export async function loadTerminal() {
       cancel: await import('../../src/app/api/stripe/terminal/attempts/[id]/cancel/route.ts'),
       token: await import('../../src/app/api/stripe/terminal/connection-token/route.ts'),
       capabilities: await import('../../src/app/api/stripe/terminal/capabilities/route.ts'),
+      location: await import('../../src/app/api/stripe/terminal/location/route.ts'),
       webhook: await import('../../src/app/api/stripe/webhook/route.ts'),
       selection: await import('../../src/app/api/customer-subscriptions/[id]/payment-method/route.ts'),
       subscriptions: await import('../../src/app/api/customer-subscriptions/route.ts'),

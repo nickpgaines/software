@@ -1,5 +1,6 @@
 import "server-only";
 import Stripe from "stripe";
+import { resolveTerminalLocation } from './terminal-location';
 import {
   getDb,
   type Company,
@@ -281,55 +282,16 @@ export async function savePaymentMethodForCustomer(args: {
 }
 
 /**
- * Resolve (or lazily create) the Stripe Terminal Location for a
- * connected account. Required by Tap to Pay on iPhone and any other
- * Terminal reader — every PaymentIntent + ConnectionToken must reference
- * a Location belonging to the merchant's connected account.
+ * Legacy caller adapter. Despite its historic name, this never creates
+ * provider locations: merchant setup requires an explicit real address.
  */
 export async function getOrCreateTerminalLocation(
   companyId: number,
   stripeAccountId: string
-): Promise<StripeTerminalLocation> {
+): Promise<Pick<StripeTerminalLocation,'stripe_terminal_location_id'|'display_name'>> {
   const db = await getDb();
-  const existing = (await db
-    .prepare(
-      "SELECT * FROM stripe_terminal_locations WHERE company_id = ? LIMIT 1"
-    )
-    .get(companyId)) as StripeTerminalLocation | undefined;
-  if (existing) return existing;
-
-  const company = await getCompany(companyId);
-  const stripe = getStripe();
-  const location = await stripe.terminal.locations.create(
-    {
-      display_name: company.name?.trim() || `Company ${companyId}`,
-      // Stripe requires a full address. Use the company address when
-      // we have it, otherwise a placeholder the merchant can edit in
-      // the Stripe dashboard.
-      address: {
-        line1: company.address?.trim() || "Unspecified",
-        city: "Unspecified",
-        state: "NA",
-        country: "US",
-        postal_code: "00000",
-      },
-    },
-    { stripeAccount: stripeAccountId }
-  );
-
-  await db
-    .prepare(
-      `INSERT INTO stripe_terminal_locations
-         (company_id, stripe_terminal_location_id, display_name)
-       VALUES (?, ?, ?)`
-    )
-    .run(companyId, location.id, location.display_name ?? null);
-
-  return (await db
-    .prepare(
-      "SELECT * FROM stripe_terminal_locations WHERE company_id = ? LIMIT 1"
-    )
-    .get(companyId)) as StripeTerminalLocation;
+  const location = await resolveTerminalLocation(db,companyId,stripeAccountId);
+  return {stripe_terminal_location_id:location.id,display_name:location.display_name};
 }
 
 export function getAppOrigin(req: Request): string {

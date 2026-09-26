@@ -4,6 +4,7 @@ import { getDb, type Db } from '@/lib/db';
 import { getStripe, getCompany, isStripeConfigured, getOrCreateStripeCustomer, savePaymentMethodForCustomer } from '@/lib/stripe';
 import { TerminalError, positiveId } from '@/lib/terminal-http';
 import { requireTapToPayEnabled } from '@/lib/terminal-rollout';
+import { resolveTerminalLocation } from '@/lib/terminal-location';
 import { recordJobPayment } from '@/lib/record-job-payment';
 import { terminalConsentText, TERMINAL_CONSENT_VERSION } from '@/lib/terminal-consent';
 
@@ -40,22 +41,6 @@ async function connectedAccount(companyId: number) {
   const company = await getCompany(companyId);
   if (!company.stripe_account_id) throw new TerminalError('Complete Stripe onboarding before using Tap to Pay', 409);
   return company.stripe_account_id;
-}
-async function location(db: Db, companyId: number, stripeAccount: string) {
-  const stripe = getStripe();
-  const cached = await db.prepare('SELECT stripe_terminal_location_id FROM stripe_terminal_locations WHERE company_id=?').get<{ stripe_terminal_location_id: string }>(companyId);
-  const valid = (l: Stripe.Terminal.Location) => l.address.country === 'US' && l.address.line1 && l.address.city && /^[A-Z]{2}$/.test(l.address.state || '') && /^\d{5}(-\d{4})?$/.test(l.address.postal_code || '') && l.address.postal_code !== '00000' && l.address.state !== 'NA' && l.address.city !== 'Unspecified';
-  if (cached) {
-    try {
-      const result = await stripe.terminal.locations.retrieve(cached.stripe_terminal_location_id, undefined, { stripeAccount });
-      if (!('deleted' in result) && valid(result)) return result.id;
-    } catch { /* A stale cache must never authorize a reader on another account. */ }
-  }
-  const locations = await stripe.terminal.locations.list({ limit: 100 }, { stripeAccount });
-  const candidates = locations.data.filter(valid);
-  if (locations.has_more || candidates.length !== 1) throw new TerminalError('Configure a single valid US Terminal location in the connected Stripe account before using Tap to Pay.', 409);
-  await db.prepare('INSERT INTO stripe_terminal_locations (company_id,stripe_terminal_location_id,display_name) VALUES (?,?,?) ON CONFLICT(company_id) DO UPDATE SET stripe_terminal_location_id=excluded.stripe_terminal_location_id,display_name=excluded.display_name').run(companyId, candidates[0].id, candidates[0].display_name);
-  return candidates[0].id;
 }
 async function load(companyId: number, id: string) {
   const db = await getDb();
@@ -126,7 +111,7 @@ export async function startTerminalAttempt(auth: { companyId: number; staffId: n
   if (operation === 'payment' && !job) throw new TerminalError('Job not found', 404);
   const customerId = job?.customer_id ?? target;
   if (!await db.prepare('SELECT id FROM customers WHERE id=? AND company_id=?').get(customerId, auth.companyId)) throw new TerminalError('Customer not found', 404);
-  const terminalLocation = await location(db, auth.companyId, stripeAccount);
+  const terminalLocation = (await resolveTerminalLocation(db, auth.companyId, stripeAccount)).id;
   const customer = save ? await getOrCreateStripeCustomer(auth.companyId, customerId, stripeAccount) : null;
   const merchant = company.name?.trim() || 'this merchant';
   const claim = await db.transaction(async tx => {
