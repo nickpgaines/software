@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from 'react';
-import { SmartphoneNfc } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
@@ -37,6 +36,7 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
   const [busy, setBusy] = useState(true);
   const [uncertain, setUncertain] = useState(true);
   const [message, setMessage] = useState('Checking for unfinished attempts…');
+  const [setupRequired, setSetupRequired] = useState(false);
   const life = useRef<Lifecycle>({ active: false, generation: native.generation, lease: Symbol() });
   const lock = useRef(true);
   const current = useRef<TerminalAttemptView | null>(null);
@@ -52,7 +52,7 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
   async function json<T>(url: string, init?: RequestInit): Promise<T> {
     const response = await fetch(url, { cache: 'no-store', ...init });
     const data = await response.json();
-    if (!response.ok) throw Object.assign(new Error(data.error || 'Unable to check the Terminal attempt.'), {status:response.status});
+    if (!response.ok) throw Object.assign(new Error(data.error || 'Unable to check the Terminal attempt.'), {status:response.status,code:data.code});
     return data as T;
   }
   async function checkIdentity(token: Lifecycle) {
@@ -128,6 +128,7 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
     delivered.current = null;
     setAttempt(null); setBusy(true); setUncertain(true); setChecked(false); setName(''); setSave(operation === 'setup');
     setCapability(null); setRollout(null); setAvailabilityError(false);
+    setSetupRequired(false);
     callbacks.current.onBlockedChange?.(true);
     void native.capabilities()
       .then(value => { if (valid(token)) setCapability(value); })
@@ -188,6 +189,7 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
     } catch (error) {
       if (!valid(token)) return;
       const failure = error instanceof Error ? error.message : recoveryMessage;
+      if ((error as {code?:string})?.code === 'setup_required') setSetupRequired(true);
       setMessage(failure);
       // Creation can have reached the server even when no response arrived.
       try {
@@ -203,6 +205,7 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
     {rollout === false && <p className="text-sm text-fg-muted">{availabilityError ? 'Tap to Pay availability could not be checked. Reopen this window to try again.' : 'Tap to Pay and saving a card with a tap are coming soon.'} {operation === 'payment' ? 'Use Pay with card or another payment method.' : 'Use the customer’s subscription acceptance link for manual card entry.'}</p>}
     {rollout === true && !capability?.supported && capability && <p className="text-sm text-amber-400">{capability.reason || 'Tap to Pay is unavailable in this app. Use manual card entry (Pay with card).'}</p>}
     {message && <p role="status" className="text-sm text-zinc-300">{message}</p>}
+    {setupRequired && <div className="space-y-2 text-sm"><p>An authorized administrator may need to finish merchant setup. Cancel any unfinished attempt here before switching payment methods.</p><Button asChild variant="outline"><a href="/settings?tab=payments">Open Tap to Pay setup</a></Button></div>}
     {attempt?.warning && <p role="alert" className="text-sm text-amber-400">{attempt.warning}</p>}
     {!unfinished && !done && <>
       {canCollect && operation === 'payment' && <div className="flex gap-2 text-sm"><Checkbox id={`${formId}-save`} checked={save} disabled={busy || uncertain} onCheckedChange={value=>{setSave(value === true);setChecked(false);}}/><Label htmlFor={`${formId}-save`}>Save card for separately agreed future payments (optional)</Label></div>}
@@ -212,7 +215,6 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
         <div className="flex gap-2"><Checkbox id={`${formId}-consent`} checked={checked} disabled={busy || uncertain} onCheckedChange={value=>setChecked(value === true)}/><Label htmlFor={`${formId}-consent`}>I agree to save my card under these terms.</Label></div>
       </div>}
       <Button type="button" className="h-auto min-h-11 w-full gap-2 whitespace-normal py-3" disabled={busy || uncertain || !canCollect || (save && (!checked || !name.trim()))} onClick={()=>run('start')}>
-        {operation === 'payment' && <SmartphoneNfc size={18} className="shrink-0" aria-hidden="true" focusable="false" />}
         <span>{operation === 'payment' ? 'Tap to Pay on iPhone' : 'Save card with a tap'}{rollout === false && !availabilityError && ' — Coming soon'}</span>
       </Button>
     </>}

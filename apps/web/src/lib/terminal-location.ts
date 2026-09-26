@@ -78,7 +78,7 @@ export async function resolveTerminalLocation(db:Db, companyId:number, stripeAcc
   }
   const result = await getStripe().terminal.locations.list({limit:100},{stripeAccount});
   const candidates = result.data.filter(validTerminalLocation);
-  if (result.has_more || candidates.length !== 1) throw new TerminalError('Choose a valid US business location in Tap to Pay settings before continuing.',409);
+  if (result.has_more || candidates.length !== 1) throw new TerminalError('Choose a valid US business location in Tap to Pay settings before continuing.',409,'setup_required');
   await persistLocation(db,companyId,stripeAccount,candidates[0]);
   return candidates[0];
 }

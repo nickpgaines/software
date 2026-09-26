@@ -4,7 +4,8 @@ import { PaymentIdempotencyError } from '@/lib/payment-idempotency';
 
 export class TerminalError extends Error {
   status: number;
-  constructor(message: string, status = 400) { super(message); this.status = status; }
+  code?: 'setup_required';
+  constructor(message: string, status = 400, code?: 'setup_required') { super(message); this.status = status; this.code=code; }
 }
 export function positiveId(value: unknown): number {
   if (typeof value !== 'number' || !Number.isSafeInteger(value) || value <= 0) throw new TerminalError('A positive integer ID is required');
@@ -23,7 +24,7 @@ export async function terminalResponse(work: () => Promise<unknown>) {
   try { return NextResponse.json(await work()); }
   catch (error) {
     if (error instanceof SyntaxError) return NextResponse.json({ error:'Invalid JSON request' },{ status:400 });
-    if (error instanceof TerminalError || error instanceof PaymentIdempotencyError) return NextResponse.json({ error: error.message }, { status: error.status });
+    if (error instanceof TerminalError || error instanceof PaymentIdempotencyError) return NextResponse.json({ error: error.message, ...(error instanceof TerminalError && error.code ? {code:error.code} : {}) }, { status: error.status });
     // Do not acknowledge database/provider failures as successful effects.
     return NextResponse.json({ error: 'Unable to complete request. Reconcile the existing attempt before trying again.' }, { status: 503 });
   }

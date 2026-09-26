@@ -23,6 +23,7 @@ import AccentPicker from "@/components/AccentPicker";
 import ThemeToggle from "@/components/ThemeToggle";
 import AccountDeletionSection from "@/components/account/AccountDeletionSection";
 import ForgeBilling from "@/components/billing/ForgeBilling";
+import TerminalSetup from "@/components/payments/TerminalSetup";
 import { PulseIcon } from "@/components/pulse/Icon";
 import {
   registrationConfirmationValues,
@@ -92,8 +93,8 @@ function SettingsTabsInner({
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  // Salespeople and technicians only see the Profile tab — every other
-  // settings surface (Company, Payments, Billing, etc.) is admin-only.
+  // Staff can prepare their own iPhone in Payments. Stripe-account management
+  // and the remaining business settings still require settings.view_all.
   const canSeeAllSettings =
     !!initialMe?.is_admin_account ||
     !!(initialMe as MeWithPerms | null)?.permissions?.includes(
@@ -101,7 +102,7 @@ function SettingsTabsInner({
     );
   const visibleTabs = canSeeAllSettings
     ? TABS
-    : TABS.filter((t) => t.key === "profile");
+    : TABS.filter((t) => t.key === "profile" || t.key === "payments");
   const initialTab = (() => {
     const t = searchParams.get("tab");
     if (visibleTabs.some((x) => x.key === t)) return t as Tab;
@@ -160,6 +161,7 @@ function SettingsTabsInner({
         )}
         {canSeeAllSettings && tab === "company" && <CompanyPanel />}
         {canSeeAllSettings && tab === "payments" && <PaymentsPanel />}
+        {!canSeeAllSettings && tab === "payments" && <TerminalSetup />}
         {canSeeAllSettings && tab === "subscriptions" && <SubscriptionsPanel />}
         {canSeeAllSettings && tab === "customizations" && <CustomizationsPanel />}
         {canSeeAllSettings && tab === "messaging" && <MessagingPanel />}
@@ -1002,6 +1004,7 @@ function PaymentsPanel() {
       )}
 
       {!loading && status?.configured && error && <p className="text-sm text-rose-600">{error}</p>}
+      {!loading && <TerminalSetup accountKey={status?.account_id} />}
     </div>
   );
 }

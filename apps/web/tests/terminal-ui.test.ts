@@ -22,7 +22,7 @@ async function harness(t: any, options: any = {}) {
     }
     if(url==='/api/settings/company') return Response.json(options.merchant?.() ?? {id:1,name:'Acme',stripe_account_id:'acct_1'});
     if(String(url).includes('?')) return Response.json({attempts:options.list ?? (created ? [current]:[])});
-    if(url==='/api/stripe/terminal/attempts') {created=true; if(options.createError) throw Error('lost response'); return Response.json(current);}
+    if(url==='/api/stripe/terminal/attempts') {if(options.createResponse)return options.createResponse;created=true; if(options.createError) throw Error('lost response'); return Response.json(current);}
     if(String(url).endsWith('/reconcile')) {if(options.reconcile)return options.reconcile(String(url));current={...current,...(options.reconciled ?? {status:'succeeded',payment_recorded:true})};return Response.json(current);}
     if(String(url).endsWith('/cancel')) {current={...current,...(options.canceled ?? {status:'canceled'})};return Response.json(current);}
     throw Error(`Unexpected ${url}`);
@@ -72,14 +72,27 @@ test('rollout off preserves recovery and cancel but prevents resuming collection
   assert.equal(h.calls.some(c=>c.url.endsWith('/cancel')),true);
   assert.equal(h.blocked.at(-1),false);
 });
-test('tap button keeps its text label with a decorative non-focusable icon',async t=>{
+test('tap button uses text-only branding without losing its accessible label',async t=>{
   const h=await harness(t);
   const button=h.button('Tap to Pay on iPhone');
   const markup=renderToStaticMarkup(button);
   assert.equal(text(button),'Tap to Pay on iPhone');
-  assert.match(markup,/<svg\b[^>]*aria-hidden="true"/);
-  assert.match(markup,/<svg\b[^>]*focusable="false"/);
+  assert.doesNotMatch(markup,/<svg\b/);
   assert.equal(button.props.disabled,false);
+});
+test('merchant setup error links to Payments without clearing an unfinished payment lock',async t=>{
+  const h=await harness(t,{collect:async()=>{throw Object.assign(Error('Merchant activation required'),{code:'setup_required'});},reconciled:{status:'ready'}});
+  await h.button('Tap to Pay').props.onClick();h.render();
+  const link=elements(h.tree,(el:any)=>el.props.href==='/settings?tab=payments')[0];
+  assert.ok(link);assert.match(text(link),/setup/i);
+  assert.equal(h.blocked.at(-1),true);
+  assert.equal(h.button('Cancel attempt').props.disabled,undefined);
+});
+test('missing location directs checkout to setup without locking manual payments',async t=>{
+  const h=await harness(t,{createResponse:Response.json({error:'Choose a location',code:'setup_required'},{status:409})});
+  await h.button('Tap to Pay').props.onClick();h.render();
+  assert.ok(elements(h.tree,(el:any)=>el.props.href==='/settings?tab=payments')[0]);
+  assert.equal(h.blocked.at(-1),false);
 });
 test('synchronous double tap creates once and payment save warning still reports verified success',async t=>{
   const h=await harness(t,{reconciled:{status:'succeeded',payment_recorded:true,card_saved:false,warning:'Card could not be saved'}});

@@ -98,6 +98,17 @@ test('multiple or paginated candidates require explicit selection, provider fail
   assert.equal((await modules.location.GET(request())).status,503);
   assert.equal(locations.creates.length,0);
 });
+test('checkout missing location reports a structured setup handoff without creating a payment',async()=>{
+  await modules.schema.installTerminalSchema(database.db);
+  database.sqlite.exec('DELETE FROM stripe_terminal_locations');locations.data=[];
+  const response=await modules.route.POST(new Request('https://www.forgecrm.app/api/stripe/terminal/attempts',{
+    method:'POST',headers:{Origin:'https://www.forgecrm.app','Content-Type':'application/json','Idempotency-Key':'missing-location'},
+    body:JSON.stringify({operation:'payment',job_id:12,save_card:false}),
+  }));
+  assert.equal(response.status,409);
+  assert.equal((await response.json()).code,'setup_required');
+  assert.equal(provider.creates.length,0);
+});
 test('connected-account change during location validation cannot persist the stale selection', async () => {
   locations.data=[merchantLocation('tml_new')];
   locations.afterRetrieve=() => database.sqlite.exec("UPDATE company SET stripe_account_id='acct_2' WHERE id=1");
