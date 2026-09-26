@@ -26,15 +26,29 @@ function setup() {
     settings:{retrieve:async () => settings},
     registrations:{list:() => ({async *[Symbol.asyncIterator]() {yield* registrations;}})},
   };
-  return {settings,registrations,product,stripe:provider.api as Stripe};
+  const portal={active:true,livemode:false,features:{customer_update:{enabled:true,allowed_updates:['address']},subscription_update:{enabled:false},subscription_cancel:{enabled:true},payment_method_update:{enabled:true}}};
+  provider.api.billingPortal.configurations.retrieve=async()=>portal;
+  return {settings,registrations,product,portal,stripe:provider.api as Stripe};
 }
 test('tax preflight validates six configured prices without enabling billing or tax',async()=>{
   const {stripe}=setup(); process.env.FORGE_BILLING_ENABLED='false';
   const result=await checkTaxReadiness(stripe,false,approved,now);
-  assert.deepEqual(result,{taxConfigurationReady:true,pricesChecked:6,states:['SC'],taxBehavior:'exclusive',launchAuthorized:false});
+  assert.deepEqual(result,{taxConfigurationReady:true,pricesChecked:6,states:['SC'],taxBehavior:'exclusive',billingAddressRecoveryReady:true,launchAuthorized:false});
   assert.equal(process.env.FORGE_BILLING_ENABLED,'false');
   assert.equal(process.env.FORGE_BILLING_TAX_ENABLED,undefined);
   assert.equal(provider.customers.length,0); assert.equal(provider.sessions.length,0);
+});
+test('tax preflight requires a same-mode active portal that lets customers correct their billing address',async()=>{
+  for(const mutation of [(p:any)=>p.active=false,(p:any)=>p.livemode=true,(p:any)=>p.features.customer_update.enabled=false,(p:any)=>p.features.customer_update.allowed_updates=['email']]) {
+    const {stripe,portal}=setup();mutation(portal);
+    await assert.rejects(()=>checkTaxReadiness(stripe,false,approved,now),/billing address recovery/i);
+  }
+});
+test('tax readiness cannot approve a portal the application would reject',async()=>{
+  for(const mutation of [(p:any)=>p.features.subscription_update.enabled=true,(p:any)=>p.features.subscription_cancel.enabled=false,(p:any)=>p.features.payment_method_update.enabled=false]) {
+    const {stripe,portal}=setup();mutation(portal);
+    await assert.rejects(()=>checkTaxReadiness(stripe,false,approved,now),/portal/i);
+  }
 });
 test('tax preflight requires explicit approved classification, behavior, and jurisdictions',async()=>{
   const {stripe}=setup();

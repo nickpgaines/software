@@ -119,12 +119,13 @@ The state/code placeholders must come from the approved registration scope.
 `exclusive` above is an example, not an approved pricing decision. No secrets
 belong in command arguments. Credentials are sensitive; the three rollout
 flags and jurisdiction/code/behavior options are non-secret configuration.
-The key needs read access to its account, Products, Prices, Tax Settings, and
-Tax Registrations. Obtain approval before expanding access. This script makes
+The key needs read access to its account, Products, Prices, Tax Settings,
+Tax Registrations, and Billing Portal configurations. Obtain approval before expanding access. This script makes
 only read calls; it uses no application DB or customer data. It fails closed
 on missing permissions, incorrect account/mode, incomplete Tax settings,
 not-yet-effective registrations, unexpected active jurisdictions, incorrect
-prices, or missing explicit product classifications/price tax behavior.
+prices, missing explicit product classifications/price tax behavior, or a portal
+that does not allow customers to correct their billing address.
 
 The check currently covers US state sales-tax registrations only. Additional
 local or international registrations require a reviewed extension; do not
@@ -150,8 +151,10 @@ create live registrations to make tests pass. For all six plans:
    delivery, a taxed renewal, and a failed renewal followed by recovery.
    Failed/draft invoices must not extend paid access. Preserve correct plan,
    interval, seats, and paid-through date despite a tax-inclusive grand total.
-4. Verify customer address changes and an unavailable tax calculation do not
-   produce unintended untaxed collection or access from a success redirect.
+4. Verify address changes recalculate tax, manual finalization with an invalid
+   location is rejected, and Stripe's automatic-tax-disabled renewal fallback
+   produces an operator diagnostic. Exercise recovery/escalation without
+   changing paid-access rules. Never grant access from a success redirect.
 5. Recheck default-off behavior and isolation from homeowner/Connect flows.
 
 The regression fixtures use synthetic tax amounts to test reconciliation,
@@ -174,6 +177,11 @@ are not evidence of real Stripe Tax calculation or successful registration.
   tax settings, and next invoices and migrate separately with approval.
 - Verify dedicated webhook URL, signing secret, subscribed invoice events,
   enabled state and successful delivery before enabling customer purchases.
+- Enable `customer_update` with `allowed_updates: ['address']` on the **dedicated
+  Forge company-billing portal configuration only**, after approval. Preserve
+  cancellation/payment-method/invoice-history settings and disabled plan
+  switching. Do not modify the default portal or homeowner/Connect portals.
+  Verify a test customer's address change and the next invoice's tax calculation.
 - Once registrations are effective, apply approved catalog/copy, rerun the
   read-only check, confirm filing responsibilities, and obtain explicit live
   activation approval. Tax readiness does not replace other launch gates.
@@ -185,6 +193,42 @@ are not evidence of real Stripe Tax calculation or successful registration.
 References: [Stripe Checkout tax](https://docs.stripe.com/tax/checkout/page),
 [Stripe Tax setup](https://docs.stripe.com/tax/set-up),
 [Stripe Tax testing](https://docs.stripe.com/tax/testing).
+
+### Tax failures and recovery
+
+Subscribe the dedicated billing endpoint to `invoice.finalization_failed` and
+`invoice.updated` as well as the existing invoice/subscription events. The
+handler reconciles canonical paid invoices and logs `[forge-billing-tax]` with
+only company/event/object IDs and a bounded issue code. Unavailable provider
+reads return a retryable failure; replayed successful events are deduplicated.
+The diagnostic uses current Stripe state, not stale webhook payload fields.
+
+Check that log marker and Stripe's failed-finalization/automatic-tax-disabled
+subscription views as part of launch operations. These logs alone are **not**
+an installed paging/notification integration. Assign someone to inspect them.
+
+- `requires_location_inputs`: have the administrator correct the billing
+  address in the dedicated portal. Verify the customer's tax location, the
+  subscription's automatic tax setting, and the affected draft invoice before
+  an operator retries finalization/payment with appropriate approval.
+- `failed`: investigate Stripe Tax availability and retry after resolution;
+  do not disable tax to make an invoice payable.
+- `automatic_tax_disabled`: urgently inspect the invoice and subscription.
+  Stripe documents that an automatic renewal with an invalid location can
+  disable automatic tax and collect without it. Correct the location, then
+  re-enable tax for future invoices with approval; route any already-paid
+  invoice's tax treatment to the owner/adviser. Never automatically recharge,
+  refund, cancel, or revoke an already-paid service period as a workaround.
+- `portal_address_recovery_unavailable`: restore billing-address editing on
+  the dedicated portal configuration. The app still opens an otherwise-safe
+  portal so cancellation and payment-method updates remain available. This
+  diagnostic remains active when tax rollout is off because existing taxed
+  subscriptions outlive the new-Checkout rollout flag.
+
+Manual finalization rejects a missing tax location, but that is **not** proof
+that automatic renewal always fails closed. This integration detects Stripe's
+fallback; it does not prevent every provider-side untaxed renewal. See
+[Stripe's renewal/location behavior](https://support.stripe.com/questions/manage-draft-subscription-invoices-with-invalid-tax-location-details).
 
 ### Optional native website handoff
 
@@ -239,7 +283,8 @@ staff tables. New signup and its trial timestamp commit or roll back together.
    `customer.subscription.created`, `customer.subscription.updated`,
    `customer.subscription.deleted`, `invoice.paid`,
    `invoice.payment_failed`, `invoice.voided`, and
-   `invoice.marked_uncollectible`.
+   `invoice.marked_uncollectible`, `invoice.finalization_failed`, and
+   `invoice.updated`.
 5. Store the endpoint signing secret separately from the Stripe API key. Do not
    configure a Connect destination/context for this endpoint.
 6. Configure a trusted HTTPS test origin and all variables in an isolated test

@@ -1,6 +1,8 @@
 import type Stripe from 'stripe';
 import { validatePrices } from './catalog';
 import { objectId } from './provider';
+import { requiredConfig } from './config';
+import { hasBillingAddressRecovery, isSafeBillingPortal } from './portal-config';
 export type ApprovedTaxConfiguration = {
   headOfficeState: string;
   taxCode: string;
@@ -45,5 +47,9 @@ export async function checkTaxReadiness(stripe: Stripe, live: boolean, approved:
       throw new TaxReadinessError('Each Forge product must explicitly match the approved tax code and mode.');
     }
   }
-  return {taxConfigurationReady:true,pricesChecked:prices.length,states,taxBehavior:approved.taxBehavior,launchAuthorized:false};
+  const portal = await stripe.billingPortal.configurations.retrieve(requiredConfig('FORGE_BILLING_PORTAL_CONFIGURATION_ID'));
+  if (!isSafeBillingPortal(portal,live) || !hasBillingAddressRecovery(portal)) {
+    throw new TaxReadinessError('Forge billing address recovery must be enabled in the active, same-mode customer portal.');
+  }
+  return {taxConfigurationReady:true,pricesChecked:prices.length,states,taxBehavior:approved.taxBehavior,billingAddressRecoveryReady:true,launchAuthorized:false};
 }
