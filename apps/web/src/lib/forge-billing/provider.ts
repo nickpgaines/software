@@ -9,7 +9,8 @@ export type BillingAccount = {
 export function billingProvider() {
   const key = requiredConfig('FORGE_BILLING_STRIPE_SECRET_KEY');
   const mode = requiredConfig('FORGE_BILLING_STRIPE_MODE');
-  if (!['test','live'].includes(mode) || !key.startsWith(mode === 'live' ? 'sk_live_' : 'sk_test_')) throw new Error('Forge key mode mismatch');
+  const keyMode = /^(?:sk|rk)_(test|live)_.+$/.exec(key)?.[1];
+  if (!['test','live'].includes(mode) || keyMode !== mode) throw new Error('Forge key mode mismatch');
   return { stripe: new Stripe(key, { maxNetworkRetries: 0 }), live: mode === 'live', accountId: requiredConfig('FORGE_BILLING_STRIPE_ACCOUNT_ID') };
 }
 export async function verifyProvider(account?: BillingAccount) {

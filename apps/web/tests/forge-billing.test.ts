@@ -10,6 +10,28 @@ import { fixture, loadBilling, provider, paidSubscription, setSession } from './
 const {service,access,schema,routes}=await loadBilling();
 async function setup() { const db=fixture(); await schema.installForgeBillingSchema(db); return db; }
 const request=(name:string, body:unknown={}, headers:Record<string,string>={})=>new Request(`https://forge.test/api/forge-billing/${name}`,{method:'POST',headers:{Origin:'https://forge.test','content-type':'application/json',...headers},body:JSON.stringify(body)});
+for (const mode of ['test', 'live']) {
+  test(`restricted ${mode} credentials can create company Checkout in the matching mode`, async () => {
+    await setup();
+    process.env.FORGE_BILLING_STRIPE_MODE = mode;
+    process.env.FORGE_BILLING_STRIPE_SECRET_KEY = `rk_${mode}_fixture`;
+    provider.mode = mode === 'live';
+    assert.deepEqual(await service.createCompanyCheckout(1, 'solo', 'month'), {url:'https://checkout.stripe.com/test'});
+  });
+}
+test('restricted credentials cannot cross billing modes or accept publishable keys', async () => {
+  for (const [mode, key] of [
+    ['test', 'rk_live_fixture'], ['live', 'rk_test_fixture'],
+    ['test', 'pk_test_fixture'], ['live', 'pk_live_fixture'],
+    ['invalid', 'rk_test_fixture'], ['test', 'rk_test_'],
+  ]) {
+    await setup();
+    process.env.FORGE_BILLING_STRIPE_MODE = mode;
+    process.env.FORGE_BILLING_STRIPE_SECRET_KEY = key;
+    await assert.rejects(() => service.createCompanyCheckout(1, 'solo', 'month'), /Forge key mode mismatch/);
+    assert.equal(provider.calls.length, 0);
+  }
+});
 test('native website handoff requires explicit rollout and an authenticated administrator', async () => {
   await setup();
   const status = async (headers: Record<string,string> = {'User-Agent':'ForgeNative/1'}) =>

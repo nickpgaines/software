@@ -51,7 +51,7 @@ Stripe Connect credentials used for homeowner payments.
 | --- | --- | --- |
 | `FORGE_BILLING_ENABLED` | Non-secret rollout control | Exact `true` only after all gates pass. Keep false/missing while dormant. |
 | `FORGE_BILLING_NATIVE_WEBSITE_ENABLED` | Non-secret rollout control | Separate default-off native website handoff. Do not enable until App Store storefront availability and the applicable external-purchase rules are verified. This flag does not detect storefronts. |
-| `FORGE_BILLING_STRIPE_SECRET_KEY` | Secret | Dedicated `sk_test_…` or `sk_live_…`; mode must match. |
+| `FORGE_BILLING_STRIPE_SECRET_KEY` | Secret | Dedicated restricted `rk_test_…` or `rk_live_…` recommended; standard `sk_…` keys also supported. Mode must match. |
 | `FORGE_BILLING_STRIPE_ACCOUNT_ID` | Sensitive identifier | Stripe platform account owned by the dedicated key. |
 | `FORGE_BILLING_STRIPE_MODE` | Non-secret | Exactly `test` or `live`. |
 | `FORGE_BILLING_WEBHOOK_SECRET` | Secret | Signing secret for the dedicated endpoint and mode. |
@@ -106,7 +106,8 @@ staff tables. New signup and its trial timestamp commit or roll back together.
 
 1. Create or select the dedicated Forge platform Stripe account in test mode.
    Record its account ID and a restricted test secret suitable for Checkout,
-   Customers, Subscriptions, Invoices, Prices, and Billing Portal operations.
+   Customers, Subscriptions, Invoices, Prices, and Billing Portal operations,
+   plus account read access for the platform-account identity check.
 2. Create the six exact Prices above. Put their IDs only in the Forge billing
    variables; do not reuse connected-account or homeowner-subscription Prices.
 3. Create a Billing Portal configuration in test mode. Enable subscription
