@@ -31,6 +31,7 @@ These instructions configure development testing. They do not enable production,
 - Tap-to-save and payment-with-save require explicit customer consent and save only a reusable generated card; wallet/no-generated-card outcomes remain distinct from payment failure.
 - App test mode against a live/misconfigured server fails **before** an intent/location/token is created. Never prove this with real live credentials; use automated boundary tests.
 - Turning off rollout does not prevent reconciling/canceling existing attempts with matching credentials.
+- Missing native/Stripe configuration does not block manual checkout when the authenticated attempt list is empty. Unresolved attempts still block another charge until reconciled. A failed native environment check never silently switches a mutation to live mode.
 
 ## Restore after testing
 

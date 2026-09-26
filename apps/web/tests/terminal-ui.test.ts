@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
+import {NativeTerminal} from '../src/lib/native-terminal.ts';
 // @ts-ignore existing UI harness executes the production hooks and JSX handlers.
 import {loadCustomerModule, hookRenderer, elements, text} from './helpers/customer-ui.mjs';
 
@@ -46,7 +47,7 @@ test('test app checkout carries test mode before intent creation and reconciliat
   const h=await harness(t,{providerMode:'test'});
   await h.button('Tap to Pay').props.onClick();h.render();
   assert.equal(h.completed.length,1);
-  assert.ok(h.calls.filter(c=>c.url.startsWith('/api/stripe/terminal/')).every(c=>c.headers.get('X-Forge-Terminal-Mode')==='test'));
+  assert.ok(h.calls.filter(c=>c.url.startsWith('/api/stripe/terminal/')&&!c.url.includes('?')).every(c=>c.headers.get('X-Forge-Terminal-Mode')==='test'));
 });
 test('checkout unmounted during mode lookup never sends its pending create',async t=>{
   const h=await harness(t,{providerMode:'test'});
@@ -55,6 +56,20 @@ test('checkout unmounted during mode lookup never sends its pending create',asyn
   const action=h.button('Tap to Pay').props.onClick();await settle();
   h.renderer.dispose();finish?.();await action;
   assert.equal(h.calls.filter(c=>c.url==='/api/stripe/terminal/attempts').length,0);
+});
+test('failed native preflight does not create an unknown payment or block ordinary methods',async t=>{
+  let fail=false;
+  const native=new NativeTerminal(async()=>({getCapabilities:async()=>{if(fail)throw Error('Invalid environment');return {supported:true,preparationSupported:true,providerMode:'test'};}} as any));
+  const h=await harness(t,{props:{native}});
+  assert.equal(h.blocked.at(-1),false);
+  fail=true;await h.button('Tap to Pay').props.onClick();h.render();
+  assert.equal(h.calls.filter(c=>c.url==='/api/stripe/terminal/attempts').length,0);
+  assert.equal(h.blocked.at(-1),false);
+});
+for(const unresolved of [false,true])test(`rollout off and invalid native config preserve correct checkout lock: unresolved=${unresolved}`,async t=>{
+  const native=new NativeTerminal(async()=>({getCapabilities:async()=>{throw Error('Invalid environment');}} as any));
+  const h=await harness(t,{enabled:false,list:unresolved?[ready]:[],props:{native}});
+  assert.equal(h.blocked.at(-1),unresolved);
 });
 test('old native checkout requires an update without creating attempts or blocking manual card payments',async t=>{
   const h=await harness(t,{preparationSupported:false});

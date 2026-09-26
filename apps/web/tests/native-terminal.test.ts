@@ -20,6 +20,18 @@ test('Terminal mode lookup cannot send a mutation after logout',async()=>{
   native.generation++;finish({supported:true,providerMode:'test'});
   await assert.rejects(work,/session/i);assert.equal(sent,false);
 });
+test('rejected native environment lookup never falls back to live mutation headers',async()=>{
+  const native=new NativeTerminal(async()=>({getCapabilities:async()=>{throw Error('Invalid origin');}} as any));
+  let sent=false;
+  await assert.rejects(terminalModule.terminalRequestInit(native,'/api/stripe/terminal/location',{method:'POST'}).then(()=>{sent=true;}),
+    (error:any)=>error.requestNotSent===true);
+  assert.equal(sent,false);
+});
+test('provider-free attempt listing does not need native environment verification',async()=>{
+  const native=new NativeTerminal(async()=>({getCapabilities:async()=>{throw Error('Invalid origin');}} as any));
+  const init=await terminalModule.terminalRequestInit(native,'/api/stripe/terminal/attempts?job_id=12');
+  assert.equal(new Headers(init.headers).has('X-Forge-Terminal-Mode'),false);
+});
 
 test('unavailable native builds explain manual fallback', async () => {
   const terminal = new NativeTerminal(async () => null);

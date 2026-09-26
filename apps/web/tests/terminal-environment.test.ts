@@ -66,3 +66,9 @@ test('correct-mode existing attempt can still reconcile and cancel with rollout 
   assert.equal(canceled.status,200);assert.equal((await canceled.json()).status,'canceled');
   assert.equal(provider.creates.length,1);
 });
+test('provider-free attempt listing remains available without Stripe keys and with a mismatched mode header',async()=>{
+  process.env.TAP_TO_PAY_ENABLED='false';delete process.env.STRIPE_SECRET_KEY;delete process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY;
+  const response=await modules.route.GET(new Request('https://terminal-test.invalid/api/stripe/terminal/attempts?job_id=12',{headers:{'X-Forge-Terminal-Mode':'live'}}));
+  assert.equal(response.status,200);assert.deepEqual(await response.json(),{attempts:[]});
+  assert.equal(provider.tokens.length,0);assert.equal(provider.creates.length,0);
+});

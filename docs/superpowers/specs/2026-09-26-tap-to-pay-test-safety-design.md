@@ -16,6 +16,7 @@ Use a DEBUG-only native HTTPS test-origin override and a server-validated provid
 - `TAP_TO_PAY_MODE` defaults to `live`; only exact `live` or `test` accepted. Terminal requires matching secret/restricted and publishable key modes. Reject an already-initialized Stripe singleton whose credential no longer matches the environment; do not silently change the shared client.
 - Check before new intents, customer creation, location changes and tokens. Requests declaring `X-Forge-Terminal-Mode` must match the verified server mode before Terminal effects. Missing headers remain compatible with existing live clients; they do not bypass server configuration validation.
 - Native web setup/checkout requests propagate their declared mode on Terminal endpoints. Preserve generation checks around asynchronous capability lookup so an old session cannot send a late mutation.
+- A failed/malformed native capability lookup is not a legacy live client: reject before fetch and clear any creation-uncertainty marker for that never-sent request. Authenticated, provider-free attempt listing bypasses native/provider preflight so ordinary checkout remains usable when no unresolved attempt exists; this exception never permits a mutation or reconciliation.
 - Token response includes verified `provider_mode`. Errors expose no credentials. Existing reconciliation/cancellation remains available with rollout off and correct credentials. Do not apply Terminal guards to ordinary subscription/manual-card routes sharing the HTTP helper.
 
 ### Limits and verification

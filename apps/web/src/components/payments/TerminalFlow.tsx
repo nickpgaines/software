@@ -52,7 +52,7 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
   async function json<T>(url: string, init?: RequestInit): Promise<T> {
     const token=life.current;
     const options=await terminalRequestInit(native,url,init);
-    if(!valid(token))throw new Error('Session changed. Reopen checkout.');
+    if(!valid(token))throw Object.assign(new Error('Session changed. Reopen checkout.'),{requestNotSent:true});
     const response = await fetch(url, { cache: 'no-store', ...options });
     const data = await response.json();
     if (!response.ok) throw Object.assign(new Error(data.error || 'Unable to check the Terminal attempt.'), {status:response.status,code:data.code});
@@ -173,11 +173,13 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
       if (action === 'start') {
         const consent = { accepted: true, version: TERMINAL_CONSENT_VERSION, customer_name: name.trim() };
         const body = operation === 'payment' ? { operation, job_id: jobId, save_card: save, ...(save ? {consent} : {}) } : {operation, customer_id: customerId, consent};
-        uncertainCreations.add(recoveryKey());
+        const creationKey=recoveryKey();
+        uncertainCreations.add(creationKey);
         try {
           next = await json<TerminalAttemptView>('/api/stripe/terminal/attempts', {method:'POST', headers:{'Content-Type':'application/json','Idempotency-Key':crypto.randomUUID()}, body:JSON.stringify(body)});
         } catch (error) {
-          if (valid(token) && [400,404,409].includes((error as {status?:number}).status || 0)) uncertainCreations.delete(recoveryKey());
+          if ((error as {requestNotSent?:boolean}).requestNotSent === true
+            || (valid(token) && [400,404,409].includes((error as {status?:number}).status || 0))) uncertainCreations.delete(creationKey);
           throw error;
         }
         receive(next, token);
