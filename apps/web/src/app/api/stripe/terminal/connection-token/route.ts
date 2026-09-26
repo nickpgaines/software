@@ -1,5 +1,6 @@
 import { terminalResponse, terminalSession, TerminalError } from '@/lib/terminal-http';
 import { requireTapToPayEnabled } from '@/lib/terminal-rollout';
+import { requireTerminalEnvironment } from '@/lib/terminal-environment';
 import { getDb } from '@/lib/db';
 import { canManageTerminalSetup } from '@/lib/terminal-location';
 import {
@@ -39,6 +40,6 @@ export async function POST(req: Request) {
     const current = await getCompany(auth.companyId);
     if (current.stripe_account_id !== company.stripe_account_id || !current.stripe_charges_enabled) throw new TerminalError('Stripe account changed. Reload setup.',409);
     if (permitsTerms && !await canManageTerminalSetup(await getDb(),auth)) throw new TerminalError('Administrator permission changed. Reload setup.',403);
-    return { secret: token.secret, stripe_account: company.stripe_account_id, tos_acceptance_permitted:permitsTerms };
+    return { secret: token.secret, stripe_account: company.stripe_account_id, tos_acceptance_permitted:permitsTerms, provider_mode:requireTerminalEnvironment(req.headers.get('X-Forge-Terminal-Mode')) };
   });
 }

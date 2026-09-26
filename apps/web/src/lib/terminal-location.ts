@@ -6,6 +6,7 @@ import { getStripe, getCompany, isStripeConfigured } from '@/lib/stripe';
 import { assignedPermissions } from '@/lib/team-authorization';
 import { TerminalError } from '@/lib/terminal-http';
 import { requireTapToPayEnabled } from '@/lib/terminal-rollout';
+import { requireTerminalEnvironment } from '@/lib/terminal-environment';
 
 const states = new Set('AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY'.split(' '));
 type Address = {line1:string;line2?:string;city:string;state:string;postal_code:string;country:'US'};
@@ -30,6 +31,7 @@ export async function canManageTerminalSetup(db: Db, session: SessionContext) {
 }
 
 async function accountForSetup(companyId: number) {
+  requireTerminalEnvironment();
   if (!isStripeConfigured()) throw new TerminalError('Payment setup is currently unavailable. Please try again later.',503);
   const company = await getCompany(companyId);
   if (!company.stripe_account_id || !company.stripe_charges_enabled) throw new TerminalError('Complete Stripe onboarding before setting up Tap to Pay.',409);
@@ -70,6 +72,7 @@ async function persistLocation(db:Db,companyId:number,account:string,location:Lo
 
 /** Checkout never creates a location and never trusts a cached cross-account ID. */
 export async function resolveTerminalLocation(db:Db, companyId:number, stripeAccount:string):Promise<Location> {
+  requireTerminalEnvironment();
   const cached = await db.prepare('SELECT stripe_terminal_location_id FROM stripe_terminal_locations WHERE company_id=?')
     .get<{stripe_terminal_location_id:string}>(companyId);
   if (cached) {

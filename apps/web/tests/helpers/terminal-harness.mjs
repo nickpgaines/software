@@ -119,6 +119,7 @@ export function fixture() {
   Object.assign(locations, {data:null,calls:[],creates:[],hasMore:false,fail:false,afterRetrieve:null});
   session = { companyId: 1, staffId: 7, identity: 'staff:7' };
   process.env.STRIPE_SECRET_KEY = 'sk_test_fake';
+  process.env.TAP_TO_PAY_MODE = 'test';
   process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = 'pk_test_fake';
   process.env.STRIPE_WEBHOOK_SECRET = 'whsec_fake';
   return db;

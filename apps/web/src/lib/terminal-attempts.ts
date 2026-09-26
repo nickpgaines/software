@@ -4,6 +4,7 @@ import { getDb, type Db } from '@/lib/db';
 import { getStripe, getCompany, isStripeConfigured, getOrCreateStripeCustomer, savePaymentMethodForCustomer } from '@/lib/stripe';
 import { TerminalError, positiveId } from '@/lib/terminal-http';
 import { requireTapToPayEnabled } from '@/lib/terminal-rollout';
+import { requireTerminalEnvironment } from '@/lib/terminal-environment';
 import { resolveTerminalLocation } from '@/lib/terminal-location';
 import { recordJobPayment } from '@/lib/record-job-payment';
 import { terminalConsentText, TERMINAL_CONSENT_VERSION } from '@/lib/terminal-consent';
@@ -37,6 +38,7 @@ function view(a: Attempt, secret?: string | null): TerminalAttemptView {
     save_card: !!a.save_card, payment_recorded: !!a.payment_recorded, card_saved: !!a.card_saved, warning: a.warning };
 }
 async function connectedAccount(companyId: number) {
+  requireTerminalEnvironment();
   if (!isStripeConfigured()) throw new TerminalError('Stripe is not configured', 503);
   const company = await getCompany(companyId);
   if (!company.stripe_account_id) throw new TerminalError('Complete Stripe onboarding before using Tap to Pay', 409);
