@@ -22,6 +22,7 @@ export function fixture() {
   session = { companyId:1, staffId:7, identity:'admin@test', isPlatformAdmin:false };
   Object.assign(process.env, { FORGE_BILLING_ENABLED:'true', FORGE_BILLING_STRIPE_SECRET_KEY:'sk_test_fake', FORGE_BILLING_STRIPE_ACCOUNT_ID:'acct_platform', FORGE_BILLING_STRIPE_MODE:'test', FORGE_BILLING_WEBHOOK_SECRET:'whsec_fake', FORGE_BILLING_SITE_ORIGIN:'https://forge.test', FORGE_BILLING_PORTAL_CONFIGURATION_ID:'bpc_test' });
   delete process.env.FORGE_BILLING_CUTOFF_AT;
+  delete process.env.FORGE_BILLING_TAX_ENABLED;
   for (const p of ['SOLO','TEAM','BUSINESS']) for (const i of ['MONTH','YEAR']) process.env[`FORGE_BILLING_PRICE_${p}_${i}`] = `price_${p.toLowerCase()}_${i.toLowerCase()}`;
   Object.assign(provider, { calls:[], customers:[], sessions:[], subscriptions:[], invoices:[], lost:false, hidden:false, fail:false, event:null, invalidSignature:false, invalidPrice:false, mode:false, beforeRetrieve:null });
   const check = () => { if (provider.fail) throw new Error('provider unavailable'); };

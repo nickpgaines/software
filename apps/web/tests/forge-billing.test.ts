@@ -10,6 +10,71 @@ import { fixture, loadBilling, provider, paidSubscription, setSession } from './
 const {service,access,schema,routes}=await loadBilling();
 async function setup() { const db=fixture(); await schema.installForgeBillingSchema(db); return db; }
 const request=(name:string, body:unknown={}, headers:Record<string,string>={})=>new Request(`https://forge.test/api/forge-billing/${name}`,{method:'POST',headers:{Origin:'https://forge.test','content-type':'application/json',...headers},body:JSON.stringify(body)});
+for (const inclusive of [false,true]) for (const [plan, interval, base, tax] of [
+  ['solo','month',7900,474], ['solo','year',79000,4740],
+  ['team','month',14900,894], ['team','year',149000,8940],
+  ['business','month',22900,1374], ['business','year',229000,13740],
+] as const) test(`tax-enabled ${plan}/${interval} (inclusive: ${inclusive}) binds Checkout and credits only paid taxed invoices`, async () => {
+  await setup();
+  process.env.FORGE_BILLING_TAX_ENABLED = 'true';
+  await service.createCompanyCheckout(1, plan, interval);
+  const checkout = provider.calls.find(c => c.checkout).checkout;
+  assert.deepEqual(checkout.automatic_tax, {enabled:true});
+  assert.equal(checkout.billing_address_collection, 'required');
+  assert.deepEqual(checkout.customer_update, {address:'auto'});
+  assert.deepEqual(checkout.line_items, [{price:`price_${plan}_${interval}`,quantity:1}]);
+  const sub = paidSubscription();
+  sub.items.data[0].price.id = `price_${plan}_${interval}`;
+  const invoice = provider.invoices[0];
+  // Synthetic tax amounts: exercise both total shapes, not legal rates.
+  const total = inclusive ? base : base + tax;
+  invoice.amount_paid = total;
+  invoice.total = total;
+  invoice.automatic_tax = {enabled:true,status:'complete'};
+  invoice.lines.data[0].amount = base;
+  invoice.lines.data[0].pricing.price_details.price = `price_${plan}_${interval}`;
+  provider.event = {id:'evt_tax_paid',type:'invoice.paid',livemode:false,data:{object:invoice}};
+  assert.equal((await routes.webhook.POST(request('webhook',{}, {'stripe-signature':'test'}))).status,200);
+  const paid = await service.getCompanyBillingStatus(1,new Date('2026-10-01'));
+  assert.equal(paid.reason,'paid'); assert.equal(paid.plan,plan); assert.equal(paid.interval,interval);
+  // A failed renewal must not extend the previously paid term.
+  const renewal = structuredClone(invoice);
+  renewal.id = 'in_tax_renewal'; renewal.status = 'open'; renewal.amount_paid = 0;
+  renewal.amount_remaining = total; renewal.lines.data[0].period.end += 2678400;
+  provider.invoices.push(renewal); sub.status = 'past_due';
+  await service.refreshCompanyBilling(1);
+  assert.equal((await service.getCompanyBillingStatus(1,new Date('2026-12-01'))).allowed,false);
+  assert.equal((await service.getCompanyBillingStatus(1)).paidThrough,paid.paidThrough);
+  renewal.status = 'paid'; renewal.amount_paid = total; renewal.amount_remaining = 0;
+  await service.refreshCompanyBilling(1);
+  assert.equal((await service.getCompanyBillingStatus(1)).paidThrough,new Date(renewal.lines.data[0].period.end * 1000).toISOString());
+});
+test('tax is opt-in and never enables dormant billing', async () => {
+  for (const flag of [undefined,'false','TRUE',' true ']) {
+    await setup();
+    if (flag !== undefined) process.env.FORGE_BILLING_TAX_ENABLED=flag;
+    await service.createCompanyCheckout(1,'solo','month');
+    const checkout=provider.calls.find(c=>c.checkout).checkout;
+    assert.equal(checkout.automatic_tax?.enabled ?? false,false);
+    assert.equal(checkout.customer_update,undefined);
+    assert.equal(checkout.billing_address_collection,undefined);
+  }
+  await setup(); process.env.FORGE_BILLING_ENABLED='false'; process.env.FORGE_BILLING_TAX_ENABLED='true';
+  await assert.rejects(()=>service.createCompanyCheckout(1,'solo','month'),/not enabled/);
+  assert.equal(provider.calls.length,0);
+});
+for (const initial of [false,true]) test(`open Checkout cannot silently cross tax rollout from ${initial}`, async () => {
+  await setup(); process.env.FORGE_BILLING_TAX_ENABLED=String(initial);
+  provider.lost=true;
+  await assert.rejects(()=>service.createCompanyCheckout(1,'solo','month'),/lost response/);
+  provider.lost=false; process.env.FORGE_BILLING_TAX_ENABLED=String(!initial);
+  await assert.rejects(()=>service.createCompanyCheckout(1,'solo','month'),/tax settings changed/i);
+  assert.equal(provider.sessions.length,1);
+  // Restoring the original setting recovers the original session, without charging twice.
+  process.env.FORGE_BILLING_TAX_ENABLED=String(initial);
+  assert.ok((await service.createCompanyCheckout(1,'solo','month')).url);
+  assert.equal(provider.sessions.length,1);
+});
 for (const mode of ['test', 'live']) {
   test(`restricted ${mode} credentials can create company Checkout in the matching mode`, async () => {
     await setup();
