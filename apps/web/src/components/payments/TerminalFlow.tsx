@@ -25,7 +25,7 @@ const uncertainCreations = new Set<string>();
 
 export default function TerminalFlow({ operation, jobId, customerId, onSuccess, onBlockedChange, native = nativeTerminal }: Props) {
   const formId = useId();
-  const [capability, setCapability] = useState<{supported: boolean; reason?: string} | null>(null);
+  const [capability, setCapability] = useState<{supported: boolean; reason?: string; preparationSupported?:boolean} | null>(null);
   const [rollout, setRollout] = useState<boolean | null>(null);
   const [availabilityError, setAvailabilityError] = useState(false);
   const [merchant, setMerchant] = useState<Merchant | null>(null);
@@ -200,10 +200,11 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
   }
   const unfinished = attempt && !closed(attempt);
   const done = attempt?.status === 'succeeded' && closed(attempt);
-  const canCollect = rollout === true && capability?.supported === true;
+  const canCollect = rollout === true && capability?.supported === true && capability.preparationSupported === true;
   return <section className="space-y-3" aria-label={operation === 'payment' ? 'Tap to Pay' : 'Save card with a tap'}>
     {rollout === false && <p className="text-sm text-fg-muted">{availabilityError ? 'Tap to Pay availability could not be checked. Reopen this window to try again.' : 'Tap to Pay and saving a card with a tap are coming soon.'} {operation === 'payment' ? 'Use Pay with card or another payment method.' : 'Use the customer’s subscription acceptance link for manual card entry.'}</p>}
     {rollout === true && !capability?.supported && capability && <p className="text-sm text-amber-400">{capability.reason || 'Tap to Pay is unavailable in this app. Use manual card entry (Pay with card).'}</p>}
+    {rollout === true && capability?.supported && capability.preparationSupported !== true && <p className="text-sm text-fg-muted">Update Forge to use Tap to Pay. Use Pay with card or another payment method in the meantime.</p>}
     {message && <p role="status" className="text-sm text-zinc-300">{message}</p>}
     {setupRequired && <div className="space-y-2 text-sm"><p>An authorized administrator may need to finish merchant setup. Cancel any unfinished attempt here before switching payment methods.</p><Button asChild variant="outline"><a href="/settings?tab=payments">Open Tap to Pay setup</a></Button></div>}
     {attempt?.warning && <p role="alert" className="text-sm text-amber-400">{attempt.warning}</p>}

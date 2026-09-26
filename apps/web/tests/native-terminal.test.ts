@@ -32,21 +32,21 @@ test('device preparation shares the exclusive reader lock and ignores progress a
   assert.deepEqual(progress,['current']);assert.equal(removed,1);
 });
 
-test('old native builds cannot start preparation but retain collection capability',async()=>{
+test('old native builds cannot prepare or collect with unsafe default merchant terms',async()=>{
   const terminal=new NativeTerminal(async()=>({
     getCapabilities:async()=>({supported:true}),
     collectPayment:async()=>({intentId:'pi'}),collectSetup:async()=>({intentId:'seti'}),
     reset:async()=>{},cancel:async()=>{},showEducation:async()=>{},
   }));
   await assert.rejects(terminal.prepare({operationId:'prepare',stripeAccount:'acct_1',locationId:'tml_1',representativeConfirmed:false}),/update/i);
-  assert.equal((await terminal.collect('payment',{operationId:'pay',stripeAccount:'acct_1',locationId:'tml_1',clientSecret:'secret',saveCard:false})).intentId,'pi');
+  for(const operation of ['payment','setup'] as const)await assert.rejects(terminal.collect(operation,{operationId:'pay',stripeAccount:'acct_1',locationId:'tml_1',clientSecret:'secret',saveCard:false}),/update/i);
 });
 
 test('one collection runs and reset invalidates late native success synchronously', async () => {
   let finish!: (value: {intentId: string}) => void;
   let collections = 0;
   const terminal = new NativeTerminal(async () => ({
-    getCapabilities: async () => ({ supported: true }), showEducation: async () => {},
+    getCapabilities: async () => ({ supported: true, preparationSupported:true }), showEducation: async () => {},
     collectPayment: async () => { collections++; return new Promise(resolve => { finish = resolve; }); },
     collectSetup: async () => ({intentId: 'seti_1'}), cancel: async () => {}, reset: async () => {},
   }));
@@ -84,7 +84,7 @@ test('stalled cleanup is bounded and prevents reuse', async () => {
 test('cleanup from an old owner never cancels the replacement collection', async () => {
   let cancelCalls=0;
   let finish!: (value:{intentId:string})=>void;
-  const terminal=new NativeTerminal(async()=>({getCapabilities:async()=>({supported:true}),collectPayment:async()=>new Promise(resolve=>{finish=resolve;}),cancel:async()=>{cancelCalls++;},reset:async()=>{},showEducation:async()=>{},collectSetup:async()=>({intentId:'seti'})}));
+  const terminal=new NativeTerminal(async()=>({getCapabilities:async()=>({supported:true,preparationSupported:true}),collectPayment:async()=>new Promise(resolve=>{finish=resolve;}),cancel:async()=>{cancelCalls++;},reset:async()=>{},showEducation:async()=>{},collectSetup:async()=>({intentId:'seti'})}));
   const operation=terminal.collect('payment',{operationId:'new',clientSecret:'secret',stripeAccount:'acct',locationId:'tml',saveCard:false});
   await new Promise(resolve=>setImmediate(resolve));
   await terminal.cancel('old');
@@ -94,7 +94,7 @@ test('cleanup from an old owner never cancels the replacement collection', async
 
 test('an old flow cannot cancel a new flow resuming the same attempt ID',async()=>{
   let cancelCalls=0;let finish!:(value:{intentId:string})=>void;
-  const terminal=new NativeTerminal(async()=>({getCapabilities:async()=>({supported:true}),collectPayment:async()=>new Promise(resolve=>{finish=resolve;}),cancel:async()=>{cancelCalls++;},reset:async()=>{},showEducation:async()=>{},collectSetup:async()=>({intentId:'seti'})}));
+  const terminal=new NativeTerminal(async()=>({getCapabilities:async()=>({supported:true,preparationSupported:true}),collectPayment:async()=>new Promise(resolve=>{finish=resolve;}),cancel:async()=>{cancelCalls++;},reset:async()=>{},showEducation:async()=>{},collectSetup:async()=>({intentId:'seti'})}));
   const oldLease=Symbol('old');const newLease=Symbol('new');
   const operation=terminal.collect('payment',{operationId:'same',clientSecret:'secret',stripeAccount:'acct',locationId:'tml',saveCard:false},newLease);
   await new Promise(resolve=>setImmediate(resolve));
@@ -107,7 +107,7 @@ test('reset cannot release collection ownership while an earlier cancellation is
   let finishCancel!:()=>void;
   const completions=new Map<string,(value:{intentId:string})=>void>();
   const terminal=new NativeTerminal(async()=>({
-    getCapabilities:async()=>({supported:true}),showEducation:async()=>{},
+    getCapabilities:async()=>({supported:true,preparationSupported:true}),showEducation:async()=>{},
     collectPayment:args=>new Promise(resolve=>{completions.set(args.operationId,resolve);}),
     collectSetup:async()=>({intentId:'seti'}),
     cancel:()=>new Promise(resolve=>{finishCancel=resolve;}),reset:async()=>{},

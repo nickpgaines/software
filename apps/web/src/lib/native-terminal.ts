@@ -84,7 +84,10 @@ export class NativeTerminal {
     try {
       const plugin = await this.load();
       if (generation !== this.generation || collection !== this.collection) throw new Error('Terminal session changed.');
-      if (!plugin || !(await plugin.getCapabilities()).supported) throw new Error(fallback);
+      if (!plugin) throw new Error(fallback);
+      const capability = await plugin.getCapabilities();
+      if (!capability.supported) throw new Error(fallback);
+      if (capability.preparationSupported !== true) throw new Error('Update Forge to use Tap to Pay. Pay with card is still available.');
       if (generation !== this.generation || collection !== this.collection) throw new Error('Terminal session changed.');
       const result = await work(plugin,()=>generation === this.generation && collection === this.collection);
       if (generation !== this.generation || collection !== this.collection) throw new Error('Terminal session changed.');

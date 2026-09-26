@@ -13,7 +13,7 @@ async function harness(t: any, options: any = {}) {
   const calls: {url:string; body:any}[]=[];
   let current = {...ready,...options.attempt};
   let created = false;
-  const native = {generation:0, capabilities: async()=>({supported:options.supported ?? true}), education:async()=>{}, cancel:async(_id?:string)=>{}, collect:async(_operation?:string)=>{if(options.collect) return options.collect();}};
+  const native = {generation:0, capabilities: async()=>({supported:options.supported ?? true,preparationSupported:options.preparationSupported ?? true}), education:async()=>{}, cancel:async(_id?:string)=>{}, collect:async(_operation?:string)=>{if(options.collect) return options.collect();}};
   t.mock.method(globalThis,'fetch',async (url:any,init:any)=> {
     calls.push({url:String(url),body:init?.body ? JSON.parse(init.body):null});
     if(url==='/api/stripe/terminal/capabilities') {
@@ -41,6 +41,15 @@ test('unsupported plugin disables tap with useful manual card fallback',async t=
   const h=await harness(t,{supported:false});
   assert.equal(h.button('Tap to Pay').props.disabled,true);
   assert.match(text(h.tree),/manual|Pay with card/i);
+});
+test('old native checkout requires an update without creating attempts or blocking manual card payments',async t=>{
+  const h=await harness(t,{preparationSupported:false});
+  assert.equal(h.button('Tap to Pay').props.disabled,true);
+  assert.match(text(h.tree),/update Forge/i);
+  assert.match(text(h.tree),/Pay with card/i);
+  await h.button('Tap to Pay').props.onClick();
+  assert.equal(h.calls.some(c=>c.url==='/api/stripe/terminal/attempts'),false);
+  assert.equal(h.blocked.at(-1),false);
 });
 for (const operation of ['payment','setup']) {
   test(`rollout off disables ${operation} even on a supported phone without blocking fallback`,async t=>{

@@ -292,7 +292,7 @@ test('wrong job metadata never records a succeeded payment', async () => {
 test('connection token requires exact authenticated account', async () => {
   const req = request({}); req.headers.set('X-Forge-Stripe-Account', 'acct_other');
   assert.equal((await modules.token.POST(req)).status, 409); assert.equal(provider.tokens.length, 0);
-  req.headers.set('X-Forge-Stripe-Account', 'acct_1'); assert.equal((await modules.token.POST(req)).status, 200);
+  req.headers.set('X-Forge-Stripe-Account', 'acct_1'); req.headers.set('X-Forge-Terminal-Purpose','collection'); assert.equal((await modules.token.POST(req)).status, 200);
 });
 test('webhook card-provider failure retries after payment is recorded', async () => {
   await start({ operation: 'payment', job_id: 12, save_card: true, consent });

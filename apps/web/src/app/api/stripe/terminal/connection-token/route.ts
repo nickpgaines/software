@@ -26,7 +26,10 @@ export async function POST(req: Request) {
     if (!isStripeConfigured()) throw new TerminalError('Stripe is not configured',503);
     if (!company.stripe_account_id || !company.stripe_charges_enabled) throw new TerminalError('Complete Stripe onboarding before using Tap to Pay',409);
     if (req.headers.get('X-Forge-Stripe-Account') !== company.stripe_account_id) throw new TerminalError('Stripe account does not match this Terminal session',409);
-    const purpose = req.headers.get('X-Forge-Terminal-Purpose') ?? 'collection';
+    // Earlier native builds leave the SDK's terms permission at its unsafe YES
+    // default and ignore our response flag. Never mint a token for that protocol.
+    const purpose = req.headers.get('X-Forge-Terminal-Purpose');
+    if (!purpose) throw new TerminalError('Update Forge to use Tap to Pay. Pay with card is still available.',409);
     const confirmation = req.headers.get('X-Forge-Authorized-Representative');
     if (!['collection','preparation'].includes(purpose) || (confirmation !== null && confirmation !== 'true' && confirmation !== 'false')
       || (purpose !== 'preparation' && confirmation === 'true')) throw new TerminalError('Invalid Terminal preparation request');

@@ -36,6 +36,32 @@ final class ForgeTerminalTests: XCTestCase {
         XCTAssertEqual(sdk.termsPermissions, [false])
     }
 
+    func testPreparationCleanupFailureCannotReportReady() {
+        let sdk = ReaderDouble()
+        sdk.holdConnect = true
+        let coordinator = ForgeTerminalCoordinator(provider: sdk, session: SessionDouble())
+        var result: Result<Void, TerminalFailure>?
+        coordinator.prepareDevice(operationID: "prepare", account: "acct_1", locationID: "tml_1", representativeConfirmed: false) { result = $0 }
+        sdk.cleanupError = .terminalError
+        sdk.connected?(.success(()))
+        XCTAssertEqual(result?.failure?.code, "cleanup_failed")
+        XCTAssertTrue(result?.failure?.message.contains("Restart Forge") == true)
+        var next: Result<Void, TerminalFailure>?
+        coordinator.prepareDevice(operationID: "next", account: "acct_1", locationID: "tml_1", representativeConfirmed: false) { next = $0 }
+        XCTAssertEqual(next?.failure?.code, "busy")
+    }
+
+    func testConfirmedPaymentSurvivesCleanupFailureForReconciliation() {
+        let sdk = ReaderDouble()
+        let coordinator = ForgeTerminalCoordinator(provider: sdk, session: SessionDouble())
+        var result: Result<String, TerminalFailure>?
+        coordinator.collect(request) { result = $0 }
+        sdk.collected?(.success(()))
+        sdk.cleanupError = .terminalError
+        sdk.confirmed?(.success("pi_confirmed"))
+        XCTAssertEqual(try? result?.get(), "pi_confirmed")
+    }
+
     func testPreparationCancelIgnoresLateConnection() {
         let sdk = ReaderDouble()
         sdk.holdConnect = true

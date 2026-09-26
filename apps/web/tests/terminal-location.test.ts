@@ -151,11 +151,18 @@ const tokenRequest = (purpose?:string, representative?:string) => {
   return req;
 };
 test('collection and ordinary preparation tokens never authorize merchant terms', async () => {
-  for(const purpose of [undefined,'collection','preparation']) {
+  for(const purpose of ['collection','preparation']) {
     const response=await modules.token.POST(tokenRequest(purpose));
     assert.equal(response.status,200);
     assert.equal((await response.json()).tos_acceptance_permitted,false);
   }
+});
+test('legacy native requests cannot mint a token that permits SDK-default merchant terms',async()=>{
+  setSession({companyId:1,staffId:8});
+  const response=await modules.token.POST(tokenRequest());
+  assert.equal(response.status,409);
+  assert.match((await response.json()).error,/update Forge/i);
+  assert.equal(provider.tokens.length,0);
 });
 test('terms require both explicit representative confirmation and current setup permission on every token', async () => {
   const response=await modules.token.POST(tokenRequest('preparation','true'));

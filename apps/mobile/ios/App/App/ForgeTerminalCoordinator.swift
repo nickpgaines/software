@@ -165,7 +165,7 @@ final class ForgeTerminalCoordinator {
     private func advance(_ stages: [Stage], index: Int, lease: TerminalOperationState.Lease, confirmsIntent: Bool) {
         guard state.isCurrent(lease) else { return }
         guard index < stages.count else {
-            guard confirmsIntent else { finish(.success("")); return }
+            guard confirmsIntent else { finish(.success(""), requireCleanupSuccess: true); return }
             confirming = true
             provider.confirm { [self] result in
                 guard state.isCurrent(lease) else { return }
@@ -182,7 +182,7 @@ final class ForgeTerminalCoordinator {
         })
     }
 
-    private func finish(_ result: Result<String, TerminalFailure>, cleanupAlreadyFailed: Bool = false) {
+    private func finish(_ result: Result<String, TerminalFailure>, cleanupAlreadyFailed: Bool = false, requireCleanupSuccess: Bool = false) {
         guard !cleaning else { return }
         state.invalidate()
         session.end() // immediately revoke pending token requests
@@ -196,7 +196,11 @@ final class ForgeTerminalCoordinator {
             if case .success = cleanup { busy = false }
             // A successful provider result still requires server reconciliation;
             // cleanup failure keeps the reader locked but must not hide payment.
-            callback?(result)
+            if requireCleanupSuccess, case .success = result, case .failure = cleanup {
+                callback?(.failure(TerminalFailure(code: "cleanup_failed", message: "Tap to Pay setup could not finish safely. Restart Forge before preparing this iPhone again.")))
+            } else {
+                callback?(result)
+            }
             let waiters = cleanupWaiters
             cleanupWaiters.removeAll()
             waiters.forEach { $0(cleanup) }
