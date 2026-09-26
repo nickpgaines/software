@@ -7,8 +7,9 @@ export type TerminalCollection = {
 };
 export type TerminalPreparation = Omit<TerminalCollection,'clientSecret'|'saveCard'> & {representativeConfirmed:boolean};
 export type TerminalProgress = {operationId:string;phase:string;message:string;progress?:number};
+type TerminalCapability = {supported:boolean;reason?:string;preparationSupported?:boolean;providerMode?:'test'|'live'};
 export interface ForgeTerminalPlugin {
-  getCapabilities(): Promise<{ supported: boolean; reason?: string; preparationSupported?:boolean }>;
+  getCapabilities(): Promise<TerminalCapability>;
   prepareDevice?(args:TerminalPreparation):Promise<void>;
   addListener?(event:'terminalProgress',callback:(event:TerminalProgress)=>void):Promise<{remove():Promise<void>}>;
   showEducation(): Promise<void>;
@@ -50,7 +51,7 @@ export class NativeTerminal {
     this.load = load;
     this.cleanupTimeout = cleanupTimeout;
   }
-  async capabilities() {
+  async capabilities():Promise<TerminalCapability> {
     if (this.resetting || this.unavailable) return { supported: false, reason: fallback };
     try { return (await this.load())?.getCapabilities().catch(() => ({ supported: false, reason: fallback })) ?? { supported: false, reason: fallback }; }
     catch { return { supported: false, reason: fallback }; }
@@ -133,3 +134,16 @@ export class NativeTerminal {
 }
 
 export const nativeTerminal = new NativeTerminal();
+
+/** Carry the app's immutable expectation before the server can create an intent. */
+export async function terminalRequestInit(native:Pick<NativeTerminal,'generation'|'capabilities'>,url:string,init:RequestInit={}):Promise<RequestInit> {
+  if (!url.startsWith('/api/stripe/terminal/')) return init;
+  const generation=native.generation;
+  const capability=await native.capabilities();
+  if (native.generation !== generation) throw new Error('Terminal session changed. Reopen this screen.');
+  const mode=capability.providerMode ?? 'live'; // Previous native protocol was production-only.
+  if(mode!=='test' && mode!=='live')throw new Error('Invalid Terminal environment. Reopen the correct Forge build.');
+  const headers=new Headers(init.headers);
+  headers.set('X-Forge-Terminal-Mode',mode);
+  return {...init,headers};
+}

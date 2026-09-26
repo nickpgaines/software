@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { nativeTerminal, type NativeTerminal } from '@/lib/native-terminal';
+import { nativeTerminal, terminalRequestInit, type NativeTerminal } from '@/lib/native-terminal';
 import { TERMINAL_CONSENT_VERSION, terminalConsentText } from '@/lib/terminal-consent';
 import type { TerminalAttemptView } from '@/lib/terminal-attempts';
 
@@ -50,7 +50,10 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
   const block = (value: boolean) => { if (valid()) { setUncertain(value); callbacks.current.onBlockedChange?.(value); } };
 
   async function json<T>(url: string, init?: RequestInit): Promise<T> {
-    const response = await fetch(url, { cache: 'no-store', ...init });
+    const token=life.current;
+    const options=await terminalRequestInit(native,url,init);
+    if(!valid(token))throw new Error('Session changed. Reopen checkout.');
+    const response = await fetch(url, { cache: 'no-store', ...options });
     const data = await response.json();
     if (!response.ok) throw Object.assign(new Error(data.error || 'Unable to check the Terminal attempt.'), {status:response.status,code:data.code});
     return data as T;

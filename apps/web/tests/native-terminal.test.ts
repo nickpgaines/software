@@ -1,6 +1,25 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { NativeTerminal, nativeTerminalPlugin } from '../src/lib/native-terminal.ts';
+import * as terminalModule from '../src/lib/native-terminal.ts';
+
+test('Terminal requests carry native test mode without losing content headers',async()=>{
+  const native={generation:0,capabilities:async()=>({supported:true,providerMode:'test' as const})};
+  const options=await terminalModule.terminalRequestInit(native,'/api/stripe/terminal/attempts',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
+  assert.equal(new Headers(options.headers).get('X-Forge-Terminal-Mode'),'test');
+  assert.equal(new Headers(options.headers).get('Content-Type'),'application/json');
+  assert.equal(options.body,'{}');assert.equal(options.method,'POST');
+  for(const url of ['/api/settings/company','https://untrusted.invalid/api/stripe/terminal/attempts','//untrusted.invalid/api/stripe/terminal/attempts']) {
+    assert.equal(new Headers((await terminalModule.terminalRequestInit(native,url)).headers).has('X-Forge-Terminal-Mode'),false);
+  }
+});
+test('Terminal mode lookup cannot send a mutation after logout',async()=>{
+  let finish!:(value:any)=>void;let sent=false;
+  const native={generation:0,capabilities:()=>new Promise<any>(resolve=>{finish=resolve;})};
+  const work=terminalModule.terminalRequestInit(native,'/api/stripe/terminal/attempts',{method:'POST'}).then(()=>{sent=true;});
+  native.generation++;finish({supported:true,providerMode:'test'});
+  await assert.rejects(work,/session/i);assert.equal(sent,false);
+});
 
 test('unavailable native builds explain manual fallback', async () => {
   const terminal = new NativeTerminal(async () => null);

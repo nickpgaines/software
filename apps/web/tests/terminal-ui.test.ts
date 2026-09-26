@@ -10,12 +10,12 @@ const ready = {attempt_id:'attempt_1',operation:'payment',status:'ready',stripe_
 async function harness(t: any, options: any = {}) {
   const {default: Flow} = await loadCustomerModule('components/payments/TerminalFlow.tsx');
   const renderer = hookRenderer();
-  const calls: {url:string; body:any}[]=[];
+  const calls: {url:string; body:any; headers:Headers}[]=[];
   let current = {...ready,...options.attempt};
   let created = false;
-  const native = {generation:0, capabilities: async()=>({supported:options.supported ?? true,preparationSupported:options.preparationSupported ?? true}), education:async()=>{}, cancel:async(_id?:string)=>{}, collect:async(_operation?:string)=>{if(options.collect) return options.collect();}};
+  const native = {generation:0, capabilities: async()=>({supported:options.supported ?? true,preparationSupported:options.preparationSupported ?? true,providerMode:options.providerMode}), education:async()=>{}, cancel:async(_id?:string)=>{}, collect:async(_operation?:string)=>{if(options.collect) return options.collect();}};
   t.mock.method(globalThis,'fetch',async (url:any,init:any)=> {
-    calls.push({url:String(url),body:init?.body ? JSON.parse(init.body):null});
+    calls.push({url:String(url),headers:new Headers(init?.headers),body:init?.body ? JSON.parse(init.body):null});
     if(url==='/api/stripe/terminal/capabilities') {
       if(options.rolloutError) throw Error('unavailable');
       return Response.json(options.rolloutResponse ?? {enabled:options.enabled ?? true});
@@ -41,6 +41,20 @@ test('unsupported plugin disables tap with useful manual card fallback',async t=
   const h=await harness(t,{supported:false});
   assert.equal(h.button('Tap to Pay').props.disabled,true);
   assert.match(text(h.tree),/manual|Pay with card/i);
+});
+test('test app checkout carries test mode before intent creation and reconciliation',async t=>{
+  const h=await harness(t,{providerMode:'test'});
+  await h.button('Tap to Pay').props.onClick();h.render();
+  assert.equal(h.completed.length,1);
+  assert.ok(h.calls.filter(c=>c.url.startsWith('/api/stripe/terminal/')).every(c=>c.headers.get('X-Forge-Terminal-Mode')==='test'));
+});
+test('checkout unmounted during mode lookup never sends its pending create',async t=>{
+  const h=await harness(t,{providerMode:'test'});
+  let finish!:()=>void;
+  h.native.capabilities=()=>new Promise(resolve=>{finish=()=>resolve({supported:true,preparationSupported:true,providerMode:'test'});});
+  const action=h.button('Tap to Pay').props.onClick();await settle();
+  h.renderer.dispose();finish?.();await action;
+  assert.equal(h.calls.filter(c=>c.url==='/api/stripe/terminal/attempts').length,0);
 });
 test('old native checkout requires an update without creating attempts or blocking manual card payments',async t=>{
   const h=await harness(t,{preparationSupported:false});

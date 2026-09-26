@@ -15,7 +15,7 @@ async function harness(t:any, options:any={}) {
     education:async()=>{},cancel:async(...args:any[])=>{cancellations.push(args);},
     prepare:async(args:any,lease:any,callback:any)=>{preparations.push(args);progress=callback;await options.prepare?.();}};
   t.mock.method(globalThis,'fetch',async(url:any,init:any)=>{
-    requests.push({url,method:init?.method,body:init?.body?JSON.parse(init.body):null});
+    requests.push({url,method:init?.method,headers:new Headers(init?.headers),body:init?.body?JSON.parse(init.body):null});
     if(url==='/api/stripe/terminal/capabilities') return Response.json({enabled:options.enabled??true});
     if(url==='/api/settings/company') return Response.json({id:1,name:'Acme',stripe_account_id:account});
     if(url==='/api/stripe/terminal/location') {
@@ -44,6 +44,13 @@ test('setup checks readiness without preparing a device or creating a location o
   assert.equal(h.requests.some(r=>r.method==='POST'),false);
   assert.equal(h.preparations.length,0);
   assert.ok(h.button('How to tap'));
+});
+test('test app setup sends test mode on every Terminal request including location writes',async t=>{
+  const h=await harness(t,{capabilities:{providerMode:'test'},data:{selected_location_id:null,locations:[location]}});
+  elements(h.tree,(el:any)=>el.type==='select')[0].props.onChange({target:{value:'tml_1'}});h.render();
+  await h.button('Save location').props.onClick();h.render();
+  assert.ok(h.requests.some(r=>r.method==='POST'));
+  assert.ok(h.requests.filter(r=>r.url.startsWith('/api/stripe/terminal/')).every(r=>r.headers.get('X-Forge-Terminal-Mode')==='test'));
 });
 test('staff Payments tab exposes preparation without exposing Connect management',async t=>{
   const {default:Tabs}=await loadCustomerModule('components/SettingsTabs.tsx');
