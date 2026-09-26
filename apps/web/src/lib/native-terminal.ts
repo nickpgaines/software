@@ -5,8 +5,12 @@ export type TerminalCollection = {
   locationId: string;
   saveCard: boolean;
 };
+export type TerminalPreparation = Omit<TerminalCollection,'clientSecret'|'saveCard'> & {representativeConfirmed:boolean};
+export type TerminalProgress = {operationId:string;phase:string;message:string;progress?:number};
 export interface ForgeTerminalPlugin {
-  getCapabilities(): Promise<{ supported: boolean; reason?: string }>;
+  getCapabilities(): Promise<{ supported: boolean; reason?: string; preparationSupported?:boolean }>;
+  prepareDevice?(args:TerminalPreparation):Promise<void>;
+  addListener?(event:'terminalProgress',callback:(event:TerminalProgress)=>void):Promise<{remove():Promise<void>}>;
   showEducation(): Promise<void>;
   collectPayment(args: TerminalCollection): Promise<{ intentId: string }>;
   collectSetup(args: Omit<TerminalCollection, 'saveCard'>): Promise<{ intentId: string }>;
@@ -23,6 +27,8 @@ export async function nativeTerminalPlugin(): Promise<ForgeTerminalPlugin | null
   // Never resolve a Promise with the Capacitor proxy: its synthetic `then` hangs.
   return {
     getCapabilities: () => plugin.getCapabilities(),
+    prepareDevice: args => plugin.prepareDevice!(args),
+    addListener: (event,callback) => plugin.addListener!(event,callback),
     showEducation: () => plugin.showEducation(),
     collectPayment: args => plugin.collectPayment(args),
     collectSetup: args => plugin.collectSetup(args),
@@ -51,8 +57,27 @@ export class NativeTerminal {
   }
   async education() { await (await this.load())?.showEducation(); }
   async collect(operation: 'payment' | 'setup', args: TerminalCollection, lease?: symbol) {
+    return this.run(args.operationId,lease,async plugin => {
+      const { saveCard, ...setup } = args;
+      return operation === 'payment' ? plugin.collectPayment(args) : plugin.collectSetup(setup);
+    });
+  }
+  async prepare(args:TerminalPreparation,lease?:symbol,progress?:(event:TerminalProgress)=>void) {
+    return this.run(args.operationId,lease,async (plugin,current) => {
+      if (!(await plugin.getCapabilities()).preparationSupported || !plugin.prepareDevice) throw new Error('Update Forge to set up Tap to Pay on this iPhone.');
+      if (!current()) throw new Error('Terminal session changed.');
+      const subscription = progress && plugin.addListener ? await plugin.addListener('terminalProgress',event => {
+        if (current() && event.operationId === args.operationId) progress(event);
+      }) : undefined;
+      try {
+        if (!current()) throw new Error('Terminal session changed.');
+        await plugin.prepareDevice(args);
+      } finally { await subscription?.remove().catch(()=>{}); }
+    });
+  }
+  private async run<T>(operationId:string,lease:symbol|undefined,work:(plugin:ForgeTerminalPlugin,current:()=>boolean)=>Promise<T>) {
     if (this.owner || this.resetting || this.unavailable) throw new Error('A Terminal operation is already active. Check its status first.');
-    this.owner = args.operationId;
+    this.owner = operationId;
     this.lease = lease;
     const generation = this.generation;
     const collection = ++this.collection;
@@ -61,12 +86,11 @@ export class NativeTerminal {
       if (generation !== this.generation || collection !== this.collection) throw new Error('Terminal session changed.');
       if (!plugin || !(await plugin.getCapabilities()).supported) throw new Error(fallback);
       if (generation !== this.generation || collection !== this.collection) throw new Error('Terminal session changed.');
-      const { saveCard, ...setup } = args;
-      const result = operation === 'payment' ? await plugin.collectPayment(args) : await plugin.collectSetup(setup);
+      const result = await work(plugin,()=>generation === this.generation && collection === this.collection);
       if (generation !== this.generation || collection !== this.collection) throw new Error('Terminal session changed.');
       return result;
     } finally {
-      if (generation === this.generation && collection === this.collection && this.owner === args.operationId) this.owner = null;
+      if (generation === this.generation && collection === this.collection && this.owner === operationId) this.owner = null;
     }
   }
   private async boundedCleanup(method: 'cancel' | 'reset') {

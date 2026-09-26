@@ -4,6 +4,67 @@ import XCTest
 #endif
 
 final class ForgeTerminalTests: XCTestCase {
+    func testProgressCannotEscapeItsReaderLease() {
+        var messages: [String] = []
+        let events = TerminalReaderEventLease(unexpectedDisconnect: {}, progress: { messages.append($0.message) })
+        events.report(.init(phase: "preparing", message: "current", progress: nil))
+        events.invalidate()
+        events.report(.init(phase: "preparing", message: "stale", progress: nil))
+        XCTAssertEqual(messages, ["current"])
+    }
+    func testDevicePreparationNeverCollectsOrConfirmsAnIntent() {
+        let sdk = ReaderDouble()
+        let session = SessionDouble()
+        session.tosAcceptancePermitted = true
+        let coordinator = ForgeTerminalCoordinator(provider: sdk, session: session)
+        var result: Result<Void, TerminalFailure>?
+        coordinator.prepareDevice(operationID: "prepare-1", account: "acct_1", locationID: "tml_1", representativeConfirmed: true) { result = $0 }
+        XCTAssertNotNil(result)
+        XCTAssertNil(result?.failure)
+        XCTAssertEqual(session.purpose, .preparation(representativeConfirmed: true))
+        XCTAssertEqual(sdk.termsPermissions, [true])
+        XCTAssertEqual(sdk.calls, ["cleanup", "connect", "educate", "cleanup"])
+    }
+
+    func testOrdinaryCollectionNeverPermitsMerchantTerms() {
+        let sdk = ReaderDouble()
+        let session = SessionDouble()
+        session.tosAcceptancePermitted = true // Even a stale grant must not leak into checkout.
+        let coordinator = ForgeTerminalCoordinator(provider: sdk, session: session)
+        coordinator.collect(request) { _ in }
+        XCTAssertEqual(session.purpose, .collection)
+        XCTAssertEqual(sdk.termsPermissions, [false])
+    }
+
+    func testPreparationCancelIgnoresLateConnection() {
+        let sdk = ReaderDouble()
+        sdk.holdConnect = true
+        let coordinator = ForgeTerminalCoordinator(provider: sdk, session: SessionDouble())
+        var result: Result<Void, TerminalFailure>?
+        coordinator.prepareDevice(operationID: "prepare-1", account: "acct_1", locationID: "tml_1", representativeConfirmed: false) { result = $0 }
+        let late = sdk.connected
+        coordinator.cancel(reason: .sessionChanged)
+        XCTAssertEqual(result?.failure?.code, "session_changed")
+        sdk.holdConnect = false
+        coordinator.collect(request) { _ in }
+        let count = sdk.calls.count
+        late?(.success(()))
+        XCTAssertEqual(sdk.calls.count, count)
+        XCTAssertEqual(sdk.termsPermissions, [false, false])
+    }
+
+    func testTermsGrantIsBoundToExplicitPreparationPurpose() throws {
+        let yes = Data(#"{"secret":"token","stripe_account":"acct_1","tos_acceptance_permitted":true}"#.utf8)
+        let no = Data(#"{"secret":"token","stripe_account":"acct_1","tos_acceptance_permitted":false}"#.utf8)
+        XCTAssertThrowsError(try TerminalSessionPolicy.authorization(from: yes, account: "acct_1", purpose: .collection))
+        XCTAssertThrowsError(try TerminalSessionPolicy.authorization(from: yes, account: "acct_1", purpose: .preparation(representativeConfirmed: false)))
+        XCTAssertThrowsError(try TerminalSessionPolicy.authorization(from: no, account: "acct_1", purpose: .preparation(representativeConfirmed: true)))
+        XCTAssertTrue(try TerminalSessionPolicy.authorization(from: yes, account: "acct_1", purpose: .preparation(representativeConfirmed: true)).permitsTerms)
+        let req = TerminalSessionPolicy.request(session: "cookie", account: "acct_1", purpose: .preparation(representativeConfirmed: true))
+        XCTAssertEqual(req.value(forHTTPHeaderField: "X-Forge-Terminal-Purpose"), "preparation")
+        XCTAssertEqual(req.value(forHTTPHeaderField: "X-Forge-Authorized-Representative"), "true")
+    }
+
     func testLateCompletionCannotFinishReplacementOperation() throws {
         let state = TerminalOperationState()
         let old = try state.begin(id: "a", account: "acct_1")
@@ -224,23 +285,35 @@ private extension Result where Failure == TerminalFailure {
 
 private final class SessionDouble: TerminalSessionProviding {
     var failure: TerminalFailure?
-    func begin(account: String, completion: @escaping (Result<Void, TerminalFailure>) -> Void) { completion(.success(())) }
+    var tosAcceptancePermitted = false
+    var purpose: TerminalSessionPurpose?
+    func begin(account: String, purpose: TerminalSessionPurpose, completion: @escaping (Result<Void, TerminalFailure>) -> Void) {
+        self.purpose = purpose
+        completion(.success(()))
+    }
     func validate(completion: @escaping (Result<Void, TerminalFailure>) -> Void) { completion(failure.map(Result.failure) ?? .success(())) }
     func end() {}
 }
 
 private final class ReaderDouble: TerminalReaderProviding {
+    var onProgress: ((TerminalReaderProgress) -> Void)?
     var calls: [String] = []
     var collected: ((Result<Void, TerminalFailure>) -> Void)?
     var confirmed: ((Result<String, TerminalFailure>) -> Void)?
     var finishCleanup: ((Result<Void, TerminalFailure>) -> Void)?
     var holdCleanup = false
     var cleanupError: TerminalFailure?
+    var termsPermissions: [Bool] = []
+    var holdConnect = false
+    var connected: ((Result<Void, TerminalFailure>) -> Void)?
     func cleanUp(completion: @escaping (Result<Void, TerminalFailure>) -> Void) {
         calls.append("cleanup")
         if holdCleanup { finishCleanup = completion } else { completion(cleanupError.map(Result.failure) ?? .success(())) }
     }
-    func connect(location: String, completion: @escaping (Result<Void, TerminalFailure>) -> Void) { calls.append("connect"); completion(.success(())) }
+    func connect(location: String, permitsTerms: Bool, completion: @escaping (Result<Void, TerminalFailure>) -> Void) {
+        calls.append("connect"); termsPermissions.append(permitsTerms)
+        if holdConnect { connected = completion } else { completion(.success(())) }
+    }
     func educate(completion: @escaping (Result<Void, TerminalFailure>) -> Void) { calls.append("educate"); completion(.success(())) }
     func retrieve(_ request: TerminalRequest, completion: @escaping (Result<Void, TerminalFailure>) -> Void) { calls.append("retrieve"); completion(.success(())) }
     func collect(_ request: TerminalRequest, completion: @escaping (Result<Void, TerminalFailure>) -> Void) { calls.append("collect"); collected = completion }

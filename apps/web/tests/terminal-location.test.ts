@@ -131,3 +131,40 @@ test('legacy checkout returns the validated location even if another request cha
   const result = await modules.stripe.getOrCreateTerminalLocation(1,'acct_1');
   assert.equal(result.stripe_terminal_location_id,'tml_test');
 });
+
+const tokenRequest = (purpose?:string, representative?:string) => {
+  const req=request({});
+  req.headers.set('X-Forge-Stripe-Account','acct_1');
+  if(purpose) req.headers.set('X-Forge-Terminal-Purpose',purpose);
+  if(representative) req.headers.set('X-Forge-Authorized-Representative',representative);
+  return req;
+};
+test('collection and ordinary preparation tokens never authorize merchant terms', async () => {
+  for(const purpose of [undefined,'collection','preparation']) {
+    const response=await modules.token.POST(tokenRequest(purpose));
+    assert.equal(response.status,200);
+    assert.equal((await response.json()).tos_acceptance_permitted,false);
+  }
+});
+test('terms require both explicit representative confirmation and current setup permission on every token', async () => {
+  const response=await modules.token.POST(tokenRequest('preparation','true'));
+  assert.equal(response.status,200);
+  assert.equal((await response.json()).tos_acceptance_permitted,true);
+  database.sqlite.exec("UPDATE staff SET permission_level='technician' WHERE id=7");
+  assert.equal((await modules.token.POST(tokenRequest('preparation','true'))).status,403);
+  assert.equal(provider.tokens.length,1);
+});
+test('forged or malformed setup purpose cannot authorize merchant terms', async () => {
+  for(const [purpose,confirmation] of [['collection','true'],['other','true'],['preparation','yes']]) {
+    assert.equal((await modules.token.POST(tokenRequest(purpose,confirmation))).status,400);
+  }
+  assert.equal(provider.tokens.length,0);
+});
+test('rollout-off and changed-account setup tokens are denied', async () => {
+  process.env.TAP_TO_PAY_ENABLED='false';
+  assert.equal((await modules.token.POST(tokenRequest('preparation','true'))).status,409);
+  process.env.TAP_TO_PAY_ENABLED='true';
+  database.sqlite.exec("UPDATE company SET stripe_account_id='acct_2' WHERE id=1");
+  assert.equal((await modules.token.POST(tokenRequest('preparation','true'))).status,409);
+  assert.equal(provider.tokens.length,0);
+});

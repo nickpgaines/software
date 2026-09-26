@@ -8,6 +8,40 @@ test('unavailable native builds explain manual fallback', async () => {
   assert.match((await terminal.capabilities()).reason!, /manual|card/i);
 });
 
+test('device preparation shares the exclusive reader lock and ignores progress after reset', async () => {
+  let finish!:()=>void;
+  let listener!:(event:any)=>void;
+  let removed=0;
+  const progress:string[]=[];
+  const terminal = new NativeTerminal(async()=>({
+    getCapabilities:async()=>({supported:true,preparationSupported:true}),
+    prepareDevice:async()=>new Promise<void>(resolve=>{finish=resolve;}),
+    addListener:async(_name,callback)=>{listener=callback;return{remove:async()=>{removed++;}};},
+    collectPayment:async()=>({intentId:'pi'}),collectSetup:async()=>({intentId:'seti'}),
+    reset:async()=>{},cancel:async()=>{},showEducation:async()=>{},
+  }));
+  const args={operationId:'prepare',stripeAccount:'acct_1',locationId:'tml_1',representativeConfirmed:true};
+  const pending=terminal.prepare(args,Symbol('setup'),event=>progress.push(event.message));
+  await new Promise(resolve=>setImmediate(resolve));
+  await assert.rejects(terminal.collect('payment',{...args,saveCard:false,clientSecret:'secret'}),/already/);
+  listener({operationId:'other',phase:'preparing',message:'wrong'});
+  listener({operationId:'prepare',phase:'preparing',message:'current'});
+  await terminal.reset();
+  listener({operationId:'prepare',phase:'preparing',message:'late'});
+  finish(); await assert.rejects(pending,/session/);
+  assert.deepEqual(progress,['current']);assert.equal(removed,1);
+});
+
+test('old native builds cannot start preparation but retain collection capability',async()=>{
+  const terminal=new NativeTerminal(async()=>({
+    getCapabilities:async()=>({supported:true}),
+    collectPayment:async()=>({intentId:'pi'}),collectSetup:async()=>({intentId:'seti'}),
+    reset:async()=>{},cancel:async()=>{},showEducation:async()=>{},
+  }));
+  await assert.rejects(terminal.prepare({operationId:'prepare',stripeAccount:'acct_1',locationId:'tml_1',representativeConfirmed:false}),/update/i);
+  assert.equal((await terminal.collect('payment',{operationId:'pay',stripeAccount:'acct_1',locationId:'tml_1',clientSecret:'secret',saveCard:false})).intentId,'pi');
+});
+
 test('one collection runs and reset invalidates late native success synchronously', async () => {
   let finish!: (value: {intentId: string}) => void;
   let collections = 0;

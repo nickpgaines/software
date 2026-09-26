@@ -27,20 +27,28 @@ enum TerminalSessionPolicy {
         return matches[0].value
     }
 
-    static func request(session: String, account: String) -> URLRequest {
+    static func request(session: String, account: String, purpose: TerminalSessionPurpose = .collection) -> URLRequest {
         var request = URLRequest(url: endpoint, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
         request.httpMethod = "POST"
         request.httpShouldHandleCookies = false
         request.setValue(origin, forHTTPHeaderField: "Origin")
         request.setValue(account, forHTTPHeaderField: "X-Forge-Stripe-Account")
         request.setValue("crm_session=\(session)", forHTTPHeaderField: "Cookie")
+        request.setValue(purpose == .collection ? "collection" : "preparation", forHTTPHeaderField: "X-Forge-Terminal-Purpose")
+        if purpose.requestsTerms { request.setValue("true", forHTTPHeaderField: "X-Forge-Authorized-Representative") }
         return request
     }
 
     static func token(from data: Data, account: String) throws -> String {
-        struct Response: Decodable { let secret: String; let stripe_account: String }
+        try authorization(from: data, account: account, purpose: .collection).secret
+    }
+
+    static func authorization(from data: Data, account: String, purpose: TerminalSessionPurpose) throws -> (secret: String, permitsTerms: Bool) {
+        struct Response: Decodable { let secret: String; let stripe_account: String; let tos_acceptance_permitted: Bool? }
         let response = try JSONDecoder().decode(Response.self, from: data)
         guard response.stripe_account == account, !response.secret.isEmpty else { throw TerminalFailure.sessionChanged }
-        return response.secret
+        let permitsTerms = response.tos_acceptance_permitted == true
+        guard permitsTerms == purpose.requestsTerms else { throw TerminalFailure.sessionChanged }
+        return (response.secret, permitsTerms)
     }
 }

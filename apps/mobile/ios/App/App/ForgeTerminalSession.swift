@@ -5,25 +5,27 @@ import Foundation
 final class ForgeTerminalSession: TerminalSessionProviding {
     typealias Snapshot = (@escaping (URL?, [HTTPCookie]) -> Void) -> Void
     typealias Transport = (URLRequest, @escaping (Data?, URLResponse?, Error?) -> Void) -> Void
-    private struct Context: Equatable { let id: UUID; let account: String; let cookie: String }
+    private struct Context: Equatable { let id: UUID; let account: String; let cookie: String; let purpose: TerminalSessionPurpose }
     private let snapshot: Snapshot
     private let transport: Transport
     private var context: Context?
     private var generation = UUID()
+    private(set) var tosAcceptancePermitted = false
 
     init(snapshot: @escaping Snapshot, transport: @escaping Transport) {
         self.snapshot = snapshot
         self.transport = transport
     }
 
-    func begin(account: String, completion: @escaping (Result<Void, TerminalFailure>) -> Void) {
+    func begin(account: String, purpose: TerminalSessionPurpose = .collection, completion: @escaping (Result<Void, TerminalFailure>) -> Void) {
+        tosAcceptancePermitted = false
         let generation = self.generation
         snapshot { [self] url, cookies in
             guard self.generation == generation, TerminalSessionPolicy.isTrusted(url),
                   let cookie = try? TerminalSessionPolicy.sessionCookie(from: cookies) else {
                 completion(.failure(.sessionChanged)); return
             }
-            context = Context(id: UUID(), account: account, cookie: cookie)
+            context = Context(id: UUID(), account: account, cookie: cookie, purpose: purpose)
             validate(completion: completion)
         }
     }
@@ -50,7 +52,7 @@ final class ForgeTerminalSession: TerminalSessionProviding {
                   (try? TerminalSessionPolicy.sessionCookie(from: cookies)) == expected.cookie else {
                 completion(.failure(.sessionChanged)); return
             }
-            transport(TerminalSessionPolicy.request(session: expected.cookie, account: expected.account)) { [self] data, response, error in
+            transport(TerminalSessionPolicy.request(session: expected.cookie, account: expected.account, purpose: expected.purpose)) { [self] data, response, error in
                 // Transport callback must arrive on main; production URLSession wrapper ensures this.
                 guard context == expected else { completion(.failure(.sessionChanged)); return }
                 guard error == nil, let http = response as? HTTPURLResponse,
@@ -58,7 +60,7 @@ final class ForgeTerminalSession: TerminalSessionProviding {
                     let status = (response as? HTTPURLResponse)?.statusCode
                     completion(.failure(status == 401 || status == 403 || status == 409 ? .sessionChanged : .terminalError)); return
                 }
-                guard let token = try? TerminalSessionPolicy.token(from: data, account: expected.account) else {
+                guard let authorization = try? TerminalSessionPolicy.authorization(from: data, account: expected.account, purpose: expected.purpose) else {
                     completion(.failure(.sessionChanged)); return
                 }
                 snapshot { [self] url, cookies in
@@ -66,13 +68,14 @@ final class ForgeTerminalSession: TerminalSessionProviding {
                           (try? TerminalSessionPolicy.sessionCookie(from: cookies)) == expected.cookie else {
                         completion(.failure(.sessionChanged)); return
                     }
-                    completion(.success(token))
+                    tosAcceptancePermitted = authorization.permitsTerms
+                    completion(.success(authorization.secret))
                 }
             }
         }
     }
 
-    func end() { context = nil; generation = UUID() }
+    func end() { context = nil; tosAcceptancePermitted = false; generation = UUID() }
 }
 
 final class TerminalHTTPSClient: NSObject, URLSessionTaskDelegate {

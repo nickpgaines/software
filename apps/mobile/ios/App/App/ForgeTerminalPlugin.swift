@@ -7,7 +7,7 @@ import WebKit
 public final class ForgeTerminalPlugin: CAPPlugin, CAPBridgedPlugin, WKHTTPCookieStoreObserver {
     public let identifier = "ForgeTerminalPlugin"
     public let jsName = "ForgeTerminal"
-    public let pluginMethods: [CAPPluginMethod] = ["getCapabilities", "showEducation", "collectPayment", "collectSetup", "cancel", "reset"].map {
+    public let pluginMethods: [CAPPluginMethod] = ["getCapabilities", "prepareDevice", "showEducation", "collectPayment", "collectSetup", "cancel", "reset"].map {
         CAPPluginMethod(name: $0, returnType: CAPPluginReturnPromise)
     }
     private let runtime = ForgeTerminalRuntime.shared
@@ -17,6 +17,11 @@ public final class ForgeTerminalPlugin: CAPPlugin, CAPBridgedPlugin, WKHTTPCooki
     public override func load() {
         DispatchQueue.main.async { [self] in
             runtime.attach(webView: bridge?.webView, presenter: bridge?.viewController)
+            runtime.coordinator.onProgress = { [weak self] id, update in
+                var data: [String: Any] = ["operationId": id, "phase": update.phase, "message": update.message]
+                if let progress = update.progress { data["progress"] = progress }
+                self?.notifyListeners("terminalProgress", data: data)
+            }
             navigation = bridge?.webView?.observe(\.url, options: [.new]) { [weak self] _, _ in
                 DispatchQueue.main.async { self?.runtime.checkSession() }
             }
@@ -39,7 +44,17 @@ public final class ForgeTerminalPlugin: CAPPlugin, CAPBridgedPlugin, WKHTTPCooki
     @objc func getCapabilities(_ call: CAPPluginCall) {
         onMain(call) {
             if let reason = Self.unavailableReason { call.resolve(["supported": false, "reason": reason]) }
-            else { call.resolve(["supported": true]) }
+            else { call.resolve(["supported": true, "preparationSupported": true]) }
+        }
+    }
+
+    @objc func prepareDevice(_ call: CAPPluginCall) {
+        onMain(call) { [self] in
+            if let reason = Self.unavailableReason { reject(call, .unsupported(reason)); return }
+            guard let id = call.getString("operationId"), let account = call.getString("stripeAccount"),
+                  let location = call.getString("locationId") else { reject(call, .terminalError); return }
+            runtime.coordinator.prepareDevice(operationID: id, account: account, locationID: location,
+                representativeConfirmed: call.getBool("representativeConfirmed") ?? false) { [self] in resolve(call, $0) }
         }
     }
 
@@ -111,7 +126,16 @@ private final class ForgeTerminalRuntime {
         http.send(request, completion: completion)
     })
     private lazy var reader: ForgeTerminalReader = {
-        let reader = ForgeTerminalReader(session: session, presenter: { [weak self] in self?.presenter })
+        let reader = ForgeTerminalReader(session: session, presenter: { [weak self] in
+            var controller = self?.presenter
+            while let current = controller {
+                if let presented = current.presentedViewController, !presented.isBeingDismissed { controller = presented }
+                else if let navigation = current as? UINavigationController, let visible = navigation.visibleViewController { controller = visible }
+                else if let tabs = current as? UITabBarController, let selected = tabs.selectedViewController { controller = selected }
+                else { break }
+            }
+            return controller
+        })
         reader.onDisconnect = { [weak self] in self?.coordinator.cancel(reason: .terminalError) }
         return reader
     }()
