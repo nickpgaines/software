@@ -1,6 +1,7 @@
 "use client";
 
 import {createContext,useCallback,useContext,useEffect,useMemo,useState,type ReactNode} from 'react';
+import {Capacitor} from '@capacitor/core';
 import {nativeTerminal} from '@/lib/native-terminal';
 import {TerminalReadinessController,type TerminalReadiness} from '@/lib/terminal-readiness';
 import {TerminalPresentationGate} from '@/lib/terminal-presentation';
@@ -33,20 +34,27 @@ export function TerminalLifecycleProvider({children,identityKey}:{children:React
   },[presentation]);
   useEffect(()=>{
     let active=true;
+    const nativeApp=Capacitor.isNativePlatform();
     const unsubscribe=controller.subscribe(()=>{if(active)setState(controller.state);});
-    const refresh=()=>{if(document.visibilityState!=='hidden')void controller.resume();};
-    const visibility=()=>{if(document.visibilityState==='hidden')void controller.suspend();else refresh();};
+    const refresh=()=>{if(active&&document.visibilityState!=='hidden')void controller.resume();};
+    // A native payment sheet can hide the WebView or resign activity without
+    // backgrounding Forge. Only the native pause event is authoritative there.
+    const visibility=()=>{if(document.visibilityState==='hidden'){if(!nativeApp)void controller.suspend();}else refresh();};
     const readiness=nativeTerminal.observeReadiness(value=>{if(active)controller.revoke(value);}).catch(()=>undefined);
-    const app=import('@capacitor/app').then(({App})=>App.addListener('appStateChange',({isActive})=>{
-      if(!active)return;
-      if(isActive)refresh();else void controller.suspend();
-    })).catch(()=>undefined);
+    const app=nativeApp?import('@capacitor/app').then(({App})=>{
+      if(!active)return [];
+      return [
+        App.addListener('pause',()=>{if(active)void controller.suspend();}).catch(()=>undefined),
+        App.addListener('appStateChange',({isActive})=>{if(isActive)refresh();}).catch(()=>undefined),
+      ];
+    }).catch(()=>[]):Promise.resolve([]);
     window.addEventListener('focus',refresh);
     document.addEventListener('visibilitychange',visibility);
     refresh();
     return()=>{
       active=false;unsubscribe();window.removeEventListener('focus',refresh);document.removeEventListener('visibilitychange',visibility);
-      void readiness.then(handle=>handle?.remove());void app.then(handle=>handle?.remove());
+      void readiness.then(handle=>handle?.remove());
+      void app.then(handles=>handles.forEach(handle=>{void handle.then(value=>value?.remove()).catch(()=>{});}));
       void controller.suspend();
     };
   },[controller]);

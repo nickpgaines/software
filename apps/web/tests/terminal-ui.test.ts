@@ -64,6 +64,17 @@ test('unconfirmed results stop the spinner and retain recovery controls', async 
   assert.equal(h.blocked.at(-1),true);
 });
 
+test('reader cancellation remains visible after reconciliation and retains the original attempt lock',async t=>{
+  const h=await harness(t,{collect:async()=>{throw Object.assign(Error('Tap to Pay was canceled.'),{code:'canceled'});},reconciled:{status:'ready',payment_recorded:false}});
+  await h.button('Tap to Pay').props.onClick();h.render();
+  const status=elements(h.tree,(el:any)=>el.props.role==='status')[0];
+  assert.match(text(status),/Tap to Pay was canceled/);
+  assert.match(text(status),/Check status before taking another payment/);
+  assert.ok(h.button('Continue original attempt'));assert.ok(h.button('Cancel attempt'));
+  assert.equal(h.blocked.at(-1),true);assert.equal(h.completed.length,0);
+  assert.equal(h.calls.filter(call=>call.url==='/api/stripe/terminal/attempts').length,1);
+});
+
 async function harness(t: any, options: any = {}) {
   const {default: Flow} = await loadCustomerModule('components/payments/TerminalFlow.tsx');
   const renderer = hookRenderer();

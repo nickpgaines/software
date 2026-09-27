@@ -222,6 +222,9 @@ export default function TerminalFlow({ operation, jobId, customerId, initialAtte
       try {
         await recover(token);
         if (valid(token) && !current.current && !uncertainCreations.has(recoveryKey())) setMessage(failure);
+        // Preserve the reader's actionable error without claiming the provider
+        // attempt is canceled or allowing a replacement payment prematurely.
+        else if (valid(token) && current.current?.status === 'ready' && !current.current.payment_declined) setMessage(`${failure} ${recoveryMessage}`);
       } catch { if (valid(token)) { block(true); setMessage(recoveryMessage); } }
     } finally { if (valid(token)) { lock.current = false; setBusy(false); } }
   }
