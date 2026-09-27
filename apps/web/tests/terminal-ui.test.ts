@@ -9,6 +9,55 @@ import {loadCustomerModule, hookRenderer, elements, text} from './helpers/custom
 const settle = async () => { for(let i=0;i<12;i++) await new Promise(resolve=>setImmediate(resolve)); };
 const ready = {attempt_id:'attempt_1',operation:'payment',status:'ready',stripe_account:'acct_1',terminal_location_id:'tml_1',client_secret:'ephemeral',amount_cents:5000,customer_id:2,job_id:1,save_card:false,payment_recorded:false,card_saved:false,warning:null};
 
+for (const operation of ['payment', 'setup']) {
+  test(`${operation} shows continuous progress until server verification, never premature success`, async t => {
+    let finishNative!: () => void;
+    let finishVerification!: (response: Response) => void;
+    const h = await harness(t, {
+      attempt: operation === 'setup' ? {operation, job_id:null, save_card:true} : {},
+      props: operation === 'setup' ? {operation, customerId:2, jobId:undefined} : {operation},
+      collect: () => new Promise<void>(resolve => { finishNative = resolve; }),
+      reconcile: () => new Promise<Response>(resolve => { finishVerification = resolve; }),
+    });
+    if (operation === 'setup') {
+      elements(h.tree,(el:any)=>el.type?.displayName==='Input'&&el.props.type==='text')[0].props.onChange({target:{value:'Test Customer'}});
+      elements(h.tree,(el:any)=>el.type?.displayName==='Checkbox')[0].props.onCheckedChange(true);
+      h.render();
+    }
+    const work = h.button(operation === 'payment' ? 'Tap to Pay' : 'Save card with a tap').props.onClick();
+    await settle(); h.render();
+    const status = () => elements(h.tree,(el:any)=>el.props.role==='status')[0];
+    const spinner = () => elements(status(),(el:any)=>el.props.className?.includes('animate-spin'));
+    assert.match(text(status()), operation === 'payment' ? /Processing payment/ : /Saving card/);
+    assert.equal(spinner().length,1);
+    assert.equal(h.completed.length,0);
+    assert.equal(h.blocked.at(-1),true);
+    finishNative(); await settle(); h.render();
+    assert.match(text(status()),operation === 'payment' ? /Confirming payment/ : /Confirming saved card/);
+    assert.equal(spinner().length,1);
+    assert.equal(h.completed.length,0,'native completion is not server-verified success');
+    assert.equal(h.button('Check status').props.disabled,true);
+    assert.equal(h.blocked.at(-1),true);
+    finishVerification(Response.json({...ready,operation,job_id:operation==='setup'?null:1,status:'succeeded',payment_recorded:operation==='payment',card_saved:operation==='setup'}));
+    await work; h.render();
+    assert.equal(spinner().length,0);
+    assert.match(text(status()),operation === 'payment' ? /Payment confirmed/ : /Card saved/);
+    assert.equal(h.completed.length,1);
+    assert.equal(h.calls.filter(c=>c.url==='/api/stripe/terminal/attempts').length,1);
+  });
+}
+
+test('unconfirmed results stop the spinner and retain recovery controls', async t => {
+  const h=await harness(t,{collect:async()=>{throw Error('Connection lost');},reconciled:{status:'processing'}});
+  await h.button('Tap to Pay').props.onClick(); h.render();
+  const status=elements(h.tree,(el:any)=>el.props.role==='status')[0];
+  assert.match(text(status),/outcome is not confirmed/i);
+  assert.equal(elements(status,(el:any)=>el.props.className?.includes('animate-spin')).length,0);
+  assert.equal(h.button('Check status').props.disabled,false);
+  assert.equal(h.completed.length,0);
+  assert.equal(h.blocked.at(-1),true);
+});
+
 async function harness(t: any, options: any = {}) {
   const {default: Flow} = await loadCustomerModule('components/payments/TerminalFlow.tsx');
   const renderer = hookRenderer();
