@@ -2,6 +2,8 @@ import Foundation
 import StripeTerminal
 import UIKit
 import ProximityReader
+import CoreLocation
+import CoreBluetooth
 
 final class ForgeTerminalReader: NSObject, TerminalReaderProviding, ConnectionTokenProvider {
     private let session: ForgeTerminalSession
@@ -17,6 +19,28 @@ final class ForgeTerminalReader: NSObject, TerminalReaderProviding, ConnectionTo
     private var readerDelegate: ForgeTapToPayReaderDelegate?
     var onDisconnect: (() -> Void)?
     var onProgress: ((TerminalReaderProgress) -> Void)?
+
+    var canWarmWithoutPrompt: Bool {
+        // Reading authorization must not request it. Even simulated readers do
+        // not bypass this guard: prepare explicitly on a fresh installation.
+        let location = CLLocationManager().authorizationStatus
+        return (location == .authorizedAlways || location == .authorizedWhenInUse)
+            && CBManager.authorization == .allowedAlways
+            && UIApplication.shared.applicationState == .active
+    }
+
+    private func initialize() {
+        if !initialized { Terminal.initWithTokenProvider(self); initialized = true }
+    }
+
+    func accountLinkStatus(completion: @escaping (TerminalAccountLinkStatus) -> Void) {
+        initialize() // Session must already be pinned before token provider init.
+        pending = true
+        // Direct charges: the connection token scopes the connected account.
+        Terminal.shared.isTapToPayAccountLinked(nil) { [self] linked, error in
+            complete { completion(error == nil ? (linked ? .accepted : .setupRequired) : .unavailable) }
+        }
+    }
 
     init(session: ForgeTerminalSession, presenter: @escaping () -> UIViewController?) {
         self.session = session
@@ -35,11 +59,7 @@ final class ForgeTerminalReader: NSObject, TerminalReaderProviding, ConnectionTo
     }
 
     func connect(location: String, permitsTerms: Bool, completion: @escaping (Result<Void, TerminalFailure>) -> Void) {
-        if !initialized {
-            // Set the operation's session before SDK init: initialization can request a token.
-            Terminal.initWithTokenProvider(self)
-            initialized = true
-        }
+        initialize()
         do {
             let discovery = try TapToPayDiscoveryConfigurationBuilder().setSimulated(Self.simulated).build()
             readerDelegate?.events.invalidate()

@@ -4,6 +4,56 @@ import XCTest
 #endif
 
 final class ForgeTerminalTests: XCTestCase {
+    func testWarmupSkipsUndeterminedPermissionsAndUnknownTerms() {
+        for status in [TerminalAccountLinkStatus.accepted, .setupRequired, .unavailable] {
+            let sdk = ReaderDouble()
+            sdk.linkStatus = status
+            sdk.canWarmWithoutPrompt = status != .accepted
+            let coordinator = ForgeTerminalCoordinator(provider: sdk, session: SessionDouble())
+            var result: Result<TerminalReadinessState, TerminalFailure>?
+            coordinator.warmUp(account: "acct_1", location: "tml_1") { result = $0 }
+            XCTAssertNotNil(result)
+            XCTAssertFalse(sdk.calls.contains("connect"))
+            XCTAssertFalse(sdk.calls.contains("educate"))
+            XCTAssertEqual(coordinator.readiness, .disconnected)
+        }
+    }
+
+    func testWarmupChecksLinkAndNeverPermitsTermsOrCollects() {
+        let sdk = ReaderDouble()
+        let session = SessionDouble()
+        let coordinator = ForgeTerminalCoordinator(provider: sdk, session: session)
+        var result: Result<TerminalReadinessState, TerminalFailure>?
+        coordinator.warmUp(account: "acct_1", location: "tml_1") { result = $0 }
+        XCTAssertEqual(try? result?.get(), .ready)
+        XCTAssertEqual(session.purpose, .warmup)
+        XCTAssertEqual(sdk.termsPermissions, [false])
+        XCTAssertEqual(sdk.calls, ["cleanup", "linked", "connect"])
+        XCTAssertEqual(coordinator.readiness, .ready)
+    }
+
+    func testWarmupDuplicatesJoinAndLateCallbackCannotRestoreReadiness() {
+        let sdk = ReaderDouble()
+        sdk.holdConnect = true
+        let coordinator = ForgeTerminalCoordinator(provider: sdk, session: SessionDouble())
+        var results: [Result<TerminalReadinessState, TerminalFailure>] = []
+        coordinator.warmUp(account: "acct_1", location: "tml_1") { results.append($0) }
+        coordinator.warmUp(account: "acct_1", location: "tml_1") { results.append($0) }
+        XCTAssertEqual(sdk.calls.filter { $0 == "connect" }.count, 1)
+        let late = sdk.connected
+        coordinator.cancel(reason: .sessionChanged)
+        late?(.success(()))
+        XCTAssertEqual(results.count, 2)
+        XCTAssertTrue(results.allSatisfy { $0.failure == .sessionChanged })
+        XCTAssertEqual(coordinator.readiness, .disconnected)
+    }
+
+    func testWarmupTokenCannotRequestTerms() throws {
+        let request = try TerminalSessionPolicy.request(session: "cookie", account: "acct_1", purpose: .warmup)
+        XCTAssertEqual(request.value(forHTTPHeaderField: "X-Forge-Terminal-Purpose"), "warmup")
+        XCTAssertNil(request.value(forHTTPHeaderField: "X-Forge-Authorized-Representative"))
+        XCTAssertThrowsError(try TerminalSessionPolicy.authorization(from: Data(#"{"secret":"token","stripe_account":"acct_1","tos_acceptance_permitted":true}"#.utf8), account: "acct_1", purpose: .warmup))
+    }
     func testDebugSimulationRequiresAnIsolatedHTTPSOrigin() throws {
         let env = ["FORGE_TERMINAL_TEST_ORIGIN": "https://terminal-test.invalid/", "FORGE_TERMINAL_SIMULATED": "1"]
         let config = try XCTUnwrap(TerminalEnvironment.resolve(environment: env, debugBuild: true))
@@ -403,6 +453,9 @@ private final class SessionDouble: TerminalSessionProviding {
 }
 
 private final class ReaderDouble: TerminalReaderProviding {
+    var canWarmWithoutPrompt = true
+    var linkStatus: TerminalAccountLinkStatus = .accepted
+    func accountLinkStatus(completion: @escaping (TerminalAccountLinkStatus) -> Void) { calls.append("linked"); completion(linkStatus) }
     var onProgress: ((TerminalReaderProgress) -> Void)?
     var calls: [String] = []
     var collected: ((Result<Void, TerminalFailure>) -> Void)?

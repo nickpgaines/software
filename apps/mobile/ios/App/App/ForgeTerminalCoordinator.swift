@@ -22,6 +22,7 @@ struct TerminalRequest {
 
 enum TerminalSessionPurpose: Equatable {
     case collection
+    case warmup
     case preparation(representativeConfirmed: Bool)
 
     var requestsTerms: Bool {
@@ -29,6 +30,9 @@ enum TerminalSessionPurpose: Equatable {
         return false
     }
 }
+
+enum TerminalAccountLinkStatus { case accepted, setupRequired, unavailable }
+enum TerminalReadinessState: String { case disconnected, warming, ready, collecting, cleaning }
 
 final class TerminalOperationState {
     struct Lease: Equatable { let generation: UUID; let id: String; let account: String }
@@ -53,6 +57,8 @@ protocol TerminalSessionProviding: AnyObject {
 }
 
 protocol TerminalReaderProviding: AnyObject {
+    var canWarmWithoutPrompt: Bool { get }
+    func accountLinkStatus(completion: @escaping (TerminalAccountLinkStatus) -> Void)
     var onProgress: ((TerminalReaderProgress) -> Void)? { get set }
     // Must drain/cancel outstanding SDK work before disconnecting and clearing.
     // Failure leaves the coordinator locked; another generation may never reuse it.
@@ -65,6 +71,41 @@ protocol TerminalReaderProviding: AnyObject {
 }
 
 final class ForgeTerminalCoordinator {
+    private(set) var readiness: TerminalReadinessState = .disconnected
+    private struct Binding: Equatable { let account: String; let location: String }
+    private var warmBinding: Binding?
+    private var warmWaiters: [(Result<TerminalReadinessState, TerminalFailure>) -> Void] = []
+    func warmUp(account: String, location: String, completion: @escaping (Result<TerminalReadinessState, TerminalFailure>) -> Void) {
+        precondition(Thread.isMainThread)
+        let binding = Binding(account: account, location: location)
+        if readiness == .warming, warmBinding == binding { warmWaiters.append(completion); return }
+        guard !busy else { completion(.failure(.busy)); return }
+        guard account.hasPrefix("acct_"), location.hasPrefix("tml_") else { completion(.failure(.terminalError)); return }
+        guard provider.canWarmWithoutPrompt else {
+            completion(.failure(TerminalFailure(code: "setup_required", message: "Open Payments settings to prepare this iPhone."))); return
+        }
+        warmBinding = binding
+        warmWaiters = [completion]
+        readiness = .warming
+        let stages: [Stage] = [
+            { [session] in session.begin(account: account, purpose: .warmup, completion: $0) },
+            { [provider] done in provider.accountLinkStatus { status in
+                switch status {
+                case .accepted: done(.success(()))
+                case .setupRequired: done(.failure(TerminalFailure(code: "setup_required", message: "An authorized administrator must finish Tap to Pay setup in Payments settings.")))
+                case .unavailable: done(.failure(.terminalError))
+                }
+            } },
+            { [session] in session.validate(completion: $0) },
+            { [provider] in provider.connect(location: location, permitsTerms: false, completion: $0) },
+            { [session] in session.validate(completion: $0) },
+        ]
+        run(id: UUID().uuidString, account: account, stages: stages, confirmsIntent: false, keepWarm: true) { [self] result in
+            let waiters = warmWaiters
+            warmWaiters.removeAll()
+            waiters.forEach { $0(result.map { _ in readiness }) }
+        }
+    }
     var onProgress: ((String, TerminalReaderProgress) -> Void)?
     private let provider: TerminalReaderProviding
     private let session: TerminalSessionProviding
@@ -74,6 +115,7 @@ final class ForgeTerminalCoordinator {
     private var initialCleanup = false
     private var deferredCleanup: ((Result<Void, TerminalFailure>) -> Void)?
     private var confirming = false
+    private var keepWarm = false
     private var completion: ((Result<String, TerminalFailure>) -> Void)?
     private var cleanupWaiters: [(Result<Void, TerminalFailure>) -> Void] = []
 
@@ -128,12 +170,13 @@ final class ForgeTerminalCoordinator {
         run(id: operationID, account: account, stages: stages, confirmsIntent: false) { completion($0.map { _ in () }) }
     }
 
-    private func run(id: String, account: String, stages: [Stage], confirmsIntent: Bool,
+    private func run(id: String, account: String, stages: [Stage], confirmsIntent: Bool, keepWarm: Bool = false,
                      completion: @escaping (Result<String, TerminalFailure>) -> Void) {
         let lease: TerminalOperationState.Lease
         do { lease = try state.begin(id: id, account: account) }
         catch { completion(.failure(.busy)); return }
         busy = true
+        self.keepWarm = keepWarm
         self.completion = completion
         provider.onProgress = { [weak self] update in
             guard let self, self.state.isCurrent(lease) else { return }
@@ -165,7 +208,17 @@ final class ForgeTerminalCoordinator {
     private func advance(_ stages: [Stage], index: Int, lease: TerminalOperationState.Lease, confirmsIntent: Bool) {
         guard state.isCurrent(lease) else { return }
         guard index < stages.count else {
-            guard confirmsIntent else { finish(.success(""), requireCleanupSuccess: true); return }
+            guard confirmsIntent else {
+                if keepWarm {
+                    state.invalidate()
+                    busy = false
+                    readiness = .ready
+                    let callback = completion
+                    completion = nil
+                    callback?(.success(""))
+                } else { finish(.success(""), requireCleanupSuccess: true) }
+                return
+            }
             confirming = true
             provider.confirm { [self] result in
                 guard state.isCurrent(lease) else { return }
@@ -185,6 +238,9 @@ final class ForgeTerminalCoordinator {
     private func finish(_ result: Result<String, TerminalFailure>, cleanupAlreadyFailed: Bool = false, requireCleanupSuccess: Bool = false) {
         guard !cleaning else { return }
         state.invalidate()
+        warmBinding = nil
+        keepWarm = false
+        readiness = .cleaning
         session.end() // immediately revoke pending token requests
         cleaning = true
         busy = true
@@ -193,7 +249,7 @@ final class ForgeTerminalCoordinator {
             completion = nil
             confirming = false
             cleaning = false
-            if case .success = cleanup { busy = false }
+            if case .success = cleanup { busy = false; readiness = .disconnected }
             // A successful provider result still requires server reconciliation;
             // cleanup failure keeps the reader locked but must not hide payment.
             if requireCleanupSuccess, case .success = result, case .failure = cleanup {

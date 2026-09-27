@@ -61,7 +61,7 @@ enum TerminalSessionPolicy {
         request.setValue(configuration.providerMode, forHTTPHeaderField: "X-Forge-Terminal-Mode")
         request.setValue(account, forHTTPHeaderField: "X-Forge-Stripe-Account")
         request.setValue("crm_session=\(session)", forHTTPHeaderField: "Cookie")
-        request.setValue(purpose == .collection ? "collection" : "preparation", forHTTPHeaderField: "X-Forge-Terminal-Purpose")
+        request.setValue(purpose == .warmup ? "warmup" : purpose == .collection ? "collection" : "preparation", forHTTPHeaderField: "X-Forge-Terminal-Purpose")
         if purpose.requestsTerms { request.setValue("true", forHTTPHeaderField: "X-Forge-Authorized-Representative") }
         return request
     }
