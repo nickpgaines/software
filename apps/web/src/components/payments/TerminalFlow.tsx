@@ -6,7 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { nativeTerminal, terminalRequestInit, type NativeTerminal } from '@/lib/native-terminal';
-import {useTerminalReadiness} from './TerminalLifecycle';
+import {useTerminalReadiness,useTerminalPresentationBlock} from './TerminalLifecycle';
 import { TERMINAL_CONSENT_VERSION, terminalConsentText } from '@/lib/terminal-consent';
 import type { TerminalAttemptView } from '@/lib/terminal-attempts';
 
@@ -27,6 +27,7 @@ const uncertainCreations = new Set<string>();
 
 export default function TerminalFlow({ operation, jobId, customerId, initialAttemptId, onSuccess, onBlockedChange, native = nativeTerminal }: Props) {
   const readiness=useTerminalReadiness();
+  useTerminalPresentationBlock();
   const formId = useId();
   const [capability, setCapability] = useState<{supported: boolean; reason?: string; preparationSupported?:boolean} | null>(null);
   const [rollout, setRollout] = useState<boolean | null>(null);

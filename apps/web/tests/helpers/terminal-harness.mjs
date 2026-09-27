@@ -14,6 +14,8 @@ export const requireCompanyId = async () => session.companyId;
 export const provider = { intents: [], charges: [], chargeCalls: [], chargeHasMore:false, creates: [], subscriptionCreates: [], updates: [], tokens: [], cancelCalls: [], failCreate: false, createError: null, beforeCreateError: null, failLookup: false, failSave: false, visible: true, event: null, wallet: null, locationInvalid: false };
 export const locations = { data: null, calls: [], creates: [], hasMore: false, fail: false, afterRetrieve: null };
 export const accounts={charges:true,country:'US',fail:false,afterRetrieve:null};
+export let approvedTerminalAnnouncement=null;
+export const setAnnouncementContent=value=>{approvedTerminalAnnouncement=value;};
 export default class Stripe {
   constructor() {
     const resource = operation => ({
@@ -140,6 +142,7 @@ export function fixture() {
   Object.assign(provider, { failCreate: false, createError: null, beforeCreateError: null, failLookup: false, failSave: false, visible: true, event: null, wallet: null, locationInvalid: false });
   Object.assign(locations, {data:null,calls:[],creates:[],hasMore:false,fail:false,afterRetrieve:null});
   Object.assign(accounts,{charges:true,country:'US',fail:false,afterRetrieve:null});
+  approvedTerminalAnnouncement=null;
   session = { companyId: 1, staffId: 7, identity: 'staff:7' };
   process.env.STRIPE_SECRET_KEY = 'sk_test_fake';
   process.env.TAP_TO_PAY_MODE = 'test';
@@ -150,6 +153,7 @@ export function fixture() {
 export async function loadTerminal({ receipts = false, notices = false } = {}) {
   const hooks = registerHooks({ resolve(specifier, context, next) {
     if (specifier === 'server-only') return { url: 'data:text/javascript,export {}', shortCircuit: true };
+    if(specifier==='@/lib/terminal-announcement-content')return{url:import.meta.url,shortCircuit:true};
     if (specifier === 'stripe' || /^(?:@\/lib\/|\.\/)(?:db|auth|payment-receipts|activity|payment-job-completion)(?:\.ts)?$/.test(specifier)) return { url: import.meta.url, shortCircuit: true };
     if (specifier === 'next/server') return next('next/server.js', context);
     if (specifier.startsWith('@/')) return next(new URL(`../../src/${specifier.slice(2)}.ts`, import.meta.url).href, context);
@@ -172,6 +176,9 @@ export async function loadTerminal({ receipts = false, notices = false } = {}) {
       declinedDocuments:await import('../../src/lib/terminal-declined-receipts.ts'),
       eligibility:await import('../../src/lib/terminal-eligibility.ts'),
       onboardingReturn:await import('../../src/app/api/stripe/connect/return/route.ts'),
+      announcements:await import('../../src/lib/terminal-announcements.ts'),
+      announcementRoute:await import('../../src/app/api/stripe/terminal/announcement/route.ts'),
+      announcementAck:await import('../../src/app/api/stripe/terminal/announcement/ack/route.ts'),
       route: await import('../../src/app/api/stripe/terminal/attempts/route.ts'),
       reconcile: await import('../../src/app/api/stripe/terminal/attempts/[id]/reconcile/route.ts'),
       cancel: await import('../../src/app/api/stripe/terminal/attempts/[id]/cancel/route.ts'),

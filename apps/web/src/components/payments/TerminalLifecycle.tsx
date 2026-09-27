@@ -1,16 +1,36 @@
 "use client";
 
-import {createContext,useContext,useEffect,useMemo,useState,type ReactNode} from 'react';
+import {createContext,useCallback,useContext,useEffect,useMemo,useState,type ReactNode} from 'react';
 import {nativeTerminal} from '@/lib/native-terminal';
 import {TerminalReadinessController,type TerminalReadiness} from '@/lib/terminal-readiness';
+import {TerminalPresentationGate} from '@/lib/terminal-presentation';
 
-type ReadinessContext={state:TerminalReadiness;refresh:()=>Promise<void>};
+type ReadinessContext={state:TerminalReadiness;refresh:()=>Promise<void>;presentationBlocked:boolean;acquirePresentationBlock:()=>()=>void};
 const Context=createContext<ReadinessContext|null>(null);
 export const useTerminalReadiness=()=>useContext(Context);
+export function useTerminalPresentationBlock(blocked=true) {
+  const acquire=useTerminalReadiness()?.acquirePresentationBlock;
+  useEffect(()=>blocked?acquire?.():undefined,[blocked,acquire]);
+}
 
 export function TerminalLifecycleProvider({children,identityKey}:{children:ReactNode;identityKey:string}) {
   const controller=useMemo(()=>new TerminalReadinessController(),[identityKey]);
   const [state,setState]=useState<TerminalReadiness>('checking');
+  const presentation=useMemo(()=>new TerminalPresentationGate(),[identityKey]);
+  const [presentationBlocked,setPresentationBlocked]=useState(false);
+  const acquirePresentationBlock=useCallback(()=>presentation.acquire(),[presentation]);
+  useEffect(()=>{
+    const unsubscribe=presentation.subscribe(()=>setPresentationBlocked(presentation.blocked));
+    // Preserve existing fixed wrappers. Conservatively defer for legacy modals
+    // in addition to explicit payment/recovery ownership below.
+    const selector='[role="dialog"],[aria-modal="true"],.fixed.inset-0';
+    let release:(()=>void)|undefined;
+    const inspect=()=>{const blocked=!!document.querySelector(selector);if(blocked&&!release)release=presentation.acquire();else if(!blocked&&release){release();release=undefined;}};
+    const relevant=(node:Node)=>node instanceof Element&&(node.matches(selector)||!!node.querySelector(selector));
+    const observer=new MutationObserver(records=>{if(records.some(record=>[...Array.from(record.addedNodes),...Array.from(record.removedNodes)].some(relevant)))inspect();});
+    observer.observe(document.body,{subtree:true,childList:true});inspect();setPresentationBlocked(presentation.blocked);
+    return()=>{observer.disconnect();unsubscribe();release?.();};
+  },[presentation]);
   useEffect(()=>{
     let active=true;
     const unsubscribe=controller.subscribe(()=>{if(active)setState(controller.state);});
@@ -30,5 +50,5 @@ export function TerminalLifecycleProvider({children,identityKey}:{children:React
       void controller.suspend();
     };
   },[controller]);
-  return <Context.Provider value={{state,refresh:()=>controller.refresh()}}>{children}</Context.Provider>;
+  return <Context.Provider value={{state,refresh:()=>controller.refresh(),presentationBlocked:presentationBlocked||nativeTerminal.active,acquirePresentationBlock}}>{children}</Context.Provider>;
 }

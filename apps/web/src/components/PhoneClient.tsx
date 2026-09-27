@@ -1,4 +1,5 @@
 "use client";
+import {useTerminalPresentationBlock} from '@/components/payments/TerminalLifecycle';
 
 import {
   createContext,
@@ -67,6 +68,7 @@ export default function PhoneClientProvider({
   const [configured, setConfigured] = useState(false);
   const [configError, setConfigError] = useState<string | null>(null);
   const [state, setState] = useState<CallState>({ kind: "idle" });
+  useTerminalPresentationBlock(state.kind!=='idle');
   const [muted, setMuted] = useState(false);
 
   const deviceRef = useRef<TwilioDevice | null>(null);

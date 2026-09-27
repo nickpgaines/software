@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import TerminalFlow from "@/components/payments/TerminalFlow";
 import TerminalReceipts from "@/components/payments/TerminalReceipts";
 import TerminalDeclinedReceipts from '@/components/payments/TerminalDeclinedReceipts';
+import {useTerminalPresentationBlock} from '@/components/payments/TerminalLifecycle';
 
 type CheckoutChoice = "tap_to_pay" | "card" | "other";
 
@@ -30,6 +31,7 @@ export default function CheckoutModal({
   onPaid: () => void;
   initialAttemptId?:string;
 }) {
+  useTerminalPresentationBlock();
   const [blocked, setBlocked] = useState(true);
   const blockedRef = useRef(true);
   const [paid, setPaid] = useState(false);

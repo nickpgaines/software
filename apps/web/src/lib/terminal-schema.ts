@@ -53,6 +53,18 @@ export async function installTerminalSchema(db: Db): Promise<void> {
   await addColumn(db,'terminal_attempts','initiating_staff_id','INTEGER');
   await addColumn(db,'terminal_attempts','outcome_revision','INTEGER NOT NULL DEFAULT 0');
   await db.exec(`
+    CREATE TABLE IF NOT EXISTS terminal_announcement_acknowledgments (
+      company_id INTEGER NOT NULL REFERENCES company(id) ON DELETE CASCADE,
+      staff_id INTEGER NOT NULL,version TEXT NOT NULL,
+      acknowledged_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      PRIMARY KEY(company_id,staff_id,version)
+    );
+    CREATE TRIGGER IF NOT EXISTS terminal_announcement_staff_deleted AFTER DELETE ON staff BEGIN
+      DELETE FROM terminal_announcement_acknowledgments WHERE company_id=OLD.company_id AND staff_id=OLD.id;
+    END;
+    CREATE TRIGGER IF NOT EXISTS terminal_announcement_staff_moved AFTER UPDATE OF company_id ON staff WHEN OLD.company_id IS NOT NEW.company_id BEGIN
+      DELETE FROM terminal_announcement_acknowledgments WHERE company_id=OLD.company_id AND staff_id=OLD.id;
+    END;
     CREATE INDEX IF NOT EXISTS terminal_attempt_actor ON terminal_attempts(company_id,initiating_staff_id,updated_at);
     CREATE TABLE IF NOT EXISTS terminal_outcomes (
       id TEXT PRIMARY KEY,
