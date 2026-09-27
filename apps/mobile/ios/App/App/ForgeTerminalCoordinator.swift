@@ -103,7 +103,7 @@ final class ForgeTerminalCoordinator {
         let stages: [Stage] = [
             { [session] in session.begin(account: request.account, purpose: .collection, completion: $0) },
             { [provider] in provider.connect(location: request.locationID, permitsTerms: false, completion: $0) },
-            { [provider] in provider.educate(completion: $0) },
+            // Education belongs to device preparation and the on-demand How to Tap action.
             { [provider] in provider.retrieve(request, completion: $0) },
             { [session] in session.validate(completion: $0) },
             { [provider] in provider.collect(request, completion: $0) },

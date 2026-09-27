@@ -28,6 +28,11 @@ export default class Stripe {
         return intent;
       },
       retrieve: async id => { if (provider.failLookup) throw new Error('provider unavailable'); const intent = provider.intents.find(i => i.id === id); if (!intent) throw new Error('missing intent'); return intent; },
+      update: async (id, body, options) => {
+        provider.updates.push({id,body,options});
+        if (provider.failLookup) throw new Error('provider unavailable');
+        return Object.assign(provider.intents.find(i => i.id === id), body);
+      },
       search: async () => { if (provider.failLookup) throw new Error('provider unavailable'); return { data: provider.visible ? provider.intents : [], has_more: false }; },
       list: async () => { if (provider.failLookup) throw new Error('provider unavailable'); return { data: provider.visible ? provider.intents : [], has_more: false }; },
       cancel: async id => { provider.cancelCalls.push(id); const intent = provider.intents.find(i => i.id === id); intent.status = 'canceled'; return intent; },
@@ -124,7 +129,7 @@ export function fixture() {
   process.env.STRIPE_WEBHOOK_SECRET = 'whsec_fake';
   return db;
 }
-export async function loadTerminal() {
+export async function loadTerminal({ receipts = false } = {}) {
   const hooks = registerHooks({ resolve(specifier, context, next) {
     if (specifier === 'server-only') return { url: 'data:text/javascript,export {}', shortCircuit: true };
     if (specifier === 'stripe' || /^(?:@\/lib\/|\.\/)(?:db|auth|payment-receipts|activity|payment-job-completion)(?:\.ts)?$/.test(specifier)) return { url: import.meta.url, shortCircuit: true };
@@ -135,6 +140,10 @@ export async function loadTerminal() {
   } });
   try {
     return {
+      ...(receipts ? {
+        receipts: await import('../../src/app/api/stripe/terminal/receipts/route.ts'),
+        receipt: await import('../../src/app/api/stripe/terminal/attempts/[id]/receipt/route.ts'),
+      } : {}),
       service: await import('../../src/lib/terminal-attempts.ts'),
       schema: await import('../../src/lib/terminal-schema.ts'),
       route: await import('../../src/app/api/stripe/terminal/attempts/route.ts'),

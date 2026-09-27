@@ -13,6 +13,7 @@ export type TerminalAttemptView = {
   attempt_id: string; operation: 'payment' | 'setup'; status: 'ready' | 'processing' | 'succeeded' | 'canceled' | 'needs_reconciliation';
   stripe_account: string; terminal_location_id: string; client_secret?: string; amount_cents: number;
   customer_id: number; job_id: number | null; save_card: boolean; payment_recorded: boolean; card_saved: boolean; warning: string | null;
+  payment_declined?: boolean;
 };
 type Attempt = Omit<TerminalAttemptView, 'stripe_account' | 'save_card' | 'payment_recorded' | 'card_saved'> & {
   company_id: number; stripe_account_id: string; stripe_customer_id: string | null; provider_intent_id: string | null;
@@ -53,7 +54,9 @@ async function load(companyId: number, id: string) {
 }
 function validate(a: Attempt, intent: Intent) {
   const m = intent.metadata || {};
-  if (m.terminal_attempt_id !== a.attempt_id || m.company_id !== String(a.company_id) || m.customer_id !== String(a.customer_id) || m.job_id !== String(a.job_id ?? '') || m.operation !== a.operation ||
+  // Stripe omits empty metadata on SetupIntents, which have no job. A
+  // nonempty job binding (including every payment) must still match exactly.
+  if (m.terminal_attempt_id !== a.attempt_id || m.company_id !== String(a.company_id) || m.customer_id !== String(a.customer_id) || (m.job_id ?? '') !== String(a.job_id ?? '') || m.operation !== a.operation ||
       m.consent_version !== (a.consent_version || '') || m.consent_name !== (a.consent_name || '') || (a.stripe_customer_id && idOf(intent.customer) !== a.stripe_customer_id)) throw new TerminalError('Provider intent does not match this attempt', 409);
   if (a.operation === 'payment' && (!('amount' in intent) || intent.amount !== a.amount_cents || intent.currency !== 'usd' || (intent.status === 'succeeded' && intent.amount_received !== a.amount_cents))) throw new TerminalError('Provider amount does not match this attempt', 409);
 }
@@ -224,7 +227,19 @@ export async function reconcileTerminalAttempt(companyId: number, id: string, ca
     return (await tx.prepare('SELECT * FROM terminal_attempts WHERE attempt_id=?').get<Attempt>(a.attempt_id))!;
   });
   if (saveError && strictSave && !persisted.card_saved) throw saveError;
-  return view(persisted,intent.client_secret);
+  return { ...view(persisted,intent.client_secret),
+    ...(persisted.status === 'ready' && intent.status === 'requires_payment_method' && 'last_payment_error' in intent && intent.last_payment_error?.code === 'card_declined' ? {payment_declined:true} : {}) };
+}
+/** Receipt lookups never reconcile, discover/create intents, record payments or save cards. */
+export async function getTerminalReceiptIntent(companyId: number, id: string) {
+  const a = await load(companyId,id);
+  if (a.operation !== 'payment' || !a.provider_intent_id || a.status !== 'succeeded' || !a.payment_recorded) {
+    throw new TerminalError('A receipt is available only after a payment is confirmed and recorded.',409);
+  }
+  const intent = await getStripe().paymentIntents.retrieve(a.provider_intent_id,{expand:['latest_charge']},{stripeAccount:a.stripe_account_id});
+  if (intent.id !== a.provider_intent_id) throw new TerminalError('Receipt does not match this payment.',409);
+  validate(a,intent);
+  return {attempt_id:a.attempt_id,stripe_account:a.stripe_account_id,intent};
 }
 export async function listTerminalAttempts(companyId: number, target: { job_id?: number; customer_id?: number }) {
   const column = target.job_id !== undefined ? 'job_id' : 'customer_id';

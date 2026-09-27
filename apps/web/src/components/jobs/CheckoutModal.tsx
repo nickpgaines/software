@@ -1,8 +1,10 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { RemoveScroll } from "react-remove-scroll";
 import { Button } from "@/components/ui/button";
 import TerminalFlow from "@/components/payments/TerminalFlow";
+import TerminalReceipts from "@/components/payments/TerminalReceipts";
 
 type CheckoutChoice = "tap_to_pay" | "card" | "other";
 
@@ -28,9 +30,11 @@ export default function CheckoutModal({
   const [blocked, setBlocked] = useState(true);
   const blockedRef = useRef(true);
   const [paid, setPaid] = useState(false);
+  const [receiptAttemptId, setReceiptAttemptId] = useState<string>();
   const dueCents = Math.max(0, jobTotalCents - paidTotalCents);
 
   return (
+    <RemoveScroll forwardProps>
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
       <div className="bg-card rounded-2xl shadow-lg w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-5 py-4 border-b border-line">
@@ -73,7 +77,9 @@ export default function CheckoutModal({
           <div className="space-y-3">
             <TerminalFlow operation="payment" jobId={jobId}
               onBlockedChange={value => { blockedRef.current = value; setBlocked(value); }}
-              onSuccess={() => { blockedRef.current = true; setPaid(true); onPaid(); }} />
+              onSuccess={attempt => { blockedRef.current = true; setPaid(true); setReceiptAttemptId(attempt.attempt_id); onPaid(); }} />
+
+            <TerminalReceipts jobId={jobId} latestAttemptId={receiptAttemptId} />
 
             <Divider label="or" />
 
@@ -103,6 +109,7 @@ export default function CheckoutModal({
         </div>
       </div>
     </div>
+    </RemoveScroll>
   );
 }
 

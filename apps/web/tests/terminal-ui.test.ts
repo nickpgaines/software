@@ -2,11 +2,61 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {NativeTerminal} from '../src/lib/native-terminal.ts';
+import {RemoveScroll} from 'react-remove-scroll';
 // @ts-ignore existing UI harness executes the production hooks and JSX handlers.
 import {loadCustomerModule, hookRenderer, elements, text} from './helpers/customer-ui.mjs';
 
 const settle = async () => { for(let i=0;i<12;i++) await new Promise(resolve=>setImmediate(resolve)); };
 const ready = {attempt_id:'attempt_1',operation:'payment',status:'ready',stripe_account:'acct_1',terminal_location_id:'tml_1',client_secret:'ephemeral',amount_cents:5000,customer_id:2,job_id:1,save_card:false,payment_recorded:false,card_saved:false,warning:null};
+
+for (const operation of ['payment', 'setup']) {
+  test(`${operation} shows continuous progress until server verification, never premature success`, async t => {
+    let finishNative!: () => void;
+    let finishVerification!: (response: Response) => void;
+    const h = await harness(t, {
+      attempt: operation === 'setup' ? {operation, job_id:null, save_card:true} : {},
+      props: operation === 'setup' ? {operation, customerId:2, jobId:undefined} : {operation},
+      collect: () => new Promise<void>(resolve => { finishNative = resolve; }),
+      reconcile: () => new Promise<Response>(resolve => { finishVerification = resolve; }),
+    });
+    if (operation === 'setup') {
+      elements(h.tree,(el:any)=>el.type?.displayName==='Input'&&el.props.type==='text')[0].props.onChange({target:{value:'Test Customer'}});
+      elements(h.tree,(el:any)=>el.type?.displayName==='Checkbox')[0].props.onCheckedChange(true);
+      h.render();
+    }
+    const work = h.button(operation === 'payment' ? 'Tap to Pay' : 'Save card with a tap').props.onClick();
+    await settle(); h.render();
+    const status = () => elements(h.tree,(el:any)=>el.props.role==='status')[0];
+    const spinner = () => elements(status(),(el:any)=>el.props.className?.includes('animate-spin'));
+    assert.match(text(status()), operation === 'payment' ? /Processing payment/ : /Saving card/);
+    assert.equal(spinner().length,1);
+    assert.equal(h.completed.length,0);
+    assert.equal(h.blocked.at(-1),true);
+    finishNative(); await settle(); h.render();
+    assert.match(text(status()),operation === 'payment' ? /Confirming payment/ : /Confirming saved card/);
+    assert.equal(spinner().length,1);
+    assert.equal(h.completed.length,0,'native completion is not server-verified success');
+    assert.equal(h.button('Check status').props.disabled,true);
+    assert.equal(h.blocked.at(-1),true);
+    finishVerification(Response.json({...ready,operation,job_id:operation==='setup'?null:1,status:'succeeded',payment_recorded:operation==='payment',card_saved:operation==='setup'}));
+    await work; h.render();
+    assert.equal(spinner().length,0);
+    assert.match(text(status()),operation === 'payment' ? /Payment confirmed/ : /Card saved/);
+    assert.equal(h.completed.length,1);
+    assert.equal(h.calls.filter(c=>c.url==='/api/stripe/terminal/attempts').length,1);
+  });
+}
+
+test('unconfirmed results stop the spinner and retain recovery controls', async t => {
+  const h=await harness(t,{collect:async()=>{throw Error('Connection lost');},reconciled:{status:'processing'}});
+  await h.button('Tap to Pay').props.onClick(); h.render();
+  const status=elements(h.tree,(el:any)=>el.props.role==='status')[0];
+  assert.match(text(status),/outcome is not confirmed/i);
+  assert.equal(elements(status,(el:any)=>el.props.className?.includes('animate-spin')).length,0);
+  assert.equal(h.button('Check status').props.disabled,false);
+  assert.equal(h.completed.length,0);
+  assert.equal(h.blocked.at(-1),true);
+});
 
 async function harness(t: any, options: any = {}) {
   const {default: Flow} = await loadCustomerModule('components/payments/TerminalFlow.tsx');
@@ -42,6 +92,11 @@ test('unsupported plugin disables tap with useful manual card fallback',async t=
   const h=await harness(t,{supported:false});
   assert.equal(h.button('Tap to Pay').props.disabled,true);
   assert.match(text(h.tree),/manual|Pay with card/i);
+});
+test('verified decline explains retry or cancellation while retaining original attempt controls',async t=>{
+  const h=await harness(t,{list:[{...ready,payment_declined:true}],reconciled:{status:'ready',payment_declined:true}});
+  assert.match(text(h.tree),/declined/i);assert.ok(h.button('Continue original attempt'));assert.ok(h.button('Cancel attempt'));
+  assert.equal(h.blocked.at(-1),true);assert.equal(h.completed.length,0);
 });
 test('test app checkout carries test mode before intent creation and reconciliation',async t=>{
   const h=await harness(t,{providerMode:'test'});
@@ -291,6 +346,22 @@ test('cancel race reconciles successful payment instead of enabling a second pay
   assert.equal(h.completed.length,1);
   assert.match(text(h.tree),/Payment confirmed/);
   assert.equal(h.button('Tap to Pay on iPhone'),undefined);
+});
+
+test('checkout isolates scrolling without changing its panel or explicit dismissal',async t=>{
+  const {default:Checkout}=await loadCustomerModule('components/jobs/CheckoutModal.tsx');
+  const renderer=hookRenderer();t.after(()=>renderer.dispose());
+  let closed=0;
+  const tree=renderer.render(Checkout,{jobId:1,jobTotalCents:5000,paidTotalCents:0,onClose(){closed++;},onChoose(){},onPaid(){}});
+  const lock=elements(tree,(el:any)=>el.type===RemoveScroll)[0];
+  assert.ok(lock,'checkout must isolate wheel/touch scrolling from the background');
+  assert.notEqual(lock.props.enabled,false);
+  assert.notEqual(lock.props.noIsolation,true);
+  assert.equal(lock.props.forwardProps,true,'retain the existing modal wrapper');
+  assert.ok(elements(lock,(el:any)=>el.props.className?.includes('overflow-y-auto')).length);
+  assert.equal(closed,0);
+  elements(lock,(el:any)=>el.props['aria-label']==='Close')[0].props.onClick();
+  assert.equal(closed,1);
 });
 
 test('checkout blocks manual switches synchronously and refreshes only on verified Terminal success',async t=>{
