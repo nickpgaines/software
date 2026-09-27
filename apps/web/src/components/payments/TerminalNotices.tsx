@@ -12,8 +12,9 @@ export default function TerminalNotices({identityKey,native=nativeTerminal}:{ide
   const life=useRef({active:false,generation:native.generation,sequence:0});
   const request=useRef<AbortController|null>(null);
   const valid=(token:typeof life.current)=>token===life.current&&token.active&&token.generation===native.generation;
+  const visible=()=>document.visibilityState!=='hidden';
   async function refresh() {
-    if(document.visibilityState==='hidden')return;
+    if(!visible())return;
     const token=life.current;if(!valid(token))return;
     const sequence=++token.sequence;request.current?.abort();
     const controller=new AbortController();request.current=controller;
@@ -22,7 +23,7 @@ export default function TerminalNotices({identityKey,native=nativeTerminal}:{ide
       const response=await fetch('/api/stripe/terminal/notices',{cache:'no-store',signal:controller.signal});
       if(!response.ok)throw Error('unavailable');
       const data=await response.json();
-      if(valid(token)&&sequence===token.sequence&&document.visibilityState!=='hidden')setRows(data.notices);
+      if(valid(token)&&sequence===token.sequence&&visible())setRows(data.notices);
     } catch {
       if(valid(token)&&sequence===token.sequence&&!controller.signal.aborted)setError('Payment updates are temporarily unavailable. Open the original job to check payment status.');
     } finally {if(valid(token)&&sequence===token.sequence)setLoading(false);}

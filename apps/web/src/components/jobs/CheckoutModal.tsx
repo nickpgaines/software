@@ -5,6 +5,7 @@ import { RemoveScroll } from "react-remove-scroll";
 import { Button } from "@/components/ui/button";
 import TerminalFlow from "@/components/payments/TerminalFlow";
 import TerminalReceipts from "@/components/payments/TerminalReceipts";
+import TerminalDeclinedReceipts from '@/components/payments/TerminalDeclinedReceipts';
 
 type CheckoutChoice = "tap_to_pay" | "card" | "other";
 
@@ -82,6 +83,7 @@ export default function CheckoutModal({
               onSuccess={attempt => { blockedRef.current = true; setPaid(true); setReceiptAttemptId(attempt.attempt_id); onPaid(); }} />
 
             <TerminalReceipts jobId={jobId} latestAttemptId={receiptAttemptId} />
+            <TerminalDeclinedReceipts jobId={jobId} />
 
             <Divider label="or" />
 

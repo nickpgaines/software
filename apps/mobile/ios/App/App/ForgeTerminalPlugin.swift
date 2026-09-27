@@ -8,7 +8,7 @@ import OSLog
 public final class ForgeTerminalPlugin: CAPPlugin, CAPBridgedPlugin, WKHTTPCookieStoreObserver {
     public let identifier = "ForgeTerminalPlugin"
     public let jsName = "ForgeTerminal"
-    public let pluginMethods: [CAPPluginMethod] = ["getCapabilities", "warmUp", "prepareDevice", "showEducation", "collectPayment", "collectSetup", "cancel", "reset"].map {
+    public let pluginMethods: [CAPPluginMethod] = ["getCapabilities", "shareDeclinedDocument", "warmUp", "prepareDevice", "showEducation", "collectPayment", "collectSetup", "cancel", "reset"].map {
         CAPPluginMethod(name: $0, returnType: CAPPluginReturnPromise)
     }
     private let runtime = ForgeTerminalRuntime.shared
@@ -49,8 +49,8 @@ public final class ForgeTerminalPlugin: CAPPlugin, CAPBridgedPlugin, WKHTTPCooki
     @objc func getCapabilities(_ call: CAPPluginCall) {
         onMain(call) {
             guard let mode = TerminalSessionPolicy.configuration?.providerMode else { call.reject("Invalid Terminal environment", "session_changed"); return }
-            if let reason = Self.unavailableReason { call.resolve(["supported": false, "reason": reason, "providerMode": mode]) }
-            else { call.resolve(["supported": true, "preparationSupported": true, "warmupSupported": true, "readiness": self.runtime.coordinator.readiness.rawValue, "providerMode": mode]) }
+            if let reason = Self.unavailableReason { call.resolve(["supported": false, "reason": reason, "providerMode": mode, "declinedDocumentSharingSupported": true]) }
+            else { call.resolve(["supported": true, "preparationSupported": true, "warmupSupported": true, "declinedDocumentSharingSupported": true, "readiness": self.runtime.coordinator.readiness.rawValue, "providerMode": mode]) }
         }
     }
 
@@ -84,8 +84,19 @@ public final class ForgeTerminalPlugin: CAPPlugin, CAPBridgedPlugin, WKHTTPCooki
 
     @objc func collectPayment(_ call: CAPPluginCall) { collect(call, kind: .payment(saveCard: call.getBool("saveCard") ?? false)) }
     @objc func collectSetup(_ call: CAPPluginCall) { collect(call, kind: .setup) }
+    @objc func shareDeclinedDocument(_ call: CAPPluginCall) {
+        onMain(call) { [self] in
+            guard let text = call.getString("text") else { reject(call, .terminalError); return }
+            runtime.shareDocument(text: text) { result in
+                switch result {
+                case .success(let shared): call.resolve(["status": shared ? "shared" : "canceled"])
+                case .failure: call.reject("Document sharing is unavailable. No delivery has been confirmed.")
+                }
+            }
+        }
+    }
     @objc func cancel(_ call: CAPPluginCall) { onMain(call) { [self] in runtime.coordinator.cancel(reason: .canceled) { [self] in resolve(call, $0) } } }
-    @objc func reset(_ call: CAPPluginCall) { onMain(call) { [self] in runtime.coordinator.cancel(reason: .sessionChanged) { [self] in resolve(call, $0) } } }
+    @objc func reset(_ call: CAPPluginCall) { onMain(call) { [self] in runtime.cancelDocumentShare(); runtime.coordinator.cancel(reason: .sessionChanged) { [self] in resolve(call, $0) } } }
 
     private func collect(_ call: CAPPluginCall, kind: TerminalRequest.Kind) {
         onMain(call) { [self] in
@@ -135,6 +146,34 @@ private final class ForgeTerminalRuntime {
     private weak var webView: WKWebView?
     private weak var presenter: UIViewController?
     private let http = TerminalHTTPSClient()
+    private let document = ForgeTerminalDocument()
+    private var documentSheet: UIActivityViewController?
+    private var documentCompletion: ((Result<Bool, Error>) -> Void)?
+    func shareDocument(text: String, completion: @escaping (Result<Bool, Error>) -> Void) {
+        guard UIApplication.shared.applicationState == .active, documentSheet == nil,
+              let presenter, presenter.viewIfLoaded?.window != nil, presenter.presentedViewController == nil else {
+            completion(.failure(TerminalFailure.terminalError)); return
+        }
+        do {
+            let url = try document.begin(text: text)
+            let sheet = TerminalDocumentPresentation.controller(url: url, presenter: presenter)
+            documentSheet = sheet; documentCompletion = completion
+            sheet.completionWithItemsHandler = { [weak self, weak sheet] _, completed, _, error in
+                guard let self, self.documentSheet === sheet else { return }
+                self.finishDocumentShare(error.map { .failure($0) } ?? .success(completed))
+            }
+            presenter.present(sheet, animated: true)
+        } catch { document.finish(); completion(.failure(error)) }
+    }
+    private func finishDocumentShare(_ result: Result<Bool, Error>) {
+        let completion = documentCompletion
+        documentCompletion = nil; documentSheet = nil; document.finish()
+        completion?(result)
+    }
+    func cancelDocumentShare() {
+        documentSheet?.dismiss(animated: false)
+        finishDocumentShare(.success(false))
+    }
     private lazy var session = ForgeTerminalSession(snapshot: { [weak self] completion in
         guard let webView = self?.webView else { completion(nil, []); return }
         webView.configuration.websiteDataStore.httpCookieStore.getAllCookies { [weak webView] cookies in completion(webView?.url, cookies) }
@@ -159,12 +198,12 @@ private final class ForgeTerminalRuntime {
     lazy var coordinator = ForgeTerminalCoordinator(provider: reader, session: session)
 
     func attach(webView: WKWebView?, presenter: UIViewController?) {
-        if self.webView != nil && self.webView !== webView { coordinator.cancel(reason: .sessionChanged) }
+        if self.webView != nil && self.webView !== webView { cancelDocumentShare(); coordinator.cancel(reason: .sessionChanged) }
         self.webView = webView
         self.presenter = presenter
     }
     func checkSession() {
-        if !TerminalSessionPolicy.isTrusted(webView?.url) { coordinator.cancel(reason: .sessionChanged); return }
-        session.checkCurrent { [weak self] current in if !current { self?.coordinator.cancel(reason: .sessionChanged) } }
+        if !TerminalSessionPolicy.isTrusted(webView?.url) { cancelDocumentShare(); coordinator.cancel(reason: .sessionChanged); return }
+        session.checkCurrent { [weak self] current in if !current { self?.cancelDocumentShare(); self?.coordinator.cancel(reason: .sessionChanged) } }
     }
 }

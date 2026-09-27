@@ -166,6 +166,7 @@ export async function loadTerminal({ receipts = false, notices = false } = {}) {
       service: await import('../../src/lib/terminal-attempts.ts'),
       schema: await import('../../src/lib/terminal-schema.ts'),
       outcomes: await import('../../src/lib/terminal-outcomes.ts'),
+      declinedDocuments:await import('../../src/lib/terminal-declined-receipts.ts'),
       route: await import('../../src/app/api/stripe/terminal/attempts/route.ts'),
       reconcile: await import('../../src/app/api/stripe/terminal/attempts/[id]/reconcile/route.ts'),
       cancel: await import('../../src/app/api/stripe/terminal/attempts/[id]/cancel/route.ts'),

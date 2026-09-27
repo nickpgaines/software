@@ -4,6 +4,21 @@ import XCTest
 #endif
 
 final class ForgeTerminalTests: XCTestCase {
+    func testDeclinedDocumentUsesPrivateBoundedFileAndOneActiveShare() throws {
+        let document = ForgeTerminalDocument()
+        let text = "Declined transaction — not proof of payment\nUSD 225.00"
+        let url = try document.begin(text: text)
+        XCTAssertEqual(try String(contentsOf: url, encoding: .utf8), text)
+        XCTAssertEqual(url.lastPathComponent, "declined-transaction.txt")
+        XCTAssertThrowsError(try document.begin(text: text))
+        document.finish()
+        XCTAssertFalse(FileManager.default.fileExists(atPath: url.path))
+        XCTAssertNil(document.fileURL)
+        XCTAssertThrowsError(try document.begin(text: String(repeating: "x", count: 20_000)))
+        XCTAssertThrowsError(try document.begin(text: "file:///private/customer-data"))
+        _ = try document.begin(text: text)
+        document.finish()
+    }
     func testReaderTimingReportsOnlyFirstCurrentInputAndNoIdentifiers() {
         let sdk = ReaderDouble()
         let coordinator = ForgeTerminalCoordinator(provider: sdk, session: SessionDouble())

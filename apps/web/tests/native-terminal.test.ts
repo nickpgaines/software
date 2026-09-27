@@ -143,6 +143,15 @@ test('background suspension revokes late collection but keeps authenticated reco
   assert.equal(terminal.generation,generation);
   assert.equal(terminal.active,false);
 });
+test('declined-document sharing is capability-gated and suppresses completion after logout',async()=>{
+  let finish!:(result:{status:string})=>void;
+  const terminal=new NativeTerminal(async()=>({getCapabilities:async()=>({supported:false,declinedDocumentSharingSupported:true}),shareDeclinedDocument:()=>new Promise(resolve=>{finish=resolve;}),reset:async()=>{}} as any));
+  const work=terminal.shareDeclinedDocument({title:'Declined transaction',text:'Declined transaction — not proof of payment\nUSD 225.00'});
+  const rejected=assert.rejects(work,/session/i);
+  await new Promise(resolve=>setImmediate(resolve));await terminal.reset();finish({status:'shared'});await rejected;
+  const old=new NativeTerminal(async()=>({getCapabilities:async()=>({supported:true})} as any));
+  assert.equal(await old.shareDeclinedDocument({title:'Declined transaction',text:'Declined transaction — not proof of payment\nUSD 225.00'}),null);
+});
 
 test('cleanup from an old owner never cancels the replacement collection', async () => {
   let cancelCalls=0;

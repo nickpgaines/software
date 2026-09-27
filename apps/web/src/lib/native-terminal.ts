@@ -7,12 +7,13 @@ export type TerminalCollection = {
 };
 export type TerminalPreparation = Omit<TerminalCollection,'clientSecret'|'saveCard'> & {representativeConfirmed:boolean};
 export type TerminalProgress = {operationId:string;phase:string;message:string;progress?:number};
-type TerminalCapability = {supported:boolean;reason?:string;preparationSupported?:boolean;warmupSupported?:boolean;readiness?:string;providerMode?:'test'|'live';environmentError?:boolean};
+type TerminalCapability = {supported:boolean;reason?:string;preparationSupported?:boolean;warmupSupported?:boolean;declinedDocumentSharingSupported?:boolean;readiness?:string;providerMode?:'test'|'live';environmentError?:boolean};
 type TerminalEvents = {terminalProgress:TerminalProgress;terminalReadiness:{state:string}};
 export interface ForgeTerminalPlugin {
   getCapabilities(): Promise<TerminalCapability>;
   prepareDevice?(args:TerminalPreparation):Promise<void>;
   warmUp?(args:Omit<TerminalCollection,'clientSecret'|'saveCard'>):Promise<{state:string}>;
+  shareDeclinedDocument?(args:{title:string;text:string}):Promise<{status:'shared'|'canceled'}>;
   addListener?<E extends keyof TerminalEvents>(event:E,callback:(event:TerminalEvents[E])=>void):Promise<{remove():Promise<void>}>;
   showEducation(): Promise<void>;
   collectPayment(args: TerminalCollection): Promise<{ intentId: string }>;
@@ -32,6 +33,7 @@ export async function nativeTerminalPlugin(): Promise<ForgeTerminalPlugin | null
     getCapabilities: () => plugin.getCapabilities(),
     prepareDevice: args => plugin.prepareDevice!(args),
     warmUp: args => plugin.warmUp!(args),
+    shareDeclinedDocument:args=>plugin.shareDeclinedDocument!(args),
     addListener: (event,callback) => plugin.addListener!(event,callback),
     showEducation: () => plugin.showEducation(),
     collectPayment: args => plugin.collectPayment(args),
@@ -85,6 +87,19 @@ export class NativeTerminal {
     } catch { return { supported: false, reason: fallback, environmentError:true }; }
   }
   async education() { await this.warming?.catch(()=>{}); await (await this.load())?.showEducation(); }
+  async shareDeclinedDocument(args:{title:string;text:string}):Promise<{status:'shared'|'canceled'}|null> {
+    const generation=this.generation;
+    if(this.active)throw new Error('Finish the current reader operation before sharing a document.');
+    if(!args.text.startsWith('Declined transaction — not proof of payment\n') || new TextEncoder().encode(args.text).length>16384)throw new Error('Document could not be verified.');
+    const plugin=await this.load();
+    const capabilities=plugin?await plugin.getCapabilities():null;
+    if(generation!==this.generation)throw new Error('Terminal session changed.');
+    if(!plugin || !capabilities?.declinedDocumentSharingSupported || !plugin.shareDeclinedDocument)return null;
+    const result=await plugin.shareDeclinedDocument({title:'Declined transaction',text:args.text});
+    if(generation!==this.generation)throw new Error('Terminal session changed.');
+    if(result.status!=='shared'&&result.status!=='canceled')throw new Error('Sharing outcome could not be confirmed.');
+    return result;
+  }
   async collect(operation: 'payment' | 'setup', args: TerminalCollection, lease?: symbol) {
     const generation=this.generation;
     if(this.warming)await this.warming;
