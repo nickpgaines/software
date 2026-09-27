@@ -44,6 +44,7 @@ export function setReceiptError(value) { receiptError = value; }
 export async function getSessionContext() { return { companyId, staffId: 7 }; }
 export async function requireCompanyId() { return companyId; }
 export function isStripeConfigured() { return true; }
+export function getStripeCredentialMode() { return 'test'; }
 export async function getCompany() { return { stripe_account_id: `acct_${companyId}`, stripe_charges_enabled: 1 }; }
 export async function getOrCreateTerminalLocation() { return { stripe_terminal_location_id: "tml_test" }; }
 export function getStripe() {
@@ -112,6 +113,8 @@ export async function loadPaymentRoutes() {
 }
 
 export function paymentDatabase() {
+  process.env.TAP_TO_PAY_MODE = 'test';
+  process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY = 'pk_test_fake';
   const sqlite = new DatabaseSync(":memory:");
   sqlite.exec(`
     CREATE TABLE customers (id INTEGER PRIMARY KEY, name TEXT, first_name TEXT, last_name TEXT, email TEXT, company_id INTEGER);

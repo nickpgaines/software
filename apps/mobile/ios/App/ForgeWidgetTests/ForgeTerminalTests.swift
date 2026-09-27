@@ -4,6 +4,174 @@ import XCTest
 #endif
 
 final class ForgeTerminalTests: XCTestCase {
+    func testDebugSimulationRequiresAnIsolatedHTTPSOrigin() throws {
+        let env = ["FORGE_TERMINAL_TEST_ORIGIN": "https://terminal-test.invalid/", "FORGE_TERMINAL_SIMULATED": "1"]
+        let config = try XCTUnwrap(TerminalEnvironment.resolve(environment: env, debugBuild: true))
+        XCTAssertEqual(config.origin, "https://terminal-test.invalid")
+        XCTAssertEqual(config.providerMode, "test")
+        XCTAssertTrue(config.simulated)
+        XCTAssertNil(TerminalEnvironment.resolve(environment: ["FORGE_TERMINAL_SIMULATED": "1"], debugBuild: true))
+        for origin in ["", "http://terminal-test.invalid", "https://www.forgecrm.app", "https://forgecrm.app", "https://test.forgecrm.app", "https://FORGECRM.APP", "https://forgecrm.app.", "https://user@terminal-test.invalid", "https://terminal-test.invalid:444", "https://terminal-test.invalid/path", "https://terminal-test.invalid?query=1", "https://terminal-test.invalid#fragment"] {
+            XCTAssertNil(TerminalEnvironment.resolve(environment: ["FORGE_TERMINAL_TEST_ORIGIN": origin], debugBuild: true), origin)
+        }
+        let realReader = try XCTUnwrap(TerminalEnvironment.resolve(environment: ["FORGE_TERMINAL_TEST_ORIGIN": "https://terminal-test.invalid"], debugBuild: true))
+        XCTAssertEqual(realReader.providerMode, "test")
+        XCTAssertFalse(realReader.simulated)
+    }
+
+    func testReleaseIgnoresAllTestOverrides() throws {
+        for origin in ["https://terminal-test.invalid", "invalid"] {
+            let config = try XCTUnwrap(TerminalEnvironment.resolve(environment: ["FORGE_TERMINAL_TEST_ORIGIN": origin, "FORGE_TERMINAL_SIMULATED": "1"], debugBuild: false))
+            XCTAssertEqual(config.origin, "https://www.forgecrm.app")
+            XCTAssertEqual(config.providerMode, "live")
+            XCTAssertFalse(config.simulated)
+            XCTAssertFalse(TerminalSessionPolicy.isTrusted(URL(string: "https://terminal-test.invalid"), configuration: config))
+        }
+    }
+
+    func testTestSessionPinsOriginCookiesAndProviderModeBeforeDeliveringToken() throws {
+        let config = try XCTUnwrap(TerminalEnvironment.resolve(environment: ["FORGE_TERMINAL_TEST_ORIGIN": "https://terminal-test.invalid"], debugBuild: true))
+        let cookie = HTTPCookie(properties: [.name: "crm_session", .value: "isolated", .domain: "terminal-test.invalid", .path: "/", .secure: "TRUE"])!
+        XCTAssertFalse(TerminalSessionPolicy.isTrusted(URL(string: "https://www.forgecrm.app"), configuration: config))
+        XCTAssertThrowsError(try TerminalSessionPolicy.sessionCookie(from: [cookie]))
+        XCTAssertEqual(try TerminalSessionPolicy.sessionCookie(from: [cookie], configuration: config), "isolated")
+        for mode in [nil, "live", "test"] as [String?] {
+            var result: Result<Void, TerminalFailure>?
+            let session = ForgeTerminalSession(configuration: config, snapshot: { done in
+                done(URL(string: "https://terminal-test.invalid/jobs"), [cookie])
+            }, transport: { request, done in
+                XCTAssertEqual(request.url?.absoluteString, "https://terminal-test.invalid/api/stripe/terminal/connection-token")
+                XCTAssertEqual(request.value(forHTTPHeaderField: "Origin"), "https://terminal-test.invalid")
+                XCTAssertEqual(request.value(forHTTPHeaderField: "X-Forge-Terminal-Mode"), "test")
+                let modeField = mode.map { ",\"provider_mode\":\"\($0)\"" } ?? ""
+                done(Data("{\"secret\":\"token\",\"stripe_account\":\"acct_1\"\(modeField)}".utf8), HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil), nil)
+            })
+            session.begin(account: "acct_1") { result = $0 }
+            if mode == "test" { XCTAssertNotNil(result); XCTAssertNil(result?.failure) }
+            else { XCTAssertEqual(result?.failure?.code, "session_changed") }
+        }
+    }
+
+    func testInvalidNativeConfigurationNeverCallsTokenTransport() {
+        var transported = false
+        let session = ForgeTerminalSession(configuration: nil, snapshot: { done in done(URL(string: "https://www.forgecrm.app"), []) }, transport: { _, _ in transported = true })
+        var result: Result<Void, TerminalFailure>?
+        session.begin(account: "acct_1") { result = $0 }
+        XCTAssertFalse(transported)
+        XCTAssertEqual(result?.failure?.code, "session_changed")
+    }
+    func testProgressCannotEscapeItsReaderLease() {
+        var messages: [String] = []
+        let events = TerminalReaderEventLease(unexpectedDisconnect: {}, progress: { messages.append($0.message) })
+        events.report(.init(phase: "preparing", message: "current", progress: nil))
+        events.invalidate()
+        events.report(.init(phase: "preparing", message: "stale", progress: nil))
+        XCTAssertEqual(messages, ["current"])
+    }
+    func testDevicePreparationNeverCollectsOrConfirmsAnIntent() {
+        let sdk = ReaderDouble()
+        let session = SessionDouble()
+        session.tosAcceptancePermitted = true
+        let coordinator = ForgeTerminalCoordinator(provider: sdk, session: session)
+        var result: Result<Void, TerminalFailure>?
+        coordinator.prepareDevice(operationID: "prepare-1", account: "acct_1", locationID: "tml_1", representativeConfirmed: true) { result = $0 }
+        XCTAssertNotNil(result)
+        XCTAssertNil(result?.failure)
+        XCTAssertEqual(session.purpose, .preparation(representativeConfirmed: true))
+        XCTAssertEqual(sdk.termsPermissions, [true])
+        XCTAssertEqual(sdk.calls, ["cleanup", "connect", "educate", "cleanup"])
+    }
+
+    func testOrdinaryCollectionNeverPermitsMerchantTerms() {
+        let sdk = ReaderDouble()
+        let session = SessionDouble()
+        session.tosAcceptancePermitted = true // Even a stale grant must not leak into checkout.
+        let coordinator = ForgeTerminalCoordinator(provider: sdk, session: session)
+        coordinator.collect(request) { _ in }
+        XCTAssertEqual(session.purpose, .collection)
+        XCTAssertEqual(sdk.termsPermissions, [false])
+    }
+
+    func testPaymentAndCardSavingDoNotRepeatEducation() {
+        for kind in [TerminalRequest.Kind.payment(saveCard: false), .payment(saveCard: true), .setup] {
+            let sdk = ReaderDouble()
+            let coordinator = ForgeTerminalCoordinator(provider: sdk, session: SessionDouble())
+            let operation = TerminalRequest(operationID: "attempt", clientSecret: "secret", account: "acct_1", locationID: "tml_1", kind: kind)
+            var result: Result<String, TerminalFailure>?
+            coordinator.collect(operation) { result = $0 }
+            XCTAssertEqual(sdk.calls, ["cleanup", "connect", "retrieve", "collect"])
+            sdk.collected?(.success(()))
+            sdk.confirmed?(.success("intent_confirmed"))
+            XCTAssertEqual(try? result?.get(), "intent_confirmed")
+            XCTAssertEqual(sdk.calls, ["cleanup", "connect", "retrieve", "collect", "confirm", "cleanup"])
+        }
+    }
+
+    func testHowToTapRemainsAvailableOnDemand() {
+        let sdk = ReaderDouble()
+        let coordinator = ForgeTerminalCoordinator(provider: sdk, session: SessionDouble())
+        var result: Result<Void, TerminalFailure>?
+        coordinator.showEducation { result = $0 }
+        XCTAssertNotNil(result)
+        XCTAssertNil(result?.failure)
+        XCTAssertEqual(sdk.calls, ["educate", "cleanup"])
+    }
+
+    func testPreparationCleanupFailureCannotReportReady() {
+        let sdk = ReaderDouble()
+        sdk.holdConnect = true
+        let coordinator = ForgeTerminalCoordinator(provider: sdk, session: SessionDouble())
+        var result: Result<Void, TerminalFailure>?
+        coordinator.prepareDevice(operationID: "prepare", account: "acct_1", locationID: "tml_1", representativeConfirmed: false) { result = $0 }
+        sdk.cleanupError = .terminalError
+        sdk.connected?(.success(()))
+        XCTAssertEqual(result?.failure?.code, "cleanup_failed")
+        XCTAssertTrue(result?.failure?.message.contains("Restart Forge") == true)
+        var next: Result<Void, TerminalFailure>?
+        coordinator.prepareDevice(operationID: "next", account: "acct_1", locationID: "tml_1", representativeConfirmed: false) { next = $0 }
+        XCTAssertEqual(next?.failure?.code, "busy")
+    }
+
+    func testConfirmedPaymentSurvivesCleanupFailureForReconciliation() {
+        let sdk = ReaderDouble()
+        let coordinator = ForgeTerminalCoordinator(provider: sdk, session: SessionDouble())
+        var result: Result<String, TerminalFailure>?
+        coordinator.collect(request) { result = $0 }
+        sdk.collected?(.success(()))
+        sdk.cleanupError = .terminalError
+        sdk.confirmed?(.success("pi_confirmed"))
+        XCTAssertEqual(try? result?.get(), "pi_confirmed")
+    }
+
+    func testPreparationCancelIgnoresLateConnection() {
+        let sdk = ReaderDouble()
+        sdk.holdConnect = true
+        let coordinator = ForgeTerminalCoordinator(provider: sdk, session: SessionDouble())
+        var result: Result<Void, TerminalFailure>?
+        coordinator.prepareDevice(operationID: "prepare-1", account: "acct_1", locationID: "tml_1", representativeConfirmed: false) { result = $0 }
+        let late = sdk.connected
+        coordinator.cancel(reason: .sessionChanged)
+        XCTAssertEqual(result?.failure?.code, "session_changed")
+        sdk.holdConnect = false
+        coordinator.collect(request) { _ in }
+        let count = sdk.calls.count
+        late?(.success(()))
+        XCTAssertEqual(sdk.calls.count, count)
+        XCTAssertEqual(sdk.termsPermissions, [false, false])
+    }
+
+    func testTermsGrantIsBoundToExplicitPreparationPurpose() throws {
+        let yes = Data(#"{"secret":"token","stripe_account":"acct_1","tos_acceptance_permitted":true}"#.utf8)
+        let no = Data(#"{"secret":"token","stripe_account":"acct_1","tos_acceptance_permitted":false}"#.utf8)
+        XCTAssertThrowsError(try TerminalSessionPolicy.authorization(from: yes, account: "acct_1", purpose: .collection))
+        XCTAssertThrowsError(try TerminalSessionPolicy.authorization(from: yes, account: "acct_1", purpose: .preparation(representativeConfirmed: false)))
+        XCTAssertThrowsError(try TerminalSessionPolicy.authorization(from: no, account: "acct_1", purpose: .preparation(representativeConfirmed: true)))
+        XCTAssertTrue(try TerminalSessionPolicy.authorization(from: yes, account: "acct_1", purpose: .preparation(representativeConfirmed: true)).permitsTerms)
+        let req = try TerminalSessionPolicy.request(session: "cookie", account: "acct_1", purpose: .preparation(representativeConfirmed: true))
+        XCTAssertEqual(req.value(forHTTPHeaderField: "X-Forge-Terminal-Purpose"), "preparation")
+        XCTAssertEqual(req.value(forHTTPHeaderField: "X-Forge-Authorized-Representative"), "true")
+    }
+
     func testLateCompletionCannotFinishReplacementOperation() throws {
         let state = TerminalOperationState()
         let old = try state.begin(id: "a", account: "acct_1")
@@ -32,7 +200,7 @@ final class ForgeTerminalTests: XCTestCase {
     }
 
     func testRequestAlwaysUsesFixedOriginAndAccount() throws {
-        let request = TerminalSessionPolicy.request(session: "secret-session", account: "acct_1")
+        let request = try TerminalSessionPolicy.request(session: "secret-session", account: "acct_1")
         XCTAssertEqual(request.url?.absoluteString, "https://www.forgecrm.app/api/stripe/terminal/connection-token")
         XCTAssertEqual(request.value(forHTTPHeaderField: "Origin"), "https://www.forgecrm.app")
         XCTAssertEqual(request.value(forHTTPHeaderField: "X-Forge-Stripe-Account"), "acct_1")
@@ -50,7 +218,7 @@ final class ForgeTerminalTests: XCTestCase {
         var duplicate: Result<String, TerminalFailure>?
         coordinator.collect(request, completion: { duplicate = $0 })
         XCTAssertEqual(duplicate?.failure?.code, "busy")
-        XCTAssertEqual(sdk.calls, ["cleanup", "connect", "educate", "retrieve", "collect"])
+        XCTAssertEqual(sdk.calls, ["cleanup", "connect", "retrieve", "collect"])
         session.failure = .sessionChanged
         sdk.collected?(.success(()))
         XCTAssertFalse(sdk.calls.contains("confirm"))
@@ -224,23 +392,35 @@ private extension Result where Failure == TerminalFailure {
 
 private final class SessionDouble: TerminalSessionProviding {
     var failure: TerminalFailure?
-    func begin(account: String, completion: @escaping (Result<Void, TerminalFailure>) -> Void) { completion(.success(())) }
+    var tosAcceptancePermitted = false
+    var purpose: TerminalSessionPurpose?
+    func begin(account: String, purpose: TerminalSessionPurpose, completion: @escaping (Result<Void, TerminalFailure>) -> Void) {
+        self.purpose = purpose
+        completion(.success(()))
+    }
     func validate(completion: @escaping (Result<Void, TerminalFailure>) -> Void) { completion(failure.map(Result.failure) ?? .success(())) }
     func end() {}
 }
 
 private final class ReaderDouble: TerminalReaderProviding {
+    var onProgress: ((TerminalReaderProgress) -> Void)?
     var calls: [String] = []
     var collected: ((Result<Void, TerminalFailure>) -> Void)?
     var confirmed: ((Result<String, TerminalFailure>) -> Void)?
     var finishCleanup: ((Result<Void, TerminalFailure>) -> Void)?
     var holdCleanup = false
     var cleanupError: TerminalFailure?
+    var termsPermissions: [Bool] = []
+    var holdConnect = false
+    var connected: ((Result<Void, TerminalFailure>) -> Void)?
     func cleanUp(completion: @escaping (Result<Void, TerminalFailure>) -> Void) {
         calls.append("cleanup")
         if holdCleanup { finishCleanup = completion } else { completion(cleanupError.map(Result.failure) ?? .success(())) }
     }
-    func connect(location: String, completion: @escaping (Result<Void, TerminalFailure>) -> Void) { calls.append("connect"); completion(.success(())) }
+    func connect(location: String, permitsTerms: Bool, completion: @escaping (Result<Void, TerminalFailure>) -> Void) {
+        calls.append("connect"); termsPermissions.append(permitsTerms)
+        if holdConnect { connected = completion } else { completion(.success(())) }
+    }
     func educate(completion: @escaping (Result<Void, TerminalFailure>) -> Void) { calls.append("educate"); completion(.success(())) }
     func retrieve(_ request: TerminalRequest, completion: @escaping (Result<Void, TerminalFailure>) -> Void) { calls.append("retrieve"); completion(.success(())) }
     func collect(_ request: TerminalRequest, completion: @escaping (Result<Void, TerminalFailure>) -> Void) { calls.append("collect"); collected = completion }

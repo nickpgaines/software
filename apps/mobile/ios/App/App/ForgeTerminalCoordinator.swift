@@ -20,6 +20,16 @@ struct TerminalRequest {
     let kind: Kind
 }
 
+enum TerminalSessionPurpose: Equatable {
+    case collection
+    case preparation(representativeConfirmed: Bool)
+
+    var requestsTerms: Bool {
+        if case .preparation(representativeConfirmed: true) = self { return true }
+        return false
+    }
+}
+
 final class TerminalOperationState {
     struct Lease: Equatable { let generation: UUID; let id: String; let account: String }
     private var active: Lease?
@@ -36,16 +46,18 @@ final class TerminalOperationState {
 // All calls and provider callbacks run on the main queue. This also serializes
 // WebView navigation, cookie-change and application-background notifications.
 protocol TerminalSessionProviding: AnyObject {
-    func begin(account: String, completion: @escaping (Result<Void, TerminalFailure>) -> Void)
+    var tosAcceptancePermitted: Bool { get }
+    func begin(account: String, purpose: TerminalSessionPurpose, completion: @escaping (Result<Void, TerminalFailure>) -> Void)
     func validate(completion: @escaping (Result<Void, TerminalFailure>) -> Void)
     func end()
 }
 
 protocol TerminalReaderProviding: AnyObject {
+    var onProgress: ((TerminalReaderProgress) -> Void)? { get set }
     // Must drain/cancel outstanding SDK work before disconnecting and clearing.
     // Failure leaves the coordinator locked; another generation may never reuse it.
     func cleanUp(completion: @escaping (Result<Void, TerminalFailure>) -> Void)
-    func connect(location: String, completion: @escaping (Result<Void, TerminalFailure>) -> Void)
+    func connect(location: String, permitsTerms: Bool, completion: @escaping (Result<Void, TerminalFailure>) -> Void)
     func educate(completion: @escaping (Result<Void, TerminalFailure>) -> Void)
     func retrieve(_ request: TerminalRequest, completion: @escaping (Result<Void, TerminalFailure>) -> Void)
     func collect(_ request: TerminalRequest, completion: @escaping (Result<Void, TerminalFailure>) -> Void)
@@ -53,6 +65,7 @@ protocol TerminalReaderProviding: AnyObject {
 }
 
 final class ForgeTerminalCoordinator {
+    var onProgress: ((String, TerminalReaderProgress) -> Void)?
     private let provider: TerminalReaderProviding
     private let session: TerminalSessionProviding
     private let state = TerminalOperationState()
@@ -87,11 +100,45 @@ final class ForgeTerminalCoordinator {
               request.account.hasPrefix("acct_"), request.locationID.hasPrefix("tml_") else {
             completion(.failure(.terminalError)); return
         }
+        let stages: [Stage] = [
+            { [session] in session.begin(account: request.account, purpose: .collection, completion: $0) },
+            { [provider] in provider.connect(location: request.locationID, permitsTerms: false, completion: $0) },
+            // Education belongs to device preparation and the on-demand How to Tap action.
+            { [provider] in provider.retrieve(request, completion: $0) },
+            { [session] in session.validate(completion: $0) },
+            { [provider] in provider.collect(request, completion: $0) },
+            { [session] in session.validate(completion: $0) },
+        ]
+        run(id: request.operationID, account: request.account, stages: stages, confirmsIntent: true, completion: completion)
+    }
+
+    func prepareDevice(operationID: String, account: String, locationID: String, representativeConfirmed: Bool,
+                       completion: @escaping (Result<Void, TerminalFailure>) -> Void) {
+        precondition(Thread.isMainThread)
+        guard !busy else { completion(.failure(.busy)); return }
+        guard !operationID.isEmpty, account.hasPrefix("acct_"), locationID.hasPrefix("tml_") else {
+            completion(.failure(.terminalError)); return
+        }
+        let stages: [Stage] = [
+            { [session] in session.begin(account: account, purpose: .preparation(representativeConfirmed: representativeConfirmed), completion: $0) },
+            { [provider, session] in provider.connect(location: locationID, permitsTerms: representativeConfirmed && session.tosAcceptancePermitted, completion: $0) },
+            { [provider] in provider.educate(completion: $0) },
+            { [session] in session.validate(completion: $0) },
+        ]
+        run(id: operationID, account: account, stages: stages, confirmsIntent: false) { completion($0.map { _ in () }) }
+    }
+
+    private func run(id: String, account: String, stages: [Stage], confirmsIntent: Bool,
+                     completion: @escaping (Result<String, TerminalFailure>) -> Void) {
         let lease: TerminalOperationState.Lease
-        do { lease = try state.begin(id: request.operationID, account: request.account) }
+        do { lease = try state.begin(id: id, account: account) }
         catch { completion(.failure(.busy)); return }
         busy = true
         self.completion = completion
+        provider.onProgress = { [weak self] update in
+            guard let self, self.state.isCurrent(lease) else { return }
+            self.onProgress?(id, update)
+        }
         initialCleanup = true
         provider.cleanUp { [self] result in
             initialCleanup = false
@@ -102,16 +149,7 @@ final class ForgeTerminalCoordinator {
             }
             guard state.isCurrent(lease) else { return }
             guard case .success = result else { finish(result.map { "" }, cleanupAlreadyFailed: true); return }
-            let stages: [Stage] = [
-                { [session] in session.begin(account: request.account, completion: $0) },
-                { [provider] in provider.connect(location: request.locationID, completion: $0) },
-                { [provider] in provider.educate(completion: $0) },
-                { [provider] in provider.retrieve(request, completion: $0) },
-                { [session] in session.validate(completion: $0) },
-                { [provider] in provider.collect(request, completion: $0) },
-                { [session] in session.validate(completion: $0) },
-            ]
-            advance(stages, index: 0, lease: lease)
+            advance(stages, index: 0, lease: lease, confirmsIntent: confirmsIntent)
         }
     }
 
@@ -124,9 +162,10 @@ final class ForgeTerminalCoordinator {
 
     private typealias Stage = (@escaping (Result<Void, TerminalFailure>) -> Void) -> Void
 
-    private func advance(_ stages: [Stage], index: Int, lease: TerminalOperationState.Lease) {
+    private func advance(_ stages: [Stage], index: Int, lease: TerminalOperationState.Lease, confirmsIntent: Bool) {
         guard state.isCurrent(lease) else { return }
         guard index < stages.count else {
+            guard confirmsIntent else { finish(.success(""), requireCleanupSuccess: true); return }
             confirming = true
             provider.confirm { [self] result in
                 guard state.isCurrent(lease) else { return }
@@ -137,13 +176,13 @@ final class ForgeTerminalCoordinator {
         stages[index]({ [self] result in
             guard state.isCurrent(lease) else { return }
             switch result {
-            case .success: advance(stages, index: index + 1, lease: lease)
+            case .success: advance(stages, index: index + 1, lease: lease, confirmsIntent: confirmsIntent)
             case .failure(let error): finish(.failure(error))
             }
         })
     }
 
-    private func finish(_ result: Result<String, TerminalFailure>, cleanupAlreadyFailed: Bool = false) {
+    private func finish(_ result: Result<String, TerminalFailure>, cleanupAlreadyFailed: Bool = false, requireCleanupSuccess: Bool = false) {
         guard !cleaning else { return }
         state.invalidate()
         session.end() // immediately revoke pending token requests
@@ -157,7 +196,11 @@ final class ForgeTerminalCoordinator {
             if case .success = cleanup { busy = false }
             // A successful provider result still requires server reconciliation;
             // cleanup failure keeps the reader locked but must not hide payment.
-            callback?(result)
+            if requireCleanupSuccess, case .success = result, case .failure = cleanup {
+                callback?(.failure(TerminalFailure(code: "cleanup_failed", message: "Tap to Pay setup could not finish safely. Restart Forge before preparing this iPhone again.")))
+            } else {
+                callback?(result)
+            }
             let waiters = cleanupWaiters
             cleanupWaiters.removeAll()
             waiters.forEach { $0(cleanup) }

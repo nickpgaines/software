@@ -5,8 +5,13 @@ export type TerminalCollection = {
   locationId: string;
   saveCard: boolean;
 };
+export type TerminalPreparation = Omit<TerminalCollection,'clientSecret'|'saveCard'> & {representativeConfirmed:boolean};
+export type TerminalProgress = {operationId:string;phase:string;message:string;progress?:number};
+type TerminalCapability = {supported:boolean;reason?:string;preparationSupported?:boolean;providerMode?:'test'|'live';environmentError?:boolean};
 export interface ForgeTerminalPlugin {
-  getCapabilities(): Promise<{ supported: boolean; reason?: string }>;
+  getCapabilities(): Promise<TerminalCapability>;
+  prepareDevice?(args:TerminalPreparation):Promise<void>;
+  addListener?(event:'terminalProgress',callback:(event:TerminalProgress)=>void):Promise<{remove():Promise<void>}>;
   showEducation(): Promise<void>;
   collectPayment(args: TerminalCollection): Promise<{ intentId: string }>;
   collectSetup(args: Omit<TerminalCollection, 'saveCard'>): Promise<{ intentId: string }>;
@@ -23,6 +28,8 @@ export async function nativeTerminalPlugin(): Promise<ForgeTerminalPlugin | null
   // Never resolve a Promise with the Capacitor proxy: its synthetic `then` hangs.
   return {
     getCapabilities: () => plugin.getCapabilities(),
+    prepareDevice: args => plugin.prepareDevice!(args),
+    addListener: (event,callback) => plugin.addListener!(event,callback),
     showEducation: () => plugin.showEducation(),
     collectPayment: args => plugin.collectPayment(args),
     collectSetup: args => plugin.collectSetup(args),
@@ -44,29 +51,52 @@ export class NativeTerminal {
     this.load = load;
     this.cleanupTimeout = cleanupTimeout;
   }
-  async capabilities() {
-    if (this.resetting || this.unavailable) return { supported: false, reason: fallback };
-    try { return (await this.load())?.getCapabilities().catch(() => ({ supported: false, reason: fallback })) ?? { supported: false, reason: fallback }; }
-    catch { return { supported: false, reason: fallback }; }
+  async capabilities():Promise<TerminalCapability> {
+    if (this.resetting || this.unavailable) return { supported: false, reason: fallback, environmentError:true };
+    try {
+      const plugin=await this.load();
+      return plugin ? await plugin.getCapabilities() : {supported:false,reason:fallback,providerMode:'live'};
+    } catch { return { supported: false, reason: fallback, environmentError:true }; }
   }
   async education() { await (await this.load())?.showEducation(); }
   async collect(operation: 'payment' | 'setup', args: TerminalCollection, lease?: symbol) {
+    return this.run(args.operationId,lease,async plugin => {
+      const { saveCard, ...setup } = args;
+      return operation === 'payment' ? plugin.collectPayment(args) : plugin.collectSetup(setup);
+    });
+  }
+  async prepare(args:TerminalPreparation,lease?:symbol,progress?:(event:TerminalProgress)=>void) {
+    return this.run(args.operationId,lease,async (plugin,current) => {
+      if (!(await plugin.getCapabilities()).preparationSupported || !plugin.prepareDevice) throw new Error('Update Forge to set up Tap to Pay on this iPhone.');
+      if (!current()) throw new Error('Terminal session changed.');
+      const subscription = progress && plugin.addListener ? await plugin.addListener('terminalProgress',event => {
+        if (current() && event.operationId === args.operationId) progress(event);
+      }) : undefined;
+      try {
+        if (!current()) throw new Error('Terminal session changed.');
+        await plugin.prepareDevice(args);
+      } finally { await subscription?.remove().catch(()=>{}); }
+    });
+  }
+  private async run<T>(operationId:string,lease:symbol|undefined,work:(plugin:ForgeTerminalPlugin,current:()=>boolean)=>Promise<T>) {
     if (this.owner || this.resetting || this.unavailable) throw new Error('A Terminal operation is already active. Check its status first.');
-    this.owner = args.operationId;
+    this.owner = operationId;
     this.lease = lease;
     const generation = this.generation;
     const collection = ++this.collection;
     try {
       const plugin = await this.load();
       if (generation !== this.generation || collection !== this.collection) throw new Error('Terminal session changed.');
-      if (!plugin || !(await plugin.getCapabilities()).supported) throw new Error(fallback);
+      if (!plugin) throw new Error(fallback);
+      const capability = await plugin.getCapabilities();
+      if (!capability.supported) throw new Error(fallback);
+      if (capability.preparationSupported !== true) throw new Error('Update Forge to use Tap to Pay. Pay with card is still available.');
       if (generation !== this.generation || collection !== this.collection) throw new Error('Terminal session changed.');
-      const { saveCard, ...setup } = args;
-      const result = operation === 'payment' ? await plugin.collectPayment(args) : await plugin.collectSetup(setup);
+      const result = await work(plugin,()=>generation === this.generation && collection === this.collection);
       if (generation !== this.generation || collection !== this.collection) throw new Error('Terminal session changed.');
       return result;
     } finally {
-      if (generation === this.generation && collection === this.collection && this.owner === args.operationId) this.owner = null;
+      if (generation === this.generation && collection === this.collection && this.owner === operationId) this.owner = null;
     }
   }
   private async boundedCleanup(method: 'cancel' | 'reset') {
@@ -106,3 +136,23 @@ export class NativeTerminal {
 }
 
 export const nativeTerminal = new NativeTerminal();
+
+/** Carry the app's immutable expectation before the server can create an intent. */
+export async function terminalRequestInit(native:Pick<NativeTerminal,'generation'|'capabilities'>,url:string,init:RequestInit={}):Promise<RequestInit> {
+  if (!url.startsWith('/api/stripe/terminal/')) return init;
+  // Listing is provider-free and must release manual-payment locks when no
+  // attempt exists, even if native configuration or Stripe is unavailable.
+  if ((init.method ?? 'GET').toUpperCase()==='GET' && url.split('?')[0]==='/api/stripe/terminal/attempts') return init;
+  const notSent=(message:string)=>Object.assign(new Error(message),{requestNotSent:true});
+  const generation=native.generation;
+  let capability:TerminalCapability;
+  try { capability=await native.capabilities(); }
+  catch { throw notSent('Terminal environment could not be verified. Reopen the correct Forge build.'); }
+  if (native.generation !== generation) throw notSent('Terminal session changed. Reopen this screen.');
+  if (!capability || capability.environmentError || typeof capability.supported !== 'boolean') throw notSent('Terminal environment could not be verified. Reopen the correct Forge build.');
+  const mode=capability.providerMode ?? 'live'; // Previous native protocol was production-only.
+  if(mode!=='test' && mode!=='live')throw notSent('Invalid Terminal environment. Reopen the correct Forge build.');
+  const headers=new Headers(init.headers);
+  headers.set('X-Forge-Terminal-Mode',mode);
+  return {...init,headers};
+}

@@ -4,6 +4,8 @@ import { getDb, type Db } from '@/lib/db';
 import { getStripe, getCompany, isStripeConfigured, getOrCreateStripeCustomer, savePaymentMethodForCustomer } from '@/lib/stripe';
 import { TerminalError, positiveId } from '@/lib/terminal-http';
 import { requireTapToPayEnabled } from '@/lib/terminal-rollout';
+import { requireTerminalEnvironment } from '@/lib/terminal-environment';
+import { resolveTerminalLocation } from '@/lib/terminal-location';
 import { recordJobPayment } from '@/lib/record-job-payment';
 import { terminalConsentText, TERMINAL_CONSENT_VERSION } from '@/lib/terminal-consent';
 
@@ -11,6 +13,7 @@ export type TerminalAttemptView = {
   attempt_id: string; operation: 'payment' | 'setup'; status: 'ready' | 'processing' | 'succeeded' | 'canceled' | 'needs_reconciliation';
   stripe_account: string; terminal_location_id: string; client_secret?: string; amount_cents: number;
   customer_id: number; job_id: number | null; save_card: boolean; payment_recorded: boolean; card_saved: boolean; warning: string | null;
+  payment_declined?: boolean;
 };
 type Attempt = Omit<TerminalAttemptView, 'stripe_account' | 'save_card' | 'payment_recorded' | 'card_saved'> & {
   company_id: number; stripe_account_id: string; stripe_customer_id: string | null; provider_intent_id: string | null;
@@ -36,26 +39,11 @@ function view(a: Attempt, secret?: string | null): TerminalAttemptView {
     save_card: !!a.save_card, payment_recorded: !!a.payment_recorded, card_saved: !!a.card_saved, warning: a.warning };
 }
 async function connectedAccount(companyId: number) {
+  requireTerminalEnvironment();
   if (!isStripeConfigured()) throw new TerminalError('Stripe is not configured', 503);
   const company = await getCompany(companyId);
   if (!company.stripe_account_id) throw new TerminalError('Complete Stripe onboarding before using Tap to Pay', 409);
   return company.stripe_account_id;
-}
-async function location(db: Db, companyId: number, stripeAccount: string) {
-  const stripe = getStripe();
-  const cached = await db.prepare('SELECT stripe_terminal_location_id FROM stripe_terminal_locations WHERE company_id=?').get<{ stripe_terminal_location_id: string }>(companyId);
-  const valid = (l: Stripe.Terminal.Location) => l.address.country === 'US' && l.address.line1 && l.address.city && /^[A-Z]{2}$/.test(l.address.state || '') && /^\d{5}(-\d{4})?$/.test(l.address.postal_code || '') && l.address.postal_code !== '00000' && l.address.state !== 'NA' && l.address.city !== 'Unspecified';
-  if (cached) {
-    try {
-      const result = await stripe.terminal.locations.retrieve(cached.stripe_terminal_location_id, undefined, { stripeAccount });
-      if (!('deleted' in result) && valid(result)) return result.id;
-    } catch { /* A stale cache must never authorize a reader on another account. */ }
-  }
-  const locations = await stripe.terminal.locations.list({ limit: 100 }, { stripeAccount });
-  const candidates = locations.data.filter(valid);
-  if (locations.has_more || candidates.length !== 1) throw new TerminalError('Configure a single valid US Terminal location in the connected Stripe account before using Tap to Pay.', 409);
-  await db.prepare('INSERT INTO stripe_terminal_locations (company_id,stripe_terminal_location_id,display_name) VALUES (?,?,?) ON CONFLICT(company_id) DO UPDATE SET stripe_terminal_location_id=excluded.stripe_terminal_location_id,display_name=excluded.display_name').run(companyId, candidates[0].id, candidates[0].display_name);
-  return candidates[0].id;
 }
 async function load(companyId: number, id: string) {
   const db = await getDb();
@@ -66,7 +54,9 @@ async function load(companyId: number, id: string) {
 }
 function validate(a: Attempt, intent: Intent) {
   const m = intent.metadata || {};
-  if (m.terminal_attempt_id !== a.attempt_id || m.company_id !== String(a.company_id) || m.customer_id !== String(a.customer_id) || m.job_id !== String(a.job_id ?? '') || m.operation !== a.operation ||
+  // Stripe omits empty metadata on SetupIntents, which have no job. A
+  // nonempty job binding (including every payment) must still match exactly.
+  if (m.terminal_attempt_id !== a.attempt_id || m.company_id !== String(a.company_id) || m.customer_id !== String(a.customer_id) || (m.job_id ?? '') !== String(a.job_id ?? '') || m.operation !== a.operation ||
       m.consent_version !== (a.consent_version || '') || m.consent_name !== (a.consent_name || '') || (a.stripe_customer_id && idOf(intent.customer) !== a.stripe_customer_id)) throw new TerminalError('Provider intent does not match this attempt', 409);
   if (a.operation === 'payment' && (!('amount' in intent) || intent.amount !== a.amount_cents || intent.currency !== 'usd' || (intent.status === 'succeeded' && intent.amount_received !== a.amount_cents))) throw new TerminalError('Provider amount does not match this attempt', 409);
 }
@@ -126,7 +116,7 @@ export async function startTerminalAttempt(auth: { companyId: number; staffId: n
   if (operation === 'payment' && !job) throw new TerminalError('Job not found', 404);
   const customerId = job?.customer_id ?? target;
   if (!await db.prepare('SELECT id FROM customers WHERE id=? AND company_id=?').get(customerId, auth.companyId)) throw new TerminalError('Customer not found', 404);
-  const terminalLocation = await location(db, auth.companyId, stripeAccount);
+  const terminalLocation = (await resolveTerminalLocation(db, auth.companyId, stripeAccount)).id;
   const customer = save ? await getOrCreateStripeCustomer(auth.companyId, customerId, stripeAccount) : null;
   const merchant = company.name?.trim() || 'this merchant';
   const claim = await db.transaction(async tx => {
@@ -237,7 +227,19 @@ export async function reconcileTerminalAttempt(companyId: number, id: string, ca
     return (await tx.prepare('SELECT * FROM terminal_attempts WHERE attempt_id=?').get<Attempt>(a.attempt_id))!;
   });
   if (saveError && strictSave && !persisted.card_saved) throw saveError;
-  return view(persisted,intent.client_secret);
+  return { ...view(persisted,intent.client_secret),
+    ...(persisted.status === 'ready' && intent.status === 'requires_payment_method' && 'last_payment_error' in intent && intent.last_payment_error?.code === 'card_declined' ? {payment_declined:true} : {}) };
+}
+/** Receipt lookups never reconcile, discover/create intents, record payments or save cards. */
+export async function getTerminalReceiptIntent(companyId: number, id: string) {
+  const a = await load(companyId,id);
+  if (a.operation !== 'payment' || !a.provider_intent_id || a.status !== 'succeeded' || !a.payment_recorded) {
+    throw new TerminalError('A receipt is available only after a payment is confirmed and recorded.',409);
+  }
+  const intent = await getStripe().paymentIntents.retrieve(a.provider_intent_id,{expand:['latest_charge']},{stripeAccount:a.stripe_account_id});
+  if (intent.id !== a.provider_intent_id) throw new TerminalError('Receipt does not match this payment.',409);
+  validate(a,intent);
+  return {attempt_id:a.attempt_id,stripe_account:a.stripe_account_id,intent};
 }
 export async function listTerminalAttempts(companyId: number, target: { job_id?: number; customer_id?: number }) {
   const column = target.job_id !== undefined ? 'job_id' : 'customer_id';

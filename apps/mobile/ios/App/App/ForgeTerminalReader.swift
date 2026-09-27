@@ -16,6 +16,7 @@ final class ForgeTerminalReader: NSObject, TerminalReaderProviding, ConnectionTo
     // The SDK requires retaining this delegate until its reader disconnects.
     private var readerDelegate: ForgeTapToPayReaderDelegate?
     var onDisconnect: (() -> Void)?
+    var onProgress: ((TerminalReaderProgress) -> Void)?
 
     init(session: ForgeTerminalSession, presenter: @escaping () -> UIViewController?) {
         self.session = session
@@ -33,7 +34,7 @@ final class ForgeTerminalReader: NSObject, TerminalReaderProviding, ConnectionTo
         }
     }
 
-    func connect(location: String, completion: @escaping (Result<Void, TerminalFailure>) -> Void) {
+    func connect(location: String, permitsTerms: Bool, completion: @escaping (Result<Void, TerminalFailure>) -> Void) {
         if !initialized {
             // Set the operation's session before SDK init: initialization can request a token.
             Terminal.initWithTokenProvider(self)
@@ -42,10 +43,13 @@ final class ForgeTerminalReader: NSObject, TerminalReaderProviding, ConnectionTo
         do {
             let discovery = try TapToPayDiscoveryConfigurationBuilder().setSimulated(Self.simulated).build()
             readerDelegate?.events.invalidate()
-            let delegate = ForgeTapToPayReaderDelegate(events: TerminalReaderEventLease { [weak self] in self?.onDisconnect?() })
+            let progress = onProgress
+            let delegate = ForgeTapToPayReaderDelegate(events: TerminalReaderEventLease(unexpectedDisconnect: { [weak self] in self?.onDisconnect?() }, progress: { progress?($0) }))
             readerDelegate = delegate
+            delegate.events.report(.init(phase: "preparing", message: "Preparing this iPhone for Tap to Pay…", progress: nil))
             let connection = try TapToPayConnectionConfigurationBuilder(delegate: delegate, locationId: location)
-                .setAutoReconnectOnUnexpectedDisconnect(false).build()
+                .setAutoReconnectOnUnexpectedDisconnect(false)
+                .setTosAcceptancePermitted(permitsTerms).build()
             pending = true
             cancelable = Terminal.shared.easyConnect(TapToPayEasyConnectConfiguration(discoveryConfiguration: discovery, connectionConfiguration: connection)) { [self] reader, error in
                 complete { completion(error.map { .failure(Self.map($0)) } ?? (reader == nil ? .failure(.terminalError) : .success(()))) }
@@ -53,14 +57,9 @@ final class ForgeTerminalReader: NSObject, TerminalReaderProviding, ConnectionTo
         } catch { completion(.failure(Self.map(error))) }
     }
 
-    // An Xcode launch-environment flag is the only simulation switch. JavaScript
-    // cannot enable it, and the flag is compiled out of Release.
+    // Simulation requires an isolated test origin; Release ignores both flags.
     static var simulated: Bool {
-        #if DEBUG
-        return ProcessInfo.processInfo.environment["FORGE_TERMINAL_SIMULATED"] == "1"
-        #else
-        return false
-        #endif
+        TerminalSessionPolicy.configuration?.simulated == true
     }
 
     func educate(completion: @escaping (Result<Void, TerminalFailure>) -> Void) {
@@ -192,6 +191,8 @@ final class ForgeTerminalReader: NSObject, TerminalReaderProviding, ConnectionTo
             return .unsupported("Set an iPhone passcode in Settings before using Tap to Pay.")
         case ErrorCode.tapToPayReaderTOSAcceptanceRequiresiCloudSignIn.rawValue:
             return .unsupported("Sign in to an Apple Account on this iPhone to accept Tap to Pay terms.")
+        case ErrorCode.tapToPayReaderTOSNotYetAccepted.rawValue:
+            return TerminalFailure(code: "setup_required", message: "An authorized administrator must finish Tap to Pay setup in Settings → Payments before accepting payments.")
         default: break
         }
         // Deliberately omit SDK diagnostic strings, which can contain provider identifiers.
@@ -207,11 +208,22 @@ private final class ForgeTapToPayReaderDelegate: NSObject, TapToPayReaderDelegat
 
     init(events: TerminalReaderEventLease) { self.events = events }
 
-    func tapToPayReader(_ reader: Reader, didStartInstallingUpdate update: ReaderSoftwareUpdate, cancelable: Cancelable?) {}
-    func tapToPayReader(_ reader: Reader, didReportReaderSoftwareUpdateProgress progress: Float) {}
-    func tapToPayReader(_ reader: Reader, didFinishInstallingUpdate update: ReaderSoftwareUpdate?, error: Error?) {}
-    func tapToPayReader(_ reader: Reader, didRequestReaderInput inputOptions: ReaderInputOptions) {}
-    func tapToPayReader(_ reader: Reader, didRequestReaderDisplayMessage displayMessage: ReaderDisplayMessage) {}
+    func tapToPayReader(_ reader: Reader, didStartInstallingUpdate update: ReaderSoftwareUpdate, cancelable: Cancelable?) {
+        events.report(.init(phase: "updating", message: "Configuring Tap to Pay. Keep Forge open; this can take a few minutes.", progress: 0))
+    }
+    func tapToPayReader(_ reader: Reader, didReportReaderSoftwareUpdateProgress progress: Float) {
+        guard progress.isFinite else { return }
+        events.report(.init(phase: "updating", message: "Configuring Tap to Pay…", progress: min(1, max(0, Double(progress)))))
+    }
+    func tapToPayReader(_ reader: Reader, didFinishInstallingUpdate update: ReaderSoftwareUpdate?, error: Error?) {
+        events.report(.init(phase: error == nil ? "preparing" : "error", message: error == nil ? "Configuration complete. Connecting…" : "Configuration could not finish. Check your connection and try again.", progress: nil))
+    }
+    func tapToPayReader(_ reader: Reader, didRequestReaderInput inputOptions: ReaderInputOptions) {
+        events.report(.init(phase: "input", message: Terminal.stringFromReaderInputOptions(inputOptions), progress: nil))
+    }
+    func tapToPayReader(_ reader: Reader, didRequestReaderDisplayMessage displayMessage: ReaderDisplayMessage) {
+        events.report(.init(phase: "input", message: Terminal.stringFromReaderDisplayMessage(displayMessage), progress: nil))
+    }
     func reader(_ reader: Reader, didDisconnect reason: DisconnectReason) {
         events.didDisconnect(intentional: reason == .disconnectRequested)
     }

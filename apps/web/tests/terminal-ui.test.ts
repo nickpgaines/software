@@ -1,28 +1,79 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
+import {NativeTerminal} from '../src/lib/native-terminal.ts';
+import {RemoveScroll} from 'react-remove-scroll';
 // @ts-ignore existing UI harness executes the production hooks and JSX handlers.
 import {loadCustomerModule, hookRenderer, elements, text} from './helpers/customer-ui.mjs';
 
 const settle = async () => { for(let i=0;i<12;i++) await new Promise(resolve=>setImmediate(resolve)); };
 const ready = {attempt_id:'attempt_1',operation:'payment',status:'ready',stripe_account:'acct_1',terminal_location_id:'tml_1',client_secret:'ephemeral',amount_cents:5000,customer_id:2,job_id:1,save_card:false,payment_recorded:false,card_saved:false,warning:null};
 
+for (const operation of ['payment', 'setup']) {
+  test(`${operation} shows continuous progress until server verification, never premature success`, async t => {
+    let finishNative!: () => void;
+    let finishVerification!: (response: Response) => void;
+    const h = await harness(t, {
+      attempt: operation === 'setup' ? {operation, job_id:null, save_card:true} : {},
+      props: operation === 'setup' ? {operation, customerId:2, jobId:undefined} : {operation},
+      collect: () => new Promise<void>(resolve => { finishNative = resolve; }),
+      reconcile: () => new Promise<Response>(resolve => { finishVerification = resolve; }),
+    });
+    if (operation === 'setup') {
+      elements(h.tree,(el:any)=>el.type?.displayName==='Input'&&el.props.type==='text')[0].props.onChange({target:{value:'Test Customer'}});
+      elements(h.tree,(el:any)=>el.type?.displayName==='Checkbox')[0].props.onCheckedChange(true);
+      h.render();
+    }
+    const work = h.button(operation === 'payment' ? 'Tap to Pay' : 'Save card with a tap').props.onClick();
+    await settle(); h.render();
+    const status = () => elements(h.tree,(el:any)=>el.props.role==='status')[0];
+    const spinner = () => elements(status(),(el:any)=>el.props.className?.includes('animate-spin'));
+    assert.match(text(status()), operation === 'payment' ? /Processing payment/ : /Saving card/);
+    assert.equal(spinner().length,1);
+    assert.equal(h.completed.length,0);
+    assert.equal(h.blocked.at(-1),true);
+    finishNative(); await settle(); h.render();
+    assert.match(text(status()),operation === 'payment' ? /Confirming payment/ : /Confirming saved card/);
+    assert.equal(spinner().length,1);
+    assert.equal(h.completed.length,0,'native completion is not server-verified success');
+    assert.equal(h.button('Check status').props.disabled,true);
+    assert.equal(h.blocked.at(-1),true);
+    finishVerification(Response.json({...ready,operation,job_id:operation==='setup'?null:1,status:'succeeded',payment_recorded:operation==='payment',card_saved:operation==='setup'}));
+    await work; h.render();
+    assert.equal(spinner().length,0);
+    assert.match(text(status()),operation === 'payment' ? /Payment confirmed/ : /Card saved/);
+    assert.equal(h.completed.length,1);
+    assert.equal(h.calls.filter(c=>c.url==='/api/stripe/terminal/attempts').length,1);
+  });
+}
+
+test('unconfirmed results stop the spinner and retain recovery controls', async t => {
+  const h=await harness(t,{collect:async()=>{throw Error('Connection lost');},reconciled:{status:'processing'}});
+  await h.button('Tap to Pay').props.onClick(); h.render();
+  const status=elements(h.tree,(el:any)=>el.props.role==='status')[0];
+  assert.match(text(status),/outcome is not confirmed/i);
+  assert.equal(elements(status,(el:any)=>el.props.className?.includes('animate-spin')).length,0);
+  assert.equal(h.button('Check status').props.disabled,false);
+  assert.equal(h.completed.length,0);
+  assert.equal(h.blocked.at(-1),true);
+});
+
 async function harness(t: any, options: any = {}) {
   const {default: Flow} = await loadCustomerModule('components/payments/TerminalFlow.tsx');
   const renderer = hookRenderer();
-  const calls: {url:string; body:any}[]=[];
+  const calls: {url:string; body:any; headers:Headers}[]=[];
   let current = {...ready,...options.attempt};
   let created = false;
-  const native = {generation:0, capabilities: async()=>({supported:options.supported ?? true}), education:async()=>{}, cancel:async(_id?:string)=>{}, collect:async(_operation?:string)=>{if(options.collect) return options.collect();}};
+  const native = {generation:0, capabilities: async()=>({supported:options.supported ?? true,preparationSupported:options.preparationSupported ?? true,providerMode:options.providerMode}), education:async()=>{}, cancel:async(_id?:string)=>{}, collect:async(_operation?:string)=>{if(options.collect) return options.collect();}};
   t.mock.method(globalThis,'fetch',async (url:any,init:any)=> {
-    calls.push({url:String(url),body:init?.body ? JSON.parse(init.body):null});
+    calls.push({url:String(url),headers:new Headers(init?.headers),body:init?.body ? JSON.parse(init.body):null});
     if(url==='/api/stripe/terminal/capabilities') {
       if(options.rolloutError) throw Error('unavailable');
       return Response.json(options.rolloutResponse ?? {enabled:options.enabled ?? true});
     }
     if(url==='/api/settings/company') return Response.json(options.merchant?.() ?? {id:1,name:'Acme',stripe_account_id:'acct_1'});
     if(String(url).includes('?')) return Response.json({attempts:options.list ?? (created ? [current]:[])});
-    if(url==='/api/stripe/terminal/attempts') {created=true; if(options.createError) throw Error('lost response'); return Response.json(current);}
+    if(url==='/api/stripe/terminal/attempts') {if(options.createResponse)return options.createResponse;created=true; if(options.createError) throw Error('lost response'); return Response.json(current);}
     if(String(url).endsWith('/reconcile')) {if(options.reconcile)return options.reconcile(String(url));current={...current,...(options.reconciled ?? {status:'succeeded',payment_recorded:true})};return Response.json(current);}
     if(String(url).endsWith('/cancel')) {current={...current,...(options.canceled ?? {status:'canceled'})};return Response.json(current);}
     throw Error(`Unexpected ${url}`);
@@ -41,6 +92,48 @@ test('unsupported plugin disables tap with useful manual card fallback',async t=
   const h=await harness(t,{supported:false});
   assert.equal(h.button('Tap to Pay').props.disabled,true);
   assert.match(text(h.tree),/manual|Pay with card/i);
+});
+test('verified decline explains retry or cancellation while retaining original attempt controls',async t=>{
+  const h=await harness(t,{list:[{...ready,payment_declined:true}],reconciled:{status:'ready',payment_declined:true}});
+  assert.match(text(h.tree),/declined/i);assert.ok(h.button('Continue original attempt'));assert.ok(h.button('Cancel attempt'));
+  assert.equal(h.blocked.at(-1),true);assert.equal(h.completed.length,0);
+});
+test('test app checkout carries test mode before intent creation and reconciliation',async t=>{
+  const h=await harness(t,{providerMode:'test'});
+  await h.button('Tap to Pay').props.onClick();h.render();
+  assert.equal(h.completed.length,1);
+  assert.ok(h.calls.filter(c=>c.url.startsWith('/api/stripe/terminal/')&&!c.url.includes('?')).every(c=>c.headers.get('X-Forge-Terminal-Mode')==='test'));
+});
+test('checkout unmounted during mode lookup never sends its pending create',async t=>{
+  const h=await harness(t,{providerMode:'test'});
+  let finish!:()=>void;
+  h.native.capabilities=()=>new Promise(resolve=>{finish=()=>resolve({supported:true,preparationSupported:true,providerMode:'test'});});
+  const action=h.button('Tap to Pay').props.onClick();await settle();
+  h.renderer.dispose();finish?.();await action;
+  assert.equal(h.calls.filter(c=>c.url==='/api/stripe/terminal/attempts').length,0);
+});
+test('failed native preflight does not create an unknown payment or block ordinary methods',async t=>{
+  let fail=false;
+  const native=new NativeTerminal(async()=>({getCapabilities:async()=>{if(fail)throw Error('Invalid environment');return {supported:true,preparationSupported:true,providerMode:'test'};}} as any));
+  const h=await harness(t,{props:{native}});
+  assert.equal(h.blocked.at(-1),false);
+  fail=true;await h.button('Tap to Pay').props.onClick();h.render();
+  assert.equal(h.calls.filter(c=>c.url==='/api/stripe/terminal/attempts').length,0);
+  assert.equal(h.blocked.at(-1),false);
+});
+for(const unresolved of [false,true])test(`rollout off and invalid native config preserve correct checkout lock: unresolved=${unresolved}`,async t=>{
+  const native=new NativeTerminal(async()=>({getCapabilities:async()=>{throw Error('Invalid environment');}} as any));
+  const h=await harness(t,{enabled:false,list:unresolved?[ready]:[],props:{native}});
+  assert.equal(h.blocked.at(-1),unresolved);
+});
+test('old native checkout requires an update without creating attempts or blocking manual card payments',async t=>{
+  const h=await harness(t,{preparationSupported:false});
+  assert.equal(h.button('Tap to Pay').props.disabled,true);
+  assert.match(text(h.tree),/update Forge/i);
+  assert.match(text(h.tree),/Pay with card/i);
+  await h.button('Tap to Pay').props.onClick();
+  assert.equal(h.calls.some(c=>c.url==='/api/stripe/terminal/attempts'),false);
+  assert.equal(h.blocked.at(-1),false);
 });
 for (const operation of ['payment','setup']) {
   test(`rollout off disables ${operation} even on a supported phone without blocking fallback`,async t=>{
@@ -72,14 +165,27 @@ test('rollout off preserves recovery and cancel but prevents resuming collection
   assert.equal(h.calls.some(c=>c.url.endsWith('/cancel')),true);
   assert.equal(h.blocked.at(-1),false);
 });
-test('tap button keeps its text label with a decorative non-focusable icon',async t=>{
+test('tap button uses text-only branding without losing its accessible label',async t=>{
   const h=await harness(t);
   const button=h.button('Tap to Pay on iPhone');
   const markup=renderToStaticMarkup(button);
   assert.equal(text(button),'Tap to Pay on iPhone');
-  assert.match(markup,/<svg\b[^>]*aria-hidden="true"/);
-  assert.match(markup,/<svg\b[^>]*focusable="false"/);
+  assert.doesNotMatch(markup,/<svg\b/);
   assert.equal(button.props.disabled,false);
+});
+test('merchant setup error links to Payments without clearing an unfinished payment lock',async t=>{
+  const h=await harness(t,{collect:async()=>{throw Object.assign(Error('Merchant activation required'),{code:'setup_required'});},reconciled:{status:'ready'}});
+  await h.button('Tap to Pay').props.onClick();h.render();
+  const link=elements(h.tree,(el:any)=>el.props.href==='/settings?tab=payments')[0];
+  assert.ok(link);assert.match(text(link),/setup/i);
+  assert.equal(h.blocked.at(-1),true);
+  assert.equal(h.button('Cancel attempt').props.disabled,undefined);
+});
+test('missing location directs checkout to setup without locking manual payments',async t=>{
+  const h=await harness(t,{createResponse:Response.json({error:'Choose a location',code:'setup_required'},{status:409})});
+  await h.button('Tap to Pay').props.onClick();h.render();
+  assert.ok(elements(h.tree,(el:any)=>el.props.href==='/settings?tab=payments')[0]);
+  assert.equal(h.blocked.at(-1),false);
 });
 test('synchronous double tap creates once and payment save warning still reports verified success',async t=>{
   const h=await harness(t,{reconciled:{status:'succeeded',payment_recorded:true,card_saved:false,warning:'Card could not be saved'}});
@@ -240,6 +346,22 @@ test('cancel race reconciles successful payment instead of enabling a second pay
   assert.equal(h.completed.length,1);
   assert.match(text(h.tree),/Payment confirmed/);
   assert.equal(h.button('Tap to Pay on iPhone'),undefined);
+});
+
+test('checkout isolates scrolling without changing its panel or explicit dismissal',async t=>{
+  const {default:Checkout}=await loadCustomerModule('components/jobs/CheckoutModal.tsx');
+  const renderer=hookRenderer();t.after(()=>renderer.dispose());
+  let closed=0;
+  const tree=renderer.render(Checkout,{jobId:1,jobTotalCents:5000,paidTotalCents:0,onClose(){closed++;},onChoose(){},onPaid(){}});
+  const lock=elements(tree,(el:any)=>el.type===RemoveScroll)[0];
+  assert.ok(lock,'checkout must isolate wheel/touch scrolling from the background');
+  assert.notEqual(lock.props.enabled,false);
+  assert.notEqual(lock.props.noIsolation,true);
+  assert.equal(lock.props.forwardProps,true,'retain the existing modal wrapper');
+  assert.ok(elements(lock,(el:any)=>el.props.className?.includes('overflow-y-auto')).length);
+  assert.equal(closed,0);
+  elements(lock,(el:any)=>el.props['aria-label']==='Close')[0].props.onClick();
+  assert.equal(closed,1);
 });
 
 test('checkout blocks manual switches synchronously and refreshes only on verified Terminal success',async t=>{

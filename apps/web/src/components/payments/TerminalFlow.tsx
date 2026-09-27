@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useId, useRef, useState } from 'react';
-import { SmartphoneNfc } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { nativeTerminal, type NativeTerminal } from '@/lib/native-terminal';
+import { nativeTerminal, terminalRequestInit, type NativeTerminal } from '@/lib/native-terminal';
 import { TERMINAL_CONSENT_VERSION, terminalConsentText } from '@/lib/terminal-consent';
 import type { TerminalAttemptView } from '@/lib/terminal-attempts';
 
@@ -26,7 +25,7 @@ const uncertainCreations = new Set<string>();
 
 export default function TerminalFlow({ operation, jobId, customerId, onSuccess, onBlockedChange, native = nativeTerminal }: Props) {
   const formId = useId();
-  const [capability, setCapability] = useState<{supported: boolean; reason?: string} | null>(null);
+  const [capability, setCapability] = useState<{supported: boolean; reason?: string; preparationSupported?:boolean} | null>(null);
   const [rollout, setRollout] = useState<boolean | null>(null);
   const [availabilityError, setAvailabilityError] = useState(false);
   const [merchant, setMerchant] = useState<Merchant | null>(null);
@@ -35,8 +34,10 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
   const [name, setName] = useState('');
   const [save, setSave] = useState(operation === 'setup');
   const [busy, setBusy] = useState(true);
+  const [busyMessage, setBusyMessage] = useState('Checking for unfinished attempts…');
   const [uncertain, setUncertain] = useState(true);
   const [message, setMessage] = useState('Checking for unfinished attempts…');
+  const [setupRequired, setSetupRequired] = useState(false);
   const life = useRef<Lifecycle>({ active: false, generation: native.generation, lease: Symbol() });
   const lock = useRef(true);
   const current = useRef<TerminalAttemptView | null>(null);
@@ -50,9 +51,12 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
   const block = (value: boolean) => { if (valid()) { setUncertain(value); callbacks.current.onBlockedChange?.(value); } };
 
   async function json<T>(url: string, init?: RequestInit): Promise<T> {
-    const response = await fetch(url, { cache: 'no-store', ...init });
+    const token=life.current;
+    const options=await terminalRequestInit(native,url,init);
+    if(!valid(token))throw Object.assign(new Error('Session changed. Reopen checkout.'),{requestNotSent:true});
+    const response = await fetch(url, { cache: 'no-store', ...options });
     const data = await response.json();
-    if (!response.ok) throw Object.assign(new Error(data.error || 'Unable to check the Terminal attempt.'), {status:response.status});
+    if (!response.ok) throw Object.assign(new Error(data.error || 'Unable to check the Terminal attempt.'), {status:response.status,code:data.code});
     return data as T;
   }
   async function checkIdentity(token: Lifecycle) {
@@ -83,7 +87,8 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
     if (next.status === 'succeeded' && closed(next)) {
       setMessage(next.operation === 'payment' ? 'Payment confirmed.' : next.card_saved ? 'Card saved. No charge was made and no subscription was started.' : 'Card was not saved. No charge was made.');
       if (delivered.current !== next.attempt_id) { delivered.current = next.attempt_id; callbacks.current.onSuccess(next); }
-    } else setMessage(next.status === 'canceled' ? 'Attempt canceled. You can choose another payment method.' : recoveryMessage);
+    } else setMessage(next.status === 'canceled' ? 'Attempt canceled. You can choose another payment method.'
+      : next.status === 'ready' && next.payment_declined ? 'This tap was declined. Continue the original attempt to try another card, or cancel it before choosing a different payment method.' : recoveryMessage);
   }
   async function reconcile(id: string, token: Lifecycle, action = 'reconcile', holdBlock = false) {
     await checkIdentity(token);
@@ -127,7 +132,9 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
     identity.current = null;
     delivered.current = null;
     setAttempt(null); setBusy(true); setUncertain(true); setChecked(false); setName(''); setSave(operation === 'setup');
+    setBusyMessage('Checking for unfinished attempts…');
     setCapability(null); setRollout(null); setAvailabilityError(false);
+    setSetupRequired(false);
     callbacks.current.onBlockedChange?.(true);
     void native.capabilities()
       .then(value => { if (valid(token)) setCapability(value); })
@@ -153,6 +160,8 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
     if ((action === 'start' || action === 'resume') && !canCollect) return;
     if (action === 'start' && (uncertain || !capability?.supported || (save && (!checked || !name.trim())))) return;
     lock.current = true; setBusy(true); block(true);
+    setBusyMessage(action === 'recover' ? 'Checking status…' : action === 'cancel' ? 'Canceling attempt…'
+      : operation === 'payment' ? 'Processing payment…' : 'Saving card…');
     const token = life.current;
     try {
       if (action === 'recover') { await recover(token); return; }
@@ -169,11 +178,13 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
       if (action === 'start') {
         const consent = { accepted: true, version: TERMINAL_CONSENT_VERSION, customer_name: name.trim() };
         const body = operation === 'payment' ? { operation, job_id: jobId, save_card: save, ...(save ? {consent} : {}) } : {operation, customer_id: customerId, consent};
-        uncertainCreations.add(recoveryKey());
+        const creationKey=recoveryKey();
+        uncertainCreations.add(creationKey);
         try {
           next = await json<TerminalAttemptView>('/api/stripe/terminal/attempts', {method:'POST', headers:{'Content-Type':'application/json','Idempotency-Key':crypto.randomUUID()}, body:JSON.stringify(body)});
         } catch (error) {
-          if (valid(token) && [400,404,409].includes((error as {status?:number}).status || 0)) uncertainCreations.delete(recoveryKey());
+          if ((error as {requestNotSent?:boolean}).requestNotSent === true
+            || (valid(token) && [400,404,409].includes((error as {status?:number}).status || 0))) uncertainCreations.delete(creationKey);
           throw error;
         }
         receive(next, token);
@@ -184,11 +195,16 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
       if (!valid(token) || !next || next.status !== 'ready' || !next.client_secret) return;
       await checkIdentity(token);
       await native.collect(next.operation, {operationId:next.attempt_id,clientSecret:next.client_secret,stripeAccount:next.stripe_account,locationId:next.terminal_location_id,saveCard:next.save_card}, token.lease);
-      if (valid(token)) await reconcile(next.attempt_id, token);
+      if (valid(token)) {
+        setBusyMessage(operation === 'payment' ? 'Confirming payment…' : 'Confirming saved card…');
+        await reconcile(next.attempt_id, token);
+      }
     } catch (error) {
       if (!valid(token)) return;
       const failure = error instanceof Error ? error.message : recoveryMessage;
+      if ((error as {code?:string})?.code === 'setup_required') setSetupRequired(true);
       setMessage(failure);
+      setBusyMessage('Checking status…');
       // Creation can have reached the server even when no response arrived.
       try {
         await recover(token);
@@ -198,11 +214,18 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
   }
   const unfinished = attempt && !closed(attempt);
   const done = attempt?.status === 'succeeded' && closed(attempt);
-  const canCollect = rollout === true && capability?.supported === true;
+  const showProgress = busy && !done && valid();
+  const statusMessage = showProgress ? busyMessage : message;
+  const canCollect = rollout === true && capability?.supported === true && capability.preparationSupported === true;
   return <section className="space-y-3" aria-label={operation === 'payment' ? 'Tap to Pay' : 'Save card with a tap'}>
     {rollout === false && <p className="text-sm text-fg-muted">{availabilityError ? 'Tap to Pay availability could not be checked. Reopen this window to try again.' : 'Tap to Pay and saving a card with a tap are coming soon.'} {operation === 'payment' ? 'Use Pay with card or another payment method.' : 'Use the customer’s subscription acceptance link for manual card entry.'}</p>}
     {rollout === true && !capability?.supported && capability && <p className="text-sm text-amber-400">{capability.reason || 'Tap to Pay is unavailable in this app. Use manual card entry (Pay with card).'}</p>}
-    {message && <p role="status" className="text-sm text-zinc-300">{message}</p>}
+    {rollout === true && capability?.supported && capability.preparationSupported !== true && <p className="text-sm text-fg-muted">Update Forge to use Tap to Pay. Use Pay with card or another payment method in the meantime.</p>}
+    {statusMessage && <p role="status" aria-live="polite" aria-atomic="true" className="flex items-center gap-2 text-sm text-zinc-300">
+      {showProgress && <span aria-hidden="true" className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent" />}
+      <span>{statusMessage}</span>
+    </p>}
+    {setupRequired && <div className="space-y-2 text-sm"><p>An authorized administrator may need to finish merchant setup. Cancel any unfinished attempt here before switching payment methods.</p><Button asChild variant="outline"><a href="/settings?tab=payments">Open Tap to Pay setup</a></Button></div>}
     {attempt?.warning && <p role="alert" className="text-sm text-amber-400">{attempt.warning}</p>}
     {!unfinished && !done && <>
       {canCollect && operation === 'payment' && <div className="flex gap-2 text-sm"><Checkbox id={`${formId}-save`} checked={save} disabled={busy || uncertain} onCheckedChange={value=>{setSave(value === true);setChecked(false);}}/><Label htmlFor={`${formId}-save`}>Save card for separately agreed future payments (optional)</Label></div>}
@@ -212,7 +235,6 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
         <div className="flex gap-2"><Checkbox id={`${formId}-consent`} checked={checked} disabled={busy || uncertain} onCheckedChange={value=>setChecked(value === true)}/><Label htmlFor={`${formId}-consent`}>I agree to save my card under these terms.</Label></div>
       </div>}
       <Button type="button" className="h-auto min-h-11 w-full gap-2 whitespace-normal py-3" disabled={busy || uncertain || !canCollect || (save && (!checked || !name.trim()))} onClick={()=>run('start')}>
-        {operation === 'payment' && <SmartphoneNfc size={18} className="shrink-0" aria-hidden="true" focusable="false" />}
         <span>{operation === 'payment' ? 'Tap to Pay on iPhone' : 'Save card with a tap'}{rollout === false && !availabilityError && ' — Coming soon'}</span>
       </Button>
     </>}
