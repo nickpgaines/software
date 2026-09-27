@@ -17,6 +17,7 @@ async function harness(t:any, options:any={}) {
   t.mock.method(globalThis,'fetch',async(url:any,init:any)=>{
     requests.push({url,method:init?.method,headers:new Headers(init?.headers),body:init?.body?JSON.parse(init.body):null});
     if(url==='/api/stripe/terminal/capabilities') return Response.json({enabled:options.enabled??true});
+    if(url==='/api/stripe/terminal/eligibility')return options.eligibilityError?Response.json({error:'Merchant eligibility could not be checked.'},{status:503}):Response.json({eligible:options.eligible??true,stripe_account:account});
     if(url==='/api/settings/company') return Response.json({id:1,name:'Acme',stripe_account_id:account});
     if(url==='/api/stripe/terminal/location') {
       if(options.locationError) return Response.json({error:'Complete Stripe onboarding before setting up Tap to Pay.'},{status:409});
@@ -44,6 +45,18 @@ test('setup checks readiness without preparing a device or creating a location o
   assert.equal(h.requests.some(r=>r.method==='POST'),false);
   assert.equal(h.preparations.length,0);
   assert.ok(h.button('How to tap'));
+});
+test('a forged onboarding success URL cannot enable setup for an incomplete merchant',async t=>{
+  (globalThis as any).__customerQuery='tab=payments&success=true';t.after(()=>delete (globalThis as any).__customerQuery);
+  const h=await harness(t,{eligible:false});
+  assert.equal(h.button('Set up Tap to Pay'),undefined);assert.equal(h.button('Prepare this iPhone'),undefined);
+  assert.match(text(h.tree),/Complete Stripe onboarding|administrator.*onboarding/i);assert.equal(h.preparations.length,0);
+});
+test('only verified eligible native merchants see an explicit setup entry point',async t=>{
+  const h=await harness(t);assert.ok(h.button('Set up Tap to Pay'));assert.equal(h.preparations.length,0);
+});
+test('failed fresh eligibility lookup leaves setup unavailable',async t=>{
+  const h=await harness(t,{eligibilityError:true});assert.equal(h.button('Set up Tap to Pay'),undefined);assert.equal(h.preparations.length,0);
 });
 test('Payments distinguishes authorized setup needed from temporary reader unavailability',async t=>{
   const h=await harness(t,{readiness:'setupRequired'});

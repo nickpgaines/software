@@ -35,6 +35,7 @@ export default function TerminalSetup({native=nativeTerminal,accountKey}: {nativ
   const [progress,setProgress] = useState<number|undefined>();
   const [preparing,setPreparing] = useState(false);
   const [changed,setChanged] = useState(false);
+  const [needsOnboarding,setNeedsOnboarding]=useState(false);
   const life = useRef<Life>({active:false,generation:native.generation,lease:Symbol(),serial:0});
   const lock = useRef(false);
   const valid = (token:Life,serial=token.serial) => token === life.current && token.active && token.generation === native.generation && token.serial === serial;
@@ -71,13 +72,20 @@ export default function TerminalSetup({native=nativeTerminal,accountKey}: {nativ
   const applySetup = (value:Setup) => {setSetup(value);setSelection(value.selected_location_id ?? (value.locations.length ? '' : 'new'));};
   async function load(token=life.current) {
     if(lock.current || !valid(token))return;
-    lock.current=true;setLoading(true);setError('');setMessage('');setRepresentative(false);setSetup(null);
+    lock.current=true;setLoading(true);setError('');setMessage('');setRepresentative(false);setSetup(null);setNeedsOnboarding(false);
     const serial=token.serial;
     try {
       const [capability,availability] = await Promise.all([native.capabilities(),json<{enabled:boolean}>('/api/stripe/terminal/capabilities')]);
       if(!valid(token,serial))return;
       setDevice(capability);setEnabled(availability.enabled === true);
-      if(availability.enabled === true)applySetup(await freshSetup(token,serial));
+      if(availability.enabled === true) {
+        const company=await identity(token,serial);
+        const eligibility=await json<{eligible:boolean;stripe_account:string|null}>('/api/stripe/terminal/eligibility');
+        if(!valid(token,serial))return;
+        if(eligibility.stripe_account!==company.stripe_account_id){changedAccount(token);return;}
+        if(!eligibility.eligible){setNeedsOnboarding(true);return;}
+        applySetup(await freshSetup(token,serial));
+      }
     } catch(e) {if(valid(token,serial))setError(e instanceof Error ? e.message : 'Unable to load setup. Please try again.');}
     finally {if(valid(token,serial)){lock.current=false;setLoading(false);}}
   }
@@ -156,7 +164,9 @@ export default function TerminalSetup({native=nativeTerminal,accountKey}: {nativ
       {!loading && !enabled && !error && <p className="text-sm text-fg-muted">Tap to Pay is coming soon. Use Pay with card to accept payments in the meantime.</p>}
       {!loading && enabled && !device?.supported && <p className="text-sm text-fg-muted">Open Forge on a supported iPhone to prepare this device. You can still use Pay with card.</p>}
       {!loading && enabled && device?.supported && !device.preparationSupported && <p className="text-sm text-fg-muted">Update Forge to set up Tap to Pay on this iPhone. Pay with card is still available.</p>}
-      {setup && !loading && <div className="space-y-4">
+      {needsOnboarding&&!loading&&<p role="status" className="text-sm text-fg-muted">Complete Stripe onboarding in Payments settings before setting up Tap to Pay. Ask an authorized administrator to review the Stripe requirements above.</p>}
+      {usable&&device?.supported&&device.preparationSupported&&<Button asChild variant="outline"><a href={`#${id}-tap-setup`}>Set up Tap to Pay</a></Button>}
+      {setup && !loading && <div id={`${id}-tap-setup`} tabIndex={-1} className="space-y-4">
         <div className="space-y-1"><h3 className="text-sm font-bold">Business location</h3><p className="text-sm text-fg-muted">{setup.locations.find(item=>item.id===setup.selected_location_id)?.display_name || 'An administrator needs to choose a business location.'}</p></div>
         {setup.can_manage ? <div className="space-y-3">
           <Label htmlFor={`${id}-location`}>Choose a location</Label>
