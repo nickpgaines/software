@@ -34,11 +34,15 @@ final class ForgeTerminalReader: NSObject, TerminalReaderProviding, ConnectionTo
     }
 
     func accountLinkStatus(completion: @escaping (TerminalAccountLinkStatus) -> Void) {
+        guard #available(iOS 16.4, *) else { completion(.unavailable); return }
         initialize() // Session must already be pinned before token provider init.
         pending = true
         // Direct charges: the connection token scopes the connected account.
         Terminal.shared.isTapToPayAccountLinked(nil) { [self] linked, error in
-            complete { completion(error == nil ? (linked ? .accepted : .setupRequired) : .unavailable) }
+            complete {
+                guard error == nil, let linked else { completion(.unavailable); return }
+                completion(linked.boolValue ? .accepted : .setupRequired)
+            }
         }
     }
 
@@ -63,8 +67,7 @@ final class ForgeTerminalReader: NSObject, TerminalReaderProviding, ConnectionTo
         do {
             let discovery = try TapToPayDiscoveryConfigurationBuilder().setSimulated(Self.simulated).build()
             readerDelegate?.events.invalidate()
-            let progress = onProgress
-            let delegate = ForgeTapToPayReaderDelegate(events: TerminalReaderEventLease(unexpectedDisconnect: { [weak self] in self?.onDisconnect?() }, progress: { progress?($0) }))
+            let delegate = ForgeTapToPayReaderDelegate(events: TerminalReaderEventLease(unexpectedDisconnect: { [weak self] in self?.onDisconnect?() }, progress: { [weak self] in self?.onProgress?($0) }))
             readerDelegate = delegate
             delegate.events.report(.init(phase: "preparing", message: "Preparing this iPhone for Tap to Pay…", progress: nil))
             let connection = try TapToPayConnectionConfigurationBuilder(delegate: delegate, locationId: location)
@@ -163,6 +166,16 @@ final class ForgeTerminalReader: NSObject, TerminalReaderProviding, ConnectionTo
             return
         }
         disconnectAndClear()
+    }
+
+    func clearOperation(completion: @escaping (Result<Void, TerminalFailure>) -> Void) {
+        guard !pending, cleanup == nil else { completion(.failure(.busy)); return }
+        payment = nil
+        setup = nil
+        cancelable = nil
+        guard initialized, Terminal.shared.connectedReader != nil,
+              UIApplication.shared.applicationState == .active else { completion(.failure(.terminalError)); return }
+        completion(.success(()))
     }
 
     private func complete(_ callback: () -> Void) {

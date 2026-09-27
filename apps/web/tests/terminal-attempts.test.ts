@@ -325,11 +325,25 @@ test('automatic warmup tokens never authorize merchant terms', async () => {
   const req = request({});
   req.headers.set('X-Forge-Stripe-Account','acct_1');
   req.headers.set('X-Forge-Terminal-Purpose','warmup');
+  req.headers.set('X-Forge-Terminal-Location','tml_test');
   const response = await modules.token.POST(req);
   assert.equal(response.status,200);
   assert.equal((await response.json()).tos_acceptance_permitted,false);
   req.headers.set('X-Forge-Authorized-Representative','true');
   assert.equal((await modules.token.POST(req)).status,400);
+});
+
+test('warmup and reader reuse reject a changed selected location', async () => {
+  await fixture();
+  const req=request({});
+  req.headers.set('X-Forge-Stripe-Account','acct_1');
+  req.headers.set('X-Forge-Terminal-Purpose','warmup');
+  assert.equal((await modules.token.POST(req)).status,409);
+  req.headers.set('X-Forge-Terminal-Location','tml_other');
+  assert.equal((await modules.token.POST(req)).status,409);
+  req.headers.set('X-Forge-Terminal-Purpose','collection');
+  assert.equal((await modules.token.POST(req)).status,409);
+  assert.equal(provider.tokens.length,0);
 });
 test('webhook card-provider failure retries after payment is recorded', async () => {
   await start({ operation: 'payment', job_id: 12, save_card: true, consent });

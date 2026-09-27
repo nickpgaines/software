@@ -2,6 +2,7 @@ import Capacitor
 import CoreLocation
 import ProximityReader
 import WebKit
+import OSLog
 
 @objc(ForgeTerminalPlugin)
 public final class ForgeTerminalPlugin: CAPPlugin, CAPBridgedPlugin, WKHTTPCookieStoreObserver {
@@ -17,6 +18,9 @@ public final class ForgeTerminalPlugin: CAPPlugin, CAPBridgedPlugin, WKHTTPCooki
     public override func load() {
         DispatchQueue.main.async { [self] in
             runtime.attach(webView: bridge?.webView, presenter: bridge?.viewController)
+            runtime.coordinator.onReaderPresentation = { seconds in
+                Logger(subsystem: "app.forgecrm", category: "TerminalTiming").debug("collection_to_first_input_seconds=\(seconds, privacy: .public)")
+            }
             runtime.coordinator.onProgress = { [weak self] id, update in
                 var data: [String: Any] = ["operationId": id, "phase": update.phase, "message": update.message]
                 if let progress = update.progress { data["progress"] = progress }

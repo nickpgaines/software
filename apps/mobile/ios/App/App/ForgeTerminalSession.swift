@@ -5,7 +5,7 @@ import Foundation
 final class ForgeTerminalSession: TerminalSessionProviding {
     typealias Snapshot = (@escaping (URL?, [HTTPCookie]) -> Void) -> Void
     typealias Transport = (URLRequest, @escaping (Data?, URLResponse?, Error?) -> Void) -> Void
-    private struct Context: Equatable { let id: UUID; let account: String; let cookie: String; let purpose: TerminalSessionPurpose }
+    private struct Context: Equatable { let id: UUID; let account: String; let location: String?; let cookie: String; let purpose: TerminalSessionPurpose }
     private let snapshot: Snapshot
     private let transport: Transport
     private let configuration: TerminalEnvironment?
@@ -19,7 +19,7 @@ final class ForgeTerminalSession: TerminalSessionProviding {
         self.transport = transport
     }
 
-    func begin(account: String, purpose: TerminalSessionPurpose = .collection, completion: @escaping (Result<Void, TerminalFailure>) -> Void) {
+    func begin(account: String, location: String? = nil, purpose: TerminalSessionPurpose = .collection, completion: @escaping (Result<Void, TerminalFailure>) -> Void) {
         tosAcceptancePermitted = false
         let generation = self.generation
         snapshot { [self] url, cookies in
@@ -27,7 +27,7 @@ final class ForgeTerminalSession: TerminalSessionProviding {
                   let cookie = try? TerminalSessionPolicy.sessionCookie(from: cookies, configuration: configuration) else {
                 completion(.failure(.sessionChanged)); return
             }
-            context = Context(id: UUID(), account: account, cookie: cookie, purpose: purpose)
+            context = Context(id: UUID(), account: account, location: location, cookie: cookie, purpose: purpose)
             validate(completion: completion)
         }
     }
@@ -52,7 +52,7 @@ final class ForgeTerminalSession: TerminalSessionProviding {
         snapshot { [self] url, cookies in
             guard context == expected, TerminalSessionPolicy.isTrusted(url, configuration: configuration),
                   (try? TerminalSessionPolicy.sessionCookie(from: cookies, configuration: configuration)) == expected.cookie,
-                  let request = try? TerminalSessionPolicy.request(session: expected.cookie, account: expected.account, purpose: expected.purpose, configuration: configuration) else {
+                  let request = try? TerminalSessionPolicy.request(session: expected.cookie, account: expected.account, location: expected.location, purpose: expected.purpose, configuration: configuration) else {
                 completion(.failure(.sessionChanged)); return
             }
             transport(request) { [self] data, response, error in

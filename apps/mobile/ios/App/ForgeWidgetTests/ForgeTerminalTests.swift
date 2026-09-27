@@ -4,6 +4,89 @@ import XCTest
 #endif
 
 final class ForgeTerminalTests: XCTestCase {
+    func testReaderTimingReportsOnlyFirstCurrentInputAndNoIdentifiers() {
+        let sdk = ReaderDouble()
+        let coordinator = ForgeTerminalCoordinator(provider: sdk, session: SessionDouble())
+        var durations: [Double] = []
+        coordinator.onReaderPresentation = { durations.append($0) }
+        coordinator.collect(request) { _ in }
+        sdk.onProgress?(.init(phase: "input", message: "Present card", progress: nil))
+        sdk.onProgress?(.init(phase: "input", message: "Present again", progress: nil))
+        coordinator.cancel(reason: .canceled)
+        sdk.onProgress?(.init(phase: "input", message: "Late", progress: nil))
+        XCTAssertEqual(durations.count, 1)
+        XCTAssertGreaterThanOrEqual(durations.first ?? -1, 0)
+    }
+    func testWarmReaderIsReusedAndIntentClearedBeforeBecomingIdle() {
+        let sdk = ReaderDouble()
+        let session = SessionDouble()
+        let coordinator = ForgeTerminalCoordinator(provider: sdk, session: session)
+        coordinator.warmUp(account: "acct_1", location: "tml_1") { _ in }
+        coordinator.collect(request) { _ in }
+        XCTAssertEqual(sdk.calls.filter { $0 == "connect" }.count, 1)
+        XCTAssertEqual(coordinator.readiness, .collecting)
+        sdk.collected?(.success(()))
+        sdk.confirmed?(.success("pi_confirmed"))
+        XCTAssertEqual(sdk.calls.last, "clearOperation")
+        XCTAssertEqual(coordinator.readiness, .ready)
+        XCTAssertFalse(sdk.hasRetainedIntent)
+    }
+
+    func testCollectionWaitsForWarmupAndBackgroundKeepsUnknownRecovery() {
+        let sdk = ReaderDouble()
+        sdk.holdConnect = true
+        let coordinator = ForgeTerminalCoordinator(provider: sdk, session: SessionDouble())
+        coordinator.warmUp(account: "acct_1", location: "tml_1") { _ in }
+        var result: Result<String, TerminalFailure>?
+        coordinator.collect(request) { result = $0 }
+        XCTAssertNil(result)
+        sdk.connected?(.success(()))
+        XCTAssertEqual(sdk.calls.filter { $0 == "connect" }.count, 1)
+        sdk.collected?(.success(()))
+        coordinator.cancel(reason: .canceled)
+        sdk.confirmed?(.success("pi_late"))
+        XCTAssertEqual(result?.failure, .unknown)
+        XCTAssertEqual(coordinator.readiness, .disconnected)
+    }
+
+    func testReusedReaderRevalidatesPinnedSessionBeforeCollection() {
+        let sdk = ReaderDouble()
+        let session = SessionDouble()
+        let coordinator = ForgeTerminalCoordinator(provider: sdk, session: session)
+        coordinator.warmUp(account: "acct_1", location: "tml_1") { _ in }
+        session.failure = .sessionChanged
+        var result: Result<String, TerminalFailure>?
+        coordinator.collect(request) { result = $0 }
+        XCTAssertEqual(result?.failure, .sessionChanged)
+        XCTAssertFalse(sdk.calls.contains("collect"))
+        XCTAssertEqual(coordinator.readiness, .disconnected)
+    }
+
+    func testIdleReuseCleanupFailureKeepsReaderLockedButReturnsConfirmedIntent() {
+        let sdk = ReaderDouble()
+        let coordinator = ForgeTerminalCoordinator(provider: sdk, session: SessionDouble())
+        coordinator.warmUp(account: "acct_1", location: "tml_1") { _ in }
+        var result: Result<String, TerminalFailure>?
+        coordinator.collect(request) { result = $0 }
+        sdk.collected?(.success(()))
+        sdk.cleanupError = .terminalError
+        sdk.confirmed?(.success("pi_confirmed"))
+        XCTAssertEqual(try? result?.get(), "pi_confirmed")
+        XCTAssertNotEqual(coordinator.readiness, .ready)
+        var next: Result<String, TerminalFailure>?
+        coordinator.collect(request) { next = $0 }
+        XCTAssertEqual(next?.failure, .busy)
+    }
+
+    func testChangedWarmBindingReconnectsInsteadOfReusing() {
+        for (account, location) in [("acct_other","tml_1"),("acct_1","tml_other")] {
+            let sdk = ReaderDouble()
+            let coordinator = ForgeTerminalCoordinator(provider: sdk, session: SessionDouble())
+            coordinator.warmUp(account: "acct_1", location: "tml_1") { _ in }
+            coordinator.collect(TerminalRequest(operationID: "next", clientSecret: "secret", account: account, locationID: location, kind: .setup)) { _ in }
+            XCTAssertEqual(sdk.calls.filter { $0 == "connect" }.count, 2)
+        }
+    }
     func testWarmupSkipsUndeterminedPermissionsAndUnknownTerms() {
         for status in [TerminalAccountLinkStatus.accepted, .setupRequired, .unavailable] {
             let sdk = ReaderDouble()
@@ -444,7 +527,7 @@ private final class SessionDouble: TerminalSessionProviding {
     var failure: TerminalFailure?
     var tosAcceptancePermitted = false
     var purpose: TerminalSessionPurpose?
-    func begin(account: String, purpose: TerminalSessionPurpose, completion: @escaping (Result<Void, TerminalFailure>) -> Void) {
+    func begin(account: String, location: String?, purpose: TerminalSessionPurpose, completion: @escaping (Result<Void, TerminalFailure>) -> Void) {
         self.purpose = purpose
         completion(.success(()))
     }
@@ -453,6 +536,11 @@ private final class SessionDouble: TerminalSessionProviding {
 }
 
 private final class ReaderDouble: TerminalReaderProviding {
+    var hasRetainedIntent = false
+    func clearOperation(completion: @escaping (Result<Void, TerminalFailure>) -> Void) {
+        calls.append("clearOperation"); hasRetainedIntent = false
+        completion(cleanupError.map(Result.failure) ?? .success(()))
+    }
     var canWarmWithoutPrompt = true
     var linkStatus: TerminalAccountLinkStatus = .accepted
     func accountLinkStatus(completion: @escaping (TerminalAccountLinkStatus) -> Void) { calls.append("linked"); completion(linkStatus) }
@@ -475,7 +563,7 @@ private final class ReaderDouble: TerminalReaderProviding {
         if holdConnect { connected = completion } else { completion(.success(())) }
     }
     func educate(completion: @escaping (Result<Void, TerminalFailure>) -> Void) { calls.append("educate"); completion(.success(())) }
-    func retrieve(_ request: TerminalRequest, completion: @escaping (Result<Void, TerminalFailure>) -> Void) { calls.append("retrieve"); completion(.success(())) }
+    func retrieve(_ request: TerminalRequest, completion: @escaping (Result<Void, TerminalFailure>) -> Void) { calls.append("retrieve"); hasRetainedIntent = true; completion(.success(())) }
     func collect(_ request: TerminalRequest, completion: @escaping (Result<Void, TerminalFailure>) -> Void) { calls.append("collect"); collected = completion }
     func confirm(completion: @escaping (Result<String, TerminalFailure>) -> Void) { calls.append("confirm"); confirmed = completion }
 }

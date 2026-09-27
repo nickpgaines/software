@@ -52,7 +52,7 @@ enum TerminalSessionPolicy {
         return matches[0].value
     }
 
-    static func request(session: String, account: String, purpose: TerminalSessionPurpose = .collection, configuration: TerminalEnvironment? = configuration) throws -> URLRequest {
+    static func request(session: String, account: String, location: String? = nil, purpose: TerminalSessionPurpose = .collection, configuration: TerminalEnvironment? = configuration) throws -> URLRequest {
         guard let configuration else { throw TerminalFailure.sessionChanged }
         var request = URLRequest(url: configuration.endpoint, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 30)
         request.httpMethod = "POST"
@@ -60,6 +60,7 @@ enum TerminalSessionPolicy {
         request.setValue(configuration.origin, forHTTPHeaderField: "Origin")
         request.setValue(configuration.providerMode, forHTTPHeaderField: "X-Forge-Terminal-Mode")
         request.setValue(account, forHTTPHeaderField: "X-Forge-Stripe-Account")
+        if let location { request.setValue(location, forHTTPHeaderField: "X-Forge-Terminal-Location") }
         request.setValue("crm_session=\(session)", forHTTPHeaderField: "Cookie")
         request.setValue(purpose == .warmup ? "warmup" : purpose == .collection ? "collection" : "preparation", forHTTPHeaderField: "X-Forge-Terminal-Purpose")
         if purpose.requestsTerms { request.setValue("true", forHTTPHeaderField: "X-Forge-Authorized-Representative") }
