@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { renderToStaticMarkup } from 'react-dom/server';
 import {NativeTerminal} from '../src/lib/native-terminal.ts';
+import {RemoveScroll} from 'react-remove-scroll';
 // @ts-ignore existing UI harness executes the production hooks and JSX handlers.
 import {loadCustomerModule, hookRenderer, elements, text} from './helpers/customer-ui.mjs';
 
@@ -296,6 +297,22 @@ test('cancel race reconciles successful payment instead of enabling a second pay
   assert.equal(h.completed.length,1);
   assert.match(text(h.tree),/Payment confirmed/);
   assert.equal(h.button('Tap to Pay on iPhone'),undefined);
+});
+
+test('checkout isolates scrolling without changing its panel or explicit dismissal',async t=>{
+  const {default:Checkout}=await loadCustomerModule('components/jobs/CheckoutModal.tsx');
+  const renderer=hookRenderer();t.after(()=>renderer.dispose());
+  let closed=0;
+  const tree=renderer.render(Checkout,{jobId:1,jobTotalCents:5000,paidTotalCents:0,onClose(){closed++;},onChoose(){},onPaid(){}});
+  const lock=elements(tree,(el:any)=>el.type===RemoveScroll)[0];
+  assert.ok(lock,'checkout must isolate wheel/touch scrolling from the background');
+  assert.notEqual(lock.props.enabled,false);
+  assert.notEqual(lock.props.noIsolation,true);
+  assert.equal(lock.props.forwardProps,true,'retain the existing modal wrapper');
+  assert.ok(elements(lock,(el:any)=>el.props.className?.includes('overflow-y-auto')).length);
+  assert.equal(closed,0);
+  elements(lock,(el:any)=>el.props['aria-label']==='Close')[0].props.onClick();
+  assert.equal(closed,1);
 });
 
 test('checkout blocks manual switches synchronously and refreshes only on verified Terminal success',async t=>{

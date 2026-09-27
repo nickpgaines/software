@@ -92,6 +92,31 @@ final class ForgeTerminalTests: XCTestCase {
         XCTAssertEqual(sdk.termsPermissions, [false])
     }
 
+    func testPaymentAndCardSavingDoNotRepeatEducation() {
+        for kind in [TerminalRequest.Kind.payment(saveCard: false), .payment(saveCard: true), .setup] {
+            let sdk = ReaderDouble()
+            let coordinator = ForgeTerminalCoordinator(provider: sdk, session: SessionDouble())
+            let operation = TerminalRequest(operationID: "attempt", clientSecret: "secret", account: "acct_1", locationID: "tml_1", kind: kind)
+            var result: Result<String, TerminalFailure>?
+            coordinator.collect(operation) { result = $0 }
+            XCTAssertEqual(sdk.calls, ["cleanup", "connect", "retrieve", "collect"])
+            sdk.collected?(.success(()))
+            sdk.confirmed?(.success("intent_confirmed"))
+            XCTAssertEqual(try? result?.get(), "intent_confirmed")
+            XCTAssertEqual(sdk.calls, ["cleanup", "connect", "retrieve", "collect", "confirm", "cleanup"])
+        }
+    }
+
+    func testHowToTapRemainsAvailableOnDemand() {
+        let sdk = ReaderDouble()
+        let coordinator = ForgeTerminalCoordinator(provider: sdk, session: SessionDouble())
+        var result: Result<Void, TerminalFailure>?
+        coordinator.showEducation { result = $0 }
+        XCTAssertNotNil(result)
+        XCTAssertNil(result?.failure)
+        XCTAssertEqual(sdk.calls, ["educate", "cleanup"])
+    }
+
     func testPreparationCleanupFailureCannotReportReady() {
         let sdk = ReaderDouble()
         sdk.holdConnect = true
@@ -193,7 +218,7 @@ final class ForgeTerminalTests: XCTestCase {
         var duplicate: Result<String, TerminalFailure>?
         coordinator.collect(request, completion: { duplicate = $0 })
         XCTAssertEqual(duplicate?.failure?.code, "busy")
-        XCTAssertEqual(sdk.calls, ["cleanup", "connect", "educate", "retrieve", "collect"])
+        XCTAssertEqual(sdk.calls, ["cleanup", "connect", "retrieve", "collect"])
         session.failure = .sessionChanged
         sdk.collected?(.success(()))
         XCTAssertFalse(sdk.calls.contains("confirm"))
