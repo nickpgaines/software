@@ -9,6 +9,12 @@ import {loadCustomerModule, hookRenderer, elements, text} from './helpers/custom
 const settle = async () => { for(let i=0;i<12;i++) await new Promise(resolve=>setImmediate(resolve)); };
 const ready = {attempt_id:'attempt_1',operation:'payment',status:'ready',stripe_account:'acct_1',terminal_location_id:'tml_1',client_secret:'ephemeral',amount_cents:5000,customer_id:2,job_id:1,save_card:false,payment_recorded:false,card_saved:false,warning:null};
 
+test('notice deep link opens the original attempt without automatic financial mutations',async t=>{
+  const h=await harness(t,{list:[ready],props:{initialAttemptId:'attempt_1'}});
+  assert.equal(h.calls.some(call=>call.url.endsWith('/reconcile')||call.url.endsWith('/cancel')||call.url==='/api/stripe/terminal/attempts'),false);
+  assert.equal(h.blocked.at(-1),true);assert.ok(h.button('Check status'));
+});
+
 for (const operation of ['payment', 'setup']) {
   test(`${operation} shows continuous progress until server verification, never premature success`, async t => {
     let finishNative!: () => void;

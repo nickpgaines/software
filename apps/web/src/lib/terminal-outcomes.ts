@@ -86,3 +86,37 @@ export async function handleTerminalChargeWebhook(charge:Stripe.Charge,account:s
   await observeTerminalOutcome(row.company_id,attemptId,{eventId,chargeId:charge.id});
   return true;
 }
+
+type NoticeAuth={companyId:number;staffId:number|null};
+export type TerminalNotice={id:string;attempt_id:string;job_id:number|null;customer_id:number;kind:TerminalOutcomeKind|'attention';occurred_at:string;current_attempt_unresolved:boolean;summary:TerminalOutcomeSummary};
+type NoticeRow=Omit<TerminalNotice,'summary'|'current_attempt_unresolved'> & {summary_json:string;current_attempt_unresolved:number};
+const eligibleActor=`FROM terminal_attempts a JOIN company c ON c.id=a.company_id AND c.stripe_account_id=a.stripe_account_id
+  JOIN staff s ON s.id=a.initiating_staff_id AND s.company_id=a.company_id`;
+export async function listTerminalNotices(auth:NoticeAuth):Promise<{notices:TerminalNotice[]}> {
+  if(!auth.staffId)return {notices:[]};
+  const db=await getDb();
+  const rows=await db.prepare(`SELECT * FROM (
+    SELECT o.id,a.attempt_id,a.job_id,a.customer_id,o.kind,o.occurred_at,o.summary_json,
+      (a.status NOT IN ('succeeded','canceled')) AS current_attempt_unresolved
+      ${eligibleActor} JOIN terminal_outcomes o ON o.attempt_id=a.attempt_id AND o.company_id=a.company_id AND o.stripe_account=a.stripe_account_id
+      WHERE a.company_id=? AND s.id=?
+    UNION ALL
+    SELECT 'attention:'||a.attempt_id||':'||a.outcome_revision,a.attempt_id,a.job_id,a.customer_id,'attention',a.updated_at,
+      json_object('amount_cents',a.amount_cents,'currency','usd','operation',a.operation),1
+      ${eligibleActor} WHERE a.company_id=? AND s.id=? AND a.status NOT IN ('succeeded','canceled')
+  ) n WHERE NOT EXISTS (SELECT 1 FROM terminal_notice_acknowledgments ack WHERE ack.company_id=? AND ack.staff_id=? AND ack.notice_id=n.id)
+  ORDER BY occurred_at DESC,id DESC LIMIT 25`).all<NoticeRow>(auth.companyId,auth.staffId,auth.companyId,auth.staffId,auth.companyId,auth.staffId);
+  return {notices:rows.map(({summary_json,current_attempt_unresolved,...row})=>({...row,summary:JSON.parse(summary_json),current_attempt_unresolved:!!current_attempt_unresolved}))};
+}
+export async function acknowledgeTerminalNotice(auth:NoticeAuth,noticeId:string):Promise<void> {
+  if(!auth.staffId || typeof noticeId!=='string' || noticeId.length>150)throw new TerminalError('Notice not found.',404);
+  const db=await getDb();
+  await db.transaction(async tx=>{
+    const attention=/^attention:([^:]+):(0|[1-9]\d*)$/.exec(noticeId);
+    const row=attention
+      ? await tx.prepare(`SELECT a.attempt_id ${eligibleActor} WHERE a.company_id=? AND s.id=? AND a.attempt_id=? AND a.outcome_revision>=?`).get(auth.companyId,auth.staffId,attention[1],Number(attention[2]))
+      : await tx.prepare(`SELECT a.attempt_id ${eligibleActor} JOIN terminal_outcomes o ON o.attempt_id=a.attempt_id AND o.company_id=a.company_id AND o.stripe_account=a.stripe_account_id WHERE a.company_id=? AND s.id=? AND o.id=?`).get(auth.companyId,auth.staffId,noticeId);
+    if(!row)throw new TerminalError('Notice not found.',404);
+    await tx.prepare('INSERT OR IGNORE INTO terminal_notice_acknowledgments (company_id,staff_id,notice_id) VALUES (?,?,?)').run(auth.companyId,auth.staffId,noticeId);
+  });
+}

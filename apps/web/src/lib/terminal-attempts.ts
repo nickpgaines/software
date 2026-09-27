@@ -259,10 +259,12 @@ export async function getTerminalReceiptIntent(companyId: number, id: string) {
   validate(a,intent);
   return {attempt_id:a.attempt_id,stripe_account:a.stripe_account_id,intent};
 }
-export async function listTerminalAttempts(companyId: number, target: { job_id?: number; customer_id?: number }) {
+export async function listTerminalAttempts(companyId: number, target: { job_id?: number; customer_id?: number;attempt_id?:string }) {
   const column = target.job_id !== undefined ? 'job_id' : 'customer_id';
   const id = positiveId(target[column]);
-  const rows = await (await getDb()).prepare(`SELECT * FROM terminal_attempts WHERE company_id=? AND ${column}=? AND (status NOT IN ('succeeded','canceled') OR save_pending=1) ORDER BY created_at DESC`).all<Attempt>(companyId,id);
+  const db=await getDb();
+  if(target.attempt_id && !await db.prepare(`SELECT attempt_id FROM terminal_attempts WHERE company_id=? AND ${column}=? AND attempt_id=?`).get(companyId,id,target.attempt_id))throw new TerminalError('Attempt not found for this record.',404);
+  const rows = await db.prepare(`SELECT * FROM terminal_attempts WHERE company_id=? AND ${column}=? AND (status NOT IN ('succeeded','canceled') OR save_pending=1 OR attempt_id=?) ORDER BY created_at DESC`).all<Attempt>(companyId,id,target.attempt_id??'');
   return { attempts: rows.map(a => view(a)) };
 }
 export async function handleTerminalWebhook(intent: Intent, stripeAccount: string | undefined): Promise<boolean> {

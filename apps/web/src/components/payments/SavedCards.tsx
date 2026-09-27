@@ -31,11 +31,16 @@ export function useSavedCards(customerId: number | null, refresh = 0) {
 export function CustomerPaymentMethods({customerId,onChanged}:{customerId:number;onChanged:()=>void}) {
   const [refresh,setRefresh] = useState(0);
   const [open,setOpen] = useState(false);
+  const [terminalAttempt,setTerminalAttempt]=useState<string>();
+  useEffect(()=>{
+    const id=new URLSearchParams(window.location.search).get('terminalAttempt');
+    if(id&&id.length<=100){setTerminalAttempt(id);setOpen(true);}
+  },[customerId]);
   const {cards,error} = useSavedCards(customerId,refresh);
   return <div className="space-y-3">
     {error ? <p role="alert">{error}</p> : cards.length ? <ul className="space-y-2">{cards.map(card=><li key={card.id}>{savedCardLabel(card)}{card.requires_explicit_selection ? <span className="block text-xs text-zinc-400">Choose explicitly on an accepted subscription to use for recurring billing.</span> : null}</li>)}</ul> : <p className="text-zinc-500">No card on file.</p>}
     <button type="button" className="text-sm underline" onClick={()=>setOpen(!open)}>{open ? 'Close tap-to-save' : 'Save card with a tap'}</button>
-    {open && <TerminalFlow key={customerId} operation="setup" customerId={customerId} onSuccess={()=>{setRefresh(n=>n+1);onChanged();}}/>}
+    {open && <TerminalFlow key={customerId} operation="setup" customerId={customerId} initialAttemptId={terminalAttempt} onSuccess={()=>{setRefresh(n=>n+1);onChanged();}}/>}
     <p className="text-xs text-zinc-400">Saving a card does not start billing. For manual card entry, send the customer their subscription acceptance link or use Pay with card during job checkout.</p>
   </div>;
 }

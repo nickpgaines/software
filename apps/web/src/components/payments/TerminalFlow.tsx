@@ -12,6 +12,7 @@ import type { TerminalAttemptView } from '@/lib/terminal-attempts';
 
 type Props = {
   operation: 'payment' | 'setup'; jobId?: number; customerId?: number;
+  initialAttemptId?:string;
   onSuccess: (attempt: TerminalAttemptView) => void;
   onBlockedChange?: (blocked: boolean) => void;
   native?: Pick<NativeTerminal, 'generation' | 'capabilities' | 'education' | 'collect' | 'cancel'>;
@@ -24,7 +25,7 @@ const closed = (a: TerminalAttemptView) => a.status === 'canceled' || (a.status 
 // because a concurrent listing is empty. Keep this block across modal dismissal.
 const uncertainCreations = new Set<string>();
 
-export default function TerminalFlow({ operation, jobId, customerId, onSuccess, onBlockedChange, native = nativeTerminal }: Props) {
+export default function TerminalFlow({ operation, jobId, customerId, initialAttemptId, onSuccess, onBlockedChange, native = nativeTerminal }: Props) {
   const readiness=useTerminalReadiness();
   const formId = useId();
   const [capability, setCapability] = useState<{supported: boolean; reason?: string; preparationSupported?:boolean} | null>(null);
@@ -126,6 +127,14 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
     if (unknown) setMessage(`${recoveryMessage} If the attempt remains unavailable, have the merchant verify the payment before continuing.`);
     else if (!current.current) setMessage('');
   }
+  async function openOriginal(token:Lifecycle,id:string) {
+    await checkIdentity(token);
+    const {attempts}=await json<{attempts:TerminalAttemptView[]}>(`/api/stripe/terminal/attempts?${query}&attempt_id=${encodeURIComponent(id)}`);
+    if(!valid(token))return;
+    const selected=attempts.find(row=>row.attempt_id===id);
+    if(!selected)throw new Error('This attempt is not available for this record. Check payment status before collecting again.');
+    receive(selected,token,attempts.some(row=>row.attempt_id!==id&&!closed(row)));
+  }
   useEffect(() => {
     const token = { active: true, generation: native.generation, lease: Symbol() };
     life.current = token;
@@ -145,7 +154,7 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
     void json<{enabled: boolean}>('/api/stripe/terminal/capabilities')
       .then(value => { if (valid(token)) setRollout(value?.enabled === true); })
       .catch(() => { if (valid(token)) { setRollout(false); setAvailabilityError(true); } });
-    void recover(token).catch(error => { if (life.current === token && valid()) setMessage(error.message); }).finally(() => {
+    void (initialAttemptId?openOriginal(token,initialAttemptId):recover(token)).catch(error => { if (life.current === token && valid()) setMessage(error.message); }).finally(() => {
       if (life.current === token && valid()) { lock.current = false; setBusy(false); }
     });
     return () => {
@@ -155,7 +164,7 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
     };
     // Target changes create a fresh lifecycle; callback identity must not restart collection.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [operation, jobId, customerId, native]);
+  }, [operation, jobId, customerId, initialAttemptId, native]);
 
   async function run(action: 'start' | 'recover' | 'resume' | 'cancel') {
     if ((lock.current && action !== 'cancel') || !valid()) return;

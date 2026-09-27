@@ -22,7 +22,7 @@ export async function terminalSession(req: Request) {
   // This helper also serves ordinary subscriptions: only Terminal requests
   // carry this protocol. Check before route code can create provider objects.
   const path=new URL(req.url).pathname;
-  const providerFreeListing=req.method==='GET' && path==='/api/stripe/terminal/attempts';
+  const providerFreeListing=(req.method==='GET' && (path==='/api/stripe/terminal/attempts' || path==='/api/stripe/terminal/notices')) || (req.method==='POST' && /^\/api\/stripe\/terminal\/notices\/[^/]+\/ack$/.test(path));
   if (!providerFreeListing && path.startsWith('/api/stripe/terminal/') && req.headers.has('X-Forge-Terminal-Mode')) {
     requireTerminalEnvironment(req.headers.get('X-Forge-Terminal-Mode'));
   }

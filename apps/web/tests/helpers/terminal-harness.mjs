@@ -144,7 +144,7 @@ export function fixture() {
   process.env.STRIPE_WEBHOOK_SECRET = 'whsec_fake';
   return db;
 }
-export async function loadTerminal({ receipts = false } = {}) {
+export async function loadTerminal({ receipts = false, notices = false } = {}) {
   const hooks = registerHooks({ resolve(specifier, context, next) {
     if (specifier === 'server-only') return { url: 'data:text/javascript,export {}', shortCircuit: true };
     if (specifier === 'stripe' || /^(?:@\/lib\/|\.\/)(?:db|auth|payment-receipts|activity|payment-job-completion)(?:\.ts)?$/.test(specifier)) return { url: import.meta.url, shortCircuit: true };
@@ -155,12 +155,17 @@ export async function loadTerminal({ receipts = false } = {}) {
   } });
   try {
     return {
+      ...(notices?{
+        notices:await import('../../src/app/api/stripe/terminal/notices/route.ts'),
+        noticeAck:await import('../../src/app/api/stripe/terminal/notices/[id]/ack/route.ts'),
+      }:{}),
       ...(receipts ? {
         receipts: await import('../../src/app/api/stripe/terminal/receipts/route.ts'),
         receipt: await import('../../src/app/api/stripe/terminal/attempts/[id]/receipt/route.ts'),
       } : {}),
       service: await import('../../src/lib/terminal-attempts.ts'),
       schema: await import('../../src/lib/terminal-schema.ts'),
+      outcomes: await import('../../src/lib/terminal-outcomes.ts'),
       route: await import('../../src/app/api/stripe/terminal/attempts/route.ts'),
       reconcile: await import('../../src/app/api/stripe/terminal/attempts/[id]/reconcile/route.ts'),
       cancel: await import('../../src/app/api/stripe/terminal/attempts/[id]/cancel/route.ts'),

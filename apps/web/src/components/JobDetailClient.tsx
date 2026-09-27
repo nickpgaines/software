@@ -338,6 +338,11 @@ export default function JobDetailClient({
   const [paymentWarning, setPaymentWarning] = useState<string | null>(null);
   const [lifecycleRefreshKey, setLifecycleRefreshKey] = useState(0);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [terminalAttempt,setTerminalAttempt]=useState<string>();
+  useEffect(()=>{
+    const id=new URLSearchParams(window.location.search).get('terminalAttempt');
+    if(id&&id.length<=100){setTerminalAttempt(id);setCheckoutOpen(true);}
+  },[initialJob.id]);
   const [staff, setStaff] = useState<Staff[]>([]);
   const [creatingInvoice, setCreatingInvoice] = useState(false);
   const [sendingReview, setSendingReview] = useState(false);
@@ -782,7 +787,8 @@ export default function JobDetailClient({
           jobId={job.id}
           jobTotalCents={job.price_cents}
           paidTotalCents={job.paid_total_cents}
-          onClose={() => setCheckoutOpen(false)}
+          initialAttemptId={terminalAttempt}
+          onClose={() => {setCheckoutOpen(false);setTerminalAttempt(undefined);}}
           onPaid={() => { void refreshJob(); }}
           onChoose={(choice) => {
             setCheckoutOpen(false);

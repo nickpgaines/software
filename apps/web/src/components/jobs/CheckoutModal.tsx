@@ -19,6 +19,7 @@ export default function CheckoutModal({
   onClose,
   onChoose,
   onPaid,
+  initialAttemptId,
 }: {
   jobId: number;
   jobTotalCents: number;
@@ -26,6 +27,7 @@ export default function CheckoutModal({
   onClose: () => void;
   onChoose: (choice: CheckoutChoice) => void;
   onPaid: () => void;
+  initialAttemptId?:string;
 }) {
   const [blocked, setBlocked] = useState(true);
   const blockedRef = useRef(true);
@@ -75,7 +77,7 @@ export default function CheckoutModal({
           </div>
 
           <div className="space-y-3">
-            <TerminalFlow operation="payment" jobId={jobId}
+            <TerminalFlow operation="payment" jobId={jobId} initialAttemptId={initialAttemptId}
               onBlockedChange={value => { blockedRef.current = value; setBlocked(value); }}
               onSuccess={attempt => { blockedRef.current = true; setPaid(true); setReceiptAttemptId(attempt.attempt_id); onPaid(); }} />
 

@@ -180,7 +180,8 @@ export async function terminalRequestInit(native:Pick<NativeTerminal,'generation
   if (!url.startsWith('/api/stripe/terminal/')) return init;
   // Listing is provider-free and must release manual-payment locks when no
   // attempt exists, even if native configuration or Stripe is unavailable.
-  if ((init.method ?? 'GET').toUpperCase()==='GET' && url.split('?')[0]==='/api/stripe/terminal/attempts') return init;
+  const method=(init.method ?? 'GET').toUpperCase(),path=url.split('?')[0];
+  if ((method==='GET' && ['/api/stripe/terminal/attempts','/api/stripe/terminal/notices'].includes(path)) || (method==='POST' && /^\/api\/stripe\/terminal\/notices\/[^/]+\/ack$/.test(path))) return init;
   const notSent=(message:string)=>Object.assign(new Error(message),{requestNotSent:true});
   const generation=native.generation;
   let capability:TerminalCapability;
