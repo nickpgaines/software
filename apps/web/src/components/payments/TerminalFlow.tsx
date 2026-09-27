@@ -6,6 +6,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { nativeTerminal, terminalRequestInit, type NativeTerminal } from '@/lib/native-terminal';
+import {useTerminalReadiness} from './TerminalLifecycle';
 import { TERMINAL_CONSENT_VERSION, terminalConsentText } from '@/lib/terminal-consent';
 import type { TerminalAttemptView } from '@/lib/terminal-attempts';
 
@@ -24,6 +25,7 @@ const closed = (a: TerminalAttemptView) => a.status === 'canceled' || (a.status 
 const uncertainCreations = new Set<string>();
 
 export default function TerminalFlow({ operation, jobId, customerId, onSuccess, onBlockedChange, native = nativeTerminal }: Props) {
+  const readiness=useTerminalReadiness();
   const formId = useId();
   const [capability, setCapability] = useState<{supported: boolean; reason?: string; preparationSupported?:boolean} | null>(null);
   const [rollout, setRollout] = useState<boolean | null>(null);
@@ -194,6 +196,7 @@ export default function TerminalFlow({ operation, jobId, customerId, onSuccess, 
       }
       if (!valid(token) || !next || next.status !== 'ready' || !next.client_secret) return;
       await checkIdentity(token);
+      if(readiness?.state==='preparing')setBusyMessage(operation==='payment' ? 'Processing payment — waiting for reader preparation…' : 'Saving card — waiting for reader preparation…');
       await native.collect(next.operation, {operationId:next.attempt_id,clientSecret:next.client_secret,stripeAccount:next.stripe_account,locationId:next.terminal_location_id,saveCard:next.save_card}, token.lease);
       if (valid(token)) {
         setBusyMessage(operation === 'payment' ? 'Confirming payment…' : 'Confirming saved card…');

@@ -7,6 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { nativeTerminal, terminalRequestInit, type NativeTerminal, type TerminalProgress } from '@/lib/native-terminal';
+import {useTerminalReadiness} from './TerminalLifecycle';
 
 type Location = {id:string;display_name:string;address:{line1:string;line2?:string;city:string;state:string;postal_code:string}};
 type Setup = {stripe_account:string;can_manage:boolean;locations:Location[];selected_location_id:string|null;has_more:boolean};
@@ -19,6 +20,7 @@ const emptyAddress = {display_name:'',line1:'',line2:'',city:'',state:'',postal_
 const meaningful = (value:string) => !!value.trim() && !/^(unspecified|unknown|n\/a|na)$/i.test(value.trim());
 
 export default function TerminalSetup({native=nativeTerminal,accountKey}: {native?:Native;accountKey?:string|null}) {
+  const readiness=useTerminalReadiness();
   const id = useId();
   const [loading,setLoading] = useState(true);
   const [busy,setBusy] = useState(false);
@@ -131,7 +133,7 @@ export default function TerminalSetup({native=nativeTerminal,accountKey}: {nativ
         setRepresentative(false);
       }
     } catch(e) {if(valid(token,serial)){setMessage('');setError(e instanceof Error?e.message:'Unable to complete setup. Please try again.');}}
-    finally {if(valid(token,serial)){token.operationId=undefined;lock.current=false;setBusy(false);setPreparing(false);setProgress(undefined);}}
+    finally {if(valid(token,serial)){token.operationId=undefined;lock.current=false;setBusy(false);setPreparing(false);setProgress(undefined);void readiness?.refresh();}}
   }
   async function cancel() {
     const token=life.current;const operationId=token.operationId;
@@ -145,6 +147,11 @@ export default function TerminalSetup({native=nativeTerminal,accountKey}: {nativ
   return <Card>
     <CardHeader><CardTitle>Tap to Pay on iPhone</CardTitle><CardDescription>Accept contactless cards and digital wallets directly on a supported iPhone. Prepare your device here without taking a payment.</CardDescription></CardHeader>
     <CardContent className="space-y-4">
+      {!loading && enabled && device?.supported && readiness && <p role="status" className="text-sm text-fg-muted">{{
+        checking:'Checking this iPhone’s reader…',preparing:'Preparing this iPhone’s reader…',ready:'This iPhone’s reader is ready.',
+        setupRequired:'An authorized administrator may need to finish merchant setup. Use Prepare this iPhone below to continue.',
+        unavailable:'Automatic reader preparation is unavailable. Use Prepare this iPhone, or Pay with card at checkout.',
+      }[readiness.state]}</p>}
       {loading && <p role="status" className="text-sm text-fg-muted">Checking Tap to Pay setup…</p>}
       {!loading && !enabled && !error && <p className="text-sm text-fg-muted">Tap to Pay is coming soon. Use Pay with card to accept payments in the meantime.</p>}
       {!loading && enabled && !device?.supported && <p className="text-sm text-fg-muted">Open Forge on a supported iPhone to prepare this device. You can still use Pay with card.</p>}

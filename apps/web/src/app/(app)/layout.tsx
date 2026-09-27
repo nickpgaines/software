@@ -6,6 +6,7 @@ import { AppFrame } from "@/components/AppFrame";
 import MobileBottomNav from "@/components/MobileBottomNav";
 import { loadMe } from "@/lib/me";
 import { GlobalSearchProvider } from "@/components/search/GlobalSearchProvider";
+import { TerminalLifecycleProvider } from "@/components/payments/TerminalLifecycle";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   // Load the current user on the server so the sidebar's name + avatar are
@@ -16,6 +17,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   return (
     <PhoneClientProvider>
       <GlobalSearchProvider>
+        <TerminalLifecycleProvider identityKey={`${me?.identity ?? ''}:${me?.staff?.company_id ?? ''}:${me?.staff?.id ?? ''}`}>
         <div
           className="min-h-screen"
           style={{ background: PULSE.bg, color: PULSE.text }}
@@ -25,6 +27,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
           <MobileBottomNav />
           <SmsWelcomeModal />
         </div>
+        </TerminalLifecycleProvider>
       </GlobalSearchProvider>
     </PhoneClientProvider>
   );

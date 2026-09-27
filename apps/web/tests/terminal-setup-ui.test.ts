@@ -7,7 +7,7 @@ const settle = async () => { for (let i=0;i<12;i++) await new Promise(resolve=>s
 const location = {id:'tml_1',display_name:'Main office',address:{line1:'123 Main St',city:'Charleston',state:'SC',postal_code:'29401',country:'US'}};
 async function harness(t:any, options:any={}) {
   const {default:Setup} = await loadCustomerModule('components/payments/TerminalSetup.tsx');
-  const renderer=hookRenderer();
+  const renderer=hookRenderer({contextValue:options.readiness?{state:options.readiness,refresh:async()=>{}}:undefined});
   const requests:any[]=[]; const preparations:any[]=[]; const cancellations:any[]=[];
   let account='acct_1'; let progress:((event:any)=>void)|undefined;
   let data={stripe_account:account,can_manage:true,locations:[location],selected_location_id:'tml_1',has_more:false,...options.data};
@@ -44,6 +44,11 @@ test('setup checks readiness without preparing a device or creating a location o
   assert.equal(h.requests.some(r=>r.method==='POST'),false);
   assert.equal(h.preparations.length,0);
   assert.ok(h.button('How to tap'));
+});
+test('Payments distinguishes authorized setup needed from temporary reader unavailability',async t=>{
+  const h=await harness(t,{readiness:'setupRequired'});
+  assert.match(text(h.tree),/authorized administrator.*finish.*setup/i);
+  assert.equal(h.preparations.length,0);
 });
 test('test app setup sends test mode on every Terminal request including location writes',async t=>{
   const h=await harness(t,{capabilities:{providerMode:'test'},data:{selected_location_id:null,locations:[location]}});

@@ -7,11 +7,13 @@ export type TerminalCollection = {
 };
 export type TerminalPreparation = Omit<TerminalCollection,'clientSecret'|'saveCard'> & {representativeConfirmed:boolean};
 export type TerminalProgress = {operationId:string;phase:string;message:string;progress?:number};
-type TerminalCapability = {supported:boolean;reason?:string;preparationSupported?:boolean;providerMode?:'test'|'live';environmentError?:boolean};
+type TerminalCapability = {supported:boolean;reason?:string;preparationSupported?:boolean;warmupSupported?:boolean;readiness?:string;providerMode?:'test'|'live';environmentError?:boolean};
+type TerminalEvents = {terminalProgress:TerminalProgress;terminalReadiness:{state:string}};
 export interface ForgeTerminalPlugin {
   getCapabilities(): Promise<TerminalCapability>;
   prepareDevice?(args:TerminalPreparation):Promise<void>;
-  addListener?(event:'terminalProgress',callback:(event:TerminalProgress)=>void):Promise<{remove():Promise<void>}>;
+  warmUp?(args:Omit<TerminalCollection,'clientSecret'|'saveCard'>):Promise<{state:string}>;
+  addListener?<E extends keyof TerminalEvents>(event:E,callback:(event:TerminalEvents[E])=>void):Promise<{remove():Promise<void>}>;
   showEducation(): Promise<void>;
   collectPayment(args: TerminalCollection): Promise<{ intentId: string }>;
   collectSetup(args: Omit<TerminalCollection, 'saveCard'>): Promise<{ intentId: string }>;
@@ -29,6 +31,7 @@ export async function nativeTerminalPlugin(): Promise<ForgeTerminalPlugin | null
   return {
     getCapabilities: () => plugin.getCapabilities(),
     prepareDevice: args => plugin.prepareDevice!(args),
+    warmUp: args => plugin.warmUp!(args),
     addListener: (event,callback) => plugin.addListener!(event,callback),
     showEducation: () => plugin.showEducation(),
     collectPayment: args => plugin.collectPayment(args),
@@ -38,6 +41,29 @@ export async function nativeTerminalPlugin(): Promise<ForgeTerminalPlugin | null
 }
 
 export class NativeTerminal {
+  private warming:Promise<{state:string}>|null=null;
+  private warmingBinding:string|null=null;
+  get active() { return this.owner !== null || this.resetting || this.unavailable; }
+  async warmUp(args:Omit<TerminalCollection,'clientSecret'|'saveCard'>):Promise<{state:string}> {
+    const binding=JSON.stringify([this.generation,args.stripeAccount,args.locationId]);
+    if(this.warming){
+      if(this.warmingBinding!==binding)throw new Error('A different reader session is active.');
+      return this.warming;
+    }
+    const pending=this.run(args.operationId,undefined,async(plugin,current)=>{
+      if(!(await plugin.getCapabilities()).warmupSupported || !plugin.warmUp)throw new Error('Update Forge to prepare the reader automatically.');
+      if(!current())throw new Error('Terminal session changed.');
+      return plugin.warmUp(args);
+    });
+    this.warming=pending;
+    this.warmingBinding=binding;
+    try{return await pending;}finally{if(this.warming===pending){this.warming=null;this.warmingBinding=null;}}
+  }
+  async observeReadiness(callback:(state:string)=>void) {
+    const plugin=await this.load();
+    if(!plugin || !(await plugin.getCapabilities()).warmupSupported)return undefined;
+    return plugin.addListener?.('terminalReadiness',event=>callback(event.state));
+  }
   generation = 0;
   private owner: string | null = null;
   private lease: symbol | undefined;
@@ -58,14 +84,20 @@ export class NativeTerminal {
       return plugin ? await plugin.getCapabilities() : {supported:false,reason:fallback,providerMode:'live'};
     } catch { return { supported: false, reason: fallback, environmentError:true }; }
   }
-  async education() { await (await this.load())?.showEducation(); }
+  async education() { await this.warming?.catch(()=>{}); await (await this.load())?.showEducation(); }
   async collect(operation: 'payment' | 'setup', args: TerminalCollection, lease?: symbol) {
+    const generation=this.generation;
+    if(this.warming)await this.warming;
+    if(generation!==this.generation)throw new Error('Terminal session changed.');
     return this.run(args.operationId,lease,async plugin => {
       const { saveCard, ...setup } = args;
       return operation === 'payment' ? plugin.collectPayment(args) : plugin.collectSetup(setup);
     });
   }
   async prepare(args:TerminalPreparation,lease?:symbol,progress?:(event:TerminalProgress)=>void) {
+    const generation=this.generation;
+    if(this.warming)await this.warming.catch(()=>{});
+    if(generation!==this.generation)throw new Error('Terminal session changed.');
     return this.run(args.operationId,lease,async (plugin,current) => {
       if (!(await plugin.getCapabilities()).preparationSupported || !plugin.prepareDevice) throw new Error('Update Forge to set up Tap to Pay on this iPhone.');
       if (!current()) throw new Error('Terminal session changed.');
@@ -132,6 +164,12 @@ export class NativeTerminal {
   async reset() {
     this.generation++;
     await this.cleanup('reset');
+  }
+  async suspend() {
+    // Revoke native reader work, not the logged-in web session. Mounted recovery
+    // UI must remain able to reconcile an interrupted operation on foreground.
+    this.collection++;
+    await this.cleanup('cancel');
   }
 }
 

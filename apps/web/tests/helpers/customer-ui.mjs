@@ -57,11 +57,12 @@ export function text(node) {
   if (Array.isArray(node)) return node.map(text).join("");
   return React.isValidElement(node) ? text(node.props.children) : "";
 }
-export function hookRenderer() {
+export function hookRenderer(options = {}) {
   const slots = [];
   let cursor = 0;
   const pending = [];
   const dispatcher = {
+    useContext(context) { cursor++; return options.contextValue ?? context._currentValue; },
     useState(initial) {
       const index = cursor++;
       if (!(index in slots)) slots[index] = typeof initial === "function" ? initial() : initial;

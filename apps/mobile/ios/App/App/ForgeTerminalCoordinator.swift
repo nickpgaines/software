@@ -74,7 +74,8 @@ protocol TerminalReaderProviding: AnyObject {
 final class ForgeTerminalCoordinator {
     var onReaderPresentation: ((Double) -> Void)?
     private var collectionStarted: TimeInterval?
-    private(set) var readiness: TerminalReadinessState = .disconnected
+    var onReadiness: ((TerminalReadinessState) -> Void)?
+    private(set) var readiness: TerminalReadinessState = .disconnected { didSet { onReadiness?(readiness) } }
     private struct Binding: Equatable { let account: String; let location: String }
     private var warmBinding: Binding?
     private var warmWaiters: [(Result<TerminalReadinessState, TerminalFailure>) -> Void] = []

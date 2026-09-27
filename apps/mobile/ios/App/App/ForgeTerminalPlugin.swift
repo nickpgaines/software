@@ -8,7 +8,7 @@ import OSLog
 public final class ForgeTerminalPlugin: CAPPlugin, CAPBridgedPlugin, WKHTTPCookieStoreObserver {
     public let identifier = "ForgeTerminalPlugin"
     public let jsName = "ForgeTerminal"
-    public let pluginMethods: [CAPPluginMethod] = ["getCapabilities", "prepareDevice", "showEducation", "collectPayment", "collectSetup", "cancel", "reset"].map {
+    public let pluginMethods: [CAPPluginMethod] = ["getCapabilities", "warmUp", "prepareDevice", "showEducation", "collectPayment", "collectSetup", "cancel", "reset"].map {
         CAPPluginMethod(name: $0, returnType: CAPPluginReturnPromise)
     }
     private let runtime = ForgeTerminalRuntime.shared
@@ -21,6 +21,7 @@ public final class ForgeTerminalPlugin: CAPPlugin, CAPBridgedPlugin, WKHTTPCooki
             runtime.coordinator.onReaderPresentation = { seconds in
                 Logger(subsystem: "app.forgecrm", category: "TerminalTiming").debug("collection_to_first_input_seconds=\(seconds, privacy: .public)")
             }
+            runtime.coordinator.onReadiness = { [weak self] state in self?.notifyListeners("terminalReadiness", data: ["state": state.rawValue]) }
             runtime.coordinator.onProgress = { [weak self] id, update in
                 var data: [String: Any] = ["operationId": id, "phase": update.phase, "message": update.message]
                 if let progress = update.progress { data["progress"] = progress }
@@ -49,7 +50,18 @@ public final class ForgeTerminalPlugin: CAPPlugin, CAPBridgedPlugin, WKHTTPCooki
         onMain(call) {
             guard let mode = TerminalSessionPolicy.configuration?.providerMode else { call.reject("Invalid Terminal environment", "session_changed"); return }
             if let reason = Self.unavailableReason { call.resolve(["supported": false, "reason": reason, "providerMode": mode]) }
-            else { call.resolve(["supported": true, "preparationSupported": true, "providerMode": mode]) }
+            else { call.resolve(["supported": true, "preparationSupported": true, "warmupSupported": true, "readiness": self.runtime.coordinator.readiness.rawValue, "providerMode": mode]) }
+        }
+    }
+
+    @objc func warmUp(_ call: CAPPluginCall) {
+        onMain(call) { [self] in
+            if let reason = Self.unavailableReason { reject(call, .unsupported(reason)); return }
+            guard UIApplication.shared.applicationState == .active,
+                  let account = call.getString("stripeAccount"), let location = call.getString("locationId") else { reject(call, .terminalError); return }
+            runtime.coordinator.warmUp(account: account, location: location) { [self] result in
+                switch result { case .success(let state): call.resolve(["state": state.rawValue]); case .failure(let error): reject(call, error) }
+            }
         }
     }
 

@@ -3,6 +3,23 @@ import test from 'node:test';
 import { NativeTerminal, nativeTerminalPlugin } from '../src/lib/native-terminal.ts';
 import * as terminalModule from '../src/lib/native-terminal.ts';
 
+test('collection waits for matching JS warmup and never races the reader',async()=>{
+  let finish!:(value:{state:string})=>void; let collecting=0;
+  const terminal=new NativeTerminal(async()=>({
+    getCapabilities:async()=>({supported:true,preparationSupported:true,warmupSupported:true}),
+    warmUp:async()=>new Promise<{state:string}>(resolve=>{finish=resolve;}),
+    collectPayment:async()=>{collecting++;return{intentId:'pi_1'};},
+    collectSetup:async()=>({intentId:'seti_1'}),showEducation:async()=>{},reset:async()=>{},cancel:async()=>{},
+  }));
+  const warm=terminal.warmUp({operationId:'warm',stripeAccount:'acct_1',locationId:'tml_1'});
+  await new Promise(resolve=>setImmediate(resolve));
+  let wrongRejected=false;
+  const wrong=terminal.warmUp({operationId:'other',stripeAccount:'acct_2',locationId:'tml_1'}).catch(()=>{wrongRejected=true;});
+  const pay=terminal.collect('payment',{operationId:'pay',stripeAccount:'acct_1',locationId:'tml_1',clientSecret:'secret',saveCard:false});
+  await new Promise(resolve=>setImmediate(resolve));assert.equal(collecting,0);
+  finish({state:'ready'});await warm;await wrong;assert.equal(wrongRejected,true);assert.equal((await pay).intentId,'pi_1');assert.equal(collecting,1);
+});
+
 test('Terminal requests carry native test mode without losing content headers',async()=>{
   const native={generation:0,capabilities:async()=>({supported:true,providerMode:'test' as const})};
   const options=await terminalModule.terminalRequestInit(native,'/api/stripe/terminal/attempts',{method:'POST',headers:{'Content-Type':'application/json'},body:'{}'});
@@ -110,6 +127,21 @@ test('stalled cleanup is bounded and prevents reuse', async () => {
   const terminal = new NativeTerminal(async () => ({reset: () => new Promise(() => {})} as any), 5);
   await terminal.reset();
   assert.equal((await terminal.capabilities()).supported,false);
+});
+
+test('background suspension revokes late collection but keeps authenticated recovery generation',async()=>{
+  let finish!:(value:{intentId:string})=>void;
+  const terminal=new NativeTerminal(async()=>({
+    getCapabilities:async()=>({supported:true,preparationSupported:true}),
+    collectPayment:async()=>new Promise(resolve=>{finish=resolve;}),cancel:async()=>{},reset:async()=>{},
+  } as any));
+  const generation=terminal.generation;
+  const pending=terminal.collect('payment',{operationId:'background',clientSecret:'secret',stripeAccount:'acct_1',locationId:'tml_1',saveCard:false});
+  const rejected=assert.rejects(pending,/session/);
+  await new Promise(resolve=>setImmediate(resolve));
+  await terminal.suspend();finish({intentId:'pi_late'});await rejected;
+  assert.equal(terminal.generation,generation);
+  assert.equal(terminal.active,false);
 });
 
 test('cleanup from an old owner never cancels the replacement collection', async () => {
