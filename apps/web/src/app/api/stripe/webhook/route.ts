@@ -13,6 +13,7 @@ import {
 } from "@/lib/db";
 import { recordActivity } from "@/lib/activity";
 import { handleTerminalWebhook } from '@/lib/terminal-attempts';
+import {handleTerminalChargeWebhook} from '@/lib/terminal-outcomes';
 
 export const dynamic = "force-dynamic";
 
@@ -78,6 +79,11 @@ export async function POST(req: Request) {
 
   // Terminal effects are independently idempotent. Handle before the legacy
   // event claim so a crash cannot leave an acknowledged but unfinished claim.
+  if(event.type==='charge.failed') {
+    try {
+      if(await handleTerminalChargeWebhook(event.data.object as Stripe.Charge,event.account,event.id))return NextResponse.json({received:true});
+    } catch {return NextResponse.json({error:'Terminal transaction verification needs retry'},{status:500});}
+  }
   if (event.type.startsWith('payment_intent.') || event.type.startsWith('setup_intent.')) {
     try {
       if (await handleTerminalWebhook(event.data.object as Stripe.PaymentIntent | Stripe.SetupIntent, event.account)) return NextResponse.json({ received: true });

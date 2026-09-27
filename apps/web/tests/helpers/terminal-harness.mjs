@@ -11,7 +11,7 @@ export const setSession = value => { session = value; };
 export const getSessionContext = async () => session;
 export const requireCompanyId = async () => session.companyId;
 /** @type {{ intents: any[], creates: any[], subscriptionCreates: any[], updates: any[], tokens: any[], cancelCalls: any[], failCreate: boolean, createError: any, beforeCreateError: any, failLookup: boolean, failSave: boolean, visible: boolean, event: any, wallet: any, locationInvalid: boolean }} */
-export const provider = { intents: [], creates: [], subscriptionCreates: [], updates: [], tokens: [], cancelCalls: [], failCreate: false, createError: null, beforeCreateError: null, failLookup: false, failSave: false, visible: true, event: null, wallet: null, locationInvalid: false };
+export const provider = { intents: [], charges: [], chargeCalls: [], chargeHasMore:false, creates: [], subscriptionCreates: [], updates: [], tokens: [], cancelCalls: [], failCreate: false, createError: null, beforeCreateError: null, failLookup: false, failSave: false, visible: true, event: null, wallet: null, locationInvalid: false };
 export const locations = { data: null, calls: [], creates: [], hasMore: false, fail: false, afterRetrieve: null };
 export default class Stripe {
   constructor() {
@@ -22,7 +22,7 @@ export default class Stripe {
           await provider.beforeCreateError?.(body);
           throw provider.createError;
         }
-        const intent = { id: `${operation === 'payment' ? 'pi' : 'seti'}_${provider.intents.length + 1}`, ...body, amount_received: body.amount, client_secret: 'secret', status: 'requires_payment_method' };
+        const intent = { id: `${operation === 'payment' ? 'pi' : 'seti'}_${provider.intents.length + 1}`, ...body, livemode:process.env.TAP_TO_PAY_MODE==='live', created:1790416800, canceled_at:null, amount_received: body.amount, client_secret: 'secret', status: 'requires_payment_method' };
         provider.intents.push(intent);
         if (provider.failCreate) throw new Error('connection lost');
         return intent;
@@ -39,6 +39,19 @@ export default class Stripe {
     });
     return {
       paymentIntents: resource('payment'), setupIntents: resource('setup'),
+      charges: {
+        retrieve:async(id,_params,options)=>{
+          provider.chargeCalls.push({id,options});
+          const charge=provider.charges.find(row=>row.id===id && row.account===options?.stripeAccount);
+          if(provider.failLookup || !charge)throw Error('Charge unavailable');
+          return charge;
+        },
+        list:async(params,options)=>{
+          provider.chargeCalls.push({params,options});
+          if(provider.failLookup)throw Error('Charge unavailable');
+          return {data:provider.charges.filter(row=>row.payment_intent===params.payment_intent && row.account===options?.stripeAccount),has_more:provider.chargeHasMore};
+        },
+      },
       customers: { create: async () => ({ id: 'cus_test' }), update: async (...args) => { provider.updates.push(args); } },
       paymentMethods: { retrieve: async id => {
         if (provider.failSave) throw new Error('provider unavailable');
@@ -120,7 +133,8 @@ export function fixture() {
     ALTER TABLE jobs ADD COLUMN subscription_id INTEGER;
     ALTER TABLE jobs ADD COLUMN subscription_visit_index INTEGER;
   `);
-  for (const key of ['intents','creates','subscriptionCreates','updates','tokens','cancelCalls']) provider[key] = [];
+  for (const key of ['intents','charges','chargeCalls','creates','subscriptionCreates','updates','tokens','cancelCalls']) provider[key] = [];
+  provider.chargeHasMore=false;
   Object.assign(provider, { failCreate: false, createError: null, beforeCreateError: null, failLookup: false, failSave: false, visible: true, event: null, wallet: null, locationInvalid: false });
   Object.assign(locations, {data:null,calls:[],creates:[],hasMore:false,fail:false,afterRetrieve:null});
   session = { companyId: 1, staffId: 7, identity: 'staff:7' };

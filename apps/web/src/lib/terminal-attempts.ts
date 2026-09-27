@@ -8,6 +8,7 @@ import { requireTerminalEnvironment } from '@/lib/terminal-environment';
 import { resolveTerminalLocation } from '@/lib/terminal-location';
 import { recordJobPayment } from '@/lib/record-job-payment';
 import { terminalConsentText, TERMINAL_CONSENT_VERSION } from '@/lib/terminal-consent';
+import {observeTerminalOutcome} from '@/lib/terminal-outcomes';
 
 export type TerminalAttemptView = {
   attempt_id: string; operation: 'payment' | 'setup'; status: 'ready' | 'processing' | 'succeeded' | 'canceled' | 'needs_reconciliation';
@@ -19,6 +20,7 @@ type Attempt = Omit<TerminalAttemptView, 'stripe_account' | 'save_card' | 'payme
   company_id: number; stripe_account_id: string; stripe_customer_id: string | null; provider_intent_id: string | null;
   save_card: number; payment_recorded: number; card_saved: number; save_pending: number;
   request_fingerprint: string; consent_version: string | null; consent_name: string | null;
+  initiating_staff_id:number|null;
 };
 type Intent = Stripe.PaymentIntent | Stripe.SetupIntent;
 function isDefinitiveAmountRejection(error: unknown): boolean {
@@ -230,8 +232,21 @@ export async function reconcileTerminalAttempt(companyId: number, id: string, ca
     return (await tx.prepare('SELECT * FROM terminal_attempts WHERE attempt_id=?').get<Attempt>(a.attempt_id))!;
   });
   if (saveError && strictSave && !persisted.card_saved) throw saveError;
+  await observeTerminalOutcome(companyId,id);
   return { ...view(persisted,intent.client_secret),
     ...(persisted.status === 'ready' && intent.status === 'requires_payment_method' && 'last_payment_error' in intent && intent.last_payment_error?.code === 'card_declined' ? {payment_declined:true} : {}) };
+}
+/** Read-only provider evidence; never discovers/creates an intent or records money. */
+export async function getTerminalOutcomeIntent(companyId:number,id:string) {
+  const attempt=await load(companyId,id);
+  if(!attempt.provider_intent_id)throw new TerminalError('Payment status is not yet confirmed.',409);
+  const options={stripeAccount:attempt.stripe_account_id};
+  const intent=attempt.operation==='payment'
+    ? await getStripe().paymentIntents.retrieve(attempt.provider_intent_id,{},options)
+    : await getStripe().setupIntents.retrieve(attempt.provider_intent_id,{},options);
+  if(intent.id!==attempt.provider_intent_id || intent.livemode!==(requireTerminalEnvironment()==='live'))throw new TerminalError('Payment evidence does not match this attempt.',409);
+  validate(attempt,intent);
+  return {attempt,intent};
 }
 /** Receipt lookups never reconcile, discover/create intents, record payments or save cards. */
 export async function getTerminalReceiptIntent(companyId: number, id: string) {
