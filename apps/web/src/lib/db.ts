@@ -1,4 +1,6 @@
 import { createClient, type Client, type InValue } from "@libsql/client";
+import { installTerminalSchema } from '@/lib/terminal-schema';
+import { installForgeBillingSchema } from '@/lib/forge-billing/schema';
 import {
   WORKFLOW_TEMPLATES,
   serializeGraph,
@@ -480,19 +482,51 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
 // Bump when init() gains migrations that must run on existing deploys.
 // First call after deploy runs the full init; subsequent cold starts hit
 // the fast-path below (one SELECT) and skip the ~150 DDL statements.
-const SCHEMA_VERSION = 16;
+const SCHEMA_VERSION = 24;
+
+export async function backfillLegacyJobData(
+  db: Pick<Db, "exec">
+): Promise<void> {
+  // Keep this in one executeMultiple call: issuing one remote write per job
+  // made production upgrades exceed Vercel's five-minute function limit, so
+  // the version stamp was never reached and every request retried migration.
+  await db.exec(`
+    INSERT OR IGNORE INTO job_assignments (job_id, staff_id, role)
+    SELECT id, salesperson_id, 'sales'
+    FROM jobs
+    WHERE salesperson_id IS NOT NULL AND salesperson_id <> 0;
+
+    INSERT OR IGNORE INTO job_assignments (job_id, staff_id, role)
+    SELECT id, technician_id, 'tech'
+    FROM jobs
+    WHERE technician_id IS NOT NULL AND technician_id <> 0;
+
+    UPDATE jobs SET end_time = strftime(
+      '%Y-%m-%dT%H:%M:%fZ',
+      scheduled_at,
+      printf('%+d minutes', COALESCE(NULLIF(duration_minutes, 0), 60))
+    )
+    WHERE end_time IS NULL OR end_time = '';
+  `);
+}
 
 async function init(): Promise<void> {
   // Fast path: if the schema is already at the current version, skip the
   // entire CREATE/ALTER/INDEX block. Costs one SELECT instead of ~150
   // round-trips per cold start.
+  let currentVersion = 0;
   try {
     const row = await _db
       .prepare("SELECT version FROM _schema_version WHERE id = 1 LIMIT 1")
       .get<{ version: number }>();
-    if (row && row.version >= SCHEMA_VERSION) return;
+    currentVersion = row?.version ?? 0;
   } catch {
     // Table doesn't exist yet — fall through to full init.
+  }
+  if (currentVersion >= SCHEMA_VERSION) {
+    // Isolated additive tables do not require replaying the legacy data migrations.
+    await installForgeBillingSchema(_db);
+    return;
   }
 
   // Pragmas. Best-effort — Turso ignores some, local file accepts both.
@@ -765,12 +799,15 @@ async function init(): Promise<void> {
       "INTEGER REFERENCES customer_subscriptions(id) ON DELETE SET NULL",
       paymentCols
     );
+    await alterAddColumn("payments", "idempotency_key", "TEXT", paymentCols);
+    await alterAddColumn("payments", "request_fingerprint", "TEXT", paymentCols);
   }
 
   const companyCols = await _db
     .prepare("PRAGMA table_info(company)")
     .all<{ name: string }>();
   const companyAdds: [string, string][] = [
+    ["time_zone", "TEXT NOT NULL DEFAULT 'America/New_York'"],
     ["stripe_account_id", "TEXT"],
     ["stripe_charges_enabled", "INTEGER NOT NULL DEFAULT 0"],
     ["stripe_payouts_enabled", "INTEGER NOT NULL DEFAULT 0"],
@@ -1031,6 +1068,7 @@ async function init(): Promise<void> {
 
     CREATE TABLE IF NOT EXISTS company (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
+      time_zone TEXT NOT NULL DEFAULT 'America/New_York',
       name TEXT,
       address TEXT,
       phone TEXT,
@@ -1094,6 +1132,45 @@ async function init(): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_messages_customer_id ON messages(customer_id);
     CREATE INDEX IF NOT EXISTS idx_messages_created_at ON messages(created_at);
 
+    CREATE TABLE IF NOT EXISTS job_lifecycle_notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      company_id INTEGER NOT NULL REFERENCES company(id) ON DELETE CASCADE,
+      job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+      step TEXT NOT NULL CHECK (step IN ('en_route', 'arrived', 'started', 'completed')),
+      outcome TEXT NOT NULL DEFAULT 'pending',
+      customer_id INTEGER REFERENCES customers(id) ON DELETE SET NULL,
+      body TEXT,
+      attempt_count INTEGER NOT NULL DEFAULT 0,
+      locked_at TEXT,
+      last_attempt_at TEXT,
+      retry_requested_at TEXT,
+      retry_requested_by INTEGER,
+      message_id INTEGER REFERENCES messages(id) ON DELETE SET NULL,
+      error TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (job_id, step)
+    );
+    CREATE INDEX IF NOT EXISTS idx_job_lifecycle_notifications_company_job
+      ON job_lifecycle_notifications(company_id, job_id);
+
+    CREATE TABLE IF NOT EXISTS widget_access_tokens (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      token_hash TEXT NOT NULL UNIQUE,
+      installation_id_hash TEXT NOT NULL,
+      company_id INTEGER NOT NULL REFERENCES company(id) ON DELETE CASCADE,
+      staff_id INTEGER NOT NULL REFERENCES staff(id) ON DELETE CASCADE,
+      scope TEXT NOT NULL DEFAULT 'widget:read',
+      expires_at TEXT NOT NULL,
+      revoked_at TEXT,
+      last_used_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_widget_tokens_company_staff_install
+      ON widget_access_tokens(company_id, staff_id, installation_id_hash);
+    CREATE INDEX IF NOT EXISTS idx_widget_tokens_expires_at
+      ON widget_access_tokens(expires_at);
+
     CREATE TABLE IF NOT EXISTS messaging_settings (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       provider TEXT NOT NULL DEFAULT 'twilio',
@@ -1149,6 +1226,7 @@ async function init(): Promise<void> {
       business_email TEXT NOT NULL,
       business_phone TEXT NOT NULL,
       business_website TEXT,
+      social_media_profile_urls TEXT,
       industry TEXT NOT NULL,
       entity_type TEXT NOT NULL,
       monthly_volume TEXT NOT NULL,
@@ -1165,6 +1243,22 @@ async function init(): Promise<void> {
     );
     CREATE UNIQUE INDEX IF NOT EXISTS idx_sms_brand_registrations_company
       ON sms_brand_registrations(company_id);
+
+    CREATE TABLE IF NOT EXISTS sms_registration_leases (
+      company_id INTEGER PRIMARY KEY,
+      lease_token TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS sms_number_provisioning (
+      company_id INTEGER PRIMARY KEY REFERENCES company(id) ON DELETE CASCADE,
+      phone_number TEXT NOT NULL,
+      phone_sid TEXT,
+      status TEXT NOT NULL DEFAULT 'purchasing' CHECK (status IN ('purchasing', 'purchased', 'attached')),
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
 
     CREATE TABLE IF NOT EXISTS calls (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1294,10 +1388,27 @@ async function init(): Promise<void> {
       send_email   INTEGER NOT NULL DEFAULT 0,
       send_sms     INTEGER NOT NULL DEFAULT 0,
       subscription_id INTEGER,
+      stripe_payment_intent_id TEXT,
+      source TEXT NOT NULL DEFAULT 'job',
+      idempotency_key TEXT,
+      request_fingerprint TEXT,
       created_at   TEXT    NOT NULL DEFAULT (datetime('now'))
     );
     CREATE INDEX IF NOT EXISTS idx_payments_job_id     ON payments(job_id);
     CREATE INDEX IF NOT EXISTS idx_payments_created_at ON payments(created_at);
+
+    CREATE TABLE IF NOT EXISTS saved_card_payment_attempts (
+      company_id INTEGER NOT NULL REFERENCES company(id) ON DELETE CASCADE,
+      idempotency_key TEXT NOT NULL,
+      attempt_id TEXT NOT NULL UNIQUE,
+      request_fingerprint TEXT NOT NULL,
+      stripe_account_id TEXT NOT NULL,
+      stripe_payment_intent_id TEXT,
+      payment_date TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+      PRIMARY KEY (company_id, idempotency_key)
+    );
 
     CREATE TABLE IF NOT EXISTS subscription_terms (
       id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1778,6 +1889,16 @@ async function init(): Promise<void> {
     INSERT OR IGNORE INTO payroll_settings (id) VALUES (1);
   `);
 
+  const smsRegistrationCols = await _db
+    .prepare("PRAGMA table_info(sms_brand_registrations)")
+    .all<{ name: string }>();
+  await alterAddColumn(
+    "sms_brand_registrations",
+    "social_media_profile_urls",
+    "TEXT",
+    smsRegistrationCols
+  );
+
   // Make payments.job_id nullable so subscription auto-charges can be recorded
   // without anchoring to a service visit — recurring plans bill on their own
   // cadence, independent of job dates. SQLite can't drop NOT NULL in place, so
@@ -1971,44 +2092,7 @@ async function init(): Promise<void> {
     `);
   }
 
-  const legacy = await _db
-    .prepare(
-      `SELECT j.id, j.salesperson_id, j.technician_id, j.scheduled_at, j.duration_minutes, j.end_time
-       FROM jobs j`
-    )
-    .all<{
-      id: number;
-      salesperson_id: number | null;
-      technician_id: number | null;
-      scheduled_at: string;
-      duration_minutes: number;
-      end_time: string | null;
-    }>();
-
-  for (const j of legacy) {
-    if (j.salesperson_id) {
-      await _db
-        .prepare(
-          `INSERT OR IGNORE INTO job_assignments (job_id, staff_id, role) VALUES (?, ?, ?)`
-        )
-        .run(j.id, j.salesperson_id, "sales");
-    }
-    if (j.technician_id) {
-      await _db
-        .prepare(
-          `INSERT OR IGNORE INTO job_assignments (job_id, staff_id, role) VALUES (?, ?, ?)`
-        )
-        .run(j.id, j.technician_id, "tech");
-    }
-    if (!j.end_time) {
-      const end = new Date(
-        new Date(j.scheduled_at).getTime() + (j.duration_minutes || 60) * 60_000
-      );
-      await _db
-        .prepare(`UPDATE jobs SET end_time = ? WHERE id = ?`)
-        .run(end.toISOString(), j.id);
-    }
-  }
+  await backfillLegacyJobData(_db);
 
   // Multi-tenancy migration. Drops the legacy single-row CHECK on the
   // company + settings tables, then adds a company_id FK to every
@@ -2091,6 +2175,48 @@ async function init(): Promise<void> {
       `CREATE INDEX IF NOT EXISTS idx_${table}_company_id ON ${table}(company_id)`
     );
   }
+
+  // Create after the payments rebuild and tenant migration. Historical rows
+  // remain unconstrained, including any previously duplicated Stripe intents.
+  await _db.exec(`
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_payments_idempotency
+      ON payments(company_id, idempotency_key) WHERE idempotency_key IS NOT NULL;
+  `);
+
+  const lifecycleCols = await _db.prepare("PRAGMA table_info(job_lifecycle_notifications)").all<{ name: string }>();
+  for (const [column, definition] of [
+    ["customer_id", "INTEGER REFERENCES customers(id) ON DELETE SET NULL"],
+    ["body", "TEXT"], ["attempt_count", "INTEGER NOT NULL DEFAULT 0"],
+    ["locked_at", "TEXT"], ["last_attempt_at", "TEXT"],
+    ["retry_requested_at", "TEXT"], ["retry_requested_by", "INTEGER"],
+  ]) {
+    await alterAddColumn("job_lifecycle_notifications", column, definition, lifecycleCols);
+  }
+  await _db.exec(`
+    UPDATE job_lifecycle_notifications SET outcome = 'unknown', updated_at = datetime('now')
+      WHERE outcome = 'claimed';
+    CREATE INDEX IF NOT EXISTS idx_job_lifecycle_notifications_pending
+      ON job_lifecycle_notifications(outcome, created_at);
+  `);
+
+  // Existing jobs may already have lifecycle timestamps when this ledger is
+  // introduced. Mark those transitions as skipped so clearing and reapplying
+  // a legacy status cannot send a notification retroactively.
+  await _db.exec(`
+    INSERT OR IGNORE INTO job_lifecycle_notifications
+      (company_id, job_id, step, outcome)
+    SELECT company_id, id, 'en_route', 'skipped'
+      FROM jobs WHERE en_route_at IS NOT NULL AND company_id IS NOT NULL
+    UNION ALL
+    SELECT company_id, id, 'arrived', 'skipped'
+      FROM jobs WHERE arrived_at IS NOT NULL AND company_id IS NOT NULL
+    UNION ALL
+    SELECT company_id, id, 'started', 'skipped'
+      FROM jobs WHERE started_at IS NOT NULL AND company_id IS NOT NULL
+    UNION ALL
+    SELECT company_id, id, 'completed', 'skipped'
+      FROM jobs WHERE completed_at IS NOT NULL AND company_id IS NOT NULL
+  `);
 
   // Per-tenant local-part for the shared platform sending domain. Assigned once
   // (slug of the company name, de-duped across tenants) and reused, so a
@@ -2468,6 +2594,8 @@ async function init(): Promise<void> {
 
   // Stamp the schema version so subsequent cold starts hit the fast-path
   // at the top of init().
+  await installTerminalSchema(_db);
+  await installForgeBillingSchema(_db);
   await _db.exec(
     `CREATE TABLE IF NOT EXISTS _schema_version (
        id INTEGER PRIMARY KEY,
@@ -2678,6 +2806,7 @@ export type SmsBrandRegistration = {
   business_email: string;
   business_phone: string;
   business_website: string | null;
+  social_media_profile_urls: string | null;
   industry: string;
   entity_type: string;
   monthly_volume: SmsMonthlyVolume;
@@ -2695,6 +2824,7 @@ export type SmsBrandRegistration = {
 
 export type Company = {
   id: number;
+  time_zone: string;
   name: string | null;
   address: string | null;
   phone: string | null;
@@ -3028,6 +3158,10 @@ export type StripePaymentMethod = {
   exp_year: number | null;
   wallet_type: string | null;
   is_default: number;
+  requires_explicit_selection: number;
+  allow_redisplay: string | null;
+  recurring_only: number;
+  stripe_account_id: string | null;
   created_at: string;
 };
 
@@ -3333,6 +3467,8 @@ export type Payment = {
   send_email: number;
   send_sms: number;
   stripe_payment_intent_id: string | null;
+  idempotency_key: string | null;
+  request_fingerprint: string | null;
   source: PaymentSource;
   subscription_id: number | null;
   created_at: string;

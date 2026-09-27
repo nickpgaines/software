@@ -74,6 +74,141 @@ export async function getCurrentPosition(opts?: {
   });
 }
 
+/** Watch only while this map is mounted and the app/page is in the foreground.
+ * Returns cleanup immediately, including when native permission/watch setup is
+ * still pending. Locations stay on the device; this never sends them to Forge.
+ */
+export function watchForegroundPosition(
+  onPosition: (position: Coords) => void,
+  onError: () => void
+): () => void {
+  if (typeof document === "undefined") return () => {};
+  const native = isNativeApp();
+  let appActive = !native;
+  let disposed = false;
+  let generation = 0;
+  let active = false;
+  let abort: AbortController | null = null;
+  let stop: (() => void) | null = null;
+  let removeAppListener: (() => void) | null = null;
+  let retries = 0;
+  let retryTimer: ReturnType<typeof setTimeout> | null = null;
+  function clearRetry() {
+    if (retryTimer !== null) clearTimeout(retryTimer);
+    retryTimer = null;
+  }
+
+  function sync() {
+    const shouldWatch = !disposed && appActive && !document.hidden;
+    if (!shouldWatch) { clearRetry(); retries = 0; }
+    if (shouldWatch === active) return;
+    active = shouldWatch;
+    const current = ++generation;
+    abort?.abort();
+    stop?.();
+    stop = null;
+    if (!shouldWatch) return;
+    abort = new AbortController();
+    const isCurrent = () => !disposed && active && generation === current;
+    const handleError = (error?: unknown) => {
+      if (!isCurrent()) return;
+      onError();
+      // iOS releases callbacks on timeout and may terminate its publisher on
+      // position-unavailable. Restart either, but never retry permission denial.
+      const code = (error as { code?: string } | null)?.code;
+      if (native && (code === "OS-PLUG-GLOC-0010" || code === "OS-PLUG-GLOC-0002") && retries < 3 && retryTimer === null) {
+        const delay = 5_000 * 2 ** retries++;
+        retryTimer = setTimeout(() => {
+          retryTimer = null;
+          if (isCurrent()) { active = false; sync(); }
+        }, delay);
+      }
+    };
+    void watchDevicePosition(position => {
+      if (!isCurrent()) return;
+      const { lat, lng } = position;
+      if (Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+        retries = 0;
+        clearRetry();
+        onPosition(position);
+      }
+    }, handleError, abort.signal).then(cleanup => {
+      if (isCurrent()) stop = cleanup;
+      else cleanup();
+    }).catch(handleError);
+  }
+
+  document.addEventListener("visibilitychange", sync);
+  if (native) {
+    void (async () => {
+      try {
+        const { App } = await import("@capacitor/app");
+        if (disposed) return;
+        let stateEvents = 0;
+        const handle = await App.addListener("appStateChange", state => {
+          stateEvents++;
+          appActive = state.isActive;
+          sync();
+        });
+        if (disposed) { await handle.remove(); return; }
+        removeAppListener = () => { void handle.remove().catch(() => {}); };
+        const version = stateEvents;
+        const state = await App.getState();
+        // A lifecycle event during getState is newer than its response.
+        if (!disposed && version === stateEvents) {
+          appActive = state.isActive;
+          sync();
+        }
+      } catch {
+        // Fail closed: do not start a native GPS watch without lifecycle state.
+        if (!disposed) onError();
+      }
+    })();
+  } else {
+    sync();
+  }
+  return () => {
+    if (disposed) return;
+    disposed = true;
+    sync();
+    document.removeEventListener("visibilitychange", sync);
+    removeAppListener?.();
+  };
+}
+
+async function watchDevicePosition(
+  onPosition: (position: Coords) => void,
+  onError: (error?: unknown) => void,
+  signal: AbortSignal
+): Promise<() => void> {
+  const options = { enableHighAccuracy: true, timeout: 10_000, maximumAge: 1_000 };
+  if (isNativeApp()) {
+    const { Geolocation } = await import("@capacitor/geolocation");
+    if (signal.aborted) return () => {};
+    const permission = await Geolocation.requestPermissions();
+    if (signal.aborted) return () => {};
+    if (permission.location === "denied" && permission.coarseLocation === "denied") {
+      onError();
+      return () => {};
+    }
+    const id = await Geolocation.watchPosition(options, (position, error) => {
+      if (signal.aborted) return;
+      if (error || !position) { onError(error); return; }
+      onPosition({ lat: position.coords.latitude, lng: position.coords.longitude });
+    });
+    return () => { void Geolocation.clearWatch({ id }).catch(() => {}); };
+  }
+  if (typeof navigator === "undefined" || !navigator.geolocation) {
+    onError();
+    return () => {};
+  }
+  const geolocation = navigator.geolocation;
+  const id = geolocation.watchPosition(position => {
+    if (!signal.aborted) onPosition({ lat: position.coords.latitude, lng: position.coords.longitude });
+  }, () => { if (!signal.aborted) onError(); }, options);
+  return () => geolocation.clearWatch(id);
+}
+
 /**
  * Camera.getPhoto rejects both when the user deliberately cancels AND on real
  * failures (permission denied, no camera, undecodable image). Only a cancel is

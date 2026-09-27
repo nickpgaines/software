@@ -1,5 +1,6 @@
 import "server-only";
 import Stripe from "stripe";
+import { resolveTerminalLocation } from './terminal-location';
 import {
   getDb,
   type Company,
@@ -10,6 +11,15 @@ import {
 } from "./db";
 
 let _stripe: Stripe | null = null;
+let _stripeKey: string | null = null;
+
+/** Mode of the credential the shared client actually uses, never a relabeled cache. */
+export function getStripeCredentialMode(): 'test' | 'live' | null {
+  const key = process.env.STRIPE_SECRET_KEY?.trim();
+  if (!key || (_stripeKey !== null && _stripeKey !== key)) return null;
+  const mode = /^(?:sk|rk)_(test|live)_.+$/.exec(key)?.[1];
+  return mode === 'test' || mode === 'live' ? mode : null;
+}
 
 export function getStripe(): Stripe {
   if (_stripe) return _stripe;
@@ -20,6 +30,7 @@ export function getStripe(): Stripe {
     );
   }
   _stripe = new Stripe(key);
+  _stripeKey = key;
   return _stripe;
 }
 
@@ -165,6 +176,8 @@ export async function savePaymentMethodForCustomer(args: {
   stripeAccountId: string;
   stripePaymentMethodId: string;
   makeDefault?: boolean;
+  requiresExplicitSelection?: boolean;
+  recurringOnly?: boolean;
 }): Promise<StripePaymentMethod> {
   const { companyId, customerId, stripeAccountId, stripePaymentMethodId } =
     args;
@@ -196,14 +209,17 @@ export async function savePaymentMethodForCustomer(args: {
   }
 
   const card = pm.card ?? null;
-  const wallet = card?.wallet?.type ?? null;
+  const wallet = card?.wallet?.type ?? card?.generated_from?.payment_method_details?.card_present?.wallet?.type ?? null;
 
   const existingCount = (await db
     .prepare(
       "SELECT COUNT(*) AS n FROM stripe_payment_methods WHERE company_id = ? AND customer_id = ?"
     )
     .get(companyId, customerId)) as { n: number };
-  const shouldDefault = args.makeDefault || existingCount.n === 0;
+  const existing = await db.prepare('SELECT requires_explicit_selection FROM stripe_payment_methods WHERE company_id=? AND stripe_payment_method_id=?').get<{ requires_explicit_selection: number }>(companyId,stripePaymentMethodId);
+  const explicitOnly = args.requiresExplicitSelection || !!existing?.requires_explicit_selection || !!card?.generated_from;
+  const shouldDefault = !explicitOnly && (args.makeDefault || existingCount.n === 0);
+  if (args.requiresExplicitSelection && (!card || pm.type !== 'card')) throw new Error('Terminal must save a reusable generated card');
 
   await db.transaction(async (tx) => {
     if (shouldDefault) {
@@ -218,14 +234,18 @@ export async function savePaymentMethodForCustomer(args: {
         `INSERT INTO stripe_payment_methods
             (company_id, customer_id, stripe_customer_id,
              stripe_payment_method_id, brand, last4,
-             exp_month, exp_year, wallet_type, is_default)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             exp_month, exp_year, wallet_type, is_default, requires_explicit_selection, allow_redisplay, recurring_only, stripe_account_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(company_id, stripe_payment_method_id) DO UPDATE SET
             brand = excluded.brand,
             last4 = excluded.last4,
             exp_month = excluded.exp_month,
             exp_year = excluded.exp_year,
             wallet_type = excluded.wallet_type,
+            requires_explicit_selection = MAX(stripe_payment_methods.requires_explicit_selection, excluded.requires_explicit_selection),
+            allow_redisplay = excluded.allow_redisplay,
+            recurring_only = MAX(stripe_payment_methods.recurring_only, excluded.recurring_only),
+            stripe_account_id = excluded.stripe_account_id,
             is_default = CASE WHEN ? = 1 THEN 1 ELSE stripe_payment_methods.is_default END`
       )
       .run(
@@ -239,6 +259,10 @@ export async function savePaymentMethodForCustomer(args: {
         card?.exp_year ?? null,
         wallet,
         shouldDefault ? 1 : 0,
+        explicitOnly ? 1 : 0,
+        pm.allow_redisplay || 'unspecified',
+        args.recurringOnly || (explicitOnly && wallet) ? 1 : 0,
+        stripeAccountId,
         shouldDefault ? 1 : 0
       );
   });
@@ -268,55 +292,16 @@ export async function savePaymentMethodForCustomer(args: {
 }
 
 /**
- * Resolve (or lazily create) the Stripe Terminal Location for a
- * connected account. Required by Tap to Pay on iPhone and any other
- * Terminal reader — every PaymentIntent + ConnectionToken must reference
- * a Location belonging to the merchant's connected account.
+ * Legacy caller adapter. Despite its historic name, this never creates
+ * provider locations: merchant setup requires an explicit real address.
  */
 export async function getOrCreateTerminalLocation(
   companyId: number,
   stripeAccountId: string
-): Promise<StripeTerminalLocation> {
+): Promise<Pick<StripeTerminalLocation,'stripe_terminal_location_id'|'display_name'>> {
   const db = await getDb();
-  const existing = (await db
-    .prepare(
-      "SELECT * FROM stripe_terminal_locations WHERE company_id = ? LIMIT 1"
-    )
-    .get(companyId)) as StripeTerminalLocation | undefined;
-  if (existing) return existing;
-
-  const company = await getCompany(companyId);
-  const stripe = getStripe();
-  const location = await stripe.terminal.locations.create(
-    {
-      display_name: company.name?.trim() || `Company ${companyId}`,
-      // Stripe requires a full address. Use the company address when
-      // we have it, otherwise a placeholder the merchant can edit in
-      // the Stripe dashboard.
-      address: {
-        line1: company.address?.trim() || "Unspecified",
-        city: "Unspecified",
-        state: "NA",
-        country: "US",
-        postal_code: "00000",
-      },
-    },
-    { stripeAccount: stripeAccountId }
-  );
-
-  await db
-    .prepare(
-      `INSERT INTO stripe_terminal_locations
-         (company_id, stripe_terminal_location_id, display_name)
-       VALUES (?, ?, ?)`
-    )
-    .run(companyId, location.id, location.display_name ?? null);
-
-  return (await db
-    .prepare(
-      "SELECT * FROM stripe_terminal_locations WHERE company_id = ? LIMIT 1"
-    )
-    .get(companyId)) as StripeTerminalLocation;
+  const location = await resolveTerminalLocation(db,companyId,stripeAccountId);
+  return {stripe_terminal_location_id:location.id,display_name:location.display_name};
 }
 
 export function getAppOrigin(req: Request): string {

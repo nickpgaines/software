@@ -15,6 +15,8 @@ import {
 import { createStripeSubscriptionForRow } from "@/lib/stripe-subscriptions";
 import { getAppOrigin } from "@/lib/stripe";
 import { sendAndLogCompanySms } from "@/lib/sms";
+import { validateSubscriptionPaymentMethod } from '@/lib/subscription-payment-method';
+import { TerminalError, terminalSession } from '@/lib/terminal-http';
 
 function makeAcceptToken() {
   return randomBytes(24).toString("base64url");
@@ -107,6 +109,7 @@ export async function POST(req: Request) {
     start_date: string;
     sold_by_id: number | null;
     tax_rate_bps: number;
+    payment_method_id: number;
   }>;
 
   const customerId = Number(body.customer_id);
@@ -218,6 +221,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "customer not found" }, { status: 404 });
   }
 
+  let selectedPaymentMethod: string | null = null;
+  if (body.payment_method_id !== undefined) {
+    try {
+      await terminalSession(req);
+      if (action !== 'accept') throw new TerminalError('A saved card can only be selected when accepting the subscription');
+      selectedPaymentMethod = (await validateSubscriptionPaymentMethod(companyId,customerId,body.payment_method_id)).pm.stripe_payment_method_id;
+    } catch (error) {
+      if (error instanceof TerminalError) return NextResponse.json({ error: error.message },{ status:error.status });
+      throw error;
+    }
+  }
+
   const now = new Date().toISOString();
   // Status is always pending at insert time. For action='accept' we'll
   // attempt Stripe Subscription creation below and only promote to 'active'
@@ -273,6 +288,7 @@ export async function POST(req: Request) {
       acceptToken
     );
   const subscriptionId = Number(result.lastInsertRowid);
+  if (selectedPaymentMethod) await db.prepare('UPDATE customer_subscriptions SET default_payment_method_id=? WHERE id=? AND company_id=?').run(selectedPaymentMethod,subscriptionId,companyId);
 
   if (action === "accept") {
     // Try to create the Stripe Subscription on the customer's saved card.
@@ -287,6 +303,7 @@ export async function POST(req: Request) {
       amountCents: price_cents,
       interval,
       startDateIso: startDateToIso(startDate),
+      paymentMethodId: selectedPaymentMethod,
     });
     if (stripeResult.ok) {
       await db

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { mcpPublicBaseUrl, resolveBearerToken } from "@/lib/mcp/auth";
 import { findTool, MCP_TOOLS } from "@/lib/mcp/tools";
+import { getCompanyBillingAccess } from "@/lib/forge-billing/access";
 
 export const dynamic = "force-dynamic";
 export const runtime = "nodejs";
@@ -150,6 +151,32 @@ export async function POST(req: Request) {
             });
           }
           try {
+            let access;
+            try {
+              access = await getCompanyBillingAccess(token.companyId);
+            } catch {
+              return ok(id, {
+                isError: true,
+                content: [
+                  {
+                    type: "text",
+                    text: "Billing access is temporarily unavailable. Try again shortly.",
+                  },
+                ],
+              });
+            }
+            if (!access.allowed) {
+              return ok(id, {
+                isError: true,
+                content: [
+                  {
+                    type: "text",
+                    text: "A company subscription is required before this connector can run CRM tools.",
+                  },
+                ],
+                structuredContent: { billing: access },
+              });
+            }
             const result = await tool.handler(args, {
               companyId: token.companyId,
               staffId: token.staffId,

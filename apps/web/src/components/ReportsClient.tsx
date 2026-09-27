@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Settings } from "lucide-react";
 import { HeroChart } from "@/components/pulse/widgets";
 import { RevenueBarChart } from "@/components/reports/RevenueBarChart";
+import SalesDateControls from "@/components/reports/SalesDateControls";
 import { PIN_STATUS, PIN_STATUS_KEYS, type PinStatus } from "@/lib/map-pin-colors";
 import {
   Bar,
@@ -208,6 +209,7 @@ export default function ReportsClient() {
   const [range, setRange] = useState<Range>("1m");
   const [customStart, setCustomStart] = useState<string>(thirtyDaysAgoIso());
   const [customEnd, setCustomEnd] = useState<string>(todayIso());
+  const [salesQs, setSalesQs] = useState("");
 
   const qs = rangeQS({
     range,
@@ -269,18 +271,19 @@ export default function ReportsClient() {
             );
           })}
         </nav>
-        <RangePills
+        <div hidden={tab !== "sales"} className="max-w-full"><SalesDateControls onQueryChange={setSalesQs} /></div>
+        {tab !== "sales" && <RangePills
           range={range}
           setRange={setRange}
           customStart={customStart}
           customEnd={customEnd}
           setCustomStart={setCustomStart}
           setCustomEnd={setCustomEnd}
-        />
+        />}
       </div>
 
       {tab === "overview" && <OverviewPanel qs={qs} />}
-      {tab === "sales" && <SalesPanel qs={qs} />}
+      {tab === "sales" && <SalesPanel qs={salesQs} />}
       {tab === "jobs" && <JobsPanel qs={qs} />}
       {tab === "subscriptions" && <SubscriptionsPanel qs={qs} />}
       {tab === "employees" && <EmployeesPanel qs={qs} />}
@@ -847,23 +850,36 @@ function SalesPanel({ qs }: { qs: string }) {
   const [data, setData] = useState<SalesReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [pinFilter, setPinFilter] = useState<string>("team");
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
+    const abort = new AbortController();
     setLoading(true);
-    fetch(`/api/reports/sales?${qs}`)
-      .then((r) => r.json())
+    setData(null);
+    setError(null);
+    if (!qs) return;
+    fetch(`/api/reports/sales?${qs}`, { signal: abort.signal })
+      .then(async r => {
+        const body = await r.json();
+        if (!r.ok) throw new Error(body.error || "Unable to load sales report.");
+        return body;
+      })
       .then((d: SalesReport) => {
         if (!cancelled) setData(d);
       })
+      .catch(e => { if (!cancelled) setError(e instanceof Error ? e.message : "Unable to load sales report."); })
       .finally(() => {
         if (!cancelled) setLoading(false);
       });
     return () => {
       cancelled = true;
+      abort.abort();
     };
   }, [qs]);
 
+  if (!qs) return <p className="text-sm text-zinc-500 py-10 text-center">Select a valid date range to view sales.</p>;
+  if (error) return <p role="alert" className="text-sm text-red-400 py-10 text-center">{error}</p>;
   if (loading && !data)
     return (
       <p className="text-sm text-zinc-500 py-10 text-center">Loading…</p>
@@ -2467,4 +2483,3 @@ function JobsByLeadSourceDonut({
     </div>
   );
 }
-

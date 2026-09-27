@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getSessionContext } from "@/lib/auth";
-import {
-  DEFAULT_CUSTOMIZATIONS,
-  mergeCustomizations,
-  type CustomizationConfig,
-} from "@/lib/customizations";
+import { loadCustomizations } from "@/lib/customization-store";
 import {
   buildPlainTextFallback,
   getCompanyForFooter,
@@ -19,25 +15,6 @@ import {
 } from "@/lib/sms";
 
 export const dynamic = "force-dynamic";
-
-type ConfigRow = { config: string };
-
-async function loadCustomizations(
-  companyId: number
-): Promise<CustomizationConfig> {
-  const db = await getDb();
-  const row = (await db
-    .prepare(
-      "SELECT config FROM customization_settings WHERE company_id = ? LIMIT 1"
-    )
-    .get(companyId)) as ConfigRow | undefined;
-  if (!row) return DEFAULT_CUSTOMIZATIONS;
-  try {
-    return mergeCustomizations(JSON.parse(row.config));
-  } catch {
-    return DEFAULT_CUSTOMIZATIONS;
-  }
-}
 
 function renderTemplate(
   template: string,
@@ -84,7 +61,7 @@ export async function POST(
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
 
-  const config = await loadCustomizations(companyId);
+  const config = await loadCustomizations(db, companyId);
   const block = config.messages.review_request;
   if (!block.enabled) {
     return NextResponse.json(

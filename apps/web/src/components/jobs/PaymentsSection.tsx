@@ -154,6 +154,7 @@ export default function PaymentsSection({
           jobTotalCents={jobTotalCents}
           paidTotalCents={paidTotalCents}
           onClose={() => setCheckoutOpen(false)}
+          onPaid={onChanged}
           onChoose={(choice) => {
             setCheckoutOpen(false);
             if (choice === "card" || choice === "other") {

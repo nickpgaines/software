@@ -6,6 +6,10 @@ import { useEffect, useRef, useState } from "react";
 import { PULSE } from "./theme";
 import { PulseIcon } from "./Icon";
 import ThemeToggle from "@/components/ThemeToggle";
+import {
+  LOGOUT_FAILURE_MESSAGE,
+  logoutForgeSession,
+} from "@/lib/native-widget";
 
 type Me = {
   identity: string;
@@ -113,9 +117,13 @@ export function PulseSidebar({ initialMe = null }: { initialMe?: Me | null }) {
   }, [newOpen]);
 
   async function logout() {
-    await fetch("/api/logout", { method: "POST" });
-    router.push("/login");
-    router.refresh();
+    try {
+      await logoutForgeSession();
+      router.push("/login");
+      router.refresh();
+    } catch {
+      window.alert(LOGOUT_FAILURE_MESSAGE);
+    }
   }
 
   const cleanFirst = me?.staff?.first_name?.trim();

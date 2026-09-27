@@ -2,6 +2,7 @@ import { headers } from "next/headers";
 import SettingsTabs from "@/components/SettingsTabs";
 import { getSessionUser } from "@/lib/auth";
 import { loadMe } from "@/lib/me";
+import { isForgeBillingEnabled } from "@/lib/forge-billing/config";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,7 @@ export default async function SettingsPage() {
         username={user}
         initialMe={me}
         connectorUrl={connectorUrl}
+        billingEnabled={isForgeBillingEnabled()}
       />
     </div>
   );

@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { GlobalSearch } from "./GlobalSearch";
+import {useTerminalPresentationBlock} from '@/components/payments/TerminalLifecycle';
 
 type GlobalSearchCtx = {
   open: boolean;
@@ -19,6 +20,7 @@ export function useGlobalSearch(): GlobalSearchCtx {
 
 export function GlobalSearchProvider({ children }: { children: React.ReactNode }) {
   const [open, setOpen] = useState(false);
+  useTerminalPresentationBlock(open);
   // The element focused when the palette opened — focus returns here on close
   // (standard dialog focus-return; without it, Esc drops focus to <body>).
   const triggerRef = useRef<HTMLElement | null>(null);

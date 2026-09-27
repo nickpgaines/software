@@ -8,6 +8,7 @@ import CustomerForm, {
   type CustomerFormCustomer,
 } from "@/components/customers/CustomerForm";
 import { usePhone } from "@/components/PhoneClient";
+import { CustomerPaymentMethods, SubscriptionCardAssignment } from "@/components/payments/SavedCards";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -190,6 +191,7 @@ export default function CustomerDetailClient({
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [chargingId, setChargingId] = useState<number | null>(null);
+  const [cardRevision, setCardRevision] = useState(0);
 
   async function load() {
     const res = await fetch(`/api/customers/${customer.id}`);
@@ -441,7 +443,7 @@ export default function CustomerDetailClient({
           </Section>
 
           <Section title="Payment Method">
-            <span className="text-zinc-500">No card on file.</span>
+            <CustomerPaymentMethods customerId={customer.id} onChanged={() => { setCardRevision(n => n + 1); void load(); router.refresh(); }} />
           </Section>
 
           <Section title="Address">
@@ -703,6 +705,7 @@ export default function CustomerDetailClient({
                             </div>
                           </TableCell>
                           <TableCell className="px-4 py-2 text-right">
+                            <SubscriptionCardAssignment key={`${s.id}-${cardRevision}`} subscription={s} onChanged={() => { void load(); }} />
                             {s.status === "active" && (
                               <Button
                                 variant="ghost"

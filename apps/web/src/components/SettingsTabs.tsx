@@ -4,6 +4,7 @@ import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
@@ -20,7 +21,14 @@ import CustomizationsPanel from "@/components/settings/CustomizationsPanel";
 import ConnectorsSettingsPanel from "@/components/settings/ConnectorsSettingsPanel";
 import AccentPicker from "@/components/AccentPicker";
 import ThemeToggle from "@/components/ThemeToggle";
+import AccountDeletionSection from "@/components/account/AccountDeletionSection";
+import ForgeBilling from "@/components/billing/ForgeBilling";
+import TerminalSetup from "@/components/payments/TerminalSetup";
 import { PulseIcon } from "@/components/pulse/Icon";
+import {
+  registrationConfirmationValues,
+  SmsRegistrationConfirmationFields,
+} from "@/components/SmsRegistrationConfirmationFields";
 
 type Tab =
   | "profile"
@@ -53,10 +61,12 @@ export default function SettingsTabs({
   username,
   initialMe = null,
   connectorUrl,
+  billingEnabled = false,
 }: {
   username: string;
   initialMe?: Me | null;
   connectorUrl: string;
+  billingEnabled?: boolean;
 }) {
   return (
     <Suspense fallback={null}>
@@ -64,6 +74,7 @@ export default function SettingsTabs({
         username={username}
         initialMe={initialMe}
         connectorUrl={connectorUrl}
+        billingEnabled={billingEnabled}
       />
     </Suspense>
   );
@@ -73,15 +84,17 @@ function SettingsTabsInner({
   username,
   initialMe,
   connectorUrl,
+  billingEnabled,
 }: {
   username: string;
   initialMe: Me | null;
   connectorUrl: string;
+  billingEnabled: boolean;
 }) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  // Salespeople and technicians only see the Profile tab — every other
-  // settings surface (Company, Payments, Billing, etc.) is admin-only.
+  // Staff can prepare their own iPhone in Payments. Stripe-account management
+  // and the remaining business settings still require settings.view_all.
   const canSeeAllSettings =
     !!initialMe?.is_admin_account ||
     !!(initialMe as MeWithPerms | null)?.permissions?.includes(
@@ -89,7 +102,7 @@ function SettingsTabsInner({
     );
   const visibleTabs = canSeeAllSettings
     ? TABS
-    : TABS.filter((t) => t.key === "profile");
+    : TABS.filter((t) => t.key === "profile" || t.key === "payments");
   const initialTab = (() => {
     const t = searchParams.get("tab");
     if (visibleTabs.some((x) => x.key === t)) return t as Tab;
@@ -140,10 +153,15 @@ function SettingsTabsInner({
 
       <div className="bg-card border border-line rounded-2xl p-5 sm:p-6 shadow-sm">
         {tab === "profile" && (
-          <ProfilePanel username={username} initialMe={initialMe} />
+          <ProfilePanel
+            username={username}
+            initialMe={initialMe}
+            billingEnabled={billingEnabled}
+          />
         )}
         {canSeeAllSettings && tab === "company" && <CompanyPanel />}
         {canSeeAllSettings && tab === "payments" && <PaymentsPanel />}
+        {!canSeeAllSettings && tab === "payments" && <TerminalSetup />}
         {canSeeAllSettings && tab === "subscriptions" && <SubscriptionsPanel />}
         {canSeeAllSettings && tab === "customizations" && <CustomizationsPanel />}
         {canSeeAllSettings && tab === "messaging" && <MessagingPanel />}
@@ -153,7 +171,9 @@ function SettingsTabsInner({
         {canSeeAllSettings && tab === "connectors" && (
           <ConnectorsSettingsPanel connectorUrl={connectorUrl} />
         )}
-        {canSeeAllSettings && tab === "billing" && <BillingPanel />}
+        {canSeeAllSettings && tab === "billing" && (
+          <BillingPanel enabled={billingEnabled} />
+        )}
       </div>
     </div>
   );
@@ -212,9 +232,11 @@ async function processProfileImage(file: File): Promise<string> {
 function ProfilePanel({
   username,
   initialMe,
+  billingEnabled,
 }: {
   username: string;
   initialMe: Me | null;
+  billingEnabled: boolean;
 }) {
   const router = useRouter();
   const [me, setMe] = useState<Me | null>(initialMe);
@@ -421,200 +443,11 @@ function ProfilePanel({
           <div className="pt-6 border-t border-line">
             <AccentPicker />
           </div>
-          {!isAdminEnv && staff && <AccountDeletionSection />}
+          {!isAdminEnv && staff && (
+            <AccountDeletionSection billingEnabled={billingEnabled} />
+          )}
         </>
       )}
-    </div>
-  );
-}
-
-type AccountDeletionPreview = {
-  scope: "employee" | "organization";
-  companyName: string;
-  employeeCount: number;
-  adminCount: number;
-  blockedReason: "last_admin" | null;
-};
-
-function AccountDeletionSection() {
-  const router = useRouter();
-  const [open, setOpen] = useState(false);
-  const [preview, setPreview] = useState<AccountDeletionPreview | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [password, setPassword] = useState("");
-  const [confirmation, setConfirmation] = useState("");
-  const [error, setError] = useState<string | null>(null);
-
-  async function loadPreview() {
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/account/deletion", { cache: "no-store" });
-      const data = (await res.json().catch(() => ({}))) as
-        | AccountDeletionPreview
-        | { error?: string };
-      if (!res.ok || !("scope" in data)) {
-        setPreview(null);
-        setError(("error" in data && data.error) || "Could not load deletion details.");
-        return;
-      }
-      setPreview(data);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function changeOpen(next: boolean) {
-    setOpen(next);
-    if (!next) {
-      setPreview(null);
-      setPassword("");
-      setConfirmation("");
-      setError(null);
-      return;
-    }
-    void loadPreview();
-  }
-
-  async function submit() {
-    if (!preview) return;
-    setSubmitting(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/account/deletion", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          password,
-          confirmation,
-          expected_scope: preview.scope,
-        }),
-      });
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
-      if (!res.ok) {
-        setError(data.error || "Could not delete your account.");
-        if (res.status === 409) void loadPreview();
-        return;
-      }
-      router.replace("/login?deleted=1");
-      router.refresh();
-    } finally {
-      setSubmitting(false);
-    }
-  }
-
-  const organizationDeletion = preview?.scope === "organization";
-  const blocked = preview?.blockedReason === "last_admin";
-  const canSubmit =
-    !!preview &&
-    !blocked &&
-    !!password &&
-    (!organizationDeletion || confirmation === "DELETE");
-
-  return (
-    <div className="pt-6 border-t border-line">
-      <div className="rounded-2xl border border-red-500/30 bg-red-500/5 p-5 sm:p-6">
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h3 className="text-[15px] font-extrabold tracking-tight text-white">
-              Delete account
-            </h3>
-            <p className="mt-1 text-xs font-bold text-zinc-400">
-              Permanently remove your account and its associated data.
-            </p>
-          </div>
-          <Dialog open={open} onOpenChange={changeOpen}>
-            <Button variant="destructive" type="button" onClick={() => changeOpen(true)}>
-              Delete account
-            </Button>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>
-                  {organizationDeletion ? "Delete organization" : "Delete account"}
-                </DialogTitle>
-                <DialogDescription>
-                  This action cannot be undone.
-                </DialogDescription>
-              </DialogHeader>
-
-              {loading && <p className="text-sm font-bold text-zinc-400">Loading deletion details…</p>}
-
-              {!loading && error && (
-                <p className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm font-bold text-red-300">
-                  {error}
-                </p>
-              )}
-
-              {!loading && preview && blocked && (
-                <div className="space-y-3 text-sm font-bold text-zinc-300">
-                  <p>
-                    You are the only administrator for {preview.companyName}. Promote another employee before deleting your account.
-                  </p>
-                  <a href="/employees" className="text-sm font-extrabold text-white hover:text-zinc-300">
-                    Go to Employees →
-                  </a>
-                </div>
-              )}
-
-              {!loading && preview && !blocked && (
-                <div className="space-y-4">
-                  <p className="text-sm font-bold text-zinc-300">
-                    {organizationDeletion
-                      ? `You are the last employee at ${preview.companyName}. This permanently deletes the organization, its employees, customers, jobs, messages, invoices, settings, and other CRM data.`
-                      : `Other employees will remain at ${preview.companyName}. This deletes only your login, profile, and personal connections; organization records remain available to your team.`}
-                  </p>
-                  <div className="space-y-2">
-                    <Label htmlFor="delete-account-password">Current password</Label>
-                    <Input
-                      id="delete-account-password"
-                      type="password"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                      autoComplete="current-password"
-                    />
-                  </div>
-                  {organizationDeletion && (
-                    <div className="space-y-2">
-                      <Label htmlFor="delete-organization-confirmation">
-                        Type DELETE to confirm
-                      </Label>
-                      <Input
-                        id="delete-organization-confirmation"
-                        value={confirmation}
-                        onChange={(event) => setConfirmation(event.target.value)}
-                        autoCapitalize="characters"
-                        autoCorrect="off"
-                        spellCheck={false}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <DialogFooter>
-                <Button variant="outline" type="button" onClick={() => changeOpen(false)}>
-                  Cancel
-                </Button>
-                {!blocked && preview && (
-                  <Button
-                    variant="destructive"
-                    type="button"
-                    disabled={!canSubmit || submitting}
-                    onClick={submit}
-                  >
-                    {submitting
-                      ? "Deleting…"
-                      : organizationDeletion
-                      ? "Delete organization"
-                      : "Delete account"}
-                  </Button>
-                )}
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
     </div>
   );
 }
@@ -634,6 +467,7 @@ function ReadOnlyField({ label, value }: { label: string; value: string }) {
 
 type Company = {
   id: number;
+  time_zone: string;
   name: string | null;
   address: string | null;
   phone: string | null;
@@ -671,6 +505,7 @@ async function processLogoImage(file: File): Promise<string> {
 }
 
 function CompanyPanel() {
+  const [timeZone, setTimeZone] = useState("America/New_York");
   const [name, setName] = useState("");
   const [address, setAddress] = useState("");
   const [phone, setPhone] = useState("");
@@ -690,6 +525,7 @@ function CompanyPanel() {
       .then((r) => (r.ok ? r.json() : null))
       .then((c: Company | null) => {
         if (c) {
+          setTimeZone(c.time_zone ?? "America/New_York");
           setName(c.name ?? "");
           setAddress(c.address ?? "");
           setPhone(c.phone ?? "");
@@ -741,6 +577,7 @@ function CompanyPanel() {
           email,
           website,
           logo_url: logoUrl,
+          time_zone: timeZone,
         }),
       });
     } catch (err) {
@@ -825,6 +662,20 @@ function CompanyPanel() {
           className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card"
           placeholder="Acme Window Cleaning"
         />
+      </Field>
+      <Field label="Time zone">
+        <Input
+          value={timeZone}
+          disabled={loading}
+          onChange={(e) => setTimeZone(e.target.value)}
+          className="h-auto w-full border-line rounded-full px-4 py-2 text-sm bg-card"
+          placeholder="America/Chicago"
+          list="company-time-zones"
+        />
+        <datalist id="company-time-zones">
+          {["America/New_York", "America/Chicago", "America/Denver", "America/Phoenix", "America/Los_Angeles", "America/Anchorage", "Pacific/Honolulu"].map(zone => <option key={zone} value={zone} />)}
+        </datalist>
+        <p className="mt-1 text-xs text-muted">Used for appointment times in customer status texts.</p>
       </Field>
       <Field label="Address">
         <Input
@@ -935,6 +786,7 @@ function PaymentsPanel() {
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load");
+      setStatus(null);
     } finally {
       setLoading(false);
     }
@@ -994,16 +846,24 @@ function PaymentsPanel() {
       {loading ? (
         <p className="text-sm text-zinc-500">Loading…</p>
       ) : !status?.configured ? (
-        <div className="border border-amber-200 bg-amber-50 rounded-2xl px-4 py-3">
-          <p className="text-sm text-amber-800 font-bold">
-            Stripe platform keys aren&apos;t configured.
-          </p>
-          <p className="text-xs text-amber-700 mt-1">
-            Add <code>STRIPE_SECRET_KEY</code> and{" "}
-            <code>NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY</code> to the deployment
-            environment, then redeploy.
-          </p>
-        </div>
+        <Card role="alert">
+          <CardHeader>
+            <CardTitle>Payments are temporarily unavailable</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm font-bold text-muted-foreground">
+              Please try again. If the problem continues, contact Forge support.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" onClick={load}>
+                Try again
+              </Button>
+              <Button variant="outline" asChild>
+                <a href="mailto:support@forgecrm.app">Contact support</a>
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       ) : !status.connected ? (
         <div className="border border-line rounded-2xl px-4 py-4 space-y-4">
           {status.recovered_from && (
@@ -1143,7 +1003,8 @@ function PaymentsPanel() {
         </div>
       )}
 
-      {error && <p className="text-sm text-rose-600">{error}</p>}
+      {!loading && status?.configured && error && <p className="text-sm text-rose-600">{error}</p>}
+      {!loading && <TerminalSetup accountKey={status?.account_id} />}
     </div>
   );
 }
@@ -2338,12 +2199,17 @@ type RegistrationStatus = {
     business_email: string;
     business_phone: string;
     business_website: string | null;
+    social_media_profile_urls: string | null;
     industry: string;
+    entity_type: string;
     monthly_volume: "under_1k" | "1k_6k" | "6k_plus";
     business_description: string;
     auth_rep_name: string;
     auth_rep_title: string;
     auth_rep_email: string;
+    confirmed_authorized: number;
+    confirmed_aup_tcpa: number;
+    confirmed_consent: number;
     submitted_at: string | null;
   } | null;
   company: {
@@ -2362,10 +2228,10 @@ const STATE_LABELS: Record<string, string> = {
   not_started: "Not submitted",
   customer_profile_pending: "Customer profile in review",
   customer_profile_approved: "Customer profile approved",
-  customer_profile_failed: "Customer profile rejected",
+  customer_profile_failed: "Customer profile needs attention",
   trust_product_pending: "Trust product in review",
   trust_product_approved: "Trust product approved",
-  trust_product_failed: "Trust product rejected",
+  trust_product_failed: "Trust product needs attention",
   brand_pending: "Brand registration in review",
   brand_approved: "Brand approved",
   brand_failed: "Brand registration rejected",
@@ -2393,7 +2259,9 @@ function MessagingPanel() {
     business_email: "",
     business_phone: "",
     business_website: "",
+    social_media_profile_urls: "",
     industry: "",
+    entity_type: "",
     monthly_volume: "under_1k" as "under_1k" | "1k_6k" | "6k_plus",
     business_description: "",
     auth_rep_name: "",
@@ -2413,6 +2281,7 @@ function MessagingPanel() {
       const s = (await res.json()) as RegistrationStatus;
       setData(s);
       if (s.registration) {
+        const confirmations = registrationConfirmationValues(s.registration);
         setForm((f) => ({
           ...f,
           legal_company_name: s.registration!.legal_company_name,
@@ -2427,12 +2296,16 @@ function MessagingPanel() {
           business_email: s.registration!.business_email,
           business_phone: s.registration!.business_phone,
           business_website: s.registration!.business_website ?? "",
+          social_media_profile_urls:
+            s.registration!.social_media_profile_urls ?? "",
           industry: s.registration!.industry,
+          entity_type: s.registration!.entity_type,
           monthly_volume: s.registration!.monthly_volume,
           business_description: s.registration!.business_description,
           auth_rep_name: s.registration!.auth_rep_name,
           auth_rep_title: s.registration!.auth_rep_title,
           auth_rep_email: s.registration!.auth_rep_email,
+          ...confirmations,
         }));
       }
     }
@@ -2458,7 +2331,11 @@ function MessagingPanel() {
     "brand_failed",
     "campaign_failed",
   ].includes(state);
-  const editable = !isPending; // allow edit + resubmit when not_started or failed
+  const isRetryableFailure = [
+    "customer_profile_failed",
+    "trust_product_failed",
+  ].includes(state);
+  const editable = state === "not_started" || isRetryableFailure;
   const submitted = !!data?.registration?.submitted_at;
 
   async function submit(e: React.FormEvent) {
@@ -2578,9 +2455,15 @@ function MessagingPanel() {
           />
         )}
 
-        {editable && (
+        {(editable || isApproved) && (
           <form onSubmit={submit} className="space-y-4">
-            <Field label="Legal Company Name">
+            {isApproved && (
+              <p className="text-sm text-emerald-300">
+                Approved registration details are read-only.
+              </p>
+            )}
+            <fieldset disabled={isApproved} className="space-y-4">
+              <Field label="Legal Company Name">
               <Input
                 value={form.legal_company_name}
                 onChange={(e) => set("legal_company_name", e.target.value)}
@@ -2595,6 +2478,24 @@ function MessagingPanel() {
                 disabled={loading || saving}
                 className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
               />
+            </Field>
+            <Field label="Business Entity Type">
+              {/* Native <select> kept: Radix Select forbids empty-string item values, which are needed for the required placeholder. */}
+              <select
+                value={form.entity_type}
+                onChange={(e) => set("entity_type", e.target.value)}
+                disabled={loading || saving}
+                required
+                className="w-full border border-line rounded-lg px-3 py-2 text-sm bg-card disabled:opacity-50"
+              >
+                <option value="">Select business type…</option>
+                <option value="LLC">LLC</option>
+                <option value="Corporation">Corporation</option>
+                <option value="Partnership">Partnership</option>
+                <option value="Sole Proprietorship">
+                  Sole proprietorship (with EIN)
+                </option>
+              </select>
             </Field>
             <Field label="EIN (format XX-XXXXXXX)">
               <Input
@@ -2644,13 +2545,18 @@ function MessagingPanel() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <Field label="Business Email">
-                <Input
-                  type="email"
-                  value={form.business_email}
-                  onChange={(e) => set("business_email", e.target.value)}
-                  disabled={loading || saving}
-                  className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
-                />
+                <div>
+                  <Input
+                    type="email"
+                    value={form.business_email}
+                    onChange={(e) => set("business_email", e.target.value)}
+                    disabled={loading || saving}
+                    className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+                  />
+                  <p className="mt-1.5 text-xs text-zinc-500">
+                    Use an email on the same domain as your business website.
+                  </p>
+                </div>
               </Field>
               <Field label="Business Phone">
                 <Input
@@ -2664,73 +2570,120 @@ function MessagingPanel() {
               </Field>
             </div>
             <Field label="Business Website">
-              <Input
-                value={form.business_website}
-                onChange={(e) => set("business_website", e.target.value)}
-                disabled={loading || saving}
-                placeholder="https://example.com or social media URL"
-                className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
-              />
+              <div>
+                <Input
+                  type="url"
+                  value={form.business_website}
+                  onChange={(e) => set("business_website", e.target.value)}
+                  disabled={loading || saving}
+                  placeholder="https://example.com"
+                  className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+                />
+                <p className="mt-1.5 text-xs text-zinc-500">
+                  Must be your company&apos;s working public HTTPS site. Twilio
+                  reviews the business identity details.
+                </p>
+              </div>
+            </Field>
+            <Field label="Social Media Profile (optional)">
+              <div>
+                <Input
+                  type="url"
+                  value={form.social_media_profile_urls}
+                  onChange={(e) =>
+                    set("social_media_profile_urls", e.target.value)
+                  }
+                  disabled={loading || saving}
+                  placeholder="https://www.facebook.com/yourbusiness"
+                  className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+                />
+                <p className="mt-1.5 text-xs text-zinc-500">
+                  Put Facebook, Instagram, LinkedIn, or another social profile
+                  here—not in the business website field.
+                </p>
+              </div>
             </Field>
 
-            <div className="space-y-2 pt-2">
-              <label className="flex items-start gap-2 text-sm text-zinc-300 cursor-pointer">
-                <Checkbox
-                  checked={form.confirmed_authorized}
-                  onCheckedChange={(v) =>
-                    set("confirmed_authorized", v === true)
-                  }
+            <div className="border-t border-line pt-4 space-y-3">
+              <div>
+                <div className="text-sm font-extrabold text-white">
+                  Authorized Representative
+                </div>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Twilio verifies this person against the business. Their phone
+                  number is the business phone entered above.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <Field label="Full Name">
+                  <Input
+                    value={form.auth_rep_name}
+                    onChange={(e) => set("auth_rep_name", e.target.value)}
+                    disabled={loading || saving}
+                    placeholder="Business owner or authorized officer"
+                    className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+                  />
+                </Field>
+                <Field label="Job Title">
+                  <Input
+                    value={form.auth_rep_title}
+                    onChange={(e) => set("auth_rep_title", e.target.value)}
+                    disabled={loading || saving}
+                    placeholder="Owner"
+                    className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
+                  />
+                </Field>
+              </div>
+              <Field label="Business Email">
+                <Input
+                  type="email"
+                  value={form.auth_rep_email}
+                  onChange={(e) => set("auth_rep_email", e.target.value)}
+                  disabled={loading || saving}
+                  placeholder="name@example.com"
+                  className="h-auto w-full border-line rounded-lg px-3 py-2 text-sm bg-card"
                 />
-                <span>
-                  I am authorized to register this business with carriers.
-                </span>
-              </label>
-              <label className="flex items-start gap-2 text-sm text-zinc-300 cursor-pointer">
-                <Checkbox
-                  checked={form.confirmed_aup_tcpa}
-                  onCheckedChange={(v) =>
-                    set("confirmed_aup_tcpa", v === true)
-                  }
-                />
-                <span>
-                  I agree to the SMS Acceptable Use Policy and the TCPA.
-                </span>
-              </label>
-              <label className="flex items-start gap-2 text-sm text-zinc-300 cursor-pointer">
-                <Checkbox
-                  checked={form.confirmed_consent}
-                  onCheckedChange={(v) =>
-                    set("confirmed_consent", v === true)
-                  }
-                />
-                <span>
-                  Every recipient I will text has provided express consent.
-                </span>
-              </label>
+              </Field>
             </div>
+
+            <SmsRegistrationConfirmationFields
+              values={{
+                confirmed_authorized: form.confirmed_authorized,
+                confirmed_aup_tcpa: form.confirmed_aup_tcpa,
+                confirmed_consent: form.confirmed_consent,
+              }}
+              disabled={isApproved}
+              onChange={(key, value) => set(key, value)}
+              renderCheckbox={(props) => <Checkbox {...props} />}
+            />
 
             {error && <p className="text-sm text-rose-500">{error}</p>}
 
-            <div className="flex items-center gap-3 pt-2">
-              <Button
-                type="submit"
-                variant="ghost"
-                disabled={saving || loading}
-                className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-2 font-bold"
-              >
-                {saving
-                  ? "Submitting…"
-                  : isFailed
-                  ? "Resubmit Registration"
-                  : "Submit Registration"}
-              </Button>
-              {submitted && !isFailed && (
-                <span className="text-xs text-zinc-500">
-                  Last submitted{" "}
-                  {data?.registration?.submitted_at?.slice(0, 19).replace("T", " ")}
-                </span>
-              )}
-            </div>
+            {!isApproved && (
+              <div className="flex items-center gap-3 pt-2">
+                <Button
+                  type="submit"
+                  variant="ghost"
+                  disabled={saving || loading}
+                  className="h-auto text-sm bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-full px-5 py-2 font-bold"
+                >
+                  {saving
+                    ? "Submitting…"
+                    : isRetryableFailure
+                    ? "Resubmit Registration"
+                    : "Submit Registration"}
+                </Button>
+                {submitted && !isFailed && (
+                  <span className="text-xs text-zinc-500">
+                    Last submitted{" "}
+                    {data?.registration?.submitted_at
+                      ?.slice(0, 19)
+                      .replace("T", " ")}
+                  </span>
+                )}
+              </div>
+            )}
+            </fieldset>
           </form>
         )}
       </div>
@@ -3917,7 +3870,8 @@ function AiPanel() {
   );
 }
 
-function BillingPanel() {
+export function BillingPanel({ enabled }: { enabled: boolean }) {
+  if (enabled) return <ForgeBilling />;
   return (
     <div className="space-y-2 py-12 text-center">
       <div className="mx-auto w-12 h-12 rounded-full bg-black flex items-center justify-center text-zinc-500">

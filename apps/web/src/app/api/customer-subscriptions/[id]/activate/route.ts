@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getDb, type CustomerSubscription } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
+import { terminalSession, terminalResponse } from '@/lib/terminal-http';
+import { selectSubscriptionPaymentMethod } from '@/lib/subscription-payment-method';
 import {
   ensureRollingVisits,
   startDateToIso,
@@ -22,9 +24,13 @@ export const dynamic = "force-dynamic";
  * button on a customer who later does add a card).
  */
 export async function POST(
-  _req: Request,
+  req: Request,
   { params }: { params: { id: string } }
 ) {
+  const body = await req.json().catch(() => ({}));
+  if (body.payment_method_id !== undefined) {
+    return terminalResponse(async () => selectSubscriptionPaymentMethod((await terminalSession(req)).companyId,Number(params.id),body.payment_method_id));
+  }
   const companyId = await requireCompanyId();
   const db = await getDb();
   const sub = (await db

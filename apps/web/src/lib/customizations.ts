@@ -9,6 +9,7 @@ export type MessagesConfig = {
   job_creation: MessageBlock;
   drive_start: MessageBlock;
   drive_end: MessageBlock;
+  job_started: MessageBlock;
   job_finish: MessageBlock;
   invoice_message: MessageBlock;
   invoice_subject: string;
@@ -124,6 +125,11 @@ export const DEFAULT_CUSTOMIZATIONS: CustomizationConfig = {
     drive_end: {
       ...EMPTY_BLOCK,
       template: "Your technician has arrived.",
+    },
+    job_started: {
+      ...EMPTY_BLOCK,
+      enabled: false,
+      template: "Your technician has started the job.",
     },
     job_finish: {
       ...EMPTY_BLOCK,
@@ -265,6 +271,10 @@ export function mergeCustomizations(
       drive_end: mergeBlock(
         messages.drive_end,
         DEFAULT_CUSTOMIZATIONS.messages.drive_end
+      ),
+      job_started: mergeBlock(
+        messages.job_started,
+        DEFAULT_CUSTOMIZATIONS.messages.job_started
       ),
       job_finish: mergeBlock(
         messages.job_finish,

@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { formatPhoneAsTyped } from "@/lib/phone";
+import { useCustomerAddress } from "@/components/customers/useCustomerAddress";
 
 export type CustomerFormCustomer = {
   id: number;
@@ -62,6 +63,7 @@ export default function CustomerForm({
   onClose,
   onSaved,
   variant = "modal",
+  initialAddress,
 }: {
   customer: CustomerFormCustomer | null;
   onClose: () => void;
@@ -73,13 +75,15 @@ export default function CustomerForm({
    * new-customer creation matches the other full-screen create flows.
    */
   variant?: "modal" | "page";
+  initialAddress?: AddressValue;
 }) {
   const [firstName, setFirstName] = useState(customer?.first_name ?? "");
   const [lastName, setLastName] = useState(customer?.last_name ?? "");
   const [phone, setPhone] = useState(customer?.phone ?? "");
   const [email, setEmail] = useState(customer?.email ?? "");
-  const [address, setAddress] = useState<AddressValue>(() =>
-    customerToAddress(customer)
+  const { address, setAddress, prefillMessage, locationBias } = useCustomerAddress(
+    customer ? customerToAddress(customer) : initialAddress,
+    !customer
   );
   const [notes, setNotes] = useState(customer?.notes ?? "");
   const [error, setError] = useState<string | null>(null);
@@ -88,8 +92,8 @@ export default function CustomerForm({
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!firstName.trim() || !lastName.trim()) {
-      setError("First name and last name are required");
+    if (!firstName.trim()) {
+      setError("First name is required");
       return;
     }
     setSaving(true);
@@ -143,12 +147,11 @@ export default function CustomerForm({
             required
           />
         </Field>
-        <Field label="Last name" required>
+        <Field label="Last name (optional)">
           <Input
             type="text"
             value={lastName}
             onChange={(e) => setLastName(e.target.value)}
-            required
           />
         </Field>
       </div>
@@ -168,7 +171,7 @@ export default function CustomerForm({
           />
         </Field>
       </div>
-      <AddressFields value={address} onChange={setAddress} />
+      <AddressFields value={address} onChange={setAddress} prefillMessage={prefillMessage} locationBias={locationBias} />
       <Field label="Notes">
         <Textarea
           value={notes ?? ""}

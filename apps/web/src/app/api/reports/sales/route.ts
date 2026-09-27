@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb, type CustomerSubscription } from "@/lib/db";
-import { resolveReportRangeFromUrl } from "@/lib/report-range";
+import { calendarDay, resolveSalesRange, salesDays, salesTimestamp, type SalesDate } from "@/lib/sales-report-range";
 import { requireCompanyId } from "@/lib/auth";
 import { annualCents, withTax } from "@/lib/revenue";
 
@@ -38,41 +38,6 @@ type PinRow = { status: string | null; count: number };
 
 type DbHandle = Awaited<ReturnType<typeof getDb>>;
 
-function isoDay(d: Date) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function daysBetween(start: Date, end: Date): { date: string }[] {
-  const days: { date: string }[] = [];
-  const dayStart = new Date(start);
-  dayStart.setHours(0, 0, 0, 0);
-  const cursor = new Date(dayStart);
-  while (cursor < end) {
-    days.push({ date: isoDay(cursor) });
-    cursor.setDate(cursor.getDate() + 1);
-  }
-  return days;
-}
-
-function getPriorRange(
-  rangeKey: string,
-  start: Date,
-  end: Date,
-): { start: Date; end: Date } {
-  if (rangeKey === "ytd") {
-    const s = new Date(start);
-    s.setFullYear(s.getFullYear() - 1);
-    const e = new Date(end);
-    e.setFullYear(e.getFullYear() - 1);
-    return { start: s, end: e };
-  }
-  const span = end.getTime() - start.getTime();
-  return { start: new Date(start.getTime() - span), end: new Date(start) };
-}
-
 function deltaPct(current: number, prior: number): number | null {
   if (prior <= 0) return null;
   return (current - prior) / prior;
@@ -93,6 +58,7 @@ async function getBucket(
   companyId: number,
   startIso: string,
   endIso: string,
+  zone: string,
 ): Promise<Bucket> {
   // ARR sold = annualized value of subscriptions whose start fell in range.
   const subs =
@@ -105,7 +71,8 @@ async function getBucket(
   for (const s of subs) {
     if (s.status === "pending" || s.status === "declined") continue;
     const startedAt = s.start_date || s.accepted_at || s.created_at;
-    if (startedAt && startedAt >= startIso && startedAt < endIso) {
+    const at = startedAt ? salesTimestamp(startedAt, zone).getTime() : NaN;
+    if (at >= Date.parse(startIso) && at < Date.parse(endIso)) {
       arrSold += withTax(
         annualCents(s.price_cents, s.interval),
         s.tax_rate_bps,
@@ -121,7 +88,7 @@ async function getBucket(
       `SELECT COALESCE(SUM(price_cents), 0) AS total, COUNT(*) AS n
          FROM jobs
         WHERE company_id = ?
-          AND scheduled_at >= ? AND scheduled_at < ?
+          AND julianday(scheduled_at) >= julianday(?) AND julianday(scheduled_at) < julianday(?)
           AND COALESCE(recurring, 0) = 0
           AND status != 'cancelled'`,
     )
@@ -136,7 +103,7 @@ async function getBucket(
          SUM(CASE WHEN status IN ('sale', 'quote', 'quote_sent') THEN 1 ELSE 0 END) AS quoted
        FROM map_pins
        WHERE company_id = ?
-         AND created_at >= ? AND created_at < ?`,
+         AND julianday(created_at) >= julianday(?) AND julianday(created_at) < julianday(?)`,
     )
     .get(companyId, startIso, endIso)) as {
     total: number;
@@ -158,22 +125,22 @@ async function getBucket(
 async function getArrSoldSeries(
   db: DbHandle,
   companyId: number,
-  start: Date,
+  start: SalesDate,
   end: Date,
 ): Promise<{ date: string; cents: number }[]> {
   const subs =
     ((await db
       .prepare(`SELECT * FROM customer_subscriptions WHERE company_id = ?`)
       .all<CustomerSubscription>(companyId)) as CustomerSubscription[]) || [];
-  const days = daysBetween(start, end);
+  const days = salesDays(start, end);
   const byDay = new Map<string, number>();
   for (const s of subs) {
     if (s.status === "pending" || s.status === "declined") continue;
     const startedAt = s.start_date || s.accepted_at || s.created_at;
     if (!startedAt) continue;
-    const d = new Date(startedAt);
-    if (d < start || d >= end) continue;
-    const key = isoDay(d);
+    const d = salesTimestamp(startedAt, start.timeZone || "UTC");
+    if (!(d >= start && d < end)) continue;
+    const key = calendarDay(d);
     const arr = withTax(
       annualCents(s.price_cents, s.interval),
       s.tax_rate_bps,
@@ -190,7 +157,7 @@ async function getArrSoldSeries(
 async function getOneTimeSeries(
   db: DbHandle,
   companyId: number,
-  start: Date,
+  start: SalesDate,
   end: Date,
   startIso: string,
   endIso: string,
@@ -200,15 +167,15 @@ async function getOneTimeSeries(
       `SELECT scheduled_at AS at, price_cents AS cents
          FROM jobs
         WHERE company_id = ?
-          AND scheduled_at >= ? AND scheduled_at < ?
+          AND julianday(scheduled_at) >= julianday(?) AND julianday(scheduled_at) < julianday(?)
           AND COALESCE(recurring, 0) = 0
           AND status != 'cancelled'`,
     )
     .all(companyId, startIso, endIso)) as { at: string; cents: number }[];
-  const days = daysBetween(start, end);
+  const days = salesDays(start, end);
   const byDay = new Map<string, number>();
   for (const r of rows) {
-    const key = isoDay(new Date(r.at));
+    const key = calendarDay(salesTimestamp(r.at, start.timeZone || "UTC"));
     byDay.set(key, (byDay.get(key) || 0) + r.cents);
   }
   return days.map((d) => ({ date: d.date, cents: byDay.get(d.date) || 0 }));
@@ -230,6 +197,7 @@ async function getReps(
   companyId: number,
   startIso: string,
   endIso: string,
+  zone: string,
 ): Promise<RepRow[]> {
   const reps = (await db
     .prepare(
@@ -241,20 +209,20 @@ async function getReps(
               AND (LOWER(TRIM(p.created_by)) = LOWER(TRIM(s.name))
                    OR (s.email IS NOT NULL
                        AND LOWER(TRIM(p.created_by)) = LOWER(TRIM(s.email))))
-              AND p.created_at >= ? AND p.created_at < ?) AS pins,
+              AND julianday(p.created_at) >= julianday(?) AND julianday(p.created_at) < julianday(?)) AS pins,
          (SELECT COUNT(*) FROM map_pins p
             WHERE p.company_id = ?
               AND (LOWER(TRIM(p.created_by)) = LOWER(TRIM(s.name))
                    OR (s.email IS NOT NULL
                        AND LOWER(TRIM(p.created_by)) = LOWER(TRIM(s.email))))
-              AND p.created_at >= ? AND p.created_at < ?
+              AND julianday(p.created_at) >= julianday(?) AND julianday(p.created_at) < julianday(?)
               AND p.status = 'sale') AS sales,
          (SELECT COALESCE(SUM(j.price_cents), 0)
             FROM jobs j
             JOIN job_assignments ja ON ja.job_id = j.id
             WHERE j.company_id = ?
               AND ja.staff_id = s.id AND ja.role = 'sales'
-              AND j.scheduled_at >= ? AND j.scheduled_at < ?
+              AND julianday(j.scheduled_at) >= julianday(?) AND julianday(j.scheduled_at) < julianday(?)
               AND COALESCE(j.recurring, 0) = 0
               AND j.status != 'cancelled') AS one_time_cents
        FROM staff s
@@ -290,7 +258,8 @@ async function getReps(
     if (s.sold_by_id == null) continue;
     const startedAt = s.start_date || s.accepted_at || s.created_at;
     if (!startedAt) continue;
-    if (startedAt < startIso || startedAt >= endIso) continue;
+    const at = salesTimestamp(startedAt, zone).getTime();
+    if (!(at >= Date.parse(startIso) && at < Date.parse(endIso))) continue;
     const arr = withTax(
       annualCents(s.price_cents, s.interval),
       s.tax_rate_bps,
@@ -353,7 +322,7 @@ async function getPinStatusBreakdown(
              OR (s.email IS NOT NULL
                  AND LOWER(TRIM(s.email)) = LOWER(TRIM(p.created_by))))
        WHERE p.company_id = ?
-         AND p.created_at >= ? AND p.created_at < ?
+         AND julianday(p.created_at) >= julianday(?) AND julianday(p.created_at) < julianday(?)
        GROUP BY s.id, COALESCE(s.name, p.created_by), p.status`,
     )
     .all(companyId, startIso, endIso)) as {
@@ -412,7 +381,7 @@ async function getObjectionsBreakdown(
       `SELECT objections
          FROM map_pins
         WHERE company_id = ?
-          AND created_at >= ? AND created_at < ?
+          AND julianday(created_at) >= julianday(?) AND julianday(created_at) < julianday(?)
           AND objections IS NOT NULL`,
     )
     .all(companyId, startIso, endIso)) as { objections: string | null }[];
@@ -447,12 +416,16 @@ async function getObjectionsBreakdown(
 
 export async function GET(req: Request) {
   const companyId = await requireCompanyId();
-  const db = await getDb();
   const url = new URL(req.url);
-  const { range, start, end } = resolveReportRangeFromUrl(url);
+  let resolved: ReturnType<typeof resolveSalesRange>;
+  try { resolved = resolveSalesRange(url); }
+  catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Invalid date range." }, { status: 400 });
+  }
+  const db = await getDb();
+  const { range, start, end, zone, prior } = resolved;
   const startIso = start.toISOString();
   const endIso = end.toISOString();
-  const prior = getPriorRange(range, start, end);
   const priorStartIso = prior.start.toISOString();
   const priorEndIso = prior.end.toISOString();
 
@@ -465,11 +438,11 @@ export async function GET(req: Request) {
     pinStatus,
     objections,
   ] = await Promise.all([
-    getBucket(db, companyId, startIso, endIso),
-    getBucket(db, companyId, priorStartIso, priorEndIso),
+    getBucket(db, companyId, startIso, endIso, zone),
+    getBucket(db, companyId, priorStartIso, priorEndIso, zone),
     getArrSoldSeries(db, companyId, start, end),
     getOneTimeSeries(db, companyId, start, end, startIso, endIso),
-    getReps(db, companyId, startIso, endIso),
+    getReps(db, companyId, startIso, endIso, zone),
     getPinStatusBreakdown(db, companyId, startIso, endIso),
     getObjectionsBreakdown(db, companyId, startIso, endIso),
   ]);

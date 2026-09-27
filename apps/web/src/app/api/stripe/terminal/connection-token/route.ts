@@ -1,5 +1,8 @@
-import { NextResponse } from "next/server";
-import { requireCompanyId } from "@/lib/auth";
+import { terminalResponse, terminalSession, TerminalError } from '@/lib/terminal-http';
+import { requireTapToPayEnabled } from '@/lib/terminal-rollout';
+import { requireTerminalEnvironment } from '@/lib/terminal-environment';
+import { getDb } from '@/lib/db';
+import { canManageTerminalSetup, resolveTerminalLocation } from '@/lib/terminal-location';
 import {
   getStripe,
   isStripeConfigured,
@@ -16,43 +19,38 @@ export const dynamic = "force-dynamic";
  * The native iOS app fetches this on demand and hands it to
  * `STPTerminal.shared.discoverReaders(...)` etc.
  */
-export async function POST() {
-  if (!isStripeConfigured()) {
-    return NextResponse.json(
-      { error: "Stripe is not configured" },
-      { status: 503 }
-    );
-  }
-
-  const companyId = await requireCompanyId();
-  const company = await getCompany(companyId);
-  if (!company.stripe_account_id) {
-    return NextResponse.json(
-      {
-        error:
-          "Connect a Stripe account in Settings → Payments before using Tap to Pay.",
-      },
-      { status: 400 }
-    );
-  }
-  if (!company.stripe_charges_enabled) {
-    return NextResponse.json(
-      {
-        error:
-          "Stripe is still verifying this account. Finish onboarding before using Tap to Pay.",
-      },
-      { status: 400 }
-    );
-  }
-
-  const stripe = getStripe();
-  const token = await stripe.terminal.connectionTokens.create(
-    {},
-    { stripeAccount: company.stripe_account_id }
-  );
-
-  return NextResponse.json({
-    secret: token.secret,
-    stripe_account: company.stripe_account_id,
+export async function POST(req: Request) {
+  return terminalResponse(async () => {
+    const auth = await terminalSession(req);
+    requireTapToPayEnabled();
+    const company = await getCompany(auth.companyId);
+    if (!isStripeConfigured()) throw new TerminalError('Stripe is not configured',503);
+    if (!company.stripe_account_id || !company.stripe_charges_enabled) throw new TerminalError('Complete Stripe onboarding before using Tap to Pay',409);
+    if (req.headers.get('X-Forge-Stripe-Account') !== company.stripe_account_id) throw new TerminalError('Stripe account does not match this Terminal session',409);
+    // Earlier native builds leave the SDK's terms permission at its unsafe YES
+    // default and ignore our response flag. Never mint a token for that protocol.
+    const purpose = req.headers.get('X-Forge-Terminal-Purpose');
+    if (!purpose) throw new TerminalError('Update Forge to use Tap to Pay. Pay with card is still available.',409);
+    const confirmation = req.headers.get('X-Forge-Authorized-Representative');
+    if (!['collection','preparation','warmup'].includes(purpose) || (confirmation !== null && confirmation !== 'true' && confirmation !== 'false')
+      || (purpose !== 'preparation' && confirmation === 'true')) throw new TerminalError('Invalid Terminal preparation request');
+    const permitsTerms = purpose === 'preparation' && confirmation === 'true';
+    const location = req.headers.get('X-Forge-Terminal-Location');
+    if (purpose === 'warmup' && !location) throw new TerminalError('A business location is required for reader warm-up.',409);
+    if (location && (await resolveTerminalLocation(await getDb(),auth.companyId,company.stripe_account_id)).id !== location) {
+      throw new TerminalError('Business location changed. Reopen Payments settings.',409);
+    }
+    if (permitsTerms && !await canManageTerminalSetup(await getDb(),auth)) throw new TerminalError('An authorized administrator must complete merchant setup.',403);
+    const token = await getStripe().terminal.connectionTokens.create({}, { stripeAccount: company.stripe_account_id });
+    const current = await getCompany(auth.companyId);
+    requireTapToPayEnabled();
+    if (current.stripe_account_id !== company.stripe_account_id || !current.stripe_charges_enabled) throw new TerminalError('Stripe account changed. Reload setup.',409);
+    if (location) {
+      const selected = await (await getDb()).prepare('SELECT stripe_terminal_location_id FROM stripe_terminal_locations WHERE company_id=?')
+        .get<{stripe_terminal_location_id:string}>(auth.companyId);
+      if (selected?.stripe_terminal_location_id !== location) throw new TerminalError('Business location changed. Reopen Payments settings.',409);
+    }
+    if (permitsTerms && !await canManageTerminalSetup(await getDb(),auth)) throw new TerminalError('Administrator permission changed. Reload setup.',403);
+    return { secret: token.secret, stripe_account: company.stripe_account_id, tos_acceptance_permitted:permitsTerms, provider_mode:requireTerminalEnvironment(req.headers.get('X-Forge-Terminal-Mode')) };
   });
 }

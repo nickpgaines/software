@@ -1,9 +1,14 @@
 import { NextResponse } from "next/server";
 import { getDb, type Payment, type PaymentMethod } from "@/lib/db";
 import { getSessionContext } from "@/lib/auth";
-import { autoCompleteSteps } from "@/lib/jobs";
+import {
+  autoCompleteSteps,
+  preparePaymentCompletionNotification,
+  dispatchPaymentCompletionNotification,
+} from "@/lib/payment-job-completion";
 import { sendPaymentReceipt } from "@/lib/payment-receipts";
 import { recordActivity } from "@/lib/activity";
+import { requireIdempotencyKey, insertPaymentIdempotently, PaymentIdempotencyError } from "@/lib/payment-idempotency";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +36,22 @@ export async function GET(
 
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
+) {
+  try {
+    return await recordPayment(req, context, requireIdempotencyKey(req));
+  } catch (error) {
+    if (error instanceof PaymentIdempotencyError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    throw error;
+  }
+}
+
+async function recordPayment(
+  req: Request,
+  { params }: { params: { id: string } },
+  key: string
 ) {
   const ctx = await getSessionContext();
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -107,31 +127,27 @@ export async function POST(
   // Atomic: insert the payment row AND auto-complete any unset work
   // steps in the same transaction. If anything throws, BOTH the row
   // and the step timestamps roll back.
-  const insertedId = await db.transaction(async (tx) => {
-    const result = await tx
-      .prepare(
-        `INSERT INTO payments
-           (company_id, job_id, amount_cents, tip_cents, method, payment_date, notes, send_email, send_sms)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .run(
-        companyId,
-        jobId,
-        amountCents,
-        tipCents,
-        method,
-        payment_date,
-        body.notes ? String(body.notes) : null,
-        send_email,
-        send_sms
-      );
-    await autoCompleteSteps(tx, jobId, companyId);
-    return Number(result.lastInsertRowid);
+  const completionNotification = await preparePaymentCompletionNotification(db, jobId, companyId);
+  const { payment: created, created: isNew, completedChanged } = await db.transaction(async (tx) => {
+    const result = await insertPaymentIdempotently(tx, {
+      company_id: companyId, job_id: jobId, amount_cents: amountCents,
+      tip_cents: tipCents, method, payment_date, notes: body.notes ? String(body.notes) : null,
+      send_email, send_sms, idempotency_key: `manual:${key}`,
+    });
+    const completedChanged = result.created ? await autoCompleteSteps(tx, jobId, companyId, undefined, completionNotification) : false;
+    return { ...result, completedChanged };
   });
 
-  const created = (await db
-    .prepare("SELECT * FROM payments WHERE id = ? AND company_id = ?")
-    .get(insertedId, companyId)) as Payment;
+  if (!isNew) return NextResponse.json({ ...created, idempotent_replay: true, lifecycle_notification: null, warning: null });
+
+  const lifecycle_notification = await dispatchPaymentCompletionNotification({
+    db,
+    companyId,
+    jobId,
+    changed: completedChanged,
+  });
+
+  let warning = lifecycle_notification?.error || null;
 
   // Activity: record the payment, and if this payment took the job to
   // fully-paid, also surface a higher-signal "job.paid" event. Both are
@@ -176,18 +192,22 @@ export async function POST(
   }
 
   if (send_email || send_sms) {
-    await sendPaymentReceipt({
-      jobId,
-      paymentId: created.id,
-      companyId,
-      amountCents: created.amount_cents,
-      tipCents: created.tip_cents ?? 0,
-      method,
-      paymentDate: created.payment_date || payment_date,
-      sendEmail: !!send_email,
-      sendSms: !!send_sms,
-    });
+    try {
+      await sendPaymentReceipt({
+        jobId,
+        paymentId: created.id,
+        companyId,
+        amountCents: created.amount_cents,
+        tipCents: created.tip_cents ?? 0,
+        method,
+        paymentDate: created.payment_date || payment_date,
+        sendEmail: !!send_email,
+        sendSms: !!send_sms,
+      });
+    } catch {
+      warning = [warning, "Payment recorded, but the receipt could not be delivered."].filter(Boolean).join(" ");
+    }
   }
 
-  return NextResponse.json(created, { status: 201 });
+  return NextResponse.json({ ...created, idempotent_replay: false, lifecycle_notification, warning }, { status: 201 });
 }

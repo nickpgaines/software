@@ -14,7 +14,7 @@ function createDb(members: TeamMember[]) {
     async transaction(fn) {
       transactionCalls++;
       return fn({
-        prepare(sql) {
+        prepare(sql: string) {
           return {
             async get(...args: unknown[]) {
               if (sql.includes("SELECT id, permission_level FROM staff")) {

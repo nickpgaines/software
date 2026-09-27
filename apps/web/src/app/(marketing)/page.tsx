@@ -11,6 +11,10 @@ import {
 import { FeatureTabs } from "@/components/marketing/FeatureTabs";
 import { PricingSection } from "@/components/marketing/PricingSection";
 import { FaqSection } from "@/components/marketing/FaqSection";
+import {
+  isForgeBillingEnabled,
+} from "@/lib/forge-billing/config";
+import { forgePublicAccessCopy } from "@/lib/forge-billing/copy";
 
 export const metadata: Metadata = {
   title: "Forge — The CRM for service businesses that move fast.",
@@ -18,7 +22,13 @@ export const metadata: Metadata = {
     "Scheduling, territory mapping, invoicing, payroll, and recurring billing — one app to run your entire service business. Built for the field, designed to scale.",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function MarketingHome() {
+  const billingEnabled = isForgeBillingEnabled();
+  const accessCopy = forgePublicAccessCopy(
+    billingEnabled,
+  );
   return (
     <div>
       {/* Hero */}
@@ -83,14 +93,15 @@ export default function MarketingHome() {
       >
         <div className="max-w-app mx-auto">
           <div className="text-center max-w-2xl mx-auto">
-            <Eyebrow>Pricing</Eyebrow>
+            <Eyebrow>Founder Pricing</Eyebrow>
             <SectionHeading className="mt-5">
-              Built and priced
+              Founder pricing.
               <br />
-              for growth.
+              Not public pricing.
             </SectionHeading>
             <SectionSubhead className="mt-6 mx-auto">
-              Free trial. No credit card required. Cancel any time.
+              Not public pricing. Pay annually and get 2 months free. {" "}
+              {accessCopy.marketing}
             </SectionSubhead>
           </div>
 
@@ -124,7 +135,7 @@ export default function MarketingHome() {
         </div>
       </section>
 
-      <FinalCta />
+      <FinalCta accessCopy={accessCopy.marketing} />
     </div>
   );
 }

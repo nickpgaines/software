@@ -78,25 +78,6 @@ export function computeJobStatus(job: {
   return anyStep ? "in_progress" : "scheduled";
 }
 
-export async function autoCompleteSteps(
-  db: Db,
-  jobId: number,
-  companyId: number
-) {
-  const now = new Date().toISOString();
-  await db
-    .prepare(
-      `UPDATE jobs
-         SET en_route_at  = COALESCE(en_route_at,  ?),
-             arrived_at   = COALESCE(arrived_at,   ?),
-             started_at   = COALESCE(started_at,   ?),
-             completed_at = COALESCE(completed_at, ?),
-             status = CASE WHEN status = 'cancelled' THEN status ELSE 'completed' END
-       WHERE id = ? AND company_id = ?`
-    )
-    .run(now, now, now, now, jobId, companyId);
-}
-
 export type JobDetail = Job & {
   customer_name: string;
   customer_phone: string | null;
@@ -541,29 +522,7 @@ export async function getJobDetail(
   };
 }
 
-export async function setStatusStep(
-  db: Db,
-  id: number,
-  step: "en_route" | "arrived" | "started" | "completed",
-  companyId: number,
-  clear = false
-): Promise<void> {
-  const col =
-    step === "en_route"
-      ? "en_route_at"
-      : step === "arrived"
-      ? "arrived_at"
-      : step === "started"
-      ? "started_at"
-      : "completed_at";
-  const newStatus = clear ? "scheduled" : step;
-  const ts = clear ? null : new Date().toISOString();
-  await db
-    .prepare(
-      `UPDATE jobs SET ${col} = ?, status = ? WHERE id = ? AND company_id = ?`
-    )
-    .run(ts, newStatus, id, companyId);
-}
+export { setStatusStep } from "./job-status-transitions";
 
 // JobAssignment is re-exported for callers
 export type { JobAssignment };

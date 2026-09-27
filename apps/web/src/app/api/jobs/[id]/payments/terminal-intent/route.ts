@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server";
+import { assertNoUnresolvedTerminalPayment } from '@/lib/terminal-job-guard';
 import { getDb } from "@/lib/db";
 import { requireCompanyId } from "@/lib/auth";
+import { requireIdempotencyKey, PaymentIdempotencyError } from "@/lib/payment-idempotency";
+import { TerminalError } from '@/lib/terminal-http';
+import { requireTapToPayEnabled } from '@/lib/terminal-rollout';
 import {
   getStripe,
   isStripeConfigured,
@@ -22,7 +26,25 @@ export const dynamic = "force-dynamic";
  */
 export async function POST(
   req: Request,
-  { params }: { params: { id: string } }
+  context: { params: { id: string } }
+) {
+  try {
+    return await createTerminalIntent(req, context, requireIdempotencyKey(req));
+  } catch (error) {
+    if (error instanceof PaymentIdempotencyError || error instanceof TerminalError) {
+      return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    if ((error as { type?: string; code?: string }).type === "StripeIdempotencyError" || (error as { code?: string }).code === "idempotency_key_in_use") {
+      return NextResponse.json({ error: "This payment key is already in use; retry the original payment details" }, { status: 409 });
+    }
+    throw error;
+  }
+}
+
+async function createTerminalIntent(
+  req: Request,
+  { params }: { params: { id: string } },
+  key: string
 ) {
   if (!isStripeConfigured()) {
     return NextResponse.json(
@@ -32,6 +54,7 @@ export async function POST(
   }
 
   const companyId = await requireCompanyId();
+  requireTapToPayEnabled();
   const company = await getCompany(companyId);
   if (!company.stripe_account_id || !company.stripe_charges_enabled) {
     return NextResponse.json(
@@ -52,6 +75,7 @@ export async function POST(
   if (!job) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
+  await assertNoUnresolvedTerminalPayment(db,companyId,jobId);
 
   const body = (await req.json().catch(() => ({}))) as Partial<{
     amount_cents: number;
@@ -106,7 +130,7 @@ export async function POST(
         ? { application_fee_amount: applicationFee }
         : {}),
     },
-    { stripeAccount: company.stripe_account_id }
+    { stripeAccount: company.stripe_account_id, idempotencyKey: `forge:${companyId}:terminal:${key}` }
   );
 
   return NextResponse.json({

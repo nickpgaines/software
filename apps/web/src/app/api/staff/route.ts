@@ -2,6 +2,10 @@ import { NextResponse } from "next/server";
 import { getDb, syncReplica, type Staff, type PermissionLevel } from "@/lib/db";
 import { hashPassword } from "@/lib/password";
 import { requireCompanyId } from "@/lib/auth";
+import { assertStaffInsertionAllowed } from "@/lib/forge-billing/access";
+import { BillingError } from "@/lib/forge-billing/config";
+import { resolveTerminalCheckoutSeatRelease } from "@/lib/forge-billing/service";
+import { assignedPermissions, canGrant, publicStaff, requireTeamManagement, runTeamMutation, teamForbidden } from '@/lib/team-authorization';
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +35,7 @@ export async function GET() {
       "SELECT * FROM staff WHERE company_id = ? ORDER BY name COLLATE NOCASE ASC"
     )
     .all(companyId)) as Staff[];
-  return NextResponse.json(rows);
+  return NextResponse.json(rows.map(publicStaff));
 }
 
 type CreateBody = {
@@ -50,28 +54,48 @@ type CreateBody = {
 };
 
 export async function POST(req: Request) {
-  const companyId = await requireCompanyId();
+  const access = await requireTeamManagement();
+  if (access instanceof Response) return access;
+  const companyId = access.session.companyId;
   const db = await getDb();
   const body = (await req.json().catch(() => ({}))) as CreateBody;
 
   // Legacy single-field path: just name + role.
   if (!body.first_name && !body.email && !body.password && body.name) {
+    if (!canGrant(access.permissions, await assignedPermissions(db, companyId, { permission_level:'admin', custom_role_id:null }))) return teamForbidden();
     const name = (body.name || "").trim();
     if (!name) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
-    const result = await db
-      .prepare(
-        "INSERT INTO staff (company_id, name, role, first_name) VALUES (?, ?, ?, ?)"
-      )
-      .run(companyId, name, body.role || null, name.split(/\s+/)[0] || name);
+    let result: { lastInsertRowid: number } | Response;
+    try {
+      const releasableCheckout =
+        await resolveTerminalCheckoutSeatRelease(companyId);
+      result = await runTeamMutation(db, { session:access.session, companyId, assignment:{permission_level:'admin',custom_role_id:null} }, async (tx) => {
+        await assertStaffInsertionAllowed(tx, companyId, releasableCheckout);
+        return tx
+          .prepare(
+            "INSERT INTO staff (company_id, name, role, first_name) VALUES (?, ?, ?, ?)"
+          )
+          .run(companyId, name, body.role || null, name.split(/\s+/)[0] || name);
+      });
+    } catch (error) {
+      if (error instanceof BillingError) {
+        return NextResponse.json(
+          { error: error.message },
+          { status: error.status }
+        );
+      }
+      throw error;
+    }
+    if (result instanceof Response) return result;
     const created = (await db
       .prepare("SELECT * FROM staff WHERE id = ? AND company_id = ?")
       .get(result.lastInsertRowid, companyId)) as Staff;
     // Force the local replica to pick up the insert so the router.refresh()
     // landing on this instance sees the new row immediately.
     await syncReplica();
-    return NextResponse.json(created, { status: 201 });
+    return NextResponse.json(publicStaff(created), { status: 201 });
   }
 
   const first_name = (body.first_name || "").trim();
@@ -120,8 +144,12 @@ export async function POST(req: Request) {
         "SELECT id FROM custom_roles WHERE id = ? AND company_id = ? LIMIT 1"
       )
       .get(body.custom_role_id, companyId)) as { id: number } | undefined;
-    if (exists) custom_role_id = body.custom_role_id;
+    if (!exists) return NextResponse.json({ error: 'Role not found' }, { status: 400 });
+    custom_role_id = body.custom_role_id;
   }
+
+  const proposed = await assignedPermissions(db, companyId, { permission_level, custom_role_id });
+  if (!canGrant(access.permissions, proposed)) return teamForbidden();
 
   const phone = body.phone?.toString().trim() || null;
   const photo_url = body.photo_url || null;
@@ -138,29 +166,37 @@ export async function POST(req: Request) {
     );
   }
 
-  let result: { lastInsertRowid: number };
+  let result: { lastInsertRowid: number } | Response;
   try {
-    result = await db
-      .prepare(
-        `INSERT INTO staff
-         (company_id, name, first_name, last_name, phone, email, password_hash,
-          color, permission_level, custom_role_id, photo_url, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
-      )
-      .run(
-        companyId,
-        fullName,
-        first_name,
-        last_name,
-        phone,
-        email,
-        password_hash,
-        color,
-        permission_level,
-        custom_role_id,
-        photo_url
-      );
+    const releasableCheckout =
+      await resolveTerminalCheckoutSeatRelease(companyId);
+    result = await runTeamMutation(db, {session:access.session, companyId, assignment:{permission_level,custom_role_id}}, async (tx) => {
+      await assertStaffInsertionAllowed(tx, companyId, releasableCheckout);
+      return tx
+        .prepare(
+          `INSERT INTO staff
+           (company_id, name, first_name, last_name, phone, email, password_hash,
+            color, permission_level, custom_role_id, photo_url, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))`
+        )
+        .run(
+          companyId,
+          fullName,
+          first_name,
+          last_name,
+          phone,
+          email,
+          password_hash,
+          color,
+          permission_level,
+          custom_role_id,
+          photo_url
+        );
+    });
   } catch (err) {
+    if (err instanceof BillingError) {
+      return NextResponse.json({ error: err.message }, { status: err.status });
+    }
     console.error("[/api/staff POST] insert failed:", err);
     const message = err instanceof Error ? err.message : "Database error";
     return NextResponse.json(
@@ -168,6 +204,8 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+
+  if (result instanceof Response) return result;
 
   const created = (await db
     .prepare("SELECT * FROM staff WHERE id = ? AND company_id = ?")
@@ -184,7 +222,7 @@ export async function POST(req: Request) {
       .get(email, companyId)) as Staff | undefined;
     if (fallback) {
       await syncReplica();
-      return NextResponse.json(fallback, { status: 201 });
+      return NextResponse.json(publicStaff(fallback), { status: 201 });
     }
     console.error(
       "[/api/staff POST] insert appeared to succeed but row not found",
@@ -195,5 +233,5 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
-  return NextResponse.json(created, { status: 201 });
+  return NextResponse.json(publicStaff(created), { status: 201 });
 }

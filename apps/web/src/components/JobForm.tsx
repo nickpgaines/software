@@ -4,10 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import CustomerCard from "@/components/jobs/CustomerCard";
-import AddressFields, {
-  EMPTY_ADDRESS,
-  type AddressValue,
-} from "@/components/customers/AddressFields";
+import AddressFields from "@/components/customers/AddressFields";
+import { useCustomerAddress } from "@/components/customers/useCustomerAddress";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -973,14 +971,14 @@ function NewCustomerInline({
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
-  const [address, setAddress] = useState<AddressValue>({ ...EMPTY_ADDRESS });
+  const { address, setAddress, prefillMessage, locationBias } = useCustomerAddress();
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function save() {
     setError(null);
-    if (!firstName.trim() || !lastName.trim()) {
-      setError("First name and last name are required");
+    if (!firstName.trim()) {
+      setError("First name is required");
       return;
     }
     setSaving(true);
@@ -1030,7 +1028,7 @@ function NewCustomerInline({
         />
         <Input
           type="text"
-          placeholder="Last name *"
+          placeholder="Last name (optional)"
           value={lastName}
           onChange={(e) => setLastName(e.target.value)}
           className={pillCls}
@@ -1053,6 +1051,8 @@ function NewCustomerInline({
       <AddressFields
         value={address}
         onChange={setAddress}
+        prefillMessage={prefillMessage}
+        locationBias={locationBias}
         label={false}
         inputClassName={pillCls + " w-full"}
       />
@@ -1079,4 +1079,3 @@ function NewCustomerInline({
     </div>
   );
 }
-

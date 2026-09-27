@@ -2,44 +2,20 @@ import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { getSessionContext } from "@/lib/auth";
 import {
-  DEFAULT_CUSTOMIZATIONS,
   mergeCustomizations,
   type CustomizationConfig,
 } from "@/lib/customizations";
+import { loadCustomizations } from "@/lib/customization-store";
 
 export const dynamic = "force-dynamic";
-
-type Row = { config: string };
-
-async function loadConfig(companyId: number): Promise<CustomizationConfig> {
-  const db = await getDb();
-  const row = (await db
-    .prepare(
-      "SELECT config FROM customization_settings WHERE company_id = ? LIMIT 1"
-    )
-    .get(companyId)) as Row | undefined;
-  if (!row) {
-    await db
-      .prepare(
-        "INSERT INTO customization_settings (company_id, config) VALUES (?, ?)"
-      )
-      .run(companyId, JSON.stringify(DEFAULT_CUSTOMIZATIONS));
-    return DEFAULT_CUSTOMIZATIONS;
-  }
-  try {
-    const parsed = JSON.parse(row.config) as Partial<CustomizationConfig>;
-    return mergeCustomizations(parsed);
-  } catch {
-    return DEFAULT_CUSTOMIZATIONS;
-  }
-}
 
 export async function GET() {
   const ctx = await getSessionContext();
   if (!ctx) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const config = await loadConfig(ctx.companyId);
+  const db = await getDb();
+  const config = await loadCustomizations(db, ctx.companyId);
   return NextResponse.json(config);
 }
 
@@ -49,10 +25,10 @@ export async function PUT(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
   const body = (await req.json().catch(() => ({}))) as Partial<CustomizationConfig>;
-  const current = await loadConfig(ctx.companyId);
+  const db = await getDb();
+  const current = await loadCustomizations(db, ctx.companyId);
   const next = mergeCustomizations({ ...current, ...body });
 
-  const db = await getDb();
   await db
     .prepare(
       `UPDATE customization_settings

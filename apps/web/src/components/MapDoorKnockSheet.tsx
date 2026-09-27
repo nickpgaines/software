@@ -71,9 +71,9 @@ export default function MapDoorKnockSheet({
     if (asCustomer) {
       const first = firstName.trim();
       const last = lastName.trim();
-      if (!first || !last) {
+      if (!first) {
         setSaving(false);
-        setError("First and last name are required to create a customer");
+        setError("First name is required to create a customer");
         return null;
       }
       const cRes = await fetch("/api/customers", {

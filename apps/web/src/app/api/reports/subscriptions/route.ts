@@ -7,6 +7,7 @@ import {
 import { requireCompanyId } from "@/lib/auth";
 import { monthlyCents, withTax } from "@/lib/revenue";
 import { resolveReportRangeFromUrl } from "@/lib/report-range";
+import { calculateCurrentMrrCents } from "@/lib/widget-metrics";
 
 export const dynamic = "force-dynamic";
 
@@ -94,22 +95,11 @@ export async function GET(req: Request) {
   const declined = filtered.filter((r) => r.status === "declined").length;
 
   const now = new Date();
-  const oneMonthAgoIso = new Date(
-    now.getFullYear(),
-    now.getMonth() - 1,
-    now.getDate()
-  ).toISOString();
-
-  const currentMrr = filtered.reduce((sum, r) => {
-    const isActive = r.status === "active";
-    const isRecentCancel =
-      includeCanceled &&
-      r.status === "canceled" &&
-      r.canceled_at !== null &&
-      r.canceled_at >= oneMonthAgoIso;
-    if (!isActive && !isRecentCancel) return sum;
-    return sum + withTax(monthlyCents(r.price_cents, r.interval), r.tax_rate_bps, includeTax);
-  }, 0);
+  const currentMrr = calculateCurrentMrrCents(filtered, {
+    includeTax,
+    includeRecentCanceled: includeCanceled,
+    now,
+  });
 
   const months: {
     label: string;

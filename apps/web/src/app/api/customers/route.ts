@@ -28,9 +28,9 @@ export async function POST(req: Request) {
     const body = (await req.json().catch(() => ({}))) as Partial<Customer>;
     const first = (body.first_name || "").trim();
     const last = (body.last_name || "").trim();
-    if (!first || !last) {
+    if (!first) {
       return NextResponse.json(
-        { error: "First name and last name are required" },
+        { error: "First name is required" },
         { status: 400 }
       );
     }

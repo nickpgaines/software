@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import {useTerminalPresentationBlock} from '@/components/payments/TerminalLifecycle';
 
 const STORAGE_KEY = "sms_welcome_seen";
 
@@ -18,6 +19,7 @@ function Inner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  useTerminalPresentationBlock(open);
 
   useEffect(() => {
     if (searchParams.get("welcome") !== "sms") return;
