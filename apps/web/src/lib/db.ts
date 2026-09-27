@@ -480,9 +480,9 @@ async function rebuildEmailAutomationsUnique(): Promise<void> {
 }
 
 // Bump when init() gains migrations that must run on existing deploys.
-// First call after deploy runs the full init; subsequent cold starts hit
-// the fast-path below (one SELECT) and skip the ~150 DDL statements.
-const SCHEMA_VERSION = 24;
+// Versions through 24 use the legacy initializer. Newer upgrades must use
+// the targeted path below rather than replaying its data migrations.
+const SCHEMA_VERSION = 25;
 
 export async function backfillLegacyJobData(
   db: Pick<Db, "exec">
@@ -523,9 +523,20 @@ async function init(): Promise<void> {
   } catch {
     // Table doesn't exist yet — fall through to full init.
   }
-  if (currentVersion >= SCHEMA_VERSION) {
+  if (currentVersion >= 24) {
+    if (currentVersion < SCHEMA_VERSION) {
+      // v25: existing v24 installations otherwise skip the new Terminal
+      // outcome/notice tables and attempt columns. The installer is additive
+      // and retry-safe; do not stamp success until every step has completed.
+      await installTerminalSchema(_db);
+    }
     // Isolated additive tables do not require replaying the legacy data migrations.
     await installForgeBillingSchema(_db);
+    if (currentVersion < SCHEMA_VERSION) {
+      await _db.prepare(
+        'UPDATE _schema_version SET version = ? WHERE id = 1 AND version < ?'
+      ).run(SCHEMA_VERSION, SCHEMA_VERSION);
+    }
     return;
   }
 

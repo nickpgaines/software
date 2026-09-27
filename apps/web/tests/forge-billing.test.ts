@@ -447,13 +447,13 @@ test('customer creation lost response never creates a second customer or Checkou
   await assert.rejects(()=>service.createCompanyCheckout(1,'solo','month'));
   assert.equal(provider.customers.length,1); assert.equal(provider.sessions.length,0);
 });
-test('real getDb installs isolated billing schema on existing v24 fast path without changing company data',async()=>{
+test('real getDb installs isolated billing schema during v24 upgrade without changing company data',async()=>{
   const dir=mkdtempSync(join(tmpdir(),'forge-billing-schema-')); const url=`file:${join(dir,'test.db')}`;
   const client=createClient({url});
   const previous=[process.env.TURSO_DATABASE_URL,process.env.TURSO_AUTH_TOKEN,process.env.TURSO_LOCAL_REPLICA_PATH];
   process.env.TURSO_DATABASE_URL=url; process.env.TURSO_AUTH_TOKEN='local-test'; delete process.env.TURSO_LOCAL_REPLICA_PATH;
   try {
-    await client.executeMultiple("CREATE TABLE _schema_version(id INTEGER PRIMARY KEY,version INTEGER); INSERT INTO _schema_version VALUES(1,24); CREATE TABLE company(id INTEGER PRIMARY KEY); INSERT INTO company VALUES(1); CREATE TABLE staff(company_id INTEGER,created_at TEXT); INSERT INTO staff VALUES(1,'2026-09-01 12:00:00');");
+    await client.executeMultiple("CREATE TABLE _schema_version(id INTEGER PRIMARY KEY,version INTEGER); INSERT INTO _schema_version VALUES(1,24); CREATE TABLE company(id INTEGER PRIMARY KEY); INSERT INTO company VALUES(1); CREATE TABLE staff(id INTEGER PRIMARY KEY,company_id INTEGER,created_at TEXT); INSERT INTO staff VALUES(1,1,'2026-09-01 12:00:00'); CREATE TABLE stripe_payment_methods(id INTEGER PRIMARY KEY);");
     const db=await loadRealPaymentDb('?forge-billing-v24');
     assert.equal((await db.prepare('SELECT COUNT(*) n FROM forge_billing_accounts').get<{n:number}>())?.n,0);
     await schema.installForgeBillingSchema(db);
