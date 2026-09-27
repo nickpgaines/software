@@ -57,14 +57,9 @@ final class ForgeTerminalReader: NSObject, TerminalReaderProviding, ConnectionTo
         } catch { completion(.failure(Self.map(error))) }
     }
 
-    // An Xcode launch-environment flag is the only simulation switch. JavaScript
-    // cannot enable it, and the flag is compiled out of Release.
+    // Simulation requires an isolated test origin; Release ignores both flags.
     static var simulated: Bool {
-        #if DEBUG
-        return ProcessInfo.processInfo.environment["FORGE_TERMINAL_SIMULATED"] == "1"
-        #else
-        return false
-        #endif
+        TerminalSessionPolicy.configuration?.simulated == true
     }
 
     func educate(completion: @escaping (Result<Void, TerminalFailure>) -> Void) {

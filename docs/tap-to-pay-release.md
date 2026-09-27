@@ -2,12 +2,22 @@
 
 Tap to Pay is locally implemented across the server, iOS bridge and web UI. Local automated evidence is suitable for code review, but it is not release acceptance. Do not deploy, enable signing capabilities, contact Stripe or Apple accounts, run a provider intent, charge a card, upload a build or roll out the feature without separate authorization.
 
+## Current preparation status — September 26, 2026
+
+The September 16 verification below is historical. The current stacked feature branches add:
+
+- Setup and permission-aware merchant preparation: [PR 373](https://github.com/nickpgaines/software/pull/373). Uses existing Admin/custom-role permissions, complete US Terminal locations, explicit authorized-representative confirmation, preparation progress and text-only checkout branding.
+- Isolated Debug environment and provider-mode guards: [PR 374](https://github.com/nickpgaines/software/pull/374). See [isolated testing instructions](tap-to-pay-testing.md); Release ignores test overrides. These checks cannot prove database isolation, key permissions or merchant ownership.
+- Receipt preparation on `feature/tap-to-pay-receipts`: verified successful-payment email requests and hosted receipts, history accessible by reopening job checkout, and fresh provider-confirmed decline messaging. Email requests update only `receipt_email`, not the charge or customer's contact record. Receipt failure never authorizes another collection. Test payments do not automatically email receipts; live success means the request was accepted, not delivery confirmed.
+
+These changes are not production enablement or physical-device acceptance. Apple's development-only entitlement approval was supplied by the user; refreshed provisioning and separate distribution approval are still outstanding. The exact case checklist, supported-device NFC tests, merchant Terms, job-payment and tap-to-save end-to-end evidence, real receipt delivery and three review recordings remain release gates. Successful-payment receipts alone do not prove every Apple requirement for unsuccessful transaction documentation.
+
 ## Cross-layer contract checked
 
 - Server attempt creation owns the amount, customer/company/account, consent, Terminal location, provider identity and durable idempotency. The browser supplies `operation`, the job or customer ID, save choice and versioned consent; it never supplies an amount or connected-account authority.
 - `TerminalAttemptView` passes `attempt_id`, `operation`, `status`, `stripe_account`, `terminal_location_id`, optional resumable `client_secret`, `amount_cents`, customer/job IDs, save choice and the separate `payment_recorded`, `card_saved` and `warning` outcomes to the web flow.
 - Web passes native `operationId`, `clientSecret`, `stripeAccount`, `locationId` and `saveCard` with the exact camelCase bridge names. Native returns only `intentId`; the browser always reconciles the server attempt before reporting success.
-- Native accepts only the current secure `crm_session` for `https://www.forgecrm.app`, posts to the fixed connection-token endpoint with fixed Origin and matching `X-Forge-Stripe-Account`, rejects redirects/account changes and clears reader credentials between operations.
+- Native Release accepts only the current secure `crm_session` for `https://www.forgecrm.app`. Debug may pin a separate approved HTTPS test origin. Both post to the pinned connection-token endpoint with matching Origin, account, purpose and provider-mode headers, reject redirects/account changes and clear reader credentials between operations.
 - Unsupported/old native builds retain manual card entry. Native cancellation, backgrounding, navigation, logout and unknown confirmation all preserve the server attempt for recovery; none authorizes creating a replacement charge.
 - Terminal generated cards are saved as explicit-selection-only. Saving never changes the customer default, starts a subscription or feeds an implicit job/subscription fallback. Accepted/signed subscriptions may explicitly select the Forge saved-method row; the selected Stripe method is forwarded without changing customer defaults.
 - A SetupIntent carrying `terminal_attempt_id` is reconciled by the Terminal path and saves only its `latest_attempt.card_present.generated_card`. An ordinary SetupIntent uses its ordinary `payment_method`. Persistence failures return a retryable webhook failure and do not retain the event claim.
@@ -33,7 +43,7 @@ The following remain deliberately unverified:
 
 ## Required isolated provider-test environment
 
-Current native code trusts only the production `https://www.forgecrm.app` origin and fixed production token URL, while Stripe mode is selected by deployment-wide keys. `FORGE_TERMINAL_SIMULATED=1` changes the SDK reader only; it does not switch Stripe to test mode. `CAP_SERVER_URL` alone does not change native trust or token routing. Therefore the current configuration is not a safe provider harness.
+The test-safety branch adds `FORGE_TERMINAL_TEST_ORIGIN` for Debug only and requires that explicit non-production HTTPS origin before `FORGE_TERMINAL_SIMULATED=1` is accepted. `CAP_SERVER_URL` alone still does not change native trust or token routing. A code-level mode guard is not a deployed provider harness: the separate server, disposable data and Stripe test merchant below still need to be provisioned and verified together. Follow [tap-to-pay-testing.md](tap-to-pay-testing.md).
 
 Before SDK simulation or physical test-mode use, obtain explicit authorization and provision together:
 
@@ -46,7 +56,7 @@ Verify all four values in the signed test artifact before setting `FORGE_TERMINA
 
 ## Apple, Stripe and signing gate
 
-- [ ] Apple approves the development Tap to Pay entitlement for `app.forgecrm`.
+- [x] Apple development-only approval email supplied by the user (case `22319614`); not distribution approval or proof of a regenerated profile.
 - [ ] The development profile contains `com.apple.developer.proximity-reader.payment.acceptance = true` and the existing app group, keychain group and associated domains.
 - [ ] The App target alone uses `App/App-TapToPay.entitlements` and `FORGE_TAP_TO_PAY_ENABLED`, preserving inherited flags. Widget/test targets do not receive the app entitlement.
 - [ ] Apple separately approves distribution use; the regenerated distribution profile and final signed app both contain the restricted entitlement.

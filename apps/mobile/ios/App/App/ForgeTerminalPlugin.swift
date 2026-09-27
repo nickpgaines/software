@@ -43,8 +43,9 @@ public final class ForgeTerminalPlugin: CAPPlugin, CAPBridgedPlugin, WKHTTPCooki
 
     @objc func getCapabilities(_ call: CAPPluginCall) {
         onMain(call) {
-            if let reason = Self.unavailableReason { call.resolve(["supported": false, "reason": reason]) }
-            else { call.resolve(["supported": true, "preparationSupported": true]) }
+            guard let mode = TerminalSessionPolicy.configuration?.providerMode else { call.reject("Invalid Terminal environment", "session_changed"); return }
+            if let reason = Self.unavailableReason { call.resolve(["supported": false, "reason": reason, "providerMode": mode]) }
+            else { call.resolve(["supported": true, "preparationSupported": true, "providerMode": mode]) }
         }
     }
 

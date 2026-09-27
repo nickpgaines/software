@@ -11,6 +11,15 @@ import {
 } from "./db";
 
 let _stripe: Stripe | null = null;
+let _stripeKey: string | null = null;
+
+/** Mode of the credential the shared client actually uses, never a relabeled cache. */
+export function getStripeCredentialMode(): 'test' | 'live' | null {
+  const key = process.env.STRIPE_SECRET_KEY?.trim();
+  if (!key || (_stripeKey !== null && _stripeKey !== key)) return null;
+  const mode = /^(?:sk|rk)_(test|live)_.+$/.exec(key)?.[1];
+  return mode === 'test' || mode === 'live' ? mode : null;
+}
 
 export function getStripe(): Stripe {
   if (_stripe) return _stripe;
@@ -21,6 +30,7 @@ export function getStripe(): Stripe {
     );
   }
   _stripe = new Stripe(key);
+  _stripeKey = key;
   return _stripe;
 }
 

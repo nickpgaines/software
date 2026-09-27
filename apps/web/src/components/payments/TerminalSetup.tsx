@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { nativeTerminal, type NativeTerminal, type TerminalProgress } from '@/lib/native-terminal';
+import { nativeTerminal, terminalRequestInit, type NativeTerminal, type TerminalProgress } from '@/lib/native-terminal';
 
 type Location = {id:string;display_name:string;address:{line1:string;line2?:string;city:string;state:string;postal_code:string}};
 type Setup = {stripe_account:string;can_manage:boolean;locations:Location[];selected_location_id:string|null;has_more:boolean};
@@ -17,13 +17,6 @@ type Life = {active:boolean;generation:number;lease:symbol;serial:number;operati
 const states = 'AL AK AZ AR CA CO CT DE DC FL GA HI ID IL IN IA KS KY LA ME MD MA MI MN MS MO MT NE NV NH NJ NM NY NC ND OH OK OR PA RI SC SD TN TX UT VT VA WA WV WI WY'.split(' ');
 const emptyAddress = {display_name:'',line1:'',line2:'',city:'',state:'',postal_code:''};
 const meaningful = (value:string) => !!value.trim() && !/^(unspecified|unknown|n\/a|na)$/i.test(value.trim());
-
-async function json<T>(url:string, init?:RequestInit):Promise<T> {
-  const response = await fetch(url,{cache:'no-store',...init});
-  const body = await response.json();
-  if (!response.ok) throw new Error(body.error || 'Unable to check Tap to Pay setup. Please try again.');
-  return body;
-}
 
 export default function TerminalSetup({native=nativeTerminal,accountKey}: {native?:Native;accountKey?:string|null}) {
   const id = useId();
@@ -43,6 +36,15 @@ export default function TerminalSetup({native=nativeTerminal,accountKey}: {nativ
   const life = useRef<Life>({active:false,generation:native.generation,lease:Symbol(),serial:0});
   const lock = useRef(false);
   const valid = (token:Life,serial=token.serial) => token === life.current && token.active && token.generation === native.generation && token.serial === serial;
+  async function json<T>(url:string, init?:RequestInit):Promise<T> {
+    const token=life.current;const serial=token.serial;
+    const options=await terminalRequestInit(native,url,init);
+    if(!valid(token,serial))throw new Error('Session changed. Reopen Payments settings.');
+    const response = await fetch(url,{cache:'no-store',...options});
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error || 'Unable to check Tap to Pay setup. Please try again.');
+    return body;
+  }
   const changedAccount = (token:Life) => {
     token.active=false;
     if(token.operationId)void native.cancel(token.operationId,token.lease);
