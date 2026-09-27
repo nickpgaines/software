@@ -135,11 +135,12 @@ export async function startTerminalAttempt(auth: { companyId: number; staffId: n
       }
     }
     const id = randomUUID();
+    const actor=auth.staffId===null?null:await tx.prepare('SELECT id FROM staff WHERE id=? AND company_id=?').get<{id:number}>(auth.staffId,auth.companyId);
     await tx.prepare(`INSERT INTO terminal_attempts (
       attempt_id,company_id,customer_id,job_id,operation,idempotency_key,request_fingerprint,
       stripe_account_id,stripe_customer_id,terminal_location_id,amount_cents,save_card,
-      consent_version,consent_name,consent_at,consent_staff_id,warning
-    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
+      consent_version,consent_name,consent_at,consent_staff_id,warning,initiating_staff_id
+    ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`).run(
       id, auth.companyId, customerId, job?.customer_id ? target : null, operation, key, fingerprint,
       stripeAccount, customer, terminalLocation, amount, save ? 1 : 0,
       save ? c!.version as string : null,
@@ -147,6 +148,7 @@ export async function startTerminalAttempt(auth: { companyId: number; staffId: n
       save ? new Date().toISOString() : null,
       save ? auth.staffId : null,
       'Outcome unknown. Reconcile this attempt before collecting again.',
+      actor?.id ?? null,
     );
     if (save) {
       await tx.prepare('UPDATE terminal_attempts SET consent_merchant=?,consent_text=? WHERE attempt_id=?').run(
@@ -220,10 +222,11 @@ export async function reconcileTerminalAttempt(companyId: number, id: string, ca
   }
   const persisted = await db.transaction(async tx => {
     await tx.prepare(`UPDATE terminal_attempts SET
+      outcome_revision=outcome_revision+CASE WHEN status NOT IN ('succeeded','canceled') AND status<>? THEN 1 ELSE 0 END,
       status=CASE WHEN status IN ('succeeded','canceled') THEN status ELSE ? END,
       payment_recorded=MAX(payment_recorded,?),card_saved=MAX(card_saved,?),
       save_pending=CASE WHEN card_saved=1 THEN 0 ELSE ? END,
-      warning=CASE WHEN card_saved=1 THEN NULL ELSE ? END,updated_at=CURRENT_TIMESTAMP WHERE attempt_id=?`).run(a.status,a.payment_recorded,a.card_saved,a.save_pending,a.warning,a.attempt_id);
+      warning=CASE WHEN card_saved=1 THEN NULL ELSE ? END,updated_at=CURRENT_TIMESTAMP WHERE attempt_id=?`).run(a.status,a.status,a.payment_recorded,a.card_saved,a.save_pending,a.warning,a.attempt_id);
     return (await tx.prepare('SELECT * FROM terminal_attempts WHERE attempt_id=?').get<Attempt>(a.attempt_id))!;
   });
   if (saveError && strictSave && !persisted.card_saved) throw saveError;

@@ -82,6 +82,7 @@ export function fixture() {
   const db = paymentDatabase();
   db.sqlite.exec(`
     UPDATE jobs SET price_cents=22500 WHERE id=12;
+    INSERT INTO staff (id,company_id,name) VALUES (7,1,'Initiator'),(8,1,'Coworker'),(9,2,'Other company');
     DROP TABLE terminal_attempts;
     ALTER TABLE company ADD COLUMN stripe_account_id TEXT;
     ALTER TABLE company ADD COLUMN stripe_charges_enabled INTEGER;

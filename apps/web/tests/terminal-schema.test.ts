@@ -14,7 +14,8 @@ test('real getDb upgrades v23 cards and initializes fresh Terminal schema idempo
   try {
     // First initialize the real complete schema, then reconstruct the previous version's table.
     await loadRealPaymentDb('?terminal-fresh');
-    await fixture.executeMultiple(`DROP TABLE terminal_attempts; DROP TABLE stripe_payment_methods;
+    await fixture.executeMultiple(`DROP TRIGGER IF EXISTS terminal_staff_deleted; DROP TRIGGER IF EXISTS terminal_staff_moved;
+      DROP TABLE terminal_attempts; DROP TABLE stripe_payment_methods;
       CREATE TABLE stripe_payment_methods (id INTEGER PRIMARY KEY,company_id INTEGER,customer_id INTEGER,stripe_customer_id TEXT,stripe_payment_method_id TEXT,brand TEXT,last4 TEXT,exp_month INTEGER,exp_year INTEGER,wallet_type TEXT,is_default INTEGER,created_at TEXT,UNIQUE(company_id,stripe_payment_method_id));
       INSERT INTO stripe_payment_methods VALUES (1,1,90,'cus_existing','pm_existing','visa','4242',12,2099,NULL,1,CURRENT_TIMESTAMP);
       UPDATE _schema_version SET version=23;`);
