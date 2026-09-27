@@ -1,5 +1,39 @@
 import Foundation
 
+/// Sharing historical documents works without a reader session. Its private
+/// attachment therefore needs its own cookie pin and asynchronous lease.
+final class ForgeTerminalDocumentSession {
+    private let snapshot: ForgeTerminalSession.Snapshot
+    private let configuration: TerminalEnvironment?
+    private var lease = UUID()
+    private var cookie: String?
+    init(configuration: TerminalEnvironment? = TerminalSessionPolicy.configuration, snapshot: @escaping ForgeTerminalSession.Snapshot) {
+        self.configuration = configuration; self.snapshot = snapshot
+    }
+    func begin(completion: @escaping (Bool) -> Void) {
+        end()
+        let expected = lease
+        snapshot { [self] url, cookies in
+            guard lease == expected, TerminalSessionPolicy.isTrusted(url, configuration: configuration),
+                  let current = try? TerminalSessionPolicy.sessionCookie(from: cookies, configuration: configuration) else {
+                completion(false); return
+            }
+            cookie = current; completion(true)
+        }
+    }
+    func checkCurrent(completion: @escaping (Bool) -> Void) {
+        guard let cookie else { completion(true); return }
+        let expected = lease
+        snapshot { [self] url, cookies in
+            // A late check cannot cancel a replacement share.
+            guard lease == expected else { completion(true); return }
+            completion(TerminalSessionPolicy.isTrusted(url, configuration: configuration)
+                && (try? TerminalSessionPolicy.sessionCookie(from: cookies, configuration: configuration)) == cookie)
+        }
+    }
+    func end() { lease = UUID(); cookie = nil }
+}
+
 final class ForgeTerminalDocument {
     private(set) var fileURL: URL?
     func begin(text: String) throws -> URL {

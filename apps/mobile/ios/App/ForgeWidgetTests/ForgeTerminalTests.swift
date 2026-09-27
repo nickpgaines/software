@@ -4,6 +4,33 @@ import XCTest
 #endif
 
 final class ForgeTerminalTests: XCTestCase {
+    func testDocumentSessionPinsCookieWithoutAReaderAndRejectsReplacement() {
+        var value = "merchant-one"
+        var trusted = true
+        let guardSession = ForgeTerminalDocumentSession(snapshot: { completion in
+            completion(URL(string: trusted ? "https://www.forgecrm.app/schedule/12" : "https://example.invalid"), [HTTPCookie(properties: [.name: "crm_session", .value: value, .domain: "www.forgecrm.app", .path: "/", .secure: "TRUE"])!])
+        })
+        guardSession.begin { XCTAssertTrue($0) }
+        guardSession.checkCurrent { XCTAssertTrue($0) }
+        value = "merchant-two"
+        guardSession.checkCurrent { XCTAssertFalse($0) }
+        guardSession.end()
+        guardSession.begin { XCTAssertTrue($0) }
+        trusted = false
+        guardSession.checkCurrent { XCTAssertFalse($0) }
+        guardSession.end()
+        guardSession.begin { XCTAssertFalse($0) }
+    }
+    func testCanceledDocumentPinCannotRestoreAReplacementShare() {
+        var snapshots: [((URL?, [HTTPCookie]) -> Void)] = []
+        let guardSession = ForgeTerminalDocumentSession(snapshot: { snapshots.append($0) })
+        var stale: Bool?
+        guardSession.begin { stale = $0 }
+        guardSession.end()
+        let cookies = [HTTPCookie(properties: [.name: "crm_session", .value: "a", .domain: "www.forgecrm.app", .path: "/", .secure: "TRUE"])!]
+        snapshots.removeFirst()(URL(string: "https://www.forgecrm.app"), cookies)
+        XCTAssertEqual(stale, false)
+    }
     func testDeclinedDocumentUsesPrivateBoundedFileAndOneActiveShare() throws {
         let document = ForgeTerminalDocument()
         let text = "Declined transaction — not proof of payment\nUSD 225.00"

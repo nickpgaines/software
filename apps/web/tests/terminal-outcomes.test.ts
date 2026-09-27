@@ -13,6 +13,19 @@ function declined(id:string,overrides:any={}) {
   provider.charges.push(charge);return charge;
 }
 const observations=()=>database.sqlite.prepare('SELECT * FROM terminal_outcomes ORDER BY occurred_at,id').all();
+test('a late approval uses first verified observation time rather than backdating to intent creation',async t=>{
+  t.mock.method(Date,'now',()=>1790503200000);
+  const attempt=await start();provider.intents[0].created=1789984800;
+  declined('ch_prior');await modules.service.reconcileTerminalAttempt(1,attempt.attempt_id);
+  provider.intents[0].status='succeeded';await modules.service.reconcileTerminalAttempt(1,attempt.attempt_id);
+  const approval=observations().find((row:any)=>row.kind==='approved');
+  assert.equal(approval.occurred_at,new Date(Date.now()).toISOString());
+  assert.equal(JSON.parse(approval.summary_json).time_basis,'observed');
+  assert.equal(observations().at(-1).kind,'approved');
+  t.mock.method(Date,'now',()=>1790506800000);
+  await modules.service.reconcileTerminalAttempt(1,attempt.attempt_id);
+  assert.equal(observations().find((row:any)=>row.kind==='approved').occurred_at,approval.occurred_at);
+});
 test('two declined taps and later approval are durable distinct facts across webhook redelivery',async()=>{
   const attempt=await start();declined('ch_first');
   await modules.service.reconcileTerminalAttempt(1,attempt.attempt_id);

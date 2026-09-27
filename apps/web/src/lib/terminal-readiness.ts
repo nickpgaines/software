@@ -39,15 +39,22 @@ export class TerminalReadinessController {
       if(!current())return;
       if(!capability.supported || !capability.warmupSupported){this.setState('unavailable');return;}
       const availability=await json<{enabled:boolean}>('/api/stripe/terminal/capabilities');
-      if(!availability.enabled){if(this.binding)await this.native.reset();this.binding=null;this.setState('unavailable');return;}
+      if(!availability.enabled){if(this.binding)await this.native.suspend();this.binding=null;this.setState('unavailable');return;}
       const company=await json<{id:number;stripe_account_id:string|null}>('/api/settings/company');
       const setup=await json<{stripe_account:string;selected_location_id:string|null}>('/api/stripe/terminal/location');
       if(!setup.selected_location_id || !company.stripe_account_id || setup.stripe_account!==company.stripe_account_id){
-        if(this.binding)await this.native.reset();this.binding=null;this.setState('setupRequired');return;
+        if(this.binding)await this.native.suspend();this.binding=null;this.setState('setupRequired');return;
       }
       const binding=JSON.stringify([company.id,company.stripe_account_id,setup.selected_location_id,capability.providerMode]);
       const sameBinding=this.binding===binding;
-      if(this.binding && this.binding!==binding){await this.native.reset();generation=this.native.generation;if(!current())return;}
+      if(this.binding && this.binding!==binding){
+        // Location/configuration changes revoke the reader, not the signed-in
+        // identity. Mounted recovery and notices must remain usable.
+        const [previousCompany,previousAccount]=JSON.parse(this.binding);
+        if(previousCompany!==company.id || previousAccount!==company.stripe_account_id)await this.native.reset();
+        else await this.native.suspend();
+        generation=this.native.generation;if(!current())return;
+      }
       this.binding=binding;
       if(sameBinding && capability.readiness==='ready'){this.setState('ready');return;}
       this.setState('preparing');

@@ -8,7 +8,7 @@ import {TerminalError} from '@/lib/terminal-http';
 
 export type TerminalOutcomeKind='approved'|'declined'|'canceled';
 type Evidence=Awaited<ReturnType<typeof getTerminalOutcomeIntent>>;
-export type TerminalOutcomeSummary={amount_cents:number;currency:'usd';operation:'payment'|'setup';brand?:string;last4?:string;application_name?:string;application_id?:string};
+export type TerminalOutcomeSummary={amount_cents:number;currency:'usd';operation:'payment'|'setup';time_basis?:'provider'|'observed';brand?:string;last4?:string;application_name?:string;application_id?:string};
 export function safeTerminalText(value:unknown,max=80):string|undefined {
   if(typeof value!=='string')return;
   const clean=value.replace(/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069]/g,'').trim().slice(0,max);
@@ -61,9 +61,13 @@ export async function observeTerminalOutcome(companyId:number,attemptId:string,e
     }
   } else if(evidence.chargeId)throw new TerminalError('Save-only attempts do not have declined payment documents.',409);
   if(intent.status==='canceled' || (intent.status==='succeeded' && (attempt.operation==='setup' || attempt.payment_recorded))) {
+    const canceledAt=intent.status==='canceled' && 'canceled_at' in intent ? intent.canceled_at : null;
+    // Intent creation is not completion. Without a verified completion timestamp,
+    // retain the first observation time explicitly as such; redelivery cannot
+    // reorder an existing immutable fact.
     observations.push({objectId:intent.id,kind:intent.status==='canceled'?'canceled':'approved',
-      at:timestamp(('canceled_at' in intent && intent.canceled_at) || intent.created),
-      summary:{amount_cents:attempt.amount_cents,currency:'usd',operation:attempt.operation}});
+      at:timestamp(canceledAt || Math.floor(Date.now()/1000)),
+      summary:{amount_cents:attempt.amount_cents,currency:'usd',operation:attempt.operation,time_basis:canceledAt?'provider':'observed'}});
   }
   await db.transaction(async tx=>{
     const company=await tx.prepare('SELECT stripe_account_id FROM company WHERE id=?').get<{stripe_account_id:string}>(companyId);

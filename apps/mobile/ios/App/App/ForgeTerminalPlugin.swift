@@ -149,25 +149,38 @@ private final class ForgeTerminalRuntime {
     private let document = ForgeTerminalDocument()
     private var documentSheet: UIActivityViewController?
     private var documentCompletion: ((Result<Bool, Error>) -> Void)?
+    private var documentLease: UUID?
+    private lazy var documentSession = ForgeTerminalDocumentSession(snapshot: { [weak self] completion in
+        guard let webView = self?.webView else { completion(nil, []); return }
+        webView.configuration.websiteDataStore.httpCookieStore.getAllCookies { [weak webView] cookies in completion(webView?.url, cookies) }
+    })
     func shareDocument(text: String, completion: @escaping (Result<Bool, Error>) -> Void) {
-        guard UIApplication.shared.applicationState == .active, documentSheet == nil,
+        guard UIApplication.shared.applicationState == .active, documentLease == nil,
               let presenter, presenter.viewIfLoaded?.window != nil, presenter.presentedViewController == nil else {
             completion(.failure(TerminalFailure.terminalError)); return
         }
-        do {
-            let url = try document.begin(text: text)
-            let sheet = TerminalDocumentPresentation.controller(url: url, presenter: presenter)
-            documentSheet = sheet; documentCompletion = completion
-            sheet.completionWithItemsHandler = { [weak self, weak sheet] _, completed, _, error in
-                guard let self, self.documentSheet === sheet else { return }
-                self.finishDocumentShare(error.map { .failure($0) } ?? .success(completed))
+        let lease = UUID(); documentLease = lease; documentCompletion = completion
+        documentSession.begin { [weak self, weak presenter] current in
+            guard let self, self.documentLease == lease else { return }
+            guard current, UIApplication.shared.applicationState == .active,
+                  let presenter, presenter.viewIfLoaded?.window != nil, presenter.presentedViewController == nil else {
+                self.finishDocumentShare(.failure(TerminalFailure.sessionChanged)); return
             }
-            presenter.present(sheet, animated: true)
-        } catch { document.finish(); completion(.failure(error)) }
+            do {
+                let url = try self.document.begin(text: text)
+                let sheet = TerminalDocumentPresentation.controller(url: url, presenter: presenter)
+                self.documentSheet = sheet
+                sheet.completionWithItemsHandler = { [weak self, weak sheet] _, completed, _, error in
+                    guard let self, self.documentSheet === sheet else { return }
+                    self.finishDocumentShare(error.map { .failure($0) } ?? .success(completed))
+                }
+                presenter.present(sheet, animated: true)
+            } catch { self.finishDocumentShare(.failure(error)) }
+        }
     }
     private func finishDocumentShare(_ result: Result<Bool, Error>) {
         let completion = documentCompletion
-        documentCompletion = nil; documentSheet = nil; document.finish()
+        documentCompletion = nil; documentSheet = nil; documentLease = nil; documentSession.end(); document.finish()
         completion?(result)
     }
     func cancelDocumentShare() {
@@ -204,6 +217,7 @@ private final class ForgeTerminalRuntime {
     }
     func checkSession() {
         if !TerminalSessionPolicy.isTrusted(webView?.url) { cancelDocumentShare(); coordinator.cancel(reason: .sessionChanged); return }
+        documentSession.checkCurrent { [weak self] current in if !current { self?.cancelDocumentShare() } }
         session.checkCurrent { [weak self] current in if !current { self?.cancelDocumentShare(); self?.coordinator.cancel(reason: .sessionChanged) } }
     }
 }
