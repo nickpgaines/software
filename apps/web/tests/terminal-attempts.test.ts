@@ -14,6 +14,31 @@ const webhookRequest = () => new Request('https://www.forgecrm.app/api/stripe/we
 const start = (body: object = { operation: 'payment', job_id: 12, save_card: false }, key = 'terminal-123') => modules.route.POST(request(body, key));
 const update = (id: string, cancel = false) => modules[cancel ? 'cancel' : 'reconcile'].POST(request({}), { params: { id } });
 
+test('save-only reconciliation accepts Stripe omitting empty job metadata', async () => {
+  const created = await (await start({ operation: 'setup', customer_id: 90, consent })).json();
+  delete provider.intents[0].metadata.job_id;
+  provider.intents[0].status = 'succeeded';
+  provider.intents[0].latest_attempt = { payment_method_details: { card_present: { generated_card: 'pm_generated' } } };
+  const response = await update(created.attempt_id);
+  assert.equal(response.status, 200);
+  const result = await response.json();
+  assert.equal(result.card_saved, true);
+  assert.equal(result.payment_recorded, false);
+  assert.equal(database.sqlite.prepare('SELECT COUNT(*) n FROM payments').get().n, 0);
+});
+
+for (const [operation, jobMetadata] of [['payment', undefined], ['payment', '999'], ['setup', '12']] as const) {
+  test(`${operation} reconciliation rejects incorrect job metadata ${String(jobMetadata)}`, async () => {
+    const body = operation === 'payment' ? { operation, job_id: 12, save_card: false } : { operation, customer_id: 90, consent };
+    const created = await (await start(body)).json();
+    if (jobMetadata === undefined) delete provider.intents[0].metadata.job_id;
+    else provider.intents[0].metadata.job_id = jobMetadata;
+    assert.equal((await update(created.attempt_id)).status, 409);
+    assert.equal(database.sqlite.prepare('SELECT COUNT(*) n FROM payments').get().n, 0);
+    assert.equal(database.sqlite.prepare('SELECT COUNT(*) n FROM stripe_payment_methods').get().n, 0);
+  });
+}
+
 test('capabilities is authenticated, uncached, and reflects the runtime rollout value', async () => {
   const req = new Request('https://www.forgecrm.app/api/stripe/terminal/capabilities');
   for (const [flag, enabled] of [[undefined, false], ['false', false], ['true', true]] as const) {

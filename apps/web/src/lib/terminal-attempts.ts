@@ -54,7 +54,9 @@ async function load(companyId: number, id: string) {
 }
 function validate(a: Attempt, intent: Intent) {
   const m = intent.metadata || {};
-  if (m.terminal_attempt_id !== a.attempt_id || m.company_id !== String(a.company_id) || m.customer_id !== String(a.customer_id) || m.job_id !== String(a.job_id ?? '') || m.operation !== a.operation ||
+  // Stripe omits empty metadata on SetupIntents, which have no job. A
+  // nonempty job binding (including every payment) must still match exactly.
+  if (m.terminal_attempt_id !== a.attempt_id || m.company_id !== String(a.company_id) || m.customer_id !== String(a.customer_id) || (m.job_id ?? '') !== String(a.job_id ?? '') || m.operation !== a.operation ||
       m.consent_version !== (a.consent_version || '') || m.consent_name !== (a.consent_name || '') || (a.stripe_customer_id && idOf(intent.customer) !== a.stripe_customer_id)) throw new TerminalError('Provider intent does not match this attempt', 409);
   if (a.operation === 'payment' && (!('amount' in intent) || intent.amount !== a.amount_cents || intent.currency !== 'usd' || (intent.status === 'succeeded' && intent.amount_received !== a.amount_cents))) throw new TerminalError('Provider amount does not match this attempt', 409);
 }
