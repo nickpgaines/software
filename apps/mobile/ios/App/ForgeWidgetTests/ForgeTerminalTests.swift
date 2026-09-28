@@ -4,6 +4,25 @@ import XCTest
 #endif
 
 final class ForgeTerminalTests: XCTestCase {
+    func testPrivacyManifestDeclaresElapsedReaderTimingReason() throws {
+        #if TERMINAL_STANDALONE
+        let manifestURL = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .appendingPathComponent("../App/PrivacyInfo.xcprivacy")
+        #else
+        let manifestURL = try XCTUnwrap(Bundle.main.url(forResource: "PrivacyInfo", withExtension: "xcprivacy"))
+        #endif
+        let manifest = try XCTUnwrap(PropertyListSerialization.propertyList(
+            from: Data(contentsOf: manifestURL), options: [], format: nil
+        ) as? [String: Any])
+        let accessedAPIs = try XCTUnwrap(manifest["NSPrivacyAccessedAPITypes"] as? [[String: Any]])
+        let bootTime = try XCTUnwrap(accessedAPIs.first {
+            $0["NSPrivacyAccessedAPIType"] as? String == "NSPrivacyAccessedAPICategorySystemBootTime"
+        })
+        let reasons = try XCTUnwrap(bootTime["NSPrivacyAccessedAPITypeReasons"] as? [String])
+        XCTAssertTrue(reasons.contains("35F9.1"), "Reader timing measures elapsed time between in-app events.")
+    }
+
     func testDocumentSessionPinsCookieWithoutAReaderAndRejectsReplacement() {
         var value = "merchant-one"
         var trusted = true
