@@ -1,5 +1,7 @@
 # Isolated Tap to Pay testing
 
+For a portable, private recording environment with generated fake fixtures and real signup/Express-onboarding routes, start with the [owner/agent setup guide](tap-to-pay-handoff/agent-setup.md). Production remains disabled; no keys or personal environment are bundled.
+
 These instructions configure development testing. They do not enable production, authorize real charges, accept Apple's merchant terms, or replace Apple's physical-device review.
 
 ## Environment requirements
