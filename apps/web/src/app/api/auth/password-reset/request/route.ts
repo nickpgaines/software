@@ -59,6 +59,17 @@ export async function POST(req: Request) {
       text: renderResetEmailText(resetUrl),
     });
 
+    if (!sendResult.ok) {
+      // Provider/network errors can contain personal data. Log only a bounded
+      // category, never the recipient, reset URL, token, or raw error message.
+      console.error("[password-reset] Email delivery failed", {
+        code:
+          sendResult.error === "platform_email_not_configured"
+            ? "platform_email_not_configured"
+            : "email_send_failed",
+      });
+    }
+
     // Dev convenience: when the platform Resend key isn't configured we can't
     // actually send an email, so return the link directly so local testers
     // aren't stuck. Never leak the link in production.
