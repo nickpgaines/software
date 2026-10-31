@@ -16,6 +16,8 @@ import {
 import { verifyPublicWebsite } from "@/lib/public-website";
 import { isSmsTwoWayReady } from "@/lib/sms-registration-status";
 
+import { getRegistrationReviewSupport } from "@/lib/sms-registration-review-support";
+
 export const dynamic = "force-dynamic";
 
 type RegistrationStatus = {
@@ -66,6 +68,7 @@ export async function GET(req: Request) {
   }
   const url = new URL(req.url);
   let status = await readStatus(companyId);
+  let refreshFailed = false;
   // Reconcile in-review records on panel open as well as explicit refresh.
   // Callbacks can be missed; showing the stored state alone leaves a rejected
   // profile labelled "in review" and prevents the user from correcting it.
@@ -87,9 +90,13 @@ export async function GET(req: Request) {
     // without persisting over a newer state written by another request.
     if (progress.error && progress.state === status.company.a2p_registration_state) {
       status.company.a2p_registration_error = progress.error;
+      refreshFailed = true;
     }
   }
-  return NextResponse.json(status, {
+  const reviewSupport = refreshFailed ? null : await getRegistrationReviewSupport(
+    companyId, status.company.a2p_registration_state,
+  );
+  return NextResponse.json({ ...status, reviewSupport }, {
     headers: { "Cache-Control": "no-store" },
   });
 }

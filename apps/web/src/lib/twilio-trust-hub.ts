@@ -107,7 +107,9 @@ export async function createSubaccount(args: {
 
 // ----- Trust Hub resources (called with tenant subaccount creds) -----
 
-export type CustomerProfileResource = {
+type ReviewResourceDates = { date_updated?: string | null; account_sid?: string };
+
+export type CustomerProfileResource = ReviewResourceDates & {
   sid: string;
   status: string;
   friendly_name: string;
@@ -405,7 +407,7 @@ export async function createAddressSupportingDocument(args: {
   );
 }
 
-export type TrustProductResource = { sid: string; status: string };
+export type TrustProductResource = ReviewResourceDates & { sid: string; status: string };
 
 export async function createA2pTrustProduct(args: {
   creds: TwilioCreds;
@@ -493,7 +495,7 @@ export async function submitTrustProduct(args: {
   );
 }
 
-export type BrandRegistrationResource = {
+export type BrandRegistrationResource = ReviewResourceDates & {
   sid: string;
   status: string;
   failure_reason: string | null;
@@ -552,7 +554,7 @@ export async function createMessagingService(args: {
   );
 }
 
-export type CampaignResource = {
+export type CampaignResource = ReviewResourceDates & {
   sid: string;
   campaign_status: string;
   failure_reason: string | null;

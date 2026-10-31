@@ -1,5 +1,8 @@
 "use client";
 
+import { SmsRegistrationSupport } from "@/components/SmsRegistrationSupport";
+import type { SmsReviewSupport } from "@/lib/sms-review-support";
+
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
@@ -2188,6 +2191,7 @@ function formatUSPhone(e164: string): string {
 }
 
 type RegistrationStatus = {
+  reviewSupport?: SmsReviewSupport | null;
   registration: {
     legal_company_name: string;
     dba: string | null;
@@ -2242,6 +2246,7 @@ const STATE_LABELS: Record<string, string> = {
 };
 
 function MessagingPanel() {
+  const loadSequence = useRef(0);
   const [data, setData] = useState<RegistrationStatus | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -2274,12 +2279,18 @@ function MessagingPanel() {
   });
 
   async function load(refresh = false) {
-    const res = await fetch(
-      `/api/sms/registration${refresh ? "?refresh=1" : ""}`,
-      { cache: "no-store" }
-    );
-    if (res.ok) {
+    const sequence = ++loadSequence.current;
+    setData((current) => current ? { ...current, reviewSupport: null } : current);
+    try {
+      const res = await fetch(
+        `/api/sms/registration${refresh ? "?refresh=1" : ""}`,
+        { cache: "no-store" }
+      );
+      if (sequence !== loadSequence.current) return;
+      if (!res.ok) throw new Error("Unable to refresh registration status. Please try again.");
       const s = (await res.json()) as RegistrationStatus;
+      if (sequence !== loadSequence.current) return;
+      setError(null);
       setData(s);
       if (s.registration) {
         const confirmations = registrationConfirmationValues(s.registration);
@@ -2309,8 +2320,11 @@ function MessagingPanel() {
           ...confirmations,
         }));
       }
+    } catch {
+      if (sequence === loadSequence.current) setError("Unable to refresh registration status. Please try again.");
+    } finally {
+      if (sequence === loadSequence.current) setLoading(false);
     }
-    setLoading(false);
   }
 
   useEffect(() => {
@@ -2427,6 +2441,12 @@ function MessagingPanel() {
             onRefresh={() => load(true)}
           />
         )}
+
+        {isPending && data?.reviewSupport?.state === state && (
+          <SmsRegistrationSupport key={data.reviewSupport.checkedAt} details={data.reviewSupport} />
+        )}
+
+        {error && <p role="alert" className="text-sm text-rose-500">{error}</p>}
 
         {(editable || isApproved) && (
           <form onSubmit={submit} className="space-y-4">
@@ -2629,8 +2649,6 @@ function MessagingPanel() {
               onChange={(key, value) => set(key, value)}
               renderCheckbox={(props) => <Checkbox {...props} />}
             />
-
-            {error && <p className="text-sm text-rose-500">{error}</p>}
 
             {!isApproved && (
               <div className="flex items-center gap-3 pt-2">

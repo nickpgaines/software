@@ -153,3 +153,12 @@ export function registrationDatabase(state) {
   };
   return database;
 }
+
+export async function loadRegistrationReviewSupport() {
+  const hooks = installAliases();
+  try {
+    return await import("../../src/lib/sms-registration-review-support.ts");
+  } finally {
+    hooks.deregister();
+  }
+}
