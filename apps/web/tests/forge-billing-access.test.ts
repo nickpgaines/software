@@ -17,6 +17,19 @@ import {
 
 const modules = await loadTask2Modules();
 
+test("SMS delivery callbacks reach signature authentication without a login or billing check", async (t) => {
+  await setup(t);
+  const response = await modules.middleware.middleware(new NextRequest("https://www.forgecrm.app/api/messages/status", {
+    method: "POST", headers: { "x-company-id": "99", "x-forge-billing-internal": "spoofed" },
+  }));
+  assert.equal(response.headers.get("x-middleware-next"), "1");
+  assert.equal(response.headers.get("x-middleware-request-x-company-id"), null);
+  assert.equal(response.headers.get("x-middleware-request-x-forge-billing-internal"), null);
+  for (const [path, method] of [["/api/messages/status", "GET"], ["/api/messages/status/extra", "POST"], ["/api/messages", "POST"]]) {
+    assert.equal((await modules.middleware.middleware(new NextRequest(`https://www.forgecrm.app${path}`, { method }))).status, 401);
+  }
+});
+
 function sessionCookie(
   identity = "ada@example.com",
   staffId = 7,

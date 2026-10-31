@@ -24,6 +24,8 @@ import ThemeToggle from "@/components/ThemeToggle";
 import AccountDeletionSection from "@/components/account/AccountDeletionSection";
 import ForgeBilling from "@/components/billing/ForgeBilling";
 import TerminalSetup from "@/components/payments/TerminalSetup";
+import { SmsMessagingStatus } from "@/components/SmsMessagingStatus";
+import { isSmsTwoWayReady, type SmsRoutingStatus } from "@/lib/sms-registration-status";
 import { PulseIcon } from "@/components/pulse/Icon";
 import {
   registrationConfirmationValues,
@@ -2212,9 +2214,8 @@ type RegistrationStatus = {
     confirmed_consent: number;
     submitted_at: string | null;
   } | null;
-  company: {
+  company: SmsRoutingStatus & {
     sms_tier: "trial" | "paid_pending_registration" | "paid_approved";
-    a2p_registration_state: string;
     a2p_registration_error: string | null;
     a2p_registration_started_at: string | null;
     a2p_registration_approved_at: string | null;
@@ -2319,6 +2320,7 @@ function MessagingPanel() {
   const company = data?.company;
   const state = company?.a2p_registration_state ?? "not_started";
   const isApproved = state === "campaign_approved";
+  const isTwoWayActive = isSmsTwoWayReady(company);
   const isPending = [
     "customer_profile_pending",
     "trust_product_pending",
@@ -2363,38 +2365,9 @@ function MessagingPanel() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-lg font-extrabold text-white tracking-tight">
-            Phone &amp; Messaging
-          </h2>
-          <p className="text-sm text-zinc-400 mt-2 font-bold">
-            {isApproved
-              ? "Two-way texting is enabled on your dedicated business number."
-              : "Complete your 10DLC registration to start sending text messages to customers."}
-          </p>
-        </div>
-        <TierBadge isApproved={isApproved} isPending={isPending} />
-      </div>
+      <SmsMessagingStatus company={company} />
 
-      {!isApproved && (
-        <div className="rounded-xl border border-indigo-900/40 bg-indigo-950/30 p-4 flex gap-3">
-          <PulseIcon name="message" className="w-5 h-5 text-indigo-300 shrink-0 mt-0.5" />
-          <div>
-            <div className="text-sm font-extrabold text-white">
-              Trial Plan: One-Way Texting Only
-            </div>
-            <p className="text-sm text-indigo-200/80 mt-1">
-              Outgoing texts are sent from a shared pool of numbers we
-              provision. Customer replies won&apos;t reach you while on a
-              trial. Upgrade to a paid plan to activate two-way texting with a
-              dedicated business number.
-            </p>
-          </div>
-        </div>
-      )}
-
-      {isApproved && company?.sms_dedicated_number && (
+      {isTwoWayActive && company?.sms_dedicated_number && (
         <div className="rounded-xl border border-line bg-black p-4">
           <div className="text-xs font-bold text-zinc-500">Your number</div>
           <div className="mt-1 text-2xl font-black text-white font-mono tabular-nums tracking-tight">
@@ -2688,34 +2661,6 @@ function MessagingPanel() {
         )}
       </div>
     </div>
-  );
-}
-
-function TierBadge({
-  isApproved,
-  isPending,
-}: {
-  isApproved: boolean;
-  isPending: boolean;
-}) {
-  if (isApproved) {
-    return (
-      <span className="text-xs font-bold rounded-full px-3 py-1 bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap">
-        SMS: Two-way active
-      </span>
-    );
-  }
-  if (isPending) {
-    return (
-      <span className="text-xs font-bold rounded-full px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
-        SMS: Pending review
-      </span>
-    );
-  }
-  return (
-    <span className="text-xs font-bold rounded-full px-3 py-1 bg-amber-50 text-amber-700 border border-amber-200 whitespace-nowrap">
-      SMS: One-way only
-    </span>
   );
 }
 

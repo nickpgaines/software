@@ -59,6 +59,33 @@ export async function loadRegistrationRoute() {
   }
 }
 
+export async function loadRegistrationWebhook(name) {
+  const hooks = installAliases();
+  try {
+    return await import(`../../src/app/api/twilio/webhooks/${name}/route.ts`);
+  } finally {
+    hooks.deregister();
+  }
+}
+
+export async function loadMessageStatusRoute() {
+  const hooks = installAliases();
+  try {
+    return await import("../../src/app/api/messages/status/route.ts");
+  } finally {
+    hooks.deregister();
+  }
+}
+
+export async function loadInboundMessageRoute() {
+  const hooks = installAliases();
+  try {
+    return await import("../../src/app/api/messages/webhook/route.ts");
+  } finally {
+    hooks.deregister();
+  }
+}
+
 export async function loadRegistrationInput() {
   return import("../../src/lib/sms-registration-input.ts");
 }
