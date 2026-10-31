@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
-import { getDb, type Company, type Customer } from "@/lib/db";
+import { getDb, type Company, type Customer, type MessagingSettings } from "@/lib/db";
 import {
   isMessagingConfigured,
   normalizeUSPhone,
-  verifyTwilioSignature,
 } from "@/lib/sms";
+import { verifyTwilioWebhook } from "@/lib/twilio-webhook-signature";
 import {
   findCompanyByPlatformNumber,
   getPlatformConfig,
@@ -28,17 +28,6 @@ const HELP_KEYWORDS = new Set(["HELP", "INFO"]);
 
 const TRIAL_AUTO_REPLY =
   "This number doesn't accept replies. Please contact the business directly.";
-
-function buildPublicUrl(req: Request): string {
-  const url = new URL(req.url);
-  const proto =
-    req.headers.get("x-forwarded-proto") || url.protocol.replace(":", "");
-  const host =
-    req.headers.get("x-forwarded-host") ||
-    req.headers.get("host") ||
-    url.host;
-  return `${proto}://${host}${url.pathname}${url.search}`;
-}
 
 function classifyKeyword(body: string): "opt_out" | "opt_in" | "help" | null {
   const word = body.trim().toUpperCase().split(/\s+/)[0] ?? "";
@@ -148,52 +137,35 @@ export async function POST(req: Request) {
   //      token signs; we look it up on the company row.
   //   3. Legacy BYO → tenant's own external Twilio account. Auth token
   //      lives in messaging_settings.
-  const signature = req.headers.get("x-twilio-signature") || "";
-  const url = buildPublicUrl(req);
   let signatureValid = false;
-  if (accountSid === cfg.masterAccountSid) {
-    signatureValid = verifyTwilioSignature({
-      authToken: cfg.masterAuthToken,
-      url,
-      params,
-      signature,
-    });
+  const authenticatedCompanyIds: number[] = [];
+  const isMasterAccount = accountSid === cfg.masterAccountSid;
+  if (isMasterAccount) {
+    signatureValid = verifyTwilioWebhook(req, params, cfg.masterAuthToken);
   } else {
     const db = await getDb();
     const subaccount = (await db
       .prepare(
-        "SELECT twilio_subaccount_auth_token FROM company WHERE twilio_subaccount_sid = ? LIMIT 1"
+        "SELECT id, twilio_subaccount_auth_token FROM company WHERE twilio_subaccount_sid = ? LIMIT 1"
       )
       .get(accountSid)) as
-      | { twilio_subaccount_auth_token: string | null }
+      | { id: number; twilio_subaccount_auth_token: string | null }
       | undefined;
     if (subaccount?.twilio_subaccount_auth_token) {
-      signatureValid = verifyTwilioSignature({
-        authToken: subaccount.twilio_subaccount_auth_token,
-        url,
-        params,
-        signature,
-      });
+      signatureValid = verifyTwilioWebhook(req, params, subaccount.twilio_subaccount_auth_token);
+      if (signatureValid) authenticatedCompanyIds.push(subaccount.id);
     }
     if (!signatureValid) {
-      const settings = (await db
+      const settings = await db
         .prepare(
-          "SELECT * FROM messaging_settings WHERE account_sid = ? LIMIT 1"
+          "SELECT * FROM messaging_settings WHERE account_sid = ?"
         )
-        .get(accountSid)) as
-        | { auth_token: string | null; company_id: number }
-        | undefined;
-      if (
-        settings &&
-        settings.auth_token &&
-        isMessagingConfigured(settings as never)
-      ) {
-        signatureValid = verifyTwilioSignature({
-          authToken: settings.auth_token,
-          url,
-          params,
-          signature,
-        });
+        .all<MessagingSettings>(accountSid);
+      for (const setting of settings) {
+        if (isMessagingConfigured(setting) && verifyTwilioWebhook(req, params, setting.auth_token)) {
+          signatureValid = true;
+          authenticatedCompanyIds.push(setting.company_id);
+        }
       }
     }
   }
@@ -226,6 +198,12 @@ export async function POST(req: Request) {
       `[messages/webhook] No tenant resolvable for To=${toPhone} From=${fromPhone}; dropping.`
     );
     return new NextResponse(TWIML_OK, { status: 200, headers: TWIML_HEADERS });
+  }
+
+  // A tenant-owned token cannot route replies or STOP/START changes into
+  // another tenant by supplying its phone number or matching its history.
+  if (!isMasterAccount && !authenticatedCompanyIds.includes(company.id)) {
+    return new NextResponse("Account does not own this conversation", { status: 403 });
   }
 
   const keyword = classifyKeyword(body);

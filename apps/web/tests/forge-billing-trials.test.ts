@@ -74,7 +74,10 @@ test('trial lasts 336 hours across daylight saving changes, interpreting legacy 
   assert.equal((await service.getCompanyBillingStatus(1, new Date('2026-11-08T12:00:00Z'))).allowed, false);
 });
 
-test('missing legacy dates never get a fresh trial and paid entitlement still works', async () => {
+test('missing legacy dates never get a fresh trial and paid entitlement still works', async (t) => {
+  // The provider fixture's paid period ends October 31. Both reconciliation
+  // and access evaluation must run inside that period, independent of today.
+  t.mock.timers.enable({ apis: ['Date'], now: new Date('2026-10-01T00:00:00Z') });
   const db = fixture();
   await db.prepare('DELETE FROM staff WHERE company_id=1').run();
   await schema.installForgeBillingSchema(db);

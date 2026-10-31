@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
-import { isMessagingConfigured, verifyTwilioSignature } from "@/lib/sms";
+import { getDb, type MessagingSettings } from "@/lib/db";
+import { isMessagingConfigured } from "@/lib/sms";
 import { getPlatformConfig } from "@/lib/twilio-platform";
+import { verifyTwilioWebhook } from "@/lib/twilio-webhook-signature";
 
 export const dynamic = "force-dynamic";
 
@@ -18,17 +19,6 @@ const ERROR_REASONS: Record<string, string> = {
   "30022": "10DLC daily/throughput limit reached",
   "30034": "Sent from an unregistered 10DLC number",
 };
-
-// Reconstruct the exact public URL Twilio signed (must match the StatusCallback
-// we handed it). Mirrors the inbound webhook's reconstruction.
-function buildPublicUrl(req: Request): string {
-  const url = new URL(req.url);
-  const proto =
-    req.headers.get("x-forwarded-proto") || url.protocol.replace(":", "");
-  const host =
-    req.headers.get("x-forwarded-host") || req.headers.get("host") || url.host;
-  return `${proto}://${host}${url.pathname}${url.search}`;
-}
 
 export async function POST(req: Request) {
   const cfg = getPlatformConfig();
@@ -48,46 +38,35 @@ export async function POST(req: Request) {
 
   // Verify against the auth token of whichever account sent the message:
   // master (trial pool), the tenant subaccount (dedicated), or a BYO account.
-  const signature = req.headers.get("x-twilio-signature") || "";
-  const url = buildPublicUrl(req);
   const db = await getDb();
   let signatureValid = false;
-  if (cfg && accountSid === cfg.masterAccountSid) {
-    signatureValid = verifyTwilioSignature({
-      authToken: cfg.masterAuthToken,
-      url,
-      params,
-      signature,
-    });
+  const companyIds: number[] = [];
+  const isMasterAccount = !!cfg && accountSid === cfg.masterAccountSid;
+  if (cfg && isMasterAccount) {
+    signatureValid = verifyTwilioWebhook(req, params, cfg.masterAuthToken);
   } else {
     const subaccount = (await db
       .prepare(
-        "SELECT twilio_subaccount_auth_token FROM company WHERE twilio_subaccount_sid = ? LIMIT 1"
+        "SELECT id, twilio_subaccount_auth_token FROM company WHERE twilio_subaccount_sid = ? LIMIT 1"
       )
       .get(accountSid)) as
-      | { twilio_subaccount_auth_token: string | null }
+      | { id: number; twilio_subaccount_auth_token: string | null }
       | undefined;
     if (subaccount?.twilio_subaccount_auth_token) {
-      signatureValid = verifyTwilioSignature({
-        authToken: subaccount.twilio_subaccount_auth_token,
-        url,
-        params,
-        signature,
-      });
+      signatureValid = verifyTwilioWebhook(req, params, subaccount.twilio_subaccount_auth_token);
+      if (signatureValid) companyIds.push(subaccount.id);
     }
     if (!signatureValid) {
-      const settings = (await db
+      const settings = await db
         .prepare(
-          "SELECT * FROM messaging_settings WHERE account_sid = ? LIMIT 1"
+          "SELECT * FROM messaging_settings WHERE account_sid = ?"
         )
-        .get(accountSid)) as { auth_token: string | null } | undefined;
-      if (settings?.auth_token && isMessagingConfigured(settings as never)) {
-        signatureValid = verifyTwilioSignature({
-          authToken: settings.auth_token,
-          url,
-          params,
-          signature,
-        });
+        .all<MessagingSettings>(accountSid);
+      for (const setting of settings) {
+        if (isMessagingConfigured(setting) && verifyTwilioWebhook(req, params, setting.auth_token)) {
+          signatureValid = true;
+          companyIds.push(setting.company_id);
+        }
       }
     }
   }
@@ -101,19 +80,23 @@ export async function POST(req: Request) {
       (errorCode ? `Carrier error ${errorCode}` : "Delivery failed")
     : null;
 
+  // A BYO/subaccount token authenticates that tenant, not every message in
+  // Forge. Only the private platform token owns the shared pool across tenants.
+  const tenantFilter = isMasterAccount ? "" : ` AND company_id IN (${companyIds.map(() => "?").join(",")})`;
   await db
     .prepare(
       `UPDATE messages
           SET status = ?,
               error_code = ?,
               error = COALESCE(?, error)
-        WHERE provider_sid = ? AND direction = 'outbound'`
+        WHERE provider_sid = ? AND direction = 'outbound'${tenantFilter}`
     )
     .run(
       messageStatus,
       errorCode ? Number(errorCode) : null,
       reason,
-      messageSid
+      messageSid,
+      ...companyIds
     );
 
   return new NextResponse(null, { status: 204 });

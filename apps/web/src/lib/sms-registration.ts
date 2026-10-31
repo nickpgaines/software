@@ -46,6 +46,7 @@ import {
   fetchCustomerProfile,
   fetchCustomerProfileEvaluations,
   fetchTrustProduct,
+  isNumberAttachedToMessagingService,
   summarizeEvaluationFailures,
   summarizeRegistrationErrors,
   listCustomerProfiles,
@@ -701,9 +702,9 @@ async function step(companyId: number, retryFailed: boolean, lease: SmsRegistrat
       let msSid = company.twilio_messaging_service_sid;
       if (!msSid) {
         const inboundUrl = buildWebhookUrl("/api/messages/webhook");
-        const statusUrl = buildWebhookUrl(
-          "/api/twilio/webhooks/campaign-status"
-        );
+        // Messaging Service callbacks report delivery, not campaign approval.
+        // Brand/campaign review is reconciled on registration status refresh.
+        const statusUrl = buildWebhookUrl("/api/messages/status");
         const ms = await createMessagingService({
         creds,
           friendlyName:
@@ -793,7 +794,32 @@ async function step(companyId: number, retryFailed: boolean, lease: SmsRegistrat
   }
 
   // 9. Campaign approved → buy and attach the dedicated number.
-  if (state === "campaign_approved" && !company.sms_dedicated_number) {
+  if (state === "campaign_approved") {
+    if (!company.twilio_campaign_sid || !company.twilio_messaging_service_sid) {
+      const error = "Approved registration is missing its campaign or messaging service. Contact support to finish two-way texting setup.";
+      await persistState(companyId, state, error);
+      return { state, error, recurse: false };
+    }
+    if (company.sms_dedicated_number || company.sms_dedicated_number_sid) {
+      if (company.sms_tier === "paid_approved" && company.sms_dedicated_number && company.sms_dedicated_number_sid) {
+        return { state, error: company.a2p_registration_error, recurse: false };
+      }
+      // Older registrations saved the number without switching the routing
+      // tier. Repair only a verified attachment; never buy another number.
+      let attached = false;
+      if (company.sms_dedicated_number && company.sms_dedicated_number_sid) {
+        attached = await isNumberAttachedToMessagingService({ creds,
+          messagingServiceSid: company.twilio_messaging_service_sid,
+          phoneNumberSid: company.sms_dedicated_number_sid,
+        }).catch(error => {
+          if (error instanceof SmsRegistrationLeaseLostError) throw error;
+          return false;
+        });
+      }
+      const error = attached ? null : "Your dedicated number's messaging service attachment could not be verified. Refresh status to retry, or contact support.";
+      await persistState(companyId, state, error, attached ? { sms_tier: "paid_approved" } : {});
+      return { state, error, recurse: false };
+    }
     const error = await provisionDedicatedNumber({ company, registration, creds, lease,
       smsUrl: buildWebhookUrl("/api/messages/webhook"), voiceUrl: buildWebhookUrl("/api/voice/outbound") });
     await persistState(companyId, "campaign_approved", error);

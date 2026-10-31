@@ -79,7 +79,7 @@ export async function provisionDedicatedNumber(input: {
     await lease.transaction(async tx => {
       await tx.prepare(`UPDATE sms_number_provisioning SET status = 'attached', updated_at = datetime('now') WHERE company_id = ?`).run(company.id);
       // Keep the public sender inactive until its purchased number is attached.
-      await tx.prepare(`UPDATE company SET sms_dedicated_number = ?, sms_dedicated_number_sid = ?, updated_at = datetime('now') WHERE id = ?`
+      await tx.prepare(`UPDATE company SET sms_dedicated_number = ?, sms_dedicated_number_sid = ?, sms_tier = 'paid_approved', updated_at = datetime('now') WHERE id = ?`
       ).run(reserved!.phone_number, reserved!.phone_sid, company.id);
     });
     return null;

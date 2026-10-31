@@ -353,7 +353,7 @@ for (const failureStage of ["purchase", "attachment"] as const) {
 
 test("attachment retry reuses the number durably saved before the first attachment", async () => {
   db = registrationDatabase("campaign_approved");
-  db.prepare("UPDATE company SET twilio_messaging_service_sid='MGservice', twilio_campaign_sid='QEcampaign'").run();
+  db.prepare("UPDATE company SET twilio_messaging_service_sid='MGservice', twilio_campaign_sid='QEcampaign', sms_tier='trial'").run();
   let purchases = 0;
   let attachments = 0;
   globalThis.fetch = async (input, init) => {
@@ -374,11 +374,69 @@ test("attachment retry reuses the number durably saved before the first attachme
     throw new Error(`Unexpected request ${url}`);
   };
   await advanceRegistration(1);
+  assert.equal(db.prepare("SELECT sms_tier FROM company").all()[0].sms_tier, "trial", "failed attachment must keep shared-pool routing");
   assert.equal(db.prepare("SELECT sms_dedicated_number FROM company WHERE id=1").get().sms_dedicated_number, null, "number is not active until attached");
   assert.equal((await advanceRegistration(1)).error, null);
+  assert.equal(db.prepare("SELECT sms_tier FROM company").all()[0].sms_tier, "paid_approved", "attached number must activate dedicated sending and replies");
   assert.equal(purchases, 1);
   assert.equal(attachments, 2);
   assert.equal(db.prepare("SELECT sms_dedicated_number_sid FROM company WHERE id=1").get().sms_dedicated_number_sid, "PNfirst");
+});
+
+test("refresh repairs an approved legacy sender only after verifying its service attachment", async () => {
+  db = registrationDatabase("campaign_approved");
+  db.prepare(`UPDATE company SET twilio_messaging_service_sid='MGservice', twilio_campaign_sid='QEcampaign',
+    sms_tier='trial', sms_dedicated_number='+12025550199', sms_dedicated_number_sid='PNexisting'`).run();
+  let attached = false;
+  let calls = 0;
+  globalThis.fetch = async (input, init) => {
+    assert.equal(init?.method ?? "GET", "GET", "legacy repair must not purchase or reattach a number");
+    assert.equal(String(input), "https://messaging.twilio.com/v1/Services/MGservice/PhoneNumbers/PNexisting");
+    calls++;
+    return Response.json({ sid: "PNexisting", service_sid: attached ? "MGservice" : "MGother" });
+  };
+  let response = await GET(new Request("https://www.forgecrm.app/api/sms/registration"));
+  assert.equal((await response.json()).company.sms_tier, "trial");
+  assert.equal(calls, 1, "opening an approved-but-inactive registration must reconcile it");
+  attached = true;
+  response = await GET(new Request("https://www.forgecrm.app/api/sms/registration"));
+  assert.equal((await response.json()).company.sms_tier, "paid_approved");
+  assert.equal(calls, 2);
+  await advanceRegistration(1);
+  assert.equal(calls, 2, "already active sender is idempotent");
+});
+
+test("approved campaign without a messaging service cannot purchase a number", async () => {
+  db = registrationDatabase("campaign_approved");
+  db.prepare("UPDATE company SET twilio_campaign_sid='QEcampaign', sms_tier='trial'").run();
+  globalThis.fetch = async () => { assert.fail("incomplete registration must not call Twilio"); };
+  const result = await advanceRegistration(1);
+  assert.match(result.error || "", /messaging service/i);
+  assert.equal(db.prepare("SELECT sms_tier FROM company").all()[0].sms_tier, "trial");
+});
+
+test("new messaging services route delivery callbacks to the message-status handler", async () => {
+  db = registrationDatabase("brand_approved");
+  db.prepare("UPDATE company SET twilio_brand_sid='BNbrand'").run();
+  const previousUrl = process.env.NEXT_PUBLIC_APP_URL;
+  process.env.NEXT_PUBLIC_APP_URL = "https://www.forgecrm.app";
+  try {
+    globalThis.fetch = async (input, init) => {
+      const url = String(input);
+      if (url.endsWith("/v1/Services")) {
+        assert.equal(new URLSearchParams(String(init?.body)).get("StatusCallback"), "https://www.forgecrm.app/api/messages/status");
+        return Response.json({ sid: "MGservice" });
+      }
+      if (url.endsWith("/Compliance/Usa2p")) return Response.json({ sid: "QEcampaign", campaign_status: "PENDING" });
+      throw new Error(`Unexpected request ${url}`);
+    };
+    const result = await advanceRegistration(1);
+    assert.equal(result.state, "campaign_pending");
+    assert.equal(result.error, null);
+  } finally {
+    if (previousUrl === undefined) delete process.env.NEXT_PUBLIC_APP_URL;
+    else process.env.NEXT_PUBLIC_APP_URL = previousUrl;
+  }
 });
 
 test("attachment accepted before an error is reconciled when retry reports an existing sender", async () => {

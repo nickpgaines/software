@@ -14,6 +14,7 @@ import {
   validateSmsRegistrationForm,
 } from "@/lib/sms-registration-input";
 import { verifyPublicWebsite } from "@/lib/public-website";
+import { isSmsTwoWayReady } from "@/lib/sms-registration-status";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,8 @@ type RegistrationStatus = {
     | "a2p_registration_started_at"
     | "a2p_registration_approved_at"
     | "sms_dedicated_number"
+    | "sms_dedicated_number_sid"
+    | "twilio_messaging_service_sid"
     | "twilio_brand_sid"
     | "twilio_campaign_sid"
   >;
@@ -43,7 +46,8 @@ async function readStatus(companyId: number): Promise<RegistrationStatus> {
     .prepare(
       `SELECT sms_tier, a2p_registration_state, a2p_registration_error,
               a2p_registration_started_at, a2p_registration_approved_at,
-              sms_dedicated_number, twilio_brand_sid, twilio_campaign_sid
+              sms_dedicated_number, sms_dedicated_number_sid,
+              twilio_messaging_service_sid, twilio_brand_sid, twilio_campaign_sid
          FROM company WHERE id = ? LIMIT 1`
     )
     .get(companyId)) as RegistrationStatus["company"];
@@ -67,6 +71,8 @@ export async function GET(req: Request) {
   // profile labelled "in review" and prevents the user from correcting it.
   if (
     status.company.a2p_registration_state.endsWith("_pending") ||
+    (status.company.a2p_registration_state === "campaign_approved" &&
+      !isSmsTwoWayReady(status.company)) ||
     url.searchParams.get("refresh") === "1"
   ) {
     const progress = await advanceRegistration(companyId).catch((error) => {

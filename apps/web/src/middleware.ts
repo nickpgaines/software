@@ -135,6 +135,12 @@ export async function middleware(req: NextRequest) {
     return nextWithoutInternalContext(req);
   }
 
+  // Twilio has no CRM session/Origin header. This exact operation validates
+  // its Twilio signature in the handler; all other message APIs stay private.
+  if (pathname === "/api/messages/status" && req.method === "POST") {
+    return nextWithoutInternalContext(req);
+  }
+
   // Scheduled lifecycle delivery authenticates with CRON_SECRET in its handler.
   if (pathname === "/api/cron/job-lifecycle-notifications" && (req.method === "GET" || req.method === "POST")) {
     return nextWithoutInternalContext(req);
