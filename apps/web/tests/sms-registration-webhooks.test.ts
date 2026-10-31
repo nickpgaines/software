@@ -114,3 +114,45 @@ test("transient provider failure returns a retryable callback response", async (
   assert.equal(response.status, 503);
   assert.equal(db.prepare("SELECT a2p_registration_state FROM company").all()[0].a2p_registration_state, "customer_profile_pending");
 });
+
+for (const key of ["BundleSid", "BundleSID"]) {
+  test(`Trust Hub ${key} identifies the stored trust product`, async () => {
+    fixture("trust_product_pending");
+    const response = await routes["customer-profile-status"].GET(request("customer-profile-status", "GET", {
+      [key]: "BUtrust", AccountSid: "ACtest", Status: "in-review",
+    }));
+    assert.equal(response.status, 200);
+    assert.equal(db.prepare("SELECT a2p_registration_state FROM company").all()[0].a2p_registration_state, "trust_product_failed");
+  });
+}
+
+function redirectedBundleRequest(query: string, tamper = false) {
+  const path = `/api/twilio/webhooks/customer-profile-status?${query}`;
+  const signature = createHmac("sha1", "test-token").update(`https://forgecrm.app${path}`).digest("base64");
+  return new Request(`https://www.forgecrm.app${path}${tamper ? "&extra=changed" : ""}`, {
+    headers: { "x-twilio-signature": signature },
+  });
+}
+
+test("redirected Trust Hub GET preserves identical repeated body hashes in its signed URL", async () => {
+  fixture("trust_product_pending");
+  const hash = "a".repeat(64);
+  const query = `bodySHA256=${hash}&bodySHA256=${hash}&AccountSid=ACtest&BundleSid=BUtrust&Status=in-review&FailureReason=&Errors=`;
+  const response = await routes["customer-profile-status"].GET(redirectedBundleRequest(query));
+  assert.equal(response.status, 200);
+  assert.equal(db.prepare("SELECT a2p_registration_state FROM company").all()[0].a2p_registration_state, "trust_product_failed");
+  assert.ok(reads > 0);
+});
+
+for (const variation of ["conflicting hash", "duplicate resource", "tampered signed URL"]) {
+  test(`Trust Hub redirect rejects ${variation} without advancing`, async () => {
+    fixture("trust_product_pending");
+    const hash = "a".repeat(64);
+    const other = variation === "conflicting hash" ? "b".repeat(64) : hash;
+    const query = `bodySHA256=${hash}&bodySHA256=${other}&AccountSid=ACtest&BundleSid=BUtrust${variation === "duplicate resource" ? "&BundleSid=BUtrust" : ""}`;
+    const response = await routes["customer-profile-status"].GET(redirectedBundleRequest(query, variation === "tampered signed URL"));
+    assert.equal(response.status, variation === "tampered signed URL" ? 403 : 400);
+    assert.equal(reads, 0);
+    assert.equal(db.prepare("SELECT a2p_registration_state FROM company").all()[0].a2p_registration_state, "trust_product_pending");
+  });
+}
