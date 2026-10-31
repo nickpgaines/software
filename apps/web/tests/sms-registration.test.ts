@@ -790,3 +790,26 @@ test("an interrupted trust-product draft also becomes recoverable without provid
   assert.match(result.error || "", /not submitted.*review.*resubmit/i);
   assert.ok(requests.every(r => r.method === "GET"));
 });
+
+test("authorized panel GET returns provider-confirmed overdue support references", async () => {
+  db = registrationDatabase("customer_profile_pending");
+  twilioResponses({ sid: "BUprofile", status: "in-review", date_updated: "2020-01-01T00:00:00Z" });
+  const response = await GET(new Request("https://www.forgecrm.app/api/sms/registration"));
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("Cache-Control"), "no-store");
+  assert.equal(body.reviewSupport?.resourceSid, "BUprofile");
+  assert.equal(body.reviewSupport?.accountSid, "ACtest");
+  assert.equal(body.reviewSupport?.state, "customer_profile_pending");
+  assert.doesNotMatch(JSON.stringify(body.reviewSupport), /test-token|auth_token|ein/);
+});
+
+test("panel GET with failed provider refresh suppresses overdue support guidance", async () => {
+  db = registrationDatabase("customer_profile_pending");
+  globalThis.fetch = async () => Response.json({ message: "Unavailable" }, { status: 503 });
+  const response = await GET(new Request("https://www.forgecrm.app/api/sms/registration"));
+  const body = await response.json();
+  assert.equal(response.status, 200);
+  assert.equal(body.reviewSupport, null);
+  assert.ok(body.company.a2p_registration_error);
+});
