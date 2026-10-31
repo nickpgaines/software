@@ -5,7 +5,7 @@ import { verifyTwilioWebhook } from "@/lib/twilio-webhook-signature";
 type Resource = "customer-profile" | "brand" | "campaign";
 const resources = {
   "customer-profile": {
-    keys: ["sid", "Sid", "CustomerProfileSid", "TrustProductSid", "customer_profile_sid", "trust_product_sid"],
+    keys: ["sid", "Sid", "BundleSid", "BundleSID", "CustomerProfileSid", "TrustProductSid", "customer_profile_sid", "trust_product_sid"],
     columns: ["twilio_customer_profile_sid", "twilio_trust_product_sid"],
   },
   brand: { keys: ["sid", "Sid", "BrandSid", "brand_sid"], columns: ["twilio_brand_sid"] },
@@ -30,7 +30,13 @@ export async function handleRegistrationWebhook(req: Request, resource: Resource
   // Reject ambiguous fields rather than validate a different payload from
   // the one used to select the tenant.
   for (const key of fields.keys()) {
-    if (fields.getAll(key).length !== 1) return response("Ambiguous callback parameters", 400);
+    const values = fields.getAll(key);
+    // TwilioProxy repeats the same body hash on redirected Trust Hub GETs.
+    // It is not a tenant selector; keep the original URL intact for signature
+    // verification and continue rejecting ambiguous resource/account fields.
+    const repeatedHash = req.method === "GET" && key === "bodySHA256" &&
+      /^[a-f0-9]{64}$/.test(values[0]) && values.every(value => value === values[0]);
+    if (values.length !== 1 && !repeatedHash) return response("Ambiguous callback parameters", 400);
   }
   const definition = resources[resource];
   const sids = new Set(definition.keys.map(key => fields.get(key)).filter(Boolean));
