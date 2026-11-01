@@ -1,5 +1,7 @@
 # Forge Tap to Pay release handoff
 
+> **Current handoff:** [Nick and agent setup, recordings and Apple correspondence](tap-to-pay-handoff/README.md), September 27, 2026. The snapshots below are historical; do not interpret their old unchecked boxes or branch status as the current state. Production rollout remains separately gated.
+
 Tap to Pay is locally implemented across the server, iOS bridge and web UI. Local automated evidence is suitable for code review, but it is not release acceptance. Do not deploy, enable signing capabilities, contact Stripe or Apple accounts, run a provider intent, charge a card, upload a build or roll out the feature without separate authorization.
 
 ## Current preparation status — September 26, 2026

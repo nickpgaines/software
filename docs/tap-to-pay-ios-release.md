@@ -1,5 +1,7 @@
 # Forge Tap to Pay on iPhone release gate
 
+> **Current recording workflow:** [Owner/agent handoff](tap-to-pay-handoff/README.md). This older document retains historical setup context; the "Provider-test environment is not configured" section below predates the Debug origin guard and portable recording tools. Use [isolated testing](tap-to-pay-testing.md) and the current handoff for test-mode configuration. Do not use historical version/build numbers as release metadata.
+
 The native `ForgeTerminal` plugin uses the official Stripe Terminal iOS SPM package pinned exactly to **5.8.0**. App deployment remains iOS 15; Tap to Pay and Apple's built-in How to Tap education require **iOS 18 or later** in Forge. This minimum is not a promise Stripe supports every older OS: use a current released iOS version that Stripe supports. Beta iOS is not supported by Stripe for physical Tap to Pay.
 
 ## Signing is opt-in
